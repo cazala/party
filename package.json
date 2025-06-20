@@ -1,0 +1,15 @@
+{
+  "name": "party",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter playground dev",
+    "build": "pnpm --filter core build && pnpm --filter playground build",
+    "build:core": "pnpm --filter core build",
+    "build:playground": "pnpm --filter playground build"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "packageManager": "pnpm@8.0.0"
+}
