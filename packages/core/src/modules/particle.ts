@@ -1,4 +1,4 @@
-import { Vector2D } from './vector.js';
+import { Vector2D } from "./vector.js";
 
 export interface ParticleOptions {
   position?: Vector2D;
@@ -23,13 +23,12 @@ export class Particle {
     this.acceleration = options.acceleration || new Vector2D();
     this.mass = options.mass || 1;
     this.size = options.size || 5;
-    this.color = options.color || '#ffffff';
+    this.color = options.color || "#ffffff";
   }
 
   update(deltaTime: number): void {
     this.velocity = this.velocity.add(this.acceleration.multiply(deltaTime));
     this.position = this.position.add(this.velocity.multiply(deltaTime));
-    
     this.acceleration = Vector2D.zero();
   }
 
@@ -44,7 +43,7 @@ export class Particle {
     this.acceleration = options.acceleration || new Vector2D();
     this.mass = options.mass || 1;
     this.size = options.size || 5;
-    this.color = options.color || '#ffffff';
+    this.color = options.color || "#ffffff";
   }
 
   clone(): Particle {
@@ -54,7 +53,7 @@ export class Particle {
       acceleration: this.acceleration.clone(),
       mass: this.mass,
       size: this.size,
-      color: this.color
+      color: this.color,
     });
   }
 }

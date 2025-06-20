@@ -1,8 +1,8 @@
 import { Particle } from "./particle.js";
 import { Vector2D } from "./vector.js";
 
-export interface ForceFunction {
-  (
+export interface Force {
+  apply(
     particle: Particle,
     deltaTime: number,
     index: number,
@@ -10,32 +10,26 @@ export interface ForceFunction {
   ): Vector2D;
 }
 
-export interface SystemOptions {
-  maxParticles?: number;
-}
+export interface SystemOptions {}
 
 export class ParticleSystem {
   public particles: Particle[] = [];
-  public forces: ForceFunction[] = [];
+  public forces: Force[] = [];
   public isPlaying: boolean = false;
-  public maxParticles: number;
 
   private lastTime: number = 0;
   private animationId: number | null = null;
 
-  constructor(options: SystemOptions = {}) {
-    this.maxParticles = options.maxParticles || 1000;
-  }
+  constructor() {}
 
   addParticle(particle: Particle): void {
-    if (this.particles.length >= this.maxParticles) {
-      this.particles.shift();
-    }
     this.particles.push(particle);
   }
 
   addParticles(particles: Particle[]): void {
-    particles.forEach((particle) => this.addParticle(particle));
+    for (const particle of particles) {
+      this.addParticle(particle);
+    }
   }
 
   removeParticle(index: number): void {
@@ -44,11 +38,11 @@ export class ParticleSystem {
     }
   }
 
-  addForce(force: ForceFunction): void {
+  addForce(force: Force): void {
     this.forces.push(force);
   }
 
-  removeForce(force: ForceFunction): void {
+  removeForce(force: Force): void {
     const index = this.forces.indexOf(force);
     if (index > -1) {
       this.forces.splice(index, 1);
@@ -62,7 +56,7 @@ export class ParticleSystem {
   update(deltaTime: number): void {
     this.particles.forEach((particle, i) => {
       this.forces.forEach((force) => {
-        const forceVector = force(particle, deltaTime, i, this.particles);
+        const forceVector = force.apply(particle, deltaTime, i, this.particles);
         particle.applyForce(forceVector);
       });
 
