@@ -2,20 +2,28 @@ export class Vector2D {
   constructor(public x: number = 0, public y: number = 0) {}
 
   add(vector: Vector2D): Vector2D {
-    return new Vector2D(this.x + vector.x, this.y + vector.y);
+    this.x += vector.x;
+    this.y += vector.y;
+    return this;
   }
 
   subtract(vector: Vector2D): Vector2D {
-    return new Vector2D(this.x - vector.x, this.y - vector.y);
+    this.x -= vector.x;
+    this.y -= vector.y;
+    return this;
   }
 
   multiply(scalar: number): Vector2D {
-    return new Vector2D(this.x * scalar, this.y * scalar);
+    this.x *= scalar;
+    this.y *= scalar;
+    return this;
   }
 
   divide(scalar: number): Vector2D {
     if (scalar === 0) throw new Error('Cannot divide by zero');
-    return new Vector2D(this.x / scalar, this.y / scalar);
+    this.x /= scalar;
+    this.y /= scalar;
+    return this;
   }
 
   magnitude(): number {
@@ -24,16 +32,22 @@ export class Vector2D {
 
   normalize(): Vector2D {
     const mag = this.magnitude();
-    if (mag === 0) return new Vector2D(0, 0);
-    return this.divide(mag);
+    if (mag === 0) {
+      this.x = 0;
+      this.y = 0;
+    } else {
+      this.x /= mag;
+      this.y /= mag;
+    }
+    return this;
   }
 
   limit(max: number): Vector2D {
     const mag = this.magnitude();
     if (mag > max) {
-      return this.normalize().multiply(max);
+      this.normalize().multiply(max);
     }
-    return new Vector2D(this.x, this.y);
+    return this;
   }
 
   dot(vector: Vector2D): number {
@@ -41,7 +55,9 @@ export class Vector2D {
   }
 
   distance(vector: Vector2D): number {
-    return this.subtract(vector).magnitude();
+    const dx = this.x - vector.x;
+    const dy = this.y - vector.y;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   clone(): Vector2D {
@@ -51,6 +67,12 @@ export class Vector2D {
   set(x: number, y: number): void {
     this.x = x;
     this.y = y;
+  }
+
+  zero(): Vector2D {
+    this.x = 0;
+    this.y = 0;
+    return this;
   }
 
   static random(min: number = -1, max: number = 1): Vector2D {

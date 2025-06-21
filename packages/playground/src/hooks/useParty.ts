@@ -6,6 +6,7 @@ import {
   ParticleSystem,
   Vector2D,
   Bounds,
+  Flock,
 } from "../../../core/src";
 
 export function useParty() {
@@ -21,19 +22,20 @@ export function useParty() {
         position: new Vector2D(100, 100),
         velocity: new Vector2D(0, 0),
         acceleration: new Vector2D(0, 0),
-        mass: 100,
+        mass: 1,
         size: 10,
       })
     );
 
-    const gravity = new Gravity({ strength: 1000 });
-    const bounds = new Bounds({
-      min: new Vector2D(0, 0),
-      max: new Vector2D(500, 500),
-      bounce: 0.8,
-    });
-    system.addForce(gravity);
-    system.addForce(bounds);
+    system.addForce(new Gravity({ strength: 0.01 }));
+    system.addForce(
+      new Bounds({
+        min: new Vector2D(0, 0),
+        max: new Vector2D(1500, 840),
+        bounce: 0.8,
+      })
+    );
+    system.addForce(new Flock());
 
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
     const renderer = new Canvas2DRenderer({
@@ -49,8 +51,11 @@ export function useParty() {
         new Particle({
           position,
           velocity: new Vector2D(0, 0),
-          mass: 100,
+          mass: 1,
           size: 10,
+          color: ["#FFFFFF", "#FF0000", "#00FF00", "#0000FF"][
+            (Math.random() * 4) | 0
+          ],
         })
       );
     });

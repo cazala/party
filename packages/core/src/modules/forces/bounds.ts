@@ -71,12 +71,12 @@ export class Bounds implements Force {
 
   resize(width: number, height: number): void {
     const center = this.getCenter();
-    this.min = new Vector2D(center.x - width / 2, center.y - height / 2);
-    this.max = new Vector2D(center.x + width / 2, center.y + height / 2);
+    this.min.set(center.x - width / 2, center.y - height / 2);
+    this.max.set(center.x + width / 2, center.y + height / 2);
   }
 
   apply(particle: Particle) {
     this.constrain(particle);
-    return Vector2D.zero();
+    return new Vector2D(0, 0);
   }
 }

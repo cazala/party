@@ -21,7 +21,7 @@ export class Gravity implements Force {
   }
 
   setDirection(direction: Vector2D): void {
-    this.direction = direction.normalize();
+    this.direction = direction.clone().normalize();
   }
 
   setDirectionFromAngle(angle: number): void {
@@ -29,19 +29,15 @@ export class Gravity implements Force {
   }
 
   apply(particle: Particle) {
-    return this.direction.normalize().multiply(this.strength * particle.mass);
+    return this.direction.clone().normalize().multiply(this.strength * particle.mass);
   }
 }
 
 export function createGravityForce(
   strength: number = 9.8,
   direction: Vector2D = new Vector2D(0, 1)
-): Force {
-  const normalizedDirection = direction.normalize();
-
-  return (particle: Particle): Vector2D => {
-    return normalizedDirection.multiply(strength * particle.mass);
-  };
+): Gravity {
+  return new Gravity({ strength, direction });
 }
 
 export const defaultGravity = createGravityForce();

@@ -27,14 +27,21 @@ export class Particle {
   }
 
   update(deltaTime: number): void {
-    this.velocity = this.velocity.add(this.acceleration.multiply(deltaTime));
-    this.position = this.position.add(this.velocity.multiply(deltaTime));
-    this.acceleration = Vector2D.zero();
+    // Create a temporary copy of acceleration, multiply by deltaTime, then add to velocity
+    const accelDelta = this.acceleration;
+    this.velocity.add(accelDelta);
+
+    // Create a temporary copy of velocity, multiply by deltaTime, then add to position
+    const velocityDelta = this.velocity;
+    this.position.add(velocityDelta);
+
+    // Reset acceleration to zero
+    this.acceleration.zero();
   }
 
   applyForce(force: Vector2D): void {
-    const f = force.divide(this.mass);
-    this.acceleration = this.acceleration.add(f);
+    const f = force.clone().divide(this.mass);
+    this.acceleration.add(f);
   }
 
   reset(options: ParticleOptions = {}): void {
