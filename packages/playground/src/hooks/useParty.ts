@@ -68,9 +68,17 @@ export function useParty() {
           velocity: new Vector2D(0, 0),
           mass: 1,
           size: 10,
-          color: ["#F8F8F8", "#FF3C3C", "#F8F8F8", "#FF3C3C"][
-            (Math.random() * 4) | 0
-          ],
+          color: [
+            "#F8F8F8",    // Bright White
+            "#FF3C3C",    // Neon Red
+            "#00E0FF",    // Cyber Cyan
+            "#C85CFF",    // Electric Purple
+            "#AFFF00",    // Lime Neon
+            "#FF2D95",    // Hot Magenta
+            "#FF6A00",    // Sunset Orange
+            "#3B82F6",    // Deep Blue Glow
+            "#00FFC6",    // Turquoise Mint
+          ][(Math.random() * 9) | 0],
         })
       );
     });
@@ -125,9 +133,17 @@ export function useParty() {
           size: options?.size || 10,
           color:
             options?.color ||
-            ["#F8F8F8", "#FF3C3C", "#F8F8F8", "#FF3C3C"][
-              (Math.random() * 4) | 0
-            ],
+            [
+              "#F8F8F8",    // Bright White
+              "#FF3C3C",    // Neon Red
+              "#00E0FF",    // Cyber Cyan
+              "#C85CFF",    // Electric Purple
+              "#AFFF00",    // Lime Neon
+              "#FF2D95",    // Hot Magenta
+              "#FF6A00",    // Sunset Orange
+              "#3B82F6",    // Deep Blue Glow
+              "#00FFC6",    // Turquoise Mint
+            ][(Math.random() * 9) | 0],
         });
         systemRef.current.addParticle(particle);
       }

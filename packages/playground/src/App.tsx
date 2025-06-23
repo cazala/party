@@ -35,7 +35,7 @@ function App() {
           <canvas id="canvas" width={size.width - SIDEBAR_WIDTH} height={size.height - TOPBAR_HEIGHT} />
         </div>
         <div className="sidebar">
-          <Controls gravity={gravity} flock={flock} />
+          <Controls gravity={gravity} flock={flock} bounds={bounds} />
         </div>
       </div>
     </div>

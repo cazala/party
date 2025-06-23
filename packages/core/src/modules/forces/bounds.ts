@@ -2,6 +2,9 @@ import { Vector2D } from "../vector.js";
 import { Particle } from "../particle.js";
 import { Force } from "../system.js";
 
+// Default constants for Bounds behavior
+export const DEFAULT_BOUNDS_BOUNCE = 0.8;
+
 export interface BoundingBoxOptions {
   min: Vector2D;
   max: Vector2D;
@@ -18,7 +21,7 @@ export class Bounds implements Force {
   constructor(options: BoundingBoxOptions) {
     this.min = options.min;
     this.max = options.max;
-    this.bounce = options.bounce || 0.8;
+    this.bounce = options.bounce || DEFAULT_BOUNDS_BOUNCE;
   }
 
   contains(position: Vector2D): boolean {

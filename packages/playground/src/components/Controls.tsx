@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Gravity, Flock } from "../../../core/src";
-import { 
-  DEFAULT_GRAVITY_STRENGTH, 
-  DEFAULT_GRAVITY_ANGLE 
+import { Gravity, Flock, Bounds } from "../../../core/src";
+import {
+  DEFAULT_GRAVITY_STRENGTH,
+  DEFAULT_GRAVITY_ANGLE,
 } from "../../../core/src/modules/forces/gravity.js";
 import {
   DEFAULT_FLOCK_MAX_SPEED,
@@ -12,21 +12,38 @@ import {
   DEFAULT_FLOCK_SEPARATION_RANGE,
   DEFAULT_FLOCK_NEIGHBOR_RADIUS,
 } from "../../../core/src/modules/forces/flock.js";
+import {
+  DEFAULT_BOUNDS_BOUNCE,
+} from "../../../core/src/modules/forces/bounds.js";
 
 interface ControlsProps {
   gravity: Gravity | null;
   flock: Flock | null;
+  bounds: Bounds | null;
 }
 
-export function Controls({ gravity, flock }: ControlsProps) {
-  const [gravityStrength, setGravityStrength] = useState(DEFAULT_GRAVITY_STRENGTH);
+export function Controls({ gravity, flock, bounds }: ControlsProps) {
+  const [gravityStrength, setGravityStrength] = useState(
+    DEFAULT_GRAVITY_STRENGTH
+  );
   const [gravityAngle, setGravityAngle] = useState(DEFAULT_GRAVITY_ANGLE);
-  const [cohesionWeight, setCohesionWeight] = useState(DEFAULT_FLOCK_COHESION_WEIGHT);
-  const [alignmentWeight, setAlignmentWeight] = useState(DEFAULT_FLOCK_ALIGNMENT_WEIGHT);
-  const [separationWeight, setSeparationWeight] = useState(DEFAULT_FLOCK_SEPARATION_WEIGHT);
+  const [cohesionWeight, setCohesionWeight] = useState(
+    DEFAULT_FLOCK_COHESION_WEIGHT
+  );
+  const [alignmentWeight, setAlignmentWeight] = useState(
+    DEFAULT_FLOCK_ALIGNMENT_WEIGHT
+  );
+  const [separationWeight, setSeparationWeight] = useState(
+    DEFAULT_FLOCK_SEPARATION_WEIGHT
+  );
   const [maxSpeed, setMaxSpeed] = useState(DEFAULT_FLOCK_MAX_SPEED);
-  const [separationRange, setSeparationRange] = useState(DEFAULT_FLOCK_SEPARATION_RANGE);
-  const [neighborRadius, setNeighborRadius] = useState(DEFAULT_FLOCK_NEIGHBOR_RADIUS);
+  const [separationRange, setSeparationRange] = useState(
+    DEFAULT_FLOCK_SEPARATION_RANGE
+  );
+  const [neighborRadius, setNeighborRadius] = useState(
+    DEFAULT_FLOCK_NEIGHBOR_RADIUS
+  );
+  const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
 
   // Initialize state from current values
   useEffect(() => {
@@ -45,7 +62,10 @@ export function Controls({ gravity, flock }: ControlsProps) {
       setSeparationRange(flock.separationRange);
       setNeighborRadius(flock.neighborRadius);
     }
-  }, [gravity, flock]);
+    if (bounds) {
+      setBounce(bounds.bounce);
+    }
+  }, [gravity, flock, bounds]);
 
   const handleGravityStrengthChange = (value: number) => {
     setGravityStrength(value);
@@ -58,6 +78,13 @@ export function Controls({ gravity, flock }: ControlsProps) {
     setGravityAngle(angle);
     if (gravity) {
       gravity.setDirectionFromAngle(angle * (Math.PI / 180)); // Convert to radians
+    }
+  };
+
+  const handleBounceChange = (value: number) => {
+    setBounce(value);
+    if (bounds) {
+      bounds.bounce = value;
     }
   };
 
@@ -116,6 +143,7 @@ export function Controls({ gravity, flock }: ControlsProps) {
   const resetToDefaults = () => {
     handleGravityStrengthChange(DEFAULT_GRAVITY_STRENGTH);
     handleGravityAngleChange(DEFAULT_GRAVITY_ANGLE);
+    handleBounceChange(DEFAULT_BOUNDS_BOUNCE);
     handleFlockingChange("cohesionWeight", DEFAULT_FLOCK_COHESION_WEIGHT);
     handleFlockingChange("alignmentWeight", DEFAULT_FLOCK_ALIGNMENT_WEIGHT);
     handleFlockingChange("separationWeight", DEFAULT_FLOCK_SEPARATION_WEIGHT);
@@ -129,7 +157,7 @@ export function Controls({ gravity, flock }: ControlsProps) {
       <div className="controls-header">
         <h3>Physics Controls</h3>
         <button onClick={resetToDefaults} className="reset-button">
-          Reset to Defaults
+          Reset
         </button>
       </div>
 
@@ -171,25 +199,40 @@ export function Controls({ gravity, flock }: ControlsProps) {
           </label>
         </div>
 
+        <div className="control-group">
+          <label>
+            Bounce: {bounce.toFixed(2)}
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={bounce}
+              onChange={(e) => handleBounceChange(parseFloat(e.target.value))}
+              className="slider"
+            />
+          </label>
+        </div>
+
         <div className="preset-buttons">
           <button onClick={() => handleGravityPreset("up")}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 4l-8 8h6v8h4v-8h6z"/>
+              <path d="M12 4l-8 8h6v8h4v-8h6z" />
             </svg>
           </button>
           <button onClick={() => handleGravityPreset("down")}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 20l8-8h-6V4h-4v8H4z"/>
+              <path d="M12 20l8-8h-6V4h-4v8H4z" />
             </svg>
           </button>
           <button onClick={() => handleGravityPreset("left")}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 12l8-8v6h8v4h-8v6z"/>
+              <path d="M4 12l8-8v6h8v4h-8v6z" />
             </svg>
           </button>
           <button onClick={() => handleGravityPreset("right")}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20 12l-8 8v-6H4v-4h8V4z"/>
+              <path d="M20 12l-8 8v-6H4v-4h8V4z" />
             </svg>
           </button>
         </div>
@@ -264,9 +307,9 @@ export function Controls({ gravity, flock }: ControlsProps) {
             Max Speed: {maxSpeed.toFixed(1)}
             <input
               type="range"
-              min="100"
+              min="0"
               max="3000"
-              step="0.1"
+              step="1"
               value={maxSpeed}
               onChange={(e) =>
                 handleFlockingChange("maxSpeed", parseFloat(e.target.value))
@@ -286,7 +329,10 @@ export function Controls({ gravity, flock }: ControlsProps) {
               step="1"
               value={separationRange}
               onChange={(e) =>
-                handleFlockingChange("separationRange", parseFloat(e.target.value))
+                handleFlockingChange(
+                  "separationRange",
+                  parseFloat(e.target.value)
+                )
               }
               className="slider"
             />
@@ -303,7 +349,10 @@ export function Controls({ gravity, flock }: ControlsProps) {
               step="1"
               value={neighborRadius}
               onChange={(e) =>
-                handleFlockingChange("neighborRadius", parseFloat(e.target.value))
+                handleFlockingChange(
+                  "neighborRadius",
+                  parseFloat(e.target.value)
+                )
               }
               className="slider"
             />
