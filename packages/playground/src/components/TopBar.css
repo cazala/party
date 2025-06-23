@@ -35,7 +35,8 @@
 }
 
 .play-pause-button,
-.clear-button {
+.clear-button,
+.reset-spawn-button {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -52,7 +53,8 @@
 }
 
 .play-pause-button:hover,
-.clear-button:hover {
+.clear-button:hover,
+.reset-spawn-button:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
 }
@@ -85,12 +87,14 @@
   }
   
   .play-pause-button span,
-  .clear-button span {
+  .clear-button span,
+  .reset-spawn-button span {
     display: none;
   }
   
   .play-pause-button,
-  .clear-button {
+  .clear-button,
+  .reset-spawn-button {
     padding: 8px 10px;
     min-width: 40px;
     justify-content: center;

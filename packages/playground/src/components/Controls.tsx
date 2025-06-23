@@ -25,9 +25,11 @@ interface ControlsProps {
   flock: Flock | null;
   bounds: Bounds | null;
   renderer: Canvas2DRenderer | null;
+  onSpawnParticles?: (numParticles: number, shape: 'grid' | 'random', spacing: number) => void;
+  onGetSpawnConfig?: () => { numParticles: number; shape: 'grid' | 'random'; spacing: number };
 }
 
-export function Controls({ gravity, flock, bounds, renderer }: ControlsProps) {
+export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, onGetSpawnConfig }: ControlsProps) {
   const [gravityStrength, setGravityStrength] = useState(
     DEFAULT_GRAVITY_STRENGTH
   );
@@ -51,6 +53,11 @@ export function Controls({ gravity, flock, bounds, renderer }: ControlsProps) {
   const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
+  
+  // Spawn state
+  const [numParticles, setNumParticles] = useState(100);
+  const [spawnShape, setSpawnShape] = useState<'grid' | 'random'>('grid');
+  const [spacing, setSpacing] = useState(50);
 
   // Initialize state from current values
   useEffect(() => {
@@ -77,6 +84,21 @@ export function Controls({ gravity, flock, bounds, renderer }: ControlsProps) {
       setCustomColor(renderer.customColor);
     }
   }, [gravity, flock, bounds, renderer]);
+
+  // Initialize spawn on component mount
+  useEffect(() => {
+    if (onSpawnParticles) {
+      onSpawnParticles(numParticles, spawnShape, spacing);
+    }
+  }, [onSpawnParticles, numParticles, spawnShape, spacing]);
+
+  // Expose spawn config getter
+  useEffect(() => {
+    if (onGetSpawnConfig) {
+      const getConfig = () => ({ numParticles, shape: spawnShape, spacing });
+      (window as any).__getSpawnConfig = getConfig;
+    }
+  }, [onGetSpawnConfig, numParticles, spawnShape, spacing]);
 
   const handleGravityStrengthChange = (value: number) => {
     setGravityStrength(value);
@@ -171,6 +193,21 @@ export function Controls({ gravity, flock, bounds, renderer }: ControlsProps) {
     }
   };
 
+  // Spawn handlers
+  const handleSpawnChange = (newNumParticles?: number, newShape?: 'grid' | 'random', newSpacing?: number) => {
+    const particles = newNumParticles ?? numParticles;
+    const shape = newShape ?? spawnShape;
+    const space = newSpacing ?? spacing;
+    
+    if (newNumParticles !== undefined) setNumParticles(newNumParticles);
+    if (newShape !== undefined) setSpawnShape(newShape);
+    if (newSpacing !== undefined) setSpacing(newSpacing);
+    
+    if (onSpawnParticles) {
+      onSpawnParticles(particles, shape, space);
+    }
+  };
+
   const resetToDefaults = () => {
     handleGravityStrengthChange(DEFAULT_GRAVITY_STRENGTH);
     handleGravityAngleChange(DEFAULT_GRAVITY_ANGLE);
@@ -183,6 +220,14 @@ export function Controls({ gravity, flock, bounds, renderer }: ControlsProps) {
     handleFlockingChange("neighborRadius", DEFAULT_FLOCK_NEIGHBOR_RADIUS);
     handleColorModeChange(DEFAULT_RENDER_COLOR_MODE);
     handleCustomColorChange(DEFAULT_RENDER_CUSTOM_COLOR);
+    
+    // Reset spawn settings
+    setNumParticles(100);
+    setSpawnShape('grid');
+    setSpacing(50);
+    if (onSpawnParticles) {
+      onSpawnParticles(100, 'grid', 50);
+    }
   };
 
   return (
@@ -421,6 +466,57 @@ export function Controls({ gravity, flock, bounds, renderer }: ControlsProps) {
                 value={customColor}
                 onChange={(e) => handleCustomColorChange(e.target.value)}
                 className="color-picker"
+              />
+            </label>
+          </div>
+        )}
+      </div>
+
+      {/* Spawn Controls */}
+      <div className="control-section">
+        <h4>Spawn</h4>
+
+        <div className="control-group">
+          <label>
+            Number of Particles: {numParticles}
+            <input
+              type="range"
+              min="1"
+              max="500"
+              step="1"
+              value={numParticles}
+              onChange={(e) => handleSpawnChange(parseInt(e.target.value))}
+              className="slider"
+            />
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
+            Shape
+            <select 
+              value={spawnShape} 
+              onChange={(e) => handleSpawnChange(undefined, e.target.value as 'grid' | 'random')}
+              className="form-select"
+            >
+              <option value="grid">Grid</option>
+              <option value="random">Random</option>
+            </select>
+          </label>
+        </div>
+
+        {spawnShape === 'grid' && (
+          <div className="control-group">
+            <label>
+              Spacing: {spacing}
+              <input
+                type="range"
+                min="20"
+                max="150"
+                step="5"
+                value={spacing}
+                onChange={(e) => handleSpawnChange(undefined, undefined, parseInt(e.target.value))}
+                className="slider"
               />
             </label>
           </div>

@@ -6,9 +6,10 @@ interface TopBarProps {
   onPlay: () => void;
   onPause: () => void;
   onClear: () => void;
+  onReset: () => void;
 }
 
-export function TopBar({ system, onPlay, onPause, onClear }: TopBarProps) {
+export function TopBar({ system, onPlay, onPause, onClear, onReset }: TopBarProps) {
   const [isPlaying, setIsPlaying] = useState(true);
 
   useEffect(() => {
@@ -29,6 +30,10 @@ export function TopBar({ system, onPlay, onPause, onClear }: TopBarProps) {
 
   const handleClear = () => {
     onClear();
+  };
+
+  const handleReset = () => {
+    onReset();
   };
 
   return (
@@ -60,6 +65,13 @@ export function TopBar({ system, onPlay, onPause, onClear }: TopBarProps) {
               <path d="M4 4h1v5H4V4zm3 0h1v5H7V4z"/>
             </svg>
             <span>Clear</span>
+          </button>
+          <button onClick={handleReset} className="reset-spawn-button">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M6 0.5a5.5 5.5 0 0 1 5.5 5.5h-1A4.5 4.5 0 0 0 6 1.5v1.5L3.5 1.5 6 0V0.5z"/>
+              <path d="M6 11.5a5.5 5.5 0 0 1-5.5-5.5h1A4.5 4.5 0 0 0 6 10.5V9l2.5 1.5L6 12v-0.5z"/>
+            </svg>
+            <span>Reset</span>
           </button>
         </div>
         <div className="topbar-right"></div>
