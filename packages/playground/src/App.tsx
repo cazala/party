@@ -13,8 +13,18 @@ const SIDEBAR_WIDTH = 320;
 const TOPBAR_HEIGHT = 60;
 
 function App() {
-  const { system, gravity, bounds, flock, renderer, play, pause, clear, resetParticles, spawnParticles } =
-    useParty();
+  const {
+    system,
+    gravity,
+    bounds,
+    flock,
+    renderer,
+    play,
+    pause,
+    clear,
+    resetParticles,
+    spawnParticles,
+  } = useParty();
   const size = useWindowSize();
 
   useEffect(() => {
@@ -25,9 +35,21 @@ function App() {
     );
   }, [system, gravity, bounds, flock, renderer, size]);
 
+  useEffect(() => {
+    if (system) {
+      resetParticles();
+    }
+  }, [system, resetParticles]);
+
   return (
     <div className="app">
-      <TopBar system={system} onPlay={play} onPause={pause} onClear={clear} onReset={resetParticles} />
+      <TopBar
+        system={system}
+        onPlay={play}
+        onPause={pause}
+        onClear={clear}
+        onReset={resetParticles}
+      />
       <div className="app-content">
         <div className="canvas-container">
           <canvas
@@ -37,13 +59,17 @@ function App() {
           />
         </div>
         <div className="sidebar">
-          <Controls 
-            gravity={gravity} 
-            flock={flock} 
-            bounds={bounds} 
-            renderer={renderer} 
+          <Controls
+            gravity={gravity}
+            flock={flock}
+            bounds={bounds}
+            renderer={renderer}
             onSpawnParticles={spawnParticles}
-            onGetSpawnConfig={() => ({ numParticles: 100, shape: 'grid' as const, spacing: 50 })}
+            onGetSpawnConfig={() => ({
+              numParticles: 100,
+              shape: "grid" as const,
+              spacing: 50,
+            })}
           />
         </div>
       </div>

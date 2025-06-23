@@ -3,7 +3,7 @@ import { Particle } from "../particle.js";
 import { Force } from "../system.js";
 
 // Default constants for Gravity
-export const DEFAULT_GRAVITY_STRENGTH = 100;
+export const DEFAULT_GRAVITY_STRENGTH = 0;
 export const DEFAULT_GRAVITY_DIRECTION = new Vector2D(0, 1); // Downward
 export const DEFAULT_GRAVITY_ANGLE = 90; // degrees (downward)
 
@@ -34,7 +34,10 @@ export class Gravity implements Force {
   }
 
   apply(particle: Particle) {
-    return this.direction.clone().normalize().multiply(this.strength * particle.mass);
+    return this.direction
+      .clone()
+      .normalize()
+      .multiply(this.strength * particle.mass);
   }
 }
 

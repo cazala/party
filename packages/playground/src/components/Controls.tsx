@@ -12,9 +12,7 @@ import {
   DEFAULT_FLOCK_SEPARATION_RANGE,
   DEFAULT_FLOCK_NEIGHBOR_RADIUS,
 } from "../../../core/src/modules/forces/flock.js";
-import {
-  DEFAULT_BOUNDS_BOUNCE,
-} from "../../../core/src/modules/forces/bounds.js";
+import { DEFAULT_BOUNDS_BOUNCE } from "../../../core/src/modules/forces/bounds.js";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
@@ -25,11 +23,26 @@ interface ControlsProps {
   flock: Flock | null;
   bounds: Bounds | null;
   renderer: Canvas2DRenderer | null;
-  onSpawnParticles?: (numParticles: number, shape: 'grid' | 'random', spacing: number) => void;
-  onGetSpawnConfig?: () => { numParticles: number; shape: 'grid' | 'random'; spacing: number };
+  onSpawnParticles?: (
+    numParticles: number,
+    shape: "grid" | "random",
+    spacing: number
+  ) => void;
+  onGetSpawnConfig?: () => {
+    numParticles: number;
+    shape: "grid" | "random";
+    spacing: number;
+  };
 }
 
-export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, onGetSpawnConfig }: ControlsProps) {
+export function Controls({
+  gravity,
+  flock,
+  bounds,
+  renderer,
+  onSpawnParticles,
+  onGetSpawnConfig,
+}: ControlsProps) {
   const [gravityStrength, setGravityStrength] = useState(
     DEFAULT_GRAVITY_STRENGTH
   );
@@ -53,10 +66,10 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
   const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
-  
+
   // Spawn state
   const [numParticles, setNumParticles] = useState(100);
-  const [spawnShape, setSpawnShape] = useState<'grid' | 'random'>('grid');
+  const [spawnShape, setSpawnShape] = useState<"grid" | "random">("grid");
   const [spacing, setSpacing] = useState(50);
 
   // Initialize state from current values
@@ -122,10 +135,10 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
   };
 
   const handleColorModeChange = (mode: string) => {
-    setColorMode(mode as 'particle' | 'custom' | 'velocity');
+    setColorMode(mode as "particle" | "custom" | "velocity");
     if (renderer) {
-      renderer.setColorMode(mode as 'particle' | 'custom' | 'velocity');
-      if (mode === 'velocity' && flock) {
+      renderer.setColorMode(mode as "particle" | "custom" | "velocity");
+      if (mode === "velocity" && flock) {
         renderer.setMaxSpeed(flock.maxSpeed);
       }
     }
@@ -178,7 +191,7 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
       case "maxSpeed":
         setMaxSpeed(value);
         flock.maxSpeed = value;
-        if (renderer && renderer.colorMode === 'velocity') {
+        if (renderer && renderer.colorMode === "velocity") {
           renderer.setMaxSpeed(value);
         }
         break;
@@ -194,15 +207,19 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
   };
 
   // Spawn handlers
-  const handleSpawnChange = (newNumParticles?: number, newShape?: 'grid' | 'random', newSpacing?: number) => {
+  const handleSpawnChange = (
+    newNumParticles?: number,
+    newShape?: "grid" | "random",
+    newSpacing?: number
+  ) => {
     const particles = newNumParticles ?? numParticles;
     const shape = newShape ?? spawnShape;
     const space = newSpacing ?? spacing;
-    
+
     if (newNumParticles !== undefined) setNumParticles(newNumParticles);
     if (newShape !== undefined) setSpawnShape(newShape);
     if (newSpacing !== undefined) setSpacing(newSpacing);
-    
+
     if (onSpawnParticles) {
       onSpawnParticles(particles, shape, space);
     }
@@ -220,13 +237,13 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
     handleFlockingChange("neighborRadius", DEFAULT_FLOCK_NEIGHBOR_RADIUS);
     handleColorModeChange(DEFAULT_RENDER_COLOR_MODE);
     handleCustomColorChange(DEFAULT_RENDER_CUSTOM_COLOR);
-    
+
     // Reset spawn settings
     setNumParticles(100);
-    setSpawnShape('grid');
+    setSpawnShape("grid");
     setSpacing(50);
     if (onSpawnParticles) {
-      onSpawnParticles(100, 'grid', 50);
+      onSpawnParticles(100, "grid", 50);
     }
   };
 
@@ -382,23 +399,6 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
 
         <div className="control-group">
           <label>
-            Max Speed: {maxSpeed.toFixed(1)}
-            <input
-              type="range"
-              min="0"
-              max="3000"
-              step="1"
-              value={maxSpeed}
-              onChange={(e) =>
-                handleFlockingChange("maxSpeed", parseFloat(e.target.value))
-              }
-              className="slider"
-            />
-          </label>
-        </div>
-
-        <div className="control-group">
-          <label>
             Separation Range: {separationRange.toFixed(0)}
             <input
               type="range"
@@ -436,6 +436,23 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
             />
           </label>
         </div>
+
+        <div className="control-group">
+          <label>
+            Max Speed: {maxSpeed.toFixed(1)}
+            <input
+              type="range"
+              min="0"
+              max="3000"
+              step="1"
+              value={maxSpeed}
+              onChange={(e) =>
+                handleFlockingChange("maxSpeed", parseFloat(e.target.value))
+              }
+              className="slider"
+            />
+          </label>
+        </div>
       </div>
 
       {/* Render Controls */}
@@ -445,8 +462,8 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
         <div className="control-group">
           <label>
             Color Mode
-            <select 
-              value={colorMode} 
+            <select
+              value={colorMode}
               onChange={(e) => handleColorModeChange(e.target.value)}
               className="form-select"
             >
@@ -457,7 +474,7 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
           </label>
         </div>
 
-        {colorMode === 'custom' && (
+        {colorMode === "custom" && (
           <div className="control-group">
             <label>
               Custom Color
@@ -494,9 +511,14 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
         <div className="control-group">
           <label>
             Shape
-            <select 
-              value={spawnShape} 
-              onChange={(e) => handleSpawnChange(undefined, e.target.value as 'grid' | 'random')}
+            <select
+              value={spawnShape}
+              onChange={(e) =>
+                handleSpawnChange(
+                  undefined,
+                  e.target.value as "grid" | "random"
+                )
+              }
               className="form-select"
             >
               <option value="grid">Grid</option>
@@ -505,7 +527,7 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
           </label>
         </div>
 
-        {spawnShape === 'grid' && (
+        {spawnShape === "grid" && (
           <div className="control-group">
             <label>
               Spacing: {spacing}
@@ -515,7 +537,13 @@ export function Controls({ gravity, flock, bounds, renderer, onSpawnParticles, o
                 max="150"
                 step="5"
                 value={spacing}
-                onChange={(e) => handleSpawnChange(undefined, undefined, parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleSpawnChange(
+                    undefined,
+                    undefined,
+                    parseInt(e.target.value)
+                  )
+                }
                 className="slider"
               />
             </label>
