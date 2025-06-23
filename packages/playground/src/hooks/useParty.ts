@@ -23,9 +23,11 @@ export function useParty() {
     const gravity = new Gravity({ strength: DEFAULT_GRAVITY_STRENGTH });
     gravityRef.current = gravity;
 
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+    
     const bounds = new Bounds({
       min: new Vector2D(0, 0),
-      max: new Vector2D(1500, 840),
+      max: new Vector2D(canvas.width || 1200, canvas.height || 800),
     });
     boundsRef.current = bounds;
 
@@ -34,8 +36,6 @@ export function useParty() {
 
     const system = new ParticleSystem();
     systemRef.current = system;
-
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
     const renderer = new Canvas2DRenderer({
       canvas,
       clearColor: "#0D0D12",
@@ -122,7 +122,7 @@ export function useParty() {
     
     if (shape === 'grid') {
       const particlesPerRow = Math.ceil(Math.sqrt(numParticles));
-      const particlesPerCol = Math.ceil((numParticles - 1) / particlesPerRow + 1);
+      const particlesPerCol = Math.ceil(numParticles / particlesPerRow);
       
       for (let i = 0; i < numParticles; i++) {
         const x = centerX + (i % particlesPerRow - particlesPerRow / 2 + 0.5) * spacing;
