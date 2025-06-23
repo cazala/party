@@ -63,7 +63,7 @@ export class Collisions implements Force {
     for (const other of neighbors) {
       if (other === particle) continue;
 
-      const collisionForce = this.checkCollision(particle, other);
+      const collisionForce = this.checkCollision(particle, other, spatialGrid);
       if (collisionForce) {
         force.add(collisionForce);
       }
@@ -74,7 +74,8 @@ export class Collisions implements Force {
 
   private checkCollision(
     particle1: Particle,
-    particle2: Particle
+    particle2: Particle,
+    spatialGrid: SpatialGrid
   ): Vector2D | null {
     const distance = particle1.position.distance(particle2.position);
     const combinedRadius = particle1.size + particle2.size; // Sum of both radii (size IS radius)
@@ -137,6 +138,27 @@ export class Collisions implements Force {
       particle2.position.add(new Vector2D(-perturbX, -perturbY));
     }
 
+    // WALL CLIMBING PREVENTION: Reduce horizontal forces near walls
+    const { width, height } = spatialGrid.getSize();
+    const wallMargin = particle1.size * 3; // Area near walls where we reduce horizontal forces
+    
+    const nearLeftWall = particle1.position.x < wallMargin;
+    const nearRightWall = particle1.position.x > width - wallMargin;
+    const nearTopWall = particle1.position.y < wallMargin;
+    const nearBottomWall = particle1.position.y > height - wallMargin;
+    
+    // If near vertical walls, reduce horizontal collision forces
+    if (nearLeftWall || nearRightWall) {
+      collisionVector.x *= 0.3; // Significantly reduce horizontal collision forces near walls
+    }
+    
+    // If near horizontal walls, reduce vertical collision forces (but less so for floor)
+    if (nearTopWall) {
+      collisionVector.y *= 0.3;
+    } else if (nearBottomWall) {
+      collisionVector.y *= 0.7; // Allow some upward force but reduce it
+    }
+
     // Normalize the collision vector
     collisionVector.normalize();
 
@@ -161,6 +183,16 @@ export class Collisions implements Force {
 
     // Calculate collision force based on overlap
     let forceMagnitude = overlap * 2000; // Strong base force proportional to overlap
+
+    // Reduce collision forces for slow-moving particles to help system reach equilibrium
+    const relativeVelocity = particle1.velocity.clone().subtract(particle2.velocity);
+    const relativeSpeed = relativeVelocity.magnitude();
+    const speedThreshold = 100; // Particles moving slower than this get reduced collision forces
+    
+    if (relativeSpeed < speedThreshold) {
+      const speedReduction = Math.max(0.3, relativeSpeed / speedThreshold); // Minimum 30% force
+      forceMagnitude *= speedReduction;
+    }
 
     // Apply min/max force limits
     forceMagnitude = Math.max(

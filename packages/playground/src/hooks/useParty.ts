@@ -8,6 +8,7 @@ import {
   Bounds,
   Flock,
   Collisions,
+  Friction,
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
 } from "../../../core/src";
@@ -19,6 +20,7 @@ export function useParty() {
   const boundsRef = useRef<Bounds | null>(null);
   const flockRef = useRef<Flock | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
+  const frictionRef = useRef<Friction | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
   const spatialGridRef = useRef<SpatialGrid | null>(null);
 
@@ -39,6 +41,9 @@ export function useParty() {
     const collisions = new Collisions();
     collisionsRef.current = collisions;
 
+    const friction = new Friction();
+    frictionRef.current = friction;
+
     const system = new ParticleSystem({
       width: canvas.width || 1200,
       height: canvas.height || 800,
@@ -56,6 +61,7 @@ export function useParty() {
     system.addForce(bounds);
     system.addForce(flock);
     system.addForce(collisions);
+    system.addForce(friction);
 
     canvas.addEventListener("click", (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -264,6 +270,7 @@ export function useParty() {
     bounds: boundsRef.current,
     flock: flockRef.current,
     collisions: collisionsRef.current,
+    friction: frictionRef.current,
     renderer: rendererRef.current,
     spatialGrid: spatialGridRef.current,
     // Control functions

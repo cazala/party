@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
-import { Gravity, Flock, Bounds, Collisions, Canvas2DRenderer, SpatialGrid, DEFAULT_SPATIAL_GRID_CELL_SIZE } from "../../../core/src";
+import {
+  Gravity,
+  Flock,
+  Bounds,
+  Collisions,
+  Friction,
+  Canvas2DRenderer,
+  SpatialGrid,
+  DEFAULT_SPATIAL_GRID_CELL_SIZE,
+} from "../../../core/src";
 import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
@@ -20,6 +29,15 @@ import {
   DEFAULT_COLLISIONS_MAX_FORCE,
 } from "../../../core/src/modules/forces/collisions.js";
 import {
+  DEFAULT_FRICTION_ENABLED,
+  DEFAULT_FRICTION_COEFFICIENT,
+  DEFAULT_REST_THRESHOLD,
+} from "../../../core/src/modules/forces/friction.js";
+import {
+  DEFAULT_BOUNDS_FRICTION,
+  DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY,
+} from "../../../core/src/modules/forces/bounds.js";
+import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
 } from "../../../core/src/modules/render.js";
@@ -33,6 +51,7 @@ interface ControlsProps {
   flock: Flock | null;
   bounds: Bounds | null;
   collisions: Collisions | null;
+  friction: Friction | null;
   renderer: Canvas2DRenderer | null;
   spatialGrid: SpatialGrid | null;
   onSpawnParticles?: (
@@ -52,6 +71,7 @@ export function Controls({
   flock,
   bounds,
   collisions,
+  friction,
   renderer,
   spatialGrid,
   onSpawnParticles,
@@ -78,10 +98,34 @@ export function Controls({
     DEFAULT_FLOCK_NEIGHBOR_RADIUS
   );
   const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
-  const [collisionsEnabled, setCollisionsEnabled] = useState(DEFAULT_COLLISIONS_ENABLED);
-  const [collisionsDamping, setCollisionsDamping] = useState(DEFAULT_COLLISIONS_DAMPING);
-  const [collisionsMinForce, setCollisionsMinForce] = useState(DEFAULT_COLLISIONS_MIN_FORCE);
-  const [collisionsMaxForce, setCollisionsMaxForce] = useState(DEFAULT_COLLISIONS_MAX_FORCE);
+  const [collisionsEnabled, setCollisionsEnabled] = useState(
+    DEFAULT_COLLISIONS_ENABLED
+  );
+  const [collisionsDamping, setCollisionsDamping] = useState(
+    DEFAULT_COLLISIONS_DAMPING
+  );
+  const [collisionsMinForce, setCollisionsMinForce] = useState(
+    DEFAULT_COLLISIONS_MIN_FORCE
+  );
+  const [collisionsMaxForce, setCollisionsMaxForce] = useState(
+    DEFAULT_COLLISIONS_MAX_FORCE
+  );
+
+  // Friction state
+  const [frictionEnabled, setFrictionEnabled] = useState(
+    DEFAULT_FRICTION_ENABLED
+  );
+  const [frictionCoefficient, setFrictionCoefficient] = useState(
+    DEFAULT_FRICTION_COEFFICIENT
+  );
+  const [restThreshold, setRestThreshold] = useState(DEFAULT_REST_THRESHOLD);
+
+  // Bounds friction state
+  const [boundsFriction, setBoundsFriction] = useState(DEFAULT_BOUNDS_FRICTION);
+  const [minBounceVelocity, setMinBounceVelocity] = useState(
+    DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY
+  );
+
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
 
@@ -115,12 +159,19 @@ export function Controls({
     }
     if (bounds) {
       setBounce(bounds.bounce);
+      setBoundsFriction(bounds.friction);
+      setMinBounceVelocity(bounds.minBounceVelocity);
     }
     if (collisions) {
       setCollisionsEnabled(collisions.enabled);
       setCollisionsDamping(collisions.damping);
       setCollisionsMinForce(collisions.minForce);
       setCollisionsMaxForce(collisions.maxForce);
+    }
+    if (friction) {
+      setFrictionEnabled(friction.enabled);
+      setFrictionCoefficient(friction.coefficient);
+      setRestThreshold(friction.restThreshold);
     }
     if (renderer) {
       setColorMode(renderer.colorMode);
@@ -131,7 +182,7 @@ export function Controls({
       const { cellSize: gridCellSize } = spatialGrid.getGridDimensions();
       setCellSize(gridCellSize);
     }
-  }, [gravity, flock, bounds, collisions, renderer, spatialGrid]);
+  }, [gravity, flock, bounds, collisions, friction, renderer, spatialGrid]);
 
   // Initialize spawn on component mount
   useEffect(() => {
@@ -197,6 +248,43 @@ export function Controls({
     }
   };
 
+  // Friction handlers
+  const handleFrictionEnabledChange = (enabled: boolean) => {
+    setFrictionEnabled(enabled);
+    if (friction) {
+      friction.setEnabled(enabled);
+    }
+  };
+
+  const handleFrictionCoefficientChange = (coefficient: number) => {
+    setFrictionCoefficient(coefficient);
+    if (friction) {
+      friction.setCoefficient(coefficient);
+    }
+  };
+
+  const handleRestThresholdChange = (threshold: number) => {
+    setRestThreshold(threshold);
+    if (friction) {
+      friction.setRestThreshold(threshold);
+    }
+  };
+
+  // Bounds friction handlers
+  const handleBoundsFrictionChange = (frictionValue: number) => {
+    setBoundsFriction(frictionValue);
+    if (bounds) {
+      bounds.setFriction(frictionValue);
+    }
+  };
+
+  const handleMinBounceVelocityChange = (velocity: number) => {
+    setMinBounceVelocity(velocity);
+    if (bounds) {
+      bounds.setMinBounceVelocity(velocity);
+    }
+  };
+
   const handleColorModeChange = (mode: string) => {
     setColorMode(mode as "particle" | "custom" | "velocity");
     if (renderer) {
@@ -227,7 +315,6 @@ export function Controls({
       renderer.setShowSpatialGrid(show);
     }
   };
-
 
   const handleFlockingChange = (property: keyof Flock, value: number) => {
     if (!flock) return;
@@ -286,10 +373,15 @@ export function Controls({
     handleGravityStrengthChange(DEFAULT_GRAVITY_STRENGTH);
     handleGravityAngleChange(DEFAULT_GRAVITY_ANGLE);
     handleBounceChange(DEFAULT_BOUNDS_BOUNCE);
+    handleBoundsFrictionChange(DEFAULT_BOUNDS_FRICTION);
+    handleMinBounceVelocityChange(DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY);
     handleCollisionsEnabledChange(DEFAULT_COLLISIONS_ENABLED);
     handleCollisionsDampingChange(DEFAULT_COLLISIONS_DAMPING);
     handleCollisionsMinForceChange(DEFAULT_COLLISIONS_MIN_FORCE);
     handleCollisionsMaxForceChange(DEFAULT_COLLISIONS_MAX_FORCE);
+    handleFrictionEnabledChange(DEFAULT_FRICTION_ENABLED);
+    handleFrictionCoefficientChange(DEFAULT_FRICTION_COEFFICIENT);
+    handleRestThresholdChange(DEFAULT_REST_THRESHOLD);
     handleFlockingChange("cohesionWeight", DEFAULT_FLOCK_COHESION_WEIGHT);
     handleFlockingChange("alignmentWeight", DEFAULT_FLOCK_ALIGNMENT_WEIGHT);
     handleFlockingChange("separationWeight", DEFAULT_FLOCK_SEPARATION_WEIGHT);
@@ -380,11 +472,95 @@ export function Controls({
               type="checkbox"
               checked={collisionsEnabled}
               onChange={(e) => handleCollisionsEnabledChange(e.target.checked)}
-              style={{ marginRight: '8px' }}
+              style={{ marginRight: "8px" }}
             />
             Enable Collisions
           </label>
         </div>
+
+        <div className="control-group">
+          <label>
+            Wall Friction: {boundsFriction.toFixed(2)}
+            <input
+              type="range"
+              min="0"
+              max="0.5"
+              step="0.01"
+              value={boundsFriction}
+              onChange={(e) =>
+                handleBoundsFrictionChange(parseFloat(e.target.value))
+              }
+              className="slider"
+            />
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
+            Min Bounce Velocity: {minBounceVelocity.toFixed(0)}
+            <input
+              type="range"
+              min="0"
+              max="200"
+              step="5"
+              value={minBounceVelocity}
+              onChange={(e) =>
+                handleMinBounceVelocityChange(parseFloat(e.target.value))
+              }
+              className="slider"
+            />
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={frictionEnabled}
+              onChange={(e) => handleFrictionEnabledChange(e.target.checked)}
+              style={{ marginRight: "8px" }}
+            />
+            Enable Global Friction
+          </label>
+        </div>
+
+        {frictionEnabled && (
+          <>
+            <div className="control-group">
+              <label>
+                Friction Strength: {(1 - frictionCoefficient).toFixed(3)}
+                <input
+                  type="range"
+                  min="0.95"
+                  max="0.999"
+                  step="0.001"
+                  value={frictionCoefficient}
+                  onChange={(e) =>
+                    handleFrictionCoefficientChange(parseFloat(e.target.value))
+                  }
+                  className="slider"
+                />
+              </label>
+            </div>
+
+            <div className="control-group">
+              <label>
+                Rest Threshold: {restThreshold.toFixed(1)}
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={restThreshold}
+                  onChange={(e) =>
+                    handleRestThresholdChange(parseFloat(e.target.value))
+                  }
+                  className="slider"
+                />
+              </label>
+            </div>
+          </>
+        )}
 
         {collisionsEnabled && (
           <>
@@ -397,7 +573,9 @@ export function Controls({
                   max="1"
                   step="0.01"
                   value={collisionsDamping}
-                  onChange={(e) => handleCollisionsDampingChange(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    handleCollisionsDampingChange(parseFloat(e.target.value))
+                  }
                   className="slider"
                 />
               </label>
@@ -412,7 +590,9 @@ export function Controls({
                   max="200"
                   step="5"
                   value={collisionsMinForce}
-                  onChange={(e) => handleCollisionsMinForceChange(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    handleCollisionsMinForceChange(parseFloat(e.target.value))
+                  }
                   className="slider"
                 />
               </label>
@@ -424,17 +604,18 @@ export function Controls({
                 <input
                   type="range"
                   min="0"
-                  max="5000"
+                  max="20000"
                   step="100"
                   value={collisionsMaxForce}
-                  onChange={(e) => handleCollisionsMaxForceChange(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    handleCollisionsMaxForceChange(parseFloat(e.target.value))
+                  }
                   className="slider"
                 />
               </label>
             </div>
           </>
         )}
-
       </div>
 
       {/* Flocking Controls */}
@@ -680,7 +861,7 @@ export function Controls({
               type="checkbox"
               checked={showSpatialGrid}
               onChange={(e) => handleShowSpatialGridChange(e.target.checked)}
-              style={{ marginRight: '8px' }}
+              style={{ marginRight: "8px" }}
             />
             Show Spatial Grid
           </label>
@@ -688,8 +869,11 @@ export function Controls({
 
         {spatialGrid && (
           <div className="control-group">
-            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-              Grid: {spatialGrid.getGridDimensions().cols}×{spatialGrid.getGridDimensions().rows} cells
+            <div
+              style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}
+            >
+              Grid: {spatialGrid.getGridDimensions().cols}×
+              {spatialGrid.getGridDimensions().rows} cells
             </div>
           </div>
         )}
