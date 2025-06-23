@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import {
   Canvas2DRenderer,
   Gravity,
@@ -8,6 +8,7 @@ import {
   Bounds,
   Flock,
 } from "../../../core/src";
+import { DEFAULT_GRAVITY_STRENGTH } from "../../../core/src/modules/forces/gravity.js";
 
 export function useParty() {
   const systemRef = useRef<ParticleSystem | null>(null);
@@ -19,7 +20,7 @@ export function useParty() {
   useEffect(() => {
     if (systemRef.current) return;
 
-    const gravity = new Gravity({ strength: 0.01 });
+    const gravity = new Gravity({ strength: DEFAULT_GRAVITY_STRENGTH });
     gravityRef.current = gravity;
 
     const bounds = new Bounds({
@@ -79,11 +80,93 @@ export function useParty() {
     system.play();
   }, []);
 
+  const play = useCallback(() => {
+    if (systemRef.current) {
+      systemRef.current.play();
+    }
+  }, []);
+
+  const pause = useCallback(() => {
+    if (systemRef.current) {
+      systemRef.current.pause();
+    }
+  }, []);
+
+  const clear = useCallback(() => {
+    if (systemRef.current) {
+      systemRef.current.particles = [];
+    }
+  }, []);
+
+  const updateGravity = useCallback((strength: number) => {
+    if (gravityRef.current) {
+      gravityRef.current.strength = strength;
+    }
+  }, []);
+
+  const addParticle = useCallback(
+    (
+      x: number,
+      y: number,
+      options?: Partial<{
+        mass: number;
+        size: number;
+        color: string;
+      }>
+    ) => {
+      if (systemRef.current) {
+        const particle = new Particle({
+          position: new Vector2D(x, y),
+          velocity: new Vector2D(0, 0),
+          acceleration: new Vector2D(0, 0),
+          mass: options?.mass || 1,
+          size: options?.size || 10,
+          color:
+            options?.color ||
+            ["#FFFFFF", "#FF0000", "#00FF00", "#0000FF"][
+              (Math.random() * 4) | 0
+            ],
+        });
+        systemRef.current.addParticle(particle);
+      }
+    },
+    []
+  );
+
+  const updateParticleDefaults = useCallback(
+    (options: { mass?: number; size?: number }) => {
+      // This will affect new particles created via click
+      // We store the defaults for the click handler
+      const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+      if (canvas && systemRef.current) {
+        // Remove existing click listener and add new one with updated defaults
+        const newClickHandler = (e: MouseEvent) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          addParticle(x, y, options);
+        };
+
+        // Store the handler reference for cleanup
+        (canvas as any).__clickHandler = newClickHandler;
+        canvas.addEventListener("click", newClickHandler);
+      }
+    },
+    [addParticle]
+  );
+
   return {
     system: systemRef.current,
     gravity: gravityRef.current,
     bounds: boundsRef.current,
     flock: flockRef.current,
     renderer: rendererRef.current,
+    // Control functions
+    play,
+    pause,
+    clear,
+    updateGravity,
+    addParticle,
+    updateParticleDefaults,
   };
 }

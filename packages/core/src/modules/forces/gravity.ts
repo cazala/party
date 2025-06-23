@@ -2,6 +2,11 @@ import { Vector2D } from "../vector.js";
 import { Particle } from "../particle.js";
 import { Force } from "../system.js";
 
+// Default constants for Gravity
+export const DEFAULT_GRAVITY_STRENGTH = 100;
+export const DEFAULT_GRAVITY_DIRECTION = new Vector2D(0, 1); // Downward
+export const DEFAULT_GRAVITY_ANGLE = 90; // degrees (downward)
+
 export interface GravityOptions {
   strength?: number;
   direction?: Vector2D;
@@ -12,8 +17,8 @@ export class Gravity implements Force {
   public direction: Vector2D;
 
   constructor(options: GravityOptions = {}) {
-    this.strength = options.strength || 9.8;
-    this.direction = options.direction || new Vector2D(0, 1); // Default: downward
+    this.strength = options.strength || DEFAULT_GRAVITY_STRENGTH;
+    this.direction = options.direction || DEFAULT_GRAVITY_DIRECTION.clone();
   }
 
   setStrength(strength: number): void {
@@ -34,8 +39,8 @@ export class Gravity implements Force {
 }
 
 export function createGravityForce(
-  strength: number = 9.8,
-  direction: Vector2D = new Vector2D(0, 1)
+  strength: number = DEFAULT_GRAVITY_STRENGTH,
+  direction: Vector2D = DEFAULT_GRAVITY_DIRECTION
 ): Gravity {
   return new Gravity({ strength, direction });
 }

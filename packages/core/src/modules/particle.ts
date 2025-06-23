@@ -28,11 +28,11 @@ export class Particle {
 
   update(deltaTime: number): void {
     // Create a temporary copy of acceleration, multiply by deltaTime, then add to velocity
-    const accelDelta = this.acceleration;
+    const accelDelta = this.acceleration.clone().multiply(deltaTime);
     this.velocity.add(accelDelta);
 
     // Create a temporary copy of velocity, multiply by deltaTime, then add to position
-    const velocityDelta = this.velocity;
+    const velocityDelta = this.velocity.clone().multiply(deltaTime);
     this.position.add(velocityDelta);
 
     // Reset acceleration to zero

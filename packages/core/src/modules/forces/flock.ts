@@ -2,11 +2,39 @@ import { Particle } from "../particle.js";
 import { Force } from "../system.js";
 import { Vector2D } from "../vector.js";
 
+// Default constants for Flock behavior
+export const DEFAULT_FLOCK_MAX_SPEED = 1000;
+export const DEFAULT_FLOCK_COHESION_WEIGHT = 1;
+export const DEFAULT_FLOCK_ALIGNMENT_WEIGHT = 1;
+export const DEFAULT_FLOCK_SEPARATION_WEIGHT = 2;
+export const DEFAULT_FLOCK_SEPARATION_RANGE = 30;
+export const DEFAULT_FLOCK_NEIGHBOR_RADIUS = 100;
+
 export class Flock implements Force {
   maxSpeed: number;
 
-  constructor(options: { maxSpeed?: number } = {}) {
-    this.maxSpeed = options.maxSpeed ?? 12;
+  cohesionWeight: number;
+  alignmentWeight: number;
+  separationWeight: number;
+  separationRange: number;
+  neighborRadius: number;
+
+  constructor(
+    options: {
+      maxSpeed?: number;
+      cohesionWeight?: number;
+      alignmentWeight?: number;
+      separationWeight?: number;
+      separationRange?: number;
+      neighborRadius?: number;
+    } = {}
+  ) {
+    this.maxSpeed = options.maxSpeed ?? DEFAULT_FLOCK_MAX_SPEED;
+    this.cohesionWeight = options.cohesionWeight ?? DEFAULT_FLOCK_COHESION_WEIGHT;
+    this.alignmentWeight = options.alignmentWeight ?? DEFAULT_FLOCK_ALIGNMENT_WEIGHT;
+    this.separationWeight = options.separationWeight ?? DEFAULT_FLOCK_SEPARATION_WEIGHT;
+    this.separationRange = options.separationRange ?? DEFAULT_FLOCK_SEPARATION_RANGE;
+    this.neighborRadius = options.neighborRadius ?? DEFAULT_FLOCK_NEIGHBOR_RADIUS;
   }
 
   separate(particle: Particle, neighbors: Particle[], range: number): Vector2D {
@@ -82,15 +110,15 @@ export class Flock implements Force {
   ) {
     const neighbors = particles
       .filter((p) => p !== particle)
-      .filter((p) => particle.position.distance(p.position) < 100);
+      .filter((p) => particle.position.distance(p.position) < this.neighborRadius);
 
-    const separate = this.separate(particle, neighbors, 30);
+    const separate = this.separate(particle, neighbors, this.separationRange);
     const align = this.align(particle, neighbors);
     const cohesion = this.cohesion(particle, neighbors);
 
-    cohesion.multiply(0.01);
-    separate.multiply(0.02);
-    align.multiply(0.01);
+    cohesion.multiply(this.cohesionWeight);
+    separate.multiply(this.separationWeight);
+    align.multiply(this.alignmentWeight);
 
     particle.applyForce(separate);
     particle.applyForce(align);
