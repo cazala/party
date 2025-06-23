@@ -1,6 +1,7 @@
 import { Particle } from "../particle.js";
 import { Force } from "../system.js";
 import { Vector2D } from "../vector.js";
+import { SpatialGrid } from "../spatial-grid.js";
 
 // Default constants for Flock behavior
 export const DEFAULT_FLOCK_MAX_SPEED = 0; // Auto-managed when forces are active
@@ -106,15 +107,14 @@ export class Flock implements Force {
     particle: Particle,
     _deltaTime: number,
     _index: number,
-    particles: Particle[]
+    spatialGrid: SpatialGrid
   ) {
     // Calculate effective maxSpeed - use user maxSpeed or minimum default when forces are active
     const hasActiveForces = this.cohesionWeight > 0 || this.alignmentWeight > 0 || this.separationWeight > 0;
     const effectiveMaxSpeed = hasActiveForces ? Math.max(this.maxSpeed, 1000) : this.maxSpeed;
 
-    const neighbors = particles
-      .filter((p) => p !== particle)
-      .filter((p) => particle.position.distance(p.position) < this.neighborRadius);
+    // Use spatial grid for efficient neighbor lookup
+    const neighbors = spatialGrid.getNeighbors(particle, this.neighborRadius);
 
     const separate = this.separate(particle, neighbors, this.separationRange, effectiveMaxSpeed);
     const align = this.align(particle, neighbors, effectiveMaxSpeed);

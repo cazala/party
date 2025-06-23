@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Gravity, Flock, Bounds, Canvas2DRenderer } from "../../../core/src";
+import { Gravity, Flock, Bounds, Canvas2DRenderer, SpatialGrid, DEFAULT_SPATIAL_GRID_CELL_SIZE } from "../../../core/src";
 import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
@@ -27,6 +27,7 @@ interface ControlsProps {
   flock: Flock | null;
   bounds: Bounds | null;
   renderer: Canvas2DRenderer | null;
+  spatialGrid: SpatialGrid | null;
   onSpawnParticles?: (
     numParticles: number,
     shape: "grid" | "random",
@@ -44,6 +45,7 @@ export function Controls({
   flock,
   bounds,
   renderer,
+  spatialGrid,
   onSpawnParticles,
   onGetSpawnConfig,
 }: ControlsProps) {
@@ -78,6 +80,10 @@ export function Controls({
   );
   const [spacing, setSpacing] = useState(DEFAULT_SPAWN_SPACING);
 
+  // Performance state
+  const [cellSize, setCellSize] = useState(DEFAULT_SPATIAL_GRID_CELL_SIZE);
+  const [showSpatialGrid, setShowSpatialGrid] = useState(false);
+
   // Initialize state from current values
   useEffect(() => {
     if (gravity) {
@@ -101,8 +107,13 @@ export function Controls({
     if (renderer) {
       setColorMode(renderer.colorMode);
       setCustomColor(renderer.customColor);
+      setShowSpatialGrid(renderer.showSpatialGrid);
     }
-  }, [gravity, flock, bounds, renderer]);
+    if (spatialGrid) {
+      const { cellSize: gridCellSize } = spatialGrid.getGridDimensions();
+      setCellSize(gridCellSize);
+    }
+  }, [gravity, flock, bounds, renderer, spatialGrid]);
 
   // Initialize spawn on component mount
   useEffect(() => {
@@ -154,6 +165,20 @@ export function Controls({
     setCustomColor(color);
     if (renderer) {
       renderer.setCustomColor(color);
+    }
+  };
+
+  const handleCellSizeChange = (size: number) => {
+    setCellSize(size);
+    if (spatialGrid) {
+      spatialGrid.setCellSize(size);
+    }
+  };
+
+  const handleShowSpatialGridChange = (show: boolean) => {
+    setShowSpatialGrid(show);
+    if (renderer) {
+      renderer.setShowSpatialGrid(show);
     }
   };
 
@@ -412,7 +437,7 @@ export function Controls({
             Separation Range: {separationRange.toFixed(0)}
             <input
               type="range"
-              min="10"
+              min="0"
               max="150"
               step="1"
               value={separationRange}
@@ -432,7 +457,7 @@ export function Controls({
             Neighbor Radius: {neighborRadius.toFixed(0)}
             <input
               type="range"
-              min="50"
+              min="0"
               max="500"
               step="1"
               value={neighborRadius}
@@ -557,6 +582,46 @@ export function Controls({
                 className="slider"
               />
             </label>
+          </div>
+        )}
+      </div>
+
+      {/* Performance Controls */}
+      <div className="control-section">
+        <h4>Performance</h4>
+
+        <div className="control-group">
+          <label>
+            Spatial Grid Cell Size: {cellSize}px
+            <input
+              type="range"
+              min="20"
+              max="200"
+              step="10"
+              value={cellSize}
+              onChange={(e) => handleCellSizeChange(parseInt(e.target.value))}
+              className="slider"
+            />
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={showSpatialGrid}
+              onChange={(e) => handleShowSpatialGridChange(e.target.checked)}
+              style={{ marginRight: '8px' }}
+            />
+            Show Spatial Grid
+          </label>
+        </div>
+
+        {spatialGrid && (
+          <div className="control-group">
+            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+              Grid: {spatialGrid.getGridDimensions().cols}×{spatialGrid.getGridDimensions().rows} cells
+            </div>
           </div>
         )}
       </div>

@@ -7,6 +7,8 @@ import {
   Vector2D,
   Bounds,
   Flock,
+  type SpatialGrid,
+  DEFAULT_SPATIAL_GRID_CELL_SIZE,
 } from "../../../core/src";
 import { DEFAULT_GRAVITY_STRENGTH } from "../../../core/src/modules/forces/gravity.js";
 
@@ -16,6 +18,7 @@ export function useParty() {
   const boundsRef = useRef<Bounds | null>(null);
   const flockRef = useRef<Flock | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
+  const spatialGridRef = useRef<SpatialGrid | null>(null);
 
   useEffect(() => {
     if (systemRef.current) return;
@@ -25,17 +28,19 @@ export function useParty() {
 
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
     
-    const bounds = new Bounds({
-      min: new Vector2D(0, 0),
-      max: new Vector2D(canvas.width || 1200, canvas.height || 800),
-    });
+    const bounds = new Bounds();
     boundsRef.current = bounds;
 
     const flock = new Flock();
     flockRef.current = flock;
 
-    const system = new ParticleSystem();
+    const system = new ParticleSystem({
+      width: canvas.width || 1200,
+      height: canvas.height || 800,
+      cellSize: DEFAULT_SPATIAL_GRID_CELL_SIZE,
+    });
     systemRef.current = system;
+    spatialGridRef.current = system.spatialGrid;
     const renderer = new Canvas2DRenderer({
       canvas,
       clearColor: "#0D0D12",
@@ -98,7 +103,7 @@ export function useParty() {
   }, []);
 
   const spawnParticles = useCallback((numParticles: number, shape: 'grid' | 'random', spacing: number) => {
-    if (!systemRef.current || !boundsRef.current) return;
+    if (!systemRef.current) return;
     
     // Clear existing particles
     systemRef.current.particles = [];
@@ -115,8 +120,8 @@ export function useParty() {
       "#00FFC6", // Turquoise Mint
     ];
     
-    const canvasWidth = boundsRef.current.max.x - boundsRef.current.min.x;
-    const canvasHeight = boundsRef.current.max.y - boundsRef.current.min.y;
+    const canvasWidth = systemRef.current.width;
+    const canvasHeight = systemRef.current.height;
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
     
@@ -241,6 +246,7 @@ export function useParty() {
     bounds: boundsRef.current,
     flock: flockRef.current,
     renderer: rendererRef.current,
+    spatialGrid: spatialGridRef.current,
     // Control functions
     play,
     pause,

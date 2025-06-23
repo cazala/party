@@ -4,7 +4,12 @@ export {
   ParticleSystem,
   type Force as ForceFunction,
   type SystemOptions,
+  DEFAULT_SPATIAL_GRID_CELL_SIZE,
 } from "./modules/system.js";
+export {
+  SpatialGrid,
+  type SpatialGridOptions,
+} from "./modules/spatial-grid.js";
 export {
   Spawner,
   type GridSpawnOptions,

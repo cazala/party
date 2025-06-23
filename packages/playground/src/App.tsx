@@ -1,4 +1,3 @@
-import { Vector2D } from "../../core/src";
 import { useParty } from "./hooks/useParty";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useEffect } from "react";
@@ -19,6 +18,7 @@ function App() {
     bounds,
     flock,
     renderer,
+    spatialGrid,
     play,
     pause,
     clear,
@@ -29,7 +29,7 @@ function App() {
 
   useEffect(() => {
     if (!system || !gravity || !bounds || !flock || !renderer) return;
-    bounds.max = new Vector2D(
+    system.setSize(
       size.width - SIDEBAR_WIDTH,
       size.height - TOPBAR_HEIGHT
     );
@@ -64,6 +64,7 @@ function App() {
             flock={flock}
             bounds={bounds}
             renderer={renderer}
+            spatialGrid={spatialGrid}
             onSpawnParticles={spawnParticles}
             onGetSpawnConfig={() => ({
               numParticles: 100,

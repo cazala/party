@@ -1,26 +1,46 @@
 import { Particle } from "./particle.js";
 import { Vector2D } from "./vector.js";
+import { SpatialGrid } from "./spatial-grid.js";
 
 export interface Force {
   apply(
     particle: Particle,
     deltaTime: number,
     index: number,
-    particles: Particle[]
+    spatialGrid: SpatialGrid
   ): Vector2D;
 }
 
-export interface SystemOptions {}
+// Default constants for ParticleSystem
+export const DEFAULT_SPATIAL_GRID_CELL_SIZE = 100;
+
+export interface SystemOptions {
+  width: number;
+  height: number;
+  cellSize?: number;
+}
 
 export class ParticleSystem {
   public particles: Particle[] = [];
   public forces: Force[] = [];
+  public spatialGrid: SpatialGrid;
+  public width: number;
+  public height: number;
   public isPlaying: boolean = false;
 
   private lastTime: number = 0;
   private animationId: number | null = null;
 
-  constructor() {}
+  constructor(options: SystemOptions) {
+    this.width = options.width;
+    this.height = options.height;
+    
+    this.spatialGrid = new SpatialGrid({
+      width: this.width,
+      height: this.height,
+      cellSize: options.cellSize ?? DEFAULT_SPATIAL_GRID_CELL_SIZE,
+    });
+  }
 
   addParticle(particle: Particle): void {
     this.particles.push(particle);
@@ -54,9 +74,16 @@ export class ParticleSystem {
   }
 
   update(deltaTime: number): void {
+    // Clear and repopulate spatial grid
+    this.spatialGrid.clear();
+    this.particles.forEach((particle) => {
+      this.spatialGrid.insert(particle);
+    });
+
+    // Apply forces using spatial grid
     this.particles.forEach((particle, i) => {
       this.forces.forEach((force) => {
-        const forceVector = force.apply(particle, deltaTime, i, this.particles);
+        const forceVector = force.apply(particle, deltaTime, i, this.spatialGrid);
         particle.applyForce(forceVector);
       });
 
@@ -100,6 +127,12 @@ export class ParticleSystem {
 
   getParticleCount(): number {
     return this.particles.length;
+  }
+
+  setSize(width: number, height: number): void {
+    this.width = width;
+    this.height = height;
+    this.spatialGrid.setSize(width, height);
   }
 
   private animate = (): void => {

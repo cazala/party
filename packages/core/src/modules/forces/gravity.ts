@@ -1,6 +1,7 @@
 import { Vector2D } from "../vector.js";
 import { Particle } from "../particle.js";
 import { Force } from "../system.js";
+import { SpatialGrid } from "../spatial-grid.js";
 
 // Default constants for Gravity
 export const DEFAULT_GRAVITY_STRENGTH = 0;
@@ -33,7 +34,7 @@ export class Gravity implements Force {
     this.direction = Vector2D.fromAngle(angle);
   }
 
-  apply(particle: Particle) {
+  apply(particle: Particle, _deltaTime: number, _index: number, _spatialGrid: SpatialGrid) {
     return this.direction
       .clone()
       .normalize()
