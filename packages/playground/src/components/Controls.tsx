@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Gravity, Flock, Bounds, Canvas2DRenderer, SpatialGrid, DEFAULT_SPATIAL_GRID_CELL_SIZE } from "../../../core/src";
+import { Gravity, Flock, Bounds, Collisions, Canvas2DRenderer, SpatialGrid, DEFAULT_SPATIAL_GRID_CELL_SIZE } from "../../../core/src";
 import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
@@ -14,6 +14,12 @@ import {
 } from "../../../core/src/modules/forces/flock.js";
 import { DEFAULT_BOUNDS_BOUNCE } from "../../../core/src/modules/forces/bounds.js";
 import {
+  DEFAULT_COLLISIONS_ENABLED,
+  DEFAULT_COLLISIONS_DAMPING,
+  DEFAULT_COLLISIONS_MIN_FORCE,
+  DEFAULT_COLLISIONS_MAX_FORCE,
+} from "../../../core/src/modules/forces/collisions.js";
+import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
 } from "../../../core/src/modules/render.js";
@@ -26,6 +32,7 @@ interface ControlsProps {
   gravity: Gravity | null;
   flock: Flock | null;
   bounds: Bounds | null;
+  collisions: Collisions | null;
   renderer: Canvas2DRenderer | null;
   spatialGrid: SpatialGrid | null;
   onSpawnParticles?: (
@@ -44,6 +51,7 @@ export function Controls({
   gravity,
   flock,
   bounds,
+  collisions,
   renderer,
   spatialGrid,
   onSpawnParticles,
@@ -70,6 +78,10 @@ export function Controls({
     DEFAULT_FLOCK_NEIGHBOR_RADIUS
   );
   const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
+  const [collisionsEnabled, setCollisionsEnabled] = useState(DEFAULT_COLLISIONS_ENABLED);
+  const [collisionsDamping, setCollisionsDamping] = useState(DEFAULT_COLLISIONS_DAMPING);
+  const [collisionsMinForce, setCollisionsMinForce] = useState(DEFAULT_COLLISIONS_MIN_FORCE);
+  const [collisionsMaxForce, setCollisionsMaxForce] = useState(DEFAULT_COLLISIONS_MAX_FORCE);
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
 
@@ -104,6 +116,12 @@ export function Controls({
     if (bounds) {
       setBounce(bounds.bounce);
     }
+    if (collisions) {
+      setCollisionsEnabled(collisions.enabled);
+      setCollisionsDamping(collisions.damping);
+      setCollisionsMinForce(collisions.minForce);
+      setCollisionsMaxForce(collisions.maxForce);
+    }
     if (renderer) {
       setColorMode(renderer.colorMode);
       setCustomColor(renderer.customColor);
@@ -113,7 +131,7 @@ export function Controls({
       const { cellSize: gridCellSize } = spatialGrid.getGridDimensions();
       setCellSize(gridCellSize);
     }
-  }, [gravity, flock, bounds, renderer, spatialGrid]);
+  }, [gravity, flock, bounds, collisions, renderer, spatialGrid]);
 
   // Initialize spawn on component mount
   useEffect(() => {
@@ -151,6 +169,34 @@ export function Controls({
     }
   };
 
+  const handleCollisionsEnabledChange = (enabled: boolean) => {
+    setCollisionsEnabled(enabled);
+    if (collisions) {
+      collisions.setEnabled(enabled);
+    }
+  };
+
+  const handleCollisionsDampingChange = (damping: number) => {
+    setCollisionsDamping(damping);
+    if (collisions) {
+      collisions.setDamping(damping);
+    }
+  };
+
+  const handleCollisionsMinForceChange = (minForce: number) => {
+    setCollisionsMinForce(minForce);
+    if (collisions) {
+      collisions.setMinForce(minForce);
+    }
+  };
+
+  const handleCollisionsMaxForceChange = (maxForce: number) => {
+    setCollisionsMaxForce(maxForce);
+    if (collisions) {
+      collisions.setMaxForce(maxForce);
+    }
+  };
+
   const handleColorModeChange = (mode: string) => {
     setColorMode(mode as "particle" | "custom" | "velocity");
     if (renderer) {
@@ -182,26 +228,6 @@ export function Controls({
     }
   };
 
-  const handleGravityPreset = (
-    direction: "up" | "down" | "left" | "right" | "zero"
-  ) => {
-    const presets = {
-      up: { angle: 270, strength: gravityStrength },
-      down: { angle: 90, strength: gravityStrength },
-      left: { angle: 180, strength: gravityStrength },
-      right: { angle: 0, strength: gravityStrength },
-      zero: { angle: gravityAngle, strength: 0 },
-    };
-
-    const preset = presets[direction];
-    setGravityAngle(preset.angle);
-    setGravityStrength(preset.strength);
-
-    if (gravity) {
-      gravity.setStrength(preset.strength);
-      gravity.setDirectionFromAngle(preset.angle * (Math.PI / 180));
-    }
-  };
 
   const handleFlockingChange = (property: keyof Flock, value: number) => {
     if (!flock) return;
@@ -260,6 +286,10 @@ export function Controls({
     handleGravityStrengthChange(DEFAULT_GRAVITY_STRENGTH);
     handleGravityAngleChange(DEFAULT_GRAVITY_ANGLE);
     handleBounceChange(DEFAULT_BOUNDS_BOUNCE);
+    handleCollisionsEnabledChange(DEFAULT_COLLISIONS_ENABLED);
+    handleCollisionsDampingChange(DEFAULT_COLLISIONS_DAMPING);
+    handleCollisionsMinForceChange(DEFAULT_COLLISIONS_MIN_FORCE);
+    handleCollisionsMaxForceChange(DEFAULT_COLLISIONS_MAX_FORCE);
     handleFlockingChange("cohesionWeight", DEFAULT_FLOCK_COHESION_WEIGHT);
     handleFlockingChange("alignmentWeight", DEFAULT_FLOCK_ALIGNMENT_WEIGHT);
     handleFlockingChange("separationWeight", DEFAULT_FLOCK_SEPARATION_WEIGHT);
@@ -285,19 +315,19 @@ export function Controls({
   return (
     <div className="controls-panel">
       <div className="controls-header">
-        <h3>Physics Controls</h3>
+        <h3>Controls</h3>
         <button onClick={resetToDefaults} className="reset-button">
           Reset
         </button>
       </div>
 
-      {/* Gravity Controls */}
+      {/* Physics Controls */}
       <div className="control-section">
-        <h4>Gravity</h4>
+        <h4>Physics</h4>
 
         <div className="control-group">
           <label>
-            Strength: {gravityStrength.toFixed(3)}
+            Gravity Strength: {gravityStrength.toFixed(3)}
             <input
               type="range"
               min="0"
@@ -314,7 +344,7 @@ export function Controls({
 
         <div className="control-group">
           <label>
-            Direction: {gravityAngle.toFixed(0)}°
+            Gravity Direction: {gravityAngle.toFixed(0)}°
             <input
               type="range"
               min="0"
@@ -344,28 +374,67 @@ export function Controls({
           </label>
         </div>
 
-        <div className="preset-buttons">
-          <button onClick={() => handleGravityPreset("up")}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 4l-8 8h6v8h4v-8h6z" />
-            </svg>
-          </button>
-          <button onClick={() => handleGravityPreset("down")}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 20l8-8h-6V4h-4v8H4z" />
-            </svg>
-          </button>
-          <button onClick={() => handleGravityPreset("left")}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 12l8-8v6h8v4h-8v6z" />
-            </svg>
-          </button>
-          <button onClick={() => handleGravityPreset("right")}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20 12l-8 8v-6H4v-4h8V4z" />
-            </svg>
-          </button>
+        <div className="control-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={collisionsEnabled}
+              onChange={(e) => handleCollisionsEnabledChange(e.target.checked)}
+              style={{ marginRight: '8px' }}
+            />
+            Enable Collisions
+          </label>
         </div>
+
+        {collisionsEnabled && (
+          <>
+            <div className="control-group">
+              <label>
+                Collision Damping: {collisionsDamping.toFixed(2)}
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={collisionsDamping}
+                  onChange={(e) => handleCollisionsDampingChange(parseFloat(e.target.value))}
+                  className="slider"
+                />
+              </label>
+            </div>
+
+            <div className="control-group">
+              <label>
+                Min Collision Force: {collisionsMinForce.toFixed(0)}
+                <input
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value={collisionsMinForce}
+                  onChange={(e) => handleCollisionsMinForceChange(parseFloat(e.target.value))}
+                  className="slider"
+                />
+              </label>
+            </div>
+
+            <div className="control-group">
+              <label>
+                Max Collision Force: {collisionsMaxForce.toFixed(0)}
+                <input
+                  type="range"
+                  min="0"
+                  max="5000"
+                  step="100"
+                  value={collisionsMaxForce}
+                  onChange={(e) => handleCollisionsMaxForceChange(parseFloat(e.target.value))}
+                  className="slider"
+                />
+              </label>
+            </div>
+          </>
+        )}
+
       </div>
 
       {/* Flocking Controls */}

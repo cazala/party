@@ -7,6 +7,7 @@ import {
   Vector2D,
   Bounds,
   Flock,
+  Collisions,
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
 } from "../../../core/src";
@@ -17,6 +18,7 @@ export function useParty() {
   const gravityRef = useRef<Gravity | null>(null);
   const boundsRef = useRef<Bounds | null>(null);
   const flockRef = useRef<Flock | null>(null);
+  const collisionsRef = useRef<Collisions | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
   const spatialGridRef = useRef<SpatialGrid | null>(null);
 
@@ -27,12 +29,15 @@ export function useParty() {
     gravityRef.current = gravity;
 
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    
+
     const bounds = new Bounds();
     boundsRef.current = bounds;
 
     const flock = new Flock();
     flockRef.current = flock;
+
+    const collisions = new Collisions();
+    collisionsRef.current = collisions;
 
     const system = new ParticleSystem({
       width: canvas.width || 1200,
@@ -50,6 +55,7 @@ export function useParty() {
     system.addForce(gravity);
     system.addForce(bounds);
     system.addForce(flock);
+    system.addForce(collisions);
 
     canvas.addEventListener("click", (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -102,76 +108,88 @@ export function useParty() {
     }
   }, []);
 
-  const spawnParticles = useCallback((numParticles: number, shape: 'grid' | 'random', spacing: number) => {
-    if (!systemRef.current) return;
-    
-    // Clear existing particles
-    systemRef.current.particles = [];
-    
-    const colors = [
-      "#F8F8F8", // Bright White
-      "#FF3C3C", // Neon Red
-      "#00E0FF", // Cyber Cyan
-      "#C85CFF", // Electric Purple
-      "#AFFF00", // Lime Neon
-      "#FF2D95", // Hot Magenta
-      "#FF6A00", // Sunset Orange
-      "#3B82F6", // Deep Blue Glow
-      "#00FFC6", // Turquoise Mint
-    ];
-    
-    const canvasWidth = systemRef.current.width;
-    const canvasHeight = systemRef.current.height;
-    const centerX = canvasWidth / 2;
-    const centerY = canvasHeight / 2;
-    
-    if (shape === 'grid') {
-      const particlesPerRow = Math.ceil(Math.sqrt(numParticles));
-      const particlesPerCol = Math.ceil(numParticles / particlesPerRow);
-      
-      for (let i = 0; i < numParticles; i++) {
-        const x = centerX + (i % particlesPerRow - particlesPerRow / 2 + 0.5) * spacing;
-        const y = centerY + (Math.floor(i / particlesPerRow) - particlesPerCol / 2 + 0.5) * spacing;
-        
-        const particle = new Particle({
-          position: new Vector2D(x, y),
-          velocity: new Vector2D(0, 0),
-          acceleration: new Vector2D(0, 0),
-          mass: 1,
-          size: 10,
-          color: colors[Math.floor(Math.random() * colors.length)]
-        });
-        
-        systemRef.current.addParticle(particle);
+  const spawnParticles = useCallback(
+    (numParticles: number, shape: "grid" | "random", spacing: number) => {
+      if (!systemRef.current) return;
+
+      // Clear existing particles
+      systemRef.current.particles = [];
+
+      const colors = [
+        "#F8F8F8", // Bright White
+        "#FF3C3C", // Neon Red
+        "#00E0FF", // Cyber Cyan
+        "#C85CFF", // Electric Purple
+        "#AFFF00", // Lime Neon
+        "#FF2D95", // Hot Magenta
+        "#FF6A00", // Sunset Orange
+        "#3B82F6", // Deep Blue Glow
+        "#00FFC6", // Turquoise Mint
+      ];
+
+      const canvasWidth = systemRef.current.width;
+      const canvasHeight = systemRef.current.height;
+      const centerX = canvasWidth / 2;
+      const centerY = canvasHeight / 2;
+
+      if (shape === "grid") {
+        const particlesPerRow = Math.ceil(Math.sqrt(numParticles));
+        const particlesPerCol = Math.ceil(numParticles / particlesPerRow);
+
+        for (let i = 0; i < numParticles; i++) {
+          const x =
+            centerX +
+            ((i % particlesPerRow) - particlesPerRow / 2 + 0.5) * spacing;
+          const y =
+            centerY +
+            (Math.floor(i / particlesPerRow) - particlesPerCol / 2 + 0.5) *
+              spacing;
+
+          const particle = new Particle({
+            position: new Vector2D(x, y),
+            velocity: new Vector2D(0, 0),
+            acceleration: new Vector2D(0, 0),
+            mass: 1,
+            size: 10,
+            color: colors[Math.floor(Math.random() * colors.length)],
+          });
+
+          systemRef.current.addParticle(particle);
+        }
+      } else {
+        // Random placement
+        for (let i = 0; i < numParticles; i++) {
+          const x = Math.random() * canvasWidth;
+          const y = Math.random() * canvasHeight;
+
+          const particle = new Particle({
+            position: new Vector2D(x, y),
+            velocity: new Vector2D(0, 0),
+            acceleration: new Vector2D(0, 0),
+            mass: 1,
+            size: 10,
+            color: colors[Math.floor(Math.random() * colors.length)],
+          });
+
+          systemRef.current.addParticle(particle);
+        }
       }
-    } else {
-      // Random placement
-      for (let i = 0; i < numParticles; i++) {
-        const x = Math.random() * canvasWidth;
-        const y = Math.random() * canvasHeight;
-        
-        const particle = new Particle({
-          position: new Vector2D(x, y),
-          velocity: new Vector2D(0, 0),
-          acceleration: new Vector2D(0, 0),
-          mass: 1,
-          size: 10,
-          color: colors[Math.floor(Math.random() * colors.length)]
-        });
-        
-        systemRef.current.addParticle(particle);
-      }
-    }
-  }, []);
+    },
+    []
+  );
 
   const resetParticles = useCallback(() => {
     // This will be called with current spawn config from Controls
     const spawnConfig = (window as any).__getSpawnConfig?.();
     if (spawnConfig) {
-      spawnParticles(spawnConfig.numParticles, spawnConfig.shape, spawnConfig.spacing);
+      spawnParticles(
+        spawnConfig.numParticles,
+        spawnConfig.shape,
+        spawnConfig.spacing
+      );
     } else {
       // Fallback to default
-      spawnParticles(100, 'grid', 50);
+      spawnParticles(100, "grid", 50);
     }
   }, [spawnParticles]);
 
@@ -203,13 +221,13 @@ export function useParty() {
             [
               "#F8F8F8", // Bright White
               "#FF3C3C", // Neon Red
-              "#00E0FF", // Cyber Cyan
-              "#C85CFF", // Electric Purple
-              "#AFFF00", // Lime Neon
-              "#FF2D95", // Hot Magenta
-              "#FF6A00", // Sunset Orange
-              "#3B82F6", // Deep Blue Glow
-              "#00FFC6", // Turquoise Mint
+              // "#00E0FF", // Cyber Cyan
+              // "#C85CFF", // Electric Purple
+              // "#AFFF00", // Lime Neon
+              // "#FF2D95", // Hot Magenta
+              // "#FF6A00", // Sunset Orange
+              // "#3B82F6", // Deep Blue Glow
+              // "#00FFC6", // Turquoise Mint
             ][(Math.random() * 9) | 0],
         });
         systemRef.current.addParticle(particle);
@@ -245,6 +263,7 @@ export function useParty() {
     gravity: gravityRef.current,
     bounds: boundsRef.current,
     flock: flockRef.current,
+    collisions: collisionsRef.current,
     renderer: rendererRef.current,
     spatialGrid: spatialGridRef.current,
     // Control functions
