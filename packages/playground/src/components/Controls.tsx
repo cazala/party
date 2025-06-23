@@ -18,6 +18,10 @@ import {
   DEFAULT_RENDER_CUSTOM_COLOR,
 } from "../../../core/src/modules/render.js";
 
+const DEFAULT_SPAWN_NUM_PARTICLES = 100;
+const DEFAULT_SPAWN_SHAPE = "grid";
+const DEFAULT_SPAWN_SPACING = 25;
+
 interface ControlsProps {
   gravity: Gravity | null;
   flock: Flock | null;
@@ -68,9 +72,11 @@ export function Controls({
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
 
   // Spawn state
-  const [numParticles, setNumParticles] = useState(100);
-  const [spawnShape, setSpawnShape] = useState<"grid" | "random">("grid");
-  const [spacing, setSpacing] = useState(50);
+  const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
+  const [spawnShape, setSpawnShape] = useState<"grid" | "random">(
+    DEFAULT_SPAWN_SHAPE
+  );
+  const [spacing, setSpacing] = useState(DEFAULT_SPAWN_SPACING);
 
   // Initialize state from current values
   useEffect(() => {
@@ -239,11 +245,15 @@ export function Controls({
     handleCustomColorChange(DEFAULT_RENDER_CUSTOM_COLOR);
 
     // Reset spawn settings
-    setNumParticles(100);
-    setSpawnShape("grid");
-    setSpacing(50);
+    setNumParticles(DEFAULT_SPAWN_NUM_PARTICLES);
+    setSpawnShape(DEFAULT_SPAWN_SHAPE);
+    setSpacing(DEFAULT_SPAWN_SPACING);
     if (onSpawnParticles) {
-      onSpawnParticles(100, "grid", 50);
+      onSpawnParticles(
+        DEFAULT_SPAWN_NUM_PARTICLES,
+        DEFAULT_SPAWN_SHAPE,
+        DEFAULT_SPAWN_SPACING
+      );
     }
   };
 
