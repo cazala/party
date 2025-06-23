@@ -10,12 +10,35 @@ import {
 } from "../../../core/src";
 
 export function useParty() {
-  const ref = useRef<ParticleSystem | null>(null);
+  const systemRef = useRef<ParticleSystem | null>(null);
+  const gravityRef = useRef<Gravity | null>(null);
+  const boundsRef = useRef<Bounds | null>(null);
+  const flockRef = useRef<Flock | null>(null);
+  const rendererRef = useRef<Canvas2DRenderer | null>(null);
 
   useEffect(() => {
-    if (ref.current) return;
+    if (systemRef.current) return;
+
+    const gravity = new Gravity({ strength: 0.01 });
+    gravityRef.current = gravity;
+
+    const bounds = new Bounds({
+      min: new Vector2D(0, 0),
+      max: new Vector2D(1500, 840),
+    });
+    boundsRef.current = bounds;
+
+    const flock = new Flock();
+    flockRef.current = flock;
+
     const system = new ParticleSystem();
-    ref.current = system;
+    systemRef.current = system;
+
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+    const renderer = new Canvas2DRenderer({
+      canvas,
+    });
+    rendererRef.current = renderer;
 
     system.addParticle(
       new Particle({
@@ -27,20 +50,9 @@ export function useParty() {
       })
     );
 
-    system.addForce(new Gravity({ strength: 0.01 }));
-    system.addForce(
-      new Bounds({
-        min: new Vector2D(0, 0),
-        max: new Vector2D(1500, 840),
-        bounce: 0.8,
-      })
-    );
-    system.addForce(new Flock());
-
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    const renderer = new Canvas2DRenderer({
-      canvas,
-    });
+    system.addForce(gravity);
+    system.addForce(bounds);
+    system.addForce(flock);
 
     canvas.addEventListener("click", (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -65,9 +77,13 @@ export function useParty() {
     }, 1000 / 60);
 
     system.play();
-
-    console.log(system.isPlaying);
   }, []);
 
-  return ref.current;
+  return {
+    system: systemRef.current,
+    gravity: gravityRef.current,
+    bounds: boundsRef.current,
+    flock: flockRef.current,
+    renderer: rendererRef.current,
+  };
 }
