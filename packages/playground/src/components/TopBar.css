@@ -13,17 +13,25 @@
 .top-bar-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 20px;
   height: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
+}
+
+.title {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .system-controls {
   display: flex;
   gap: 12px;
   align-items: center;
+  justify-content: center;
+}
+
+.topbar-right {
+  flex: 1;
 }
 
 .play-pause-button,
@@ -64,32 +72,6 @@
   color: var(--color-text-primary);
   font-size: 20px;
   font-weight: 600;
-}
-
-.status {
-  display: flex;
-  align-items: center;
-}
-
-.status-indicator {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.status-indicator.active {
-  background: rgba(0, 255, 136, 0.2);
-  color: var(--color-status-running);
-  border: 1px solid rgba(0, 255, 136, 0.4);
-}
-
-.status-indicator.inactive {
-  background: rgba(244, 67, 54, 0.2);
-  color: #f44336;
-  border: 1px solid rgba(244, 67, 54, 0.4);
 }
 
 /* Responsive design */

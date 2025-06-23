@@ -172,11 +172,26 @@ export function Controls({ gravity, flock }: ControlsProps) {
         </div>
 
         <div className="preset-buttons">
-          <button onClick={() => handleGravityPreset("up")}>↑ Up</button>
-          <button onClick={() => handleGravityPreset("down")}>↓ Down</button>
-          <button onClick={() => handleGravityPreset("left")}>← Left</button>
-          <button onClick={() => handleGravityPreset("right")}>→ Right</button>
-          <button onClick={() => handleGravityPreset("zero")}>Zero</button>
+          <button onClick={() => handleGravityPreset("up")}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4l-8 8h6v8h4v-8h6z"/>
+            </svg>
+          </button>
+          <button onClick={() => handleGravityPreset("down")}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 20l8-8h-6V4h-4v8H4z"/>
+            </svg>
+          </button>
+          <button onClick={() => handleGravityPreset("left")}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 12l8-8v6h8v4h-8v6z"/>
+            </svg>
+          </button>
+          <button onClick={() => handleGravityPreset("right")}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 12l-8 8v-6H4v-4h8V4z"/>
+            </svg>
+          </button>
         </div>
       </div>
 
