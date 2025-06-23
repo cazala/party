@@ -4,6 +4,7 @@ import { useWindowSize } from "./hooks/useWindowSize";
 import { useEffect } from "react";
 import { Controls } from "./components/Controls";
 import { TopBar } from "./components/TopBar";
+import "./styles/index.css";
 import "./components/Controls.css";
 import "./components/TopBar.css";
 import "./App.css";

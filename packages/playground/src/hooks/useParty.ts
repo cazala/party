@@ -38,6 +38,7 @@ export function useParty() {
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
     const renderer = new Canvas2DRenderer({
       canvas,
+      clearColor: "#0D0D12",
     });
     rendererRef.current = renderer;
 
@@ -48,6 +49,7 @@ export function useParty() {
         acceleration: new Vector2D(0, 0),
         mass: 1,
         size: 10,
+        color: "#F8F8F8",
       })
     );
 
@@ -66,7 +68,7 @@ export function useParty() {
           velocity: new Vector2D(0, 0),
           mass: 1,
           size: 10,
-          color: ["#FFFFFF", "#FF0000", "#00FF00", "#0000FF"][
+          color: ["#F8F8F8", "#FF3C3C", "#F8F8F8", "#FF3C3C"][
             (Math.random() * 4) | 0
           ],
         })
@@ -123,7 +125,7 @@ export function useParty() {
           size: options?.size || 10,
           color:
             options?.color ||
-            ["#FFFFFF", "#FF0000", "#00FF00", "#0000FF"][
+            ["#F8F8F8", "#FF3C3C", "#F8F8F8", "#FF3C3C"][
               (Math.random() * 4) | 0
             ],
         });

@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--color-panel);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   height: 60px;
@@ -39,7 +39,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   background: rgba(255, 255, 255, 0.1);
-  color: white;
+  color: var(--color-text-primary);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -50,8 +50,8 @@
 }
 
 .play-pause-button.playing {
-  background: rgba(255, 165, 0, 0.2);
-  border-color: rgba(255, 165, 0, 0.4);
+  background: rgba(255, 176, 32, 0.2);
+  border-color: var(--color-active-pause);
 }
 
 .play-pause-button.paused {
@@ -61,7 +61,7 @@
 
 .title h1 {
   margin: 0;
-  color: white;
+  color: var(--color-text-primary);
   font-size: 20px;
   font-weight: 600;
 }
@@ -81,9 +81,9 @@
 }
 
 .status-indicator.active {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4caf50;
-  border: 1px solid rgba(76, 175, 80, 0.4);
+  background: rgba(0, 255, 136, 0.2);
+  color: var(--color-status-running);
+  border: 1px solid rgba(0, 255, 136, 0.4);
 }
 
 .status-indicator.inactive {

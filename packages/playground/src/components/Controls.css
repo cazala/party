@@ -5,7 +5,7 @@
   border: none;
   border-radius: 0;
   padding: 20px;
-  color: white;
+  color: var(--color-text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   font-size: 14px;
   overflow-y: auto;
@@ -30,7 +30,7 @@
 
 .reset-button {
   background: #333;
-  color: white;
+  color: var(--color-text-primary);
   border: 1px solid #555;
   border-radius: 4px;
   padding: 4px 8px;
@@ -63,7 +63,7 @@
 .control-group label {
   display: block;
   margin-bottom: 4px;
-  color: #ddd;
+  color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 400;
 }
@@ -72,7 +72,7 @@
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: #333;
+  background: var(--color-slider-track);
   outline: none;
   opacity: 0.7;
   transition: opacity 0.2s;
@@ -91,21 +91,21 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #4CAF50;
+  background: var(--color-slider-thumb);
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   transition: background-color 0.2s;
 }
 
 .slider::-webkit-slider-thumb:hover {
-  background: #45a049;
+  background: #A8B8F0;
 }
 
 .slider::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #4CAF50;
+  background: var(--color-slider-thumb);
   cursor: pointer;
   border: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -120,7 +120,7 @@
 
 .preset-buttons button {
   background: #333;
-  color: white;
+  color: var(--color-text-primary);
   border: 1px solid #555;
   border-radius: 4px;
   padding: 6px 10px;

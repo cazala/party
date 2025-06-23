@@ -15,7 +15,7 @@
 
 .canvas-container {
   flex: 1;
-  background: #000;
+  background: var(--color-canvas);
 }
 
 #canvas {
@@ -26,7 +26,7 @@
 
 .sidebar {
   width: 320px;
-  background: rgba(0, 0, 0, 0.95);
+  background: var(--color-panel);
   border-left: 1px solid #333;
   flex-shrink: 0;
 }
@@ -35,7 +35,7 @@
 body {
   margin: 0;
   padding: 0;
-  background: #000;
+  background: var(--color-canvas);
 }
 
 /* Responsive design */

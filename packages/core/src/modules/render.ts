@@ -67,6 +67,13 @@ export class Canvas2DRenderer extends Renderer {
 
   private renderParticle(particle: Particle): void {
     this.ctx.save();
+    
+    // Add glow effect
+    this.ctx.shadowColor = particle.color;
+    this.ctx.shadowBlur = particle.size * 2;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 0;
+    
     this.ctx.fillStyle = particle.color;
     this.ctx.beginPath();
     this.ctx.arc(
@@ -77,6 +84,13 @@ export class Canvas2DRenderer extends Renderer {
       Math.PI * 2
     );
     this.ctx.fill();
+    
+    // Add inner bright core for more glow effect
+    this.ctx.shadowBlur = 0;
+    this.ctx.fillStyle = particle.color;
+    this.ctx.globalAlpha = 0.8;
+    this.ctx.fill();
+    
     this.ctx.restore();
   }
 

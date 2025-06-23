@@ -1,3 +1,16 @@
+:root {
+  --color-canvas: #0D0D12;
+  --color-panel: #1A1A22;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #A3A3B3;
+  --color-accent-red: #FF3C3C;
+  --color-accent-white: #F8F8F8;
+  --color-active-pause: #FFB020;
+  --color-status-running: #00FF88;
+  --color-slider-track: #2E2E3A;
+  --color-slider-thumb: #C8D8FF;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -5,8 +18,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -46,7 +59,7 @@ body {
 }
 
 .play-button {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -162,7 +175,7 @@ body {
 
 .form-input:focus {
   outline: none;
-  border-color: #4CAF50;
+  border-color: #4caf50;
 }
 
 .form-select {
@@ -177,7 +190,7 @@ body {
 
 .form-select:focus {
   outline: none;
-  border-color: #4CAF50;
+  border-color: #4caf50;
 }
 
 .form-range {
@@ -193,7 +206,7 @@ body {
 }
 
 .button {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   border: none;
   padding: 8px 16px;
