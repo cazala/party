@@ -8,6 +8,9 @@ import "./components/Controls.css";
 import "./components/TopBar.css";
 import "./App.css";
 
+const SIDEBAR_WIDTH = 320;
+const TOPBAR_HEIGHT = 60;
+
 function App() {
   const { system, gravity, bounds, flock, renderer, play, pause, clear } = useParty();
   const size = useWindowSize();
@@ -15,7 +18,7 @@ function App() {
   useEffect(() => {
     if (!system || !gravity || !bounds || !flock || !renderer) return;
     console.log("new size", size);
-    bounds.max = new Vector2D(size.width, size.height - 60);
+    bounds.max = new Vector2D(size.width - SIDEBAR_WIDTH, size.height - TOPBAR_HEIGHT);
   }, [system, gravity, bounds, flock, renderer, size]);
 
   return (
@@ -26,8 +29,14 @@ function App() {
         onPause={pause} 
         onClear={clear} 
       />
-      <canvas id="canvas" width={size.width} height={size.height - 60} />
-      <Controls gravity={gravity} flock={flock} />
+      <div className="app-content">
+        <div className="canvas-container">
+          <canvas id="canvas" width={size.width - SIDEBAR_WIDTH} height={size.height - TOPBAR_HEIGHT} />
+        </div>
+        <div className="sidebar">
+          <Controls gravity={gravity} flock={flock} />
+        </div>
+      </div>
     </div>
   );
 }
