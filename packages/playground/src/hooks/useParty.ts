@@ -42,17 +42,6 @@ export function useParty() {
     });
     rendererRef.current = renderer;
 
-    system.addParticle(
-      new Particle({
-        position: new Vector2D(100, 100),
-        velocity: new Vector2D(0, 0),
-        acceleration: new Vector2D(0, 0),
-        mass: 1,
-        size: 10,
-        color: "#F8F8F8",
-      })
-    );
-
     system.addForce(gravity);
     system.addForce(bounds);
     system.addForce(flock);
@@ -69,15 +58,15 @@ export function useParty() {
           mass: 1,
           size: 10,
           color: [
-            "#F8F8F8",    // Bright White
-            "#FF3C3C",    // Neon Red
-            "#00E0FF",    // Cyber Cyan
-            "#C85CFF",    // Electric Purple
-            "#AFFF00",    // Lime Neon
-            "#FF2D95",    // Hot Magenta
-            "#FF6A00",    // Sunset Orange
-            "#3B82F6",    // Deep Blue Glow
-            "#00FFC6",    // Turquoise Mint
+            "#F8F8F8", // Bright White
+            "#FF3C3C", // Neon Red
+            "#00E0FF", // Cyber Cyan
+            "#C85CFF", // Electric Purple
+            "#AFFF00", // Lime Neon
+            "#FF2D95", // Hot Magenta
+            "#FF6A00", // Sunset Orange
+            "#3B82F6", // Deep Blue Glow
+            "#00FFC6", // Turquoise Mint
           ][(Math.random() * 9) | 0],
         })
       );
@@ -134,15 +123,15 @@ export function useParty() {
           color:
             options?.color ||
             [
-              "#F8F8F8",    // Bright White
-              "#FF3C3C",    // Neon Red
-              "#00E0FF",    // Cyber Cyan
-              "#C85CFF",    // Electric Purple
-              "#AFFF00",    // Lime Neon
-              "#FF2D95",    // Hot Magenta
-              "#FF6A00",    // Sunset Orange
-              "#3B82F6",    // Deep Blue Glow
-              "#00FFC6",    // Turquoise Mint
+              "#F8F8F8", // Bright White
+              "#FF3C3C", // Neon Red
+              "#00E0FF", // Cyber Cyan
+              "#C85CFF", // Electric Purple
+              "#AFFF00", // Lime Neon
+              "#FF2D95", // Hot Magenta
+              "#FF6A00", // Sunset Orange
+              "#3B82F6", // Deep Blue Glow
+              "#00FFC6", // Turquoise Mint
             ][(Math.random() * 9) | 0],
         });
         systemRef.current.addParticle(particle);

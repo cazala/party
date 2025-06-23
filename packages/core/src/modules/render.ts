@@ -83,40 +83,58 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.save();
     this.ctx.globalAlpha = this.globalAlpha;
 
+    // Calculate min/max speeds for velocity color mode
+    let minSpeed = Infinity;
+    let maxSpeed = 0;
+    
+    if (this.colorMode === 'velocity' && system.particles.length > 0) {
+      for (const particle of system.particles) {
+        const speed = particle.velocity.magnitude();
+        minSpeed = Math.min(minSpeed, speed);
+        maxSpeed = Math.max(maxSpeed, speed);
+      }
+      
+      // Handle edge case where all particles have the same speed
+      if (minSpeed === maxSpeed) {
+        minSpeed = 0;
+      }
+    }
+
     for (const particle of system.particles) {
-      this.renderParticle(particle);
+      this.renderParticle(particle, minSpeed, maxSpeed);
     }
 
     this.ctx.restore();
   }
 
-  private calculateVelocityColor(particle: Particle): string {
+  private calculateVelocityColor(particle: Particle, minSpeed: number, maxSpeed: number): string {
     const speed = particle.velocity.magnitude();
-    const ratio = Math.min(speed / this.maxSpeed, 1);
+    const speedRange = maxSpeed - minSpeed;
+    const ratio = speedRange > 0 ? (speed - minSpeed) / speedRange : 0;
     
-    // Interpolate from green to red
+    // Interpolate from green (slow) to red (fast)
     const red = Math.floor(ratio * 255);
     const green = Math.floor((1 - ratio) * 255);
     
     return `rgb(${red}, ${green}, 0)`;
   }
 
-  private getParticleColor(particle: Particle): string {
+  private getParticleColor(particle: Particle, minSpeed?: number, maxSpeed?: number): string {
     switch (this.colorMode) {
       case 'custom':
         return this.customColor;
       case 'velocity':
-        return this.calculateVelocityColor(particle);
+        return this.calculateVelocityColor(particle, minSpeed || 0, maxSpeed || 1);
       case 'particle':
       default:
         return particle.color;
     }
   }
 
-  private renderParticle(particle: Particle): void {
+  private renderParticle(particle: Particle, minSpeed?: number, maxSpeed?: number): void {
     this.ctx.save();
     
-    const renderColor = this.getParticleColor(particle);
+    const renderColor = this.getParticleColor(particle, minSpeed, maxSpeed);
     
     // Add glow effect
     this.ctx.shadowColor = renderColor;

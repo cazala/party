@@ -6,7 +6,8 @@
   border-radius: 0;
   padding: 20px;
   color: var(--color-text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    sans-serif;
   font-size: 14px;
   overflow-y: auto;
   box-sizing: border-box;
@@ -84,7 +85,7 @@
   transition: opacity 0.2s;
   appearance: none;
   -webkit-appearance: none;
-  margin-top: 4px;
+  margin-top: 12px;
 }
 
 .slider:hover {
@@ -104,7 +105,7 @@
 }
 
 .slider::-webkit-slider-thumb:hover {
-  background: #A8B8F0;
+  background: #a8b8f0;
 }
 
 .slider::-moz-range-thumb {
