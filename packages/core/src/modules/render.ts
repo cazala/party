@@ -1,11 +1,18 @@
 import { Particle } from "./particle.js";
 import { ParticleSystem } from "./system.js";
 
+// Default constants for Render options
+export const DEFAULT_RENDER_COLOR_MODE = 'particle';
+export const DEFAULT_RENDER_CUSTOM_COLOR = '#FFFFFF';
+
 export interface RenderOptions {
   canvas: HTMLCanvasElement;
   clearColor?: string;
   clearAlpha?: number;
   globalAlpha?: number;
+  colorMode?: 'particle' | 'custom' | 'velocity';
+  customColor?: string;
+  maxSpeed?: number;
 }
 
 export abstract class Renderer {
@@ -14,12 +21,18 @@ export abstract class Renderer {
   protected clearColor: string;
   protected clearAlpha: number;
   protected globalAlpha: number;
+  public colorMode: 'particle' | 'custom' | 'velocity';
+  public customColor: string;
+  public maxSpeed: number;
 
   constructor(options: RenderOptions) {
     this.canvas = options.canvas;
     this.clearColor = options.clearColor || "#000000";
     this.clearAlpha = options.clearAlpha || 1;
     this.globalAlpha = options.globalAlpha || 1;
+    this.colorMode = options.colorMode || DEFAULT_RENDER_COLOR_MODE;
+    this.customColor = options.customColor || DEFAULT_RENDER_CUSTOM_COLOR;
+    this.maxSpeed = options.maxSpeed || 300;
 
     const ctx = this.canvas.getContext("2d");
     if (!ctx) {
@@ -49,6 +62,18 @@ export abstract class Renderer {
       height: this.canvas.height,
     };
   }
+
+  setColorMode(mode: 'particle' | 'custom' | 'velocity'): void {
+    this.colorMode = mode;
+  }
+
+  setCustomColor(color: string): void {
+    this.customColor = color;
+  }
+
+  setMaxSpeed(speed: number): void {
+    this.maxSpeed = speed;
+  }
 }
 
 export class Canvas2DRenderer extends Renderer {
@@ -65,16 +90,41 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.restore();
   }
 
+  private calculateVelocityColor(particle: Particle): string {
+    const speed = particle.velocity.magnitude();
+    const ratio = Math.min(speed / this.maxSpeed, 1);
+    
+    // Interpolate from green to red
+    const red = Math.floor(ratio * 255);
+    const green = Math.floor((1 - ratio) * 255);
+    
+    return `rgb(${red}, ${green}, 0)`;
+  }
+
+  private getParticleColor(particle: Particle): string {
+    switch (this.colorMode) {
+      case 'custom':
+        return this.customColor;
+      case 'velocity':
+        return this.calculateVelocityColor(particle);
+      case 'particle':
+      default:
+        return particle.color;
+    }
+  }
+
   private renderParticle(particle: Particle): void {
     this.ctx.save();
     
+    const renderColor = this.getParticleColor(particle);
+    
     // Add glow effect
-    this.ctx.shadowColor = particle.color;
+    this.ctx.shadowColor = renderColor;
     this.ctx.shadowBlur = particle.size * 2;
     this.ctx.shadowOffsetX = 0;
     this.ctx.shadowOffsetY = 0;
     
-    this.ctx.fillStyle = particle.color;
+    this.ctx.fillStyle = renderColor;
     this.ctx.beginPath();
     this.ctx.arc(
       particle.position.x,
@@ -87,7 +137,7 @@ export class Canvas2DRenderer extends Renderer {
     
     // Add inner bright core for more glow effect
     this.ctx.shadowBlur = 0;
-    this.ctx.fillStyle = particle.color;
+    this.ctx.fillStyle = renderColor;
     this.ctx.globalAlpha = 0.8;
     this.ctx.fill();
     

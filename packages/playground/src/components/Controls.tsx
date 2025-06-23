@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Gravity, Flock, Bounds } from "../../../core/src";
+import { Gravity, Flock, Bounds, Canvas2DRenderer } from "../../../core/src";
 import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
@@ -15,14 +15,19 @@ import {
 import {
   DEFAULT_BOUNDS_BOUNCE,
 } from "../../../core/src/modules/forces/bounds.js";
+import {
+  DEFAULT_RENDER_COLOR_MODE,
+  DEFAULT_RENDER_CUSTOM_COLOR,
+} from "../../../core/src/modules/render.js";
 
 interface ControlsProps {
   gravity: Gravity | null;
   flock: Flock | null;
   bounds: Bounds | null;
+  renderer: Canvas2DRenderer | null;
 }
 
-export function Controls({ gravity, flock, bounds }: ControlsProps) {
+export function Controls({ gravity, flock, bounds, renderer }: ControlsProps) {
   const [gravityStrength, setGravityStrength] = useState(
     DEFAULT_GRAVITY_STRENGTH
   );
@@ -44,6 +49,8 @@ export function Controls({ gravity, flock, bounds }: ControlsProps) {
     DEFAULT_FLOCK_NEIGHBOR_RADIUS
   );
   const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
+  const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
+  const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
 
   // Initialize state from current values
   useEffect(() => {
@@ -65,7 +72,11 @@ export function Controls({ gravity, flock, bounds }: ControlsProps) {
     if (bounds) {
       setBounce(bounds.bounce);
     }
-  }, [gravity, flock, bounds]);
+    if (renderer) {
+      setColorMode(renderer.colorMode);
+      setCustomColor(renderer.customColor);
+    }
+  }, [gravity, flock, bounds, renderer]);
 
   const handleGravityStrengthChange = (value: number) => {
     setGravityStrength(value);
@@ -85,6 +96,23 @@ export function Controls({ gravity, flock, bounds }: ControlsProps) {
     setBounce(value);
     if (bounds) {
       bounds.bounce = value;
+    }
+  };
+
+  const handleColorModeChange = (mode: string) => {
+    setColorMode(mode as 'particle' | 'custom' | 'velocity');
+    if (renderer) {
+      renderer.setColorMode(mode as 'particle' | 'custom' | 'velocity');
+      if (mode === 'velocity' && flock) {
+        renderer.setMaxSpeed(flock.maxSpeed);
+      }
+    }
+  };
+
+  const handleCustomColorChange = (color: string) => {
+    setCustomColor(color);
+    if (renderer) {
+      renderer.setCustomColor(color);
     }
   };
 
@@ -128,6 +156,9 @@ export function Controls({ gravity, flock, bounds }: ControlsProps) {
       case "maxSpeed":
         setMaxSpeed(value);
         flock.maxSpeed = value;
+        if (renderer && renderer.colorMode === 'velocity') {
+          renderer.setMaxSpeed(value);
+        }
         break;
       case "separationRange":
         setSeparationRange(value);
@@ -150,6 +181,8 @@ export function Controls({ gravity, flock, bounds }: ControlsProps) {
     handleFlockingChange("maxSpeed", DEFAULT_FLOCK_MAX_SPEED);
     handleFlockingChange("separationRange", DEFAULT_FLOCK_SEPARATION_RANGE);
     handleFlockingChange("neighborRadius", DEFAULT_FLOCK_NEIGHBOR_RADIUS);
+    handleColorModeChange(DEFAULT_RENDER_COLOR_MODE);
+    handleCustomColorChange(DEFAULT_RENDER_CUSTOM_COLOR);
   };
 
   return (
@@ -358,6 +391,40 @@ export function Controls({ gravity, flock, bounds }: ControlsProps) {
             />
           </label>
         </div>
+      </div>
+
+      {/* Render Controls */}
+      <div className="control-section">
+        <h4>Render</h4>
+
+        <div className="control-group">
+          <label>
+            Color Mode
+            <select 
+              value={colorMode} 
+              onChange={(e) => handleColorModeChange(e.target.value)}
+              className="form-select"
+            >
+              <option value="particle">Use Particle Color</option>
+              <option value="custom">Custom Color</option>
+              <option value="velocity">Velocity</option>
+            </select>
+          </label>
+        </div>
+
+        {colorMode === 'custom' && (
+          <div className="control-group">
+            <label>
+              Custom Color
+              <input
+                type="color"
+                value={customColor}
+                onChange={(e) => handleCustomColorChange(e.target.value)}
+                className="color-picker"
+              />
+            </label>
+          </div>
+        )}
       </div>
     </div>
   );
