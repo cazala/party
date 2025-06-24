@@ -4,7 +4,7 @@ import { Vector2D } from "../vector.js";
 import { SpatialGrid } from "../spatial-grid.js";
 
 // Default constants for Collisions
-export const DEFAULT_COLLISIONS_ENABLED = false;
+export const DEFAULT_COLLISIONS_ENABLED = true;
 export const DEFAULT_COLLISIONS_AIR_DAMPING = 0.8; // Less damping for realistic air collisions
 export const DEFAULT_COLLISIONS_FLOOR_DAMPING = 0.4; // High damping for floor settling
 export const DEFAULT_COLLISIONS_MIN_FORCE = 50;

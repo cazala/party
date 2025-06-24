@@ -990,7 +990,7 @@ export function Controls({
               Spacing: {spacing}
               <input
                 type="range"
-                min={particleSize * 2} // Dynamic minimum based on particle size
+                min={particleSize * 2 + 2} // Dynamic minimum based on particle size
                 max="150"
                 step="5"
                 value={spacing}
