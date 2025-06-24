@@ -63,35 +63,136 @@ export function useParty() {
     system.addForce(collisions);
     system.addForce(friction);
 
-    canvas.addEventListener("click", (e) => {
+    // Mouse state for drag-to-size particle spawning
+    let mouseState = {
+      isDown: false,
+      startPos: { x: 0, y: 0 },
+      currentPos: { x: 0, y: 0 },
+      isDragging: false,
+      dragThreshold: 5, // Will be updated with spawn config
+      previewColor: "", // Store the color for the current drag session
+    };
+
+    const getMousePos = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const position = new Vector2D(x, y);
-      
-      // Get current particle size from spawn config, fallback to 10
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+    };
+
+    const getDistance = (pos1: { x: number; y: number }, pos2: { x: number; y: number }) => {
+      return Math.sqrt((pos2.x - pos1.x) ** 2 + (pos2.y - pos1.y) ** 2);
+    };
+
+    const calculateParticleSize = (distance: number) => {
       const spawnConfig = (window as any).__getSpawnConfig?.();
-      const currentSize = spawnConfig?.particleSize || 10;
+      const baseSize = spawnConfig?.particleSize || 10;
       
-      system.addParticle(
-        new Particle({
-          position,
-          velocity: new Vector2D(0, 0),
-          mass: 1,
-          size: currentSize,
-          color: [
-            "#F8F8F8", // Bright White
-            "#FF3C3C", // Neon Red
-            "#00E0FF", // Cyber Cyan
-            "#C85CFF", // Electric Purple
-            "#AFFF00", // Lime Neon
-            "#FF2D95", // Hot Magenta
-            "#FF6A00", // Sunset Orange
-            "#3B82F6", // Deep Blue Glow
-            "#00FFC6", // Turquoise Mint
-          ][(Math.random() * 9) | 0],
-        })
-      );
+      // If user hasn't entered drag mode yet, use default size for small movements
+      if (!mouseState.isDragging && distance < mouseState.dragThreshold) {
+        return baseSize;
+      }
+      
+      // Once in drag mode, always calculate size based on distance (no clamping to default)
+      const calculatedSize = Math.max(3, Math.min(50, distance / 2));
+      return calculatedSize;
+    };
+
+    const getRandomColor = () => {
+      const colors = [
+        "#F8F8F8", // Bright White
+        "#FF3C3C", // Neon Red
+        "#00E0FF", // Cyber Cyan
+        "#C85CFF", // Electric Purple
+        "#AFFF00", // Lime Neon
+        "#FF2D95", // Hot Magenta
+        "#FF6A00", // Sunset Orange
+        "#3B82F6", // Deep Blue Glow
+        "#00FFC6", // Turquoise Mint
+      ];
+      return colors[(Math.random() * colors.length) | 0];
+    };
+
+    const createParticle = (x: number, y: number, size: number, color?: string) => {
+      return new Particle({
+        position: new Vector2D(x, y),
+        velocity: new Vector2D(0, 0),
+        acceleration: new Vector2D(0, 0),
+        mass: 1,
+        size,
+        color: color || getRandomColor(),
+      });
+    };
+
+    canvas.addEventListener("mousedown", (e) => {
+      const pos = getMousePos(e);
+      
+      // Update threshold from current spawn config
+      const spawnConfig = (window as any).__getSpawnConfig?.();
+      if (spawnConfig?.dragThreshold !== undefined) {
+        mouseState.dragThreshold = spawnConfig.dragThreshold;
+      }
+      
+      mouseState.isDown = true;
+      mouseState.startPos = pos;
+      mouseState.currentPos = pos;
+      mouseState.isDragging = false;
+      
+      // Pick a random color for this drag session and store it
+      mouseState.previewColor = getRandomColor();
+      
+      // Create and show preview particle with the selected color
+      const distance = 0;
+      const size = calculateParticleSize(distance);
+      const previewParticle = createParticle(pos.x, pos.y, size, mouseState.previewColor);
+      renderer.setPreviewParticle(previewParticle, false); // Not in drag mode yet
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      if (!mouseState.isDown) return;
+      
+      const pos = getMousePos(e);
+      mouseState.currentPos = pos;
+      
+      const distance = getDistance(mouseState.startPos, pos);
+      
+      // Check if we should enter drag mode
+      if (distance >= mouseState.dragThreshold) {
+        mouseState.isDragging = true;
+      }
+      
+      // Update preview particle size based on distance, but keep the same color
+      const size = calculateParticleSize(distance);
+      const previewParticle = createParticle(mouseState.startPos.x, mouseState.startPos.y, size, mouseState.previewColor);
+      renderer.setPreviewParticle(previewParticle, mouseState.isDragging); // Show dashed outline only when dragging
+    });
+
+    canvas.addEventListener("mouseup", () => {
+      if (!mouseState.isDown) return;
+      
+      const distance = getDistance(mouseState.startPos, mouseState.currentPos);
+      const size = calculateParticleSize(distance);
+      
+      // Add the final particle to the system with the same color as preview
+      const finalParticle = createParticle(mouseState.startPos.x, mouseState.startPos.y, size, mouseState.previewColor);
+      system.addParticle(finalParticle);
+      
+      // Clear preview particle
+      renderer.setPreviewParticle(null, false);
+      
+      // Reset mouse state
+      mouseState.isDown = false;
+      mouseState.isDragging = false;
+      mouseState.previewColor = "";
+    });
+
+    canvas.addEventListener("mouseleave", () => {
+      // Clear preview particle when mouse leaves canvas
+      renderer.setPreviewParticle(null, false);
+      mouseState.isDown = false;
+      mouseState.isDragging = false;
+      mouseState.previewColor = "";
     });
 
     setInterval(() => {
@@ -120,9 +221,10 @@ export function useParty() {
   }, []);
 
   const spawnParticles = useCallback(
-    (numParticles: number, shape: "grid" | "random", spacing: number, particleSize: number = 10) => {
+    (numParticles: number, shape: "grid" | "random", spacing: number, particleSize: number = 10, _dragThreshold: number = 5) => {
       if (!systemRef.current) return;
 
+      // dragThreshold is handled via spawn config in mouse events
       // Clear existing particles
       systemRef.current.particles = [];
 
@@ -201,11 +303,12 @@ export function useParty() {
         spawnConfig.numParticles,
         spawnConfig.shape,
         spawnConfig.spacing,
-        spawnConfig.particleSize
+        spawnConfig.particleSize,
+        spawnConfig.dragThreshold
       );
     } else {
       // Fallback to default
-      spawnParticles(100, "grid", 50, 10);
+      spawnParticles(100, "grid", 50, 10, 5);
     }
   }, [spawnParticles]);
 

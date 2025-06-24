@@ -84,6 +84,14 @@ export abstract class Renderer {
 }
 
 export class Canvas2DRenderer extends Renderer {
+  private previewParticle: Particle | null = null;
+  private isDragMode: boolean = false;
+
+  setPreviewParticle(particle: Particle | null, isDragMode: boolean = false): void {
+    this.previewParticle = particle;
+    this.isDragMode = isDragMode;
+  }
+
   render(system: ParticleSystem): void {
     this.clear();
 
@@ -114,6 +122,11 @@ export class Canvas2DRenderer extends Renderer {
 
     for (const particle of system.particles) {
       this.renderParticle(particle, minSpeed, maxSpeed);
+    }
+
+    // Render preview particle if it exists
+    if (this.previewParticle) {
+      this.renderPreviewParticle(this.previewParticle, this.isDragMode);
     }
 
     this.ctx.restore();
@@ -170,6 +183,70 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.fillStyle = renderColor;
     this.ctx.globalAlpha = 0.8;
     this.ctx.fill();
+    
+    this.ctx.restore();
+  }
+
+  private renderPreviewParticle(particle: Particle, isDragMode: boolean): void {
+    this.ctx.save();
+    
+    if (isDragMode) {
+      // Drag mode: semi-transparent with dashed outline
+      this.ctx.globalAlpha = 0.6;
+      
+      // Render the particle body with reduced opacity
+      this.ctx.fillStyle = particle.color;
+      this.ctx.beginPath();
+      this.ctx.arc(
+        particle.position.x,
+        particle.position.y,
+        particle.size,
+        0,
+        Math.PI * 2
+      );
+      this.ctx.fill();
+      
+      // Add a dashed outline to distinguish it as drag mode
+      this.ctx.globalAlpha = 1;
+      this.ctx.strokeStyle = particle.color;
+      this.ctx.lineWidth = 2;
+      this.ctx.setLineDash([5, 5]); // Dashed line pattern
+      this.ctx.beginPath();
+      this.ctx.arc(
+        particle.position.x,
+        particle.position.y,
+        particle.size + 2, // Slightly larger outline
+        0,
+        Math.PI * 2
+      );
+      this.ctx.stroke();
+      this.ctx.setLineDash([]); // Reset line dash
+    } else {
+      // Normal click mode: render like a regular particle but slightly transparent
+      this.ctx.globalAlpha = 0.8;
+      
+      // Add subtle glow effect like normal particles
+      this.ctx.shadowColor = particle.color;
+      this.ctx.shadowBlur = particle.size * 1.5;
+      this.ctx.shadowOffsetX = 0;
+      this.ctx.shadowOffsetY = 0;
+      
+      this.ctx.fillStyle = particle.color;
+      this.ctx.beginPath();
+      this.ctx.arc(
+        particle.position.x,
+        particle.position.y,
+        particle.size,
+        0,
+        Math.PI * 2
+      );
+      this.ctx.fill();
+      
+      // Add inner bright core
+      this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = 0.7;
+      this.ctx.fill();
+    }
     
     this.ctx.restore();
   }

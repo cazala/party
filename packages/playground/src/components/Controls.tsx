@@ -50,6 +50,7 @@ const DEFAULT_SPAWN_NUM_PARTICLES = 100;
 const DEFAULT_SPAWN_SHAPE = "grid";
 const DEFAULT_SPAWN_SPACING = 25;
 const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
+const DEFAULT_DRAG_THRESHOLD = 5;
 
 interface ControlsProps {
   gravity: Gravity | null;
@@ -63,13 +64,15 @@ interface ControlsProps {
     numParticles: number,
     shape: "grid" | "random",
     spacing: number,
-    particleSize: number
+    particleSize: number,
+    dragThreshold: number
   ) => void;
   onGetSpawnConfig?: () => {
     numParticles: number;
     shape: "grid" | "random";
     spacing: number;
     particleSize: number;
+    dragThreshold: number;
   };
 }
 
@@ -154,6 +157,7 @@ export function Controls({
   );
   const [spacing, setSpacing] = useState(DEFAULT_SPAWN_SPACING);
   const [particleSize, setParticleSize] = useState(DEFAULT_SPAWN_PARTICLE_SIZE);
+  const [dragThreshold, setDragThreshold] = useState(DEFAULT_DRAG_THRESHOLD);
 
   // Performance state
   const [cellSize, setCellSize] = useState(DEFAULT_SPATIAL_GRID_CELL_SIZE);
@@ -210,9 +214,9 @@ export function Controls({
   // Initialize spawn on component mount
   useEffect(() => {
     if (onSpawnParticles) {
-      onSpawnParticles(numParticles, spawnShape, spacing, particleSize);
+      onSpawnParticles(numParticles, spawnShape, spacing, particleSize, dragThreshold);
     }
-  }, [onSpawnParticles, numParticles, spawnShape, spacing, particleSize]);
+  }, [onSpawnParticles, numParticles, spawnShape, spacing, particleSize, dragThreshold]);
 
   // Expose spawn config getter
   useEffect(() => {
@@ -222,10 +226,11 @@ export function Controls({
         shape: spawnShape,
         spacing,
         particleSize,
+        dragThreshold,
       });
       (window as any).__getSpawnConfig = getConfig;
     }
-  }, [onGetSpawnConfig, numParticles, spawnShape, spacing, particleSize]);
+  }, [onGetSpawnConfig, numParticles, spawnShape, spacing, particleSize, dragThreshold]);
 
   const handleGravityStrengthChange = (value: number) => {
     setGravityStrength(value);
@@ -411,11 +416,13 @@ export function Controls({
     newNumParticles?: number,
     newShape?: "grid" | "random",
     newSpacing?: number,
-    newParticleSize?: number
+    newParticleSize?: number,
+    newDragThreshold?: number
   ) => {
     const particles = newNumParticles ?? numParticles;
     const shape = newShape ?? spawnShape;
     const size = newParticleSize ?? particleSize;
+    const threshold = newDragThreshold ?? dragThreshold;
     // Ensure spacing is at least particle diameter to prevent touching
     const space = Math.max(newSpacing ?? spacing, size * 2);
 
@@ -423,9 +430,10 @@ export function Controls({
     if (newShape !== undefined) setSpawnShape(newShape);
     if (newSpacing !== undefined) setSpacing(space); // Update with corrected spacing
     if (newParticleSize !== undefined) setParticleSize(newParticleSize);
+    if (newDragThreshold !== undefined) setDragThreshold(newDragThreshold);
 
     if (onSpawnParticles) {
-      onSpawnParticles(particles, shape, space, size);
+      onSpawnParticles(particles, shape, space, size, threshold);
     }
   };
 
@@ -462,12 +470,14 @@ export function Controls({
     setSpawnShape(DEFAULT_SPAWN_SHAPE);
     setSpacing(DEFAULT_SPAWN_SPACING);
     setParticleSize(DEFAULT_SPAWN_PARTICLE_SIZE);
+    setDragThreshold(DEFAULT_DRAG_THRESHOLD);
     if (onSpawnParticles) {
       onSpawnParticles(
         DEFAULT_SPAWN_NUM_PARTICLES,
         DEFAULT_SPAWN_SHAPE,
         DEFAULT_SPAWN_SPACING,
-        DEFAULT_SPAWN_PARTICLE_SIZE
+        DEFAULT_SPAWN_PARTICLE_SIZE,
+        DEFAULT_DRAG_THRESHOLD
       );
     }
   };
@@ -979,6 +989,29 @@ export function Controls({
                   newSize
                 );
               }}
+              className="slider"
+            />
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
+            Drag Threshold: {dragThreshold}px
+            <input
+              type="range"
+              min="5"
+              max="50"
+              step="1"
+              value={dragThreshold}
+              onChange={(e) =>
+                handleSpawnChange(
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  parseInt(e.target.value)
+                )
+              }
               className="slider"
             />
           </label>

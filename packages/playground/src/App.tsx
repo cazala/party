@@ -75,6 +75,7 @@ function App() {
               shape: "grid" as const,
               spacing: 50,
               particleSize: 10,
+              dragThreshold: 5,
             })}
           />
         </div>
