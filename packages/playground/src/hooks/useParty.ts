@@ -68,12 +68,17 @@ export function useParty() {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const position = new Vector2D(x, y);
+      
+      // Get current particle size from spawn config, fallback to 10
+      const spawnConfig = (window as any).__getSpawnConfig?.();
+      const currentSize = spawnConfig?.particleSize || 10;
+      
       system.addParticle(
         new Particle({
           position,
           velocity: new Vector2D(0, 0),
           mass: 1,
-          size: 10,
+          size: currentSize,
           color: [
             "#F8F8F8", // Bright White
             "#FF3C3C", // Neon Red
@@ -115,7 +120,7 @@ export function useParty() {
   }, []);
 
   const spawnParticles = useCallback(
-    (numParticles: number, shape: "grid" | "random", spacing: number) => {
+    (numParticles: number, shape: "grid" | "random", spacing: number, particleSize: number = 10) => {
       if (!systemRef.current) return;
 
       // Clear existing particles
@@ -141,22 +146,25 @@ export function useParty() {
       if (shape === "grid") {
         const particlesPerRow = Math.ceil(Math.sqrt(numParticles));
         const particlesPerCol = Math.ceil(numParticles / particlesPerRow);
+        
+        // Ensure spacing is at least particle diameter to prevent touching
+        const safeSpacing = Math.max(spacing, particleSize * 2);
 
         for (let i = 0; i < numParticles; i++) {
           const x =
             centerX +
-            ((i % particlesPerRow) - particlesPerRow / 2 + 0.5) * spacing;
+            ((i % particlesPerRow) - particlesPerRow / 2 + 0.5) * safeSpacing;
           const y =
             centerY +
             (Math.floor(i / particlesPerRow) - particlesPerCol / 2 + 0.5) *
-              spacing;
+              safeSpacing;
 
           const particle = new Particle({
             position: new Vector2D(x, y),
             velocity: new Vector2D(0, 0),
             acceleration: new Vector2D(0, 0),
             mass: 1,
-            size: 10,
+            size: particleSize,
             color: colors[Math.floor(Math.random() * colors.length)],
           });
 
@@ -165,15 +173,16 @@ export function useParty() {
       } else {
         // Random placement
         for (let i = 0; i < numParticles; i++) {
-          const x = Math.random() * canvasWidth;
-          const y = Math.random() * canvasHeight;
+          // Keep particles within bounds considering their size
+          const x = particleSize + Math.random() * (canvasWidth - particleSize * 2);
+          const y = particleSize + Math.random() * (canvasHeight - particleSize * 2);
 
           const particle = new Particle({
             position: new Vector2D(x, y),
             velocity: new Vector2D(0, 0),
             acceleration: new Vector2D(0, 0),
             mass: 1,
-            size: 10,
+            size: particleSize,
             color: colors[Math.floor(Math.random() * colors.length)],
           });
 
@@ -191,11 +200,12 @@ export function useParty() {
       spawnParticles(
         spawnConfig.numParticles,
         spawnConfig.shape,
-        spawnConfig.spacing
+        spawnConfig.spacing,
+        spawnConfig.particleSize
       );
     } else {
       // Fallback to default
-      spawnParticles(100, "grid", 50);
+      spawnParticles(100, "grid", 50, 10);
     }
   }, [spawnParticles]);
 

@@ -49,6 +49,7 @@ import {
 const DEFAULT_SPAWN_NUM_PARTICLES = 100;
 const DEFAULT_SPAWN_SHAPE = "grid";
 const DEFAULT_SPAWN_SPACING = 25;
+const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
 
 interface ControlsProps {
   gravity: Gravity | null;
@@ -61,12 +62,14 @@ interface ControlsProps {
   onSpawnParticles?: (
     numParticles: number,
     shape: "grid" | "random",
-    spacing: number
+    spacing: number,
+    particleSize: number
   ) => void;
   onGetSpawnConfig?: () => {
     numParticles: number;
     shape: "grid" | "random";
     spacing: number;
+    particleSize: number;
   };
 }
 
@@ -117,9 +120,8 @@ export function Controls({
   const [collisionsMaxForce, setCollisionsMaxForce] = useState(
     DEFAULT_COLLISIONS_MAX_FORCE
   );
-  const [collisionsFloorContactThreshold, setCollisionsFloorContactThreshold] = useState(
-    DEFAULT_COLLISIONS_FLOOR_CONTACT_THRESHOLD
-  );
+  const [collisionsFloorContactThreshold, setCollisionsFloorContactThreshold] =
+    useState(DEFAULT_COLLISIONS_FLOOR_CONTACT_THRESHOLD);
 
   // Friction state
   const [frictionEnabled, setFrictionEnabled] = useState(
@@ -151,6 +153,7 @@ export function Controls({
     DEFAULT_SPAWN_SHAPE
   );
   const [spacing, setSpacing] = useState(DEFAULT_SPAWN_SPACING);
+  const [particleSize, setParticleSize] = useState(DEFAULT_SPAWN_PARTICLE_SIZE);
 
   // Performance state
   const [cellSize, setCellSize] = useState(DEFAULT_SPATIAL_GRID_CELL_SIZE);
@@ -207,17 +210,22 @@ export function Controls({
   // Initialize spawn on component mount
   useEffect(() => {
     if (onSpawnParticles) {
-      onSpawnParticles(numParticles, spawnShape, spacing);
+      onSpawnParticles(numParticles, spawnShape, spacing, particleSize);
     }
-  }, [onSpawnParticles, numParticles, spawnShape, spacing]);
+  }, [onSpawnParticles, numParticles, spawnShape, spacing, particleSize]);
 
   // Expose spawn config getter
   useEffect(() => {
     if (onGetSpawnConfig) {
-      const getConfig = () => ({ numParticles, shape: spawnShape, spacing });
+      const getConfig = () => ({
+        numParticles,
+        shape: spawnShape,
+        spacing,
+        particleSize,
+      });
       (window as any).__getSpawnConfig = getConfig;
     }
-  }, [onGetSpawnConfig, numParticles, spawnShape, spacing]);
+  }, [onGetSpawnConfig, numParticles, spawnShape, spacing, particleSize]);
 
   const handleGravityStrengthChange = (value: number) => {
     setGravityStrength(value);
@@ -402,18 +410,22 @@ export function Controls({
   const handleSpawnChange = (
     newNumParticles?: number,
     newShape?: "grid" | "random",
-    newSpacing?: number
+    newSpacing?: number,
+    newParticleSize?: number
   ) => {
     const particles = newNumParticles ?? numParticles;
     const shape = newShape ?? spawnShape;
-    const space = newSpacing ?? spacing;
+    const size = newParticleSize ?? particleSize;
+    // Ensure spacing is at least particle diameter to prevent touching
+    const space = Math.max(newSpacing ?? spacing, size * 2);
 
     if (newNumParticles !== undefined) setNumParticles(newNumParticles);
     if (newShape !== undefined) setSpawnShape(newShape);
-    if (newSpacing !== undefined) setSpacing(newSpacing);
+    if (newSpacing !== undefined) setSpacing(space); // Update with corrected spacing
+    if (newParticleSize !== undefined) setParticleSize(newParticleSize);
 
     if (onSpawnParticles) {
-      onSpawnParticles(particles, shape, space);
+      onSpawnParticles(particles, shape, space, size);
     }
   };
 
@@ -428,7 +440,9 @@ export function Controls({
     handleCollisionsFloorDampingChange(DEFAULT_COLLISIONS_FLOOR_DAMPING);
     handleCollisionsMinForceChange(DEFAULT_COLLISIONS_MIN_FORCE);
     handleCollisionsMaxForceChange(DEFAULT_COLLISIONS_MAX_FORCE);
-    handleCollisionsFloorContactThresholdChange(DEFAULT_COLLISIONS_FLOOR_CONTACT_THRESHOLD);
+    handleCollisionsFloorContactThresholdChange(
+      DEFAULT_COLLISIONS_FLOOR_CONTACT_THRESHOLD
+    );
     handleFrictionEnabledChange(DEFAULT_FRICTION_ENABLED);
     handleAirFrictionCoefficientChange(DEFAULT_AIR_FRICTION_COEFFICIENT);
     handleFloorFrictionCoefficientChange(DEFAULT_FLOOR_FRICTION_COEFFICIENT);
@@ -447,11 +461,13 @@ export function Controls({
     setNumParticles(DEFAULT_SPAWN_NUM_PARTICLES);
     setSpawnShape(DEFAULT_SPAWN_SHAPE);
     setSpacing(DEFAULT_SPAWN_SPACING);
+    setParticleSize(DEFAULT_SPAWN_PARTICLE_SIZE);
     if (onSpawnParticles) {
       onSpawnParticles(
         DEFAULT_SPAWN_NUM_PARTICLES,
         DEFAULT_SPAWN_SHAPE,
-        DEFAULT_SPAWN_SPACING
+        DEFAULT_SPAWN_SPACING,
+        DEFAULT_SPAWN_PARTICLE_SIZE
       );
     }
   };
@@ -588,7 +604,9 @@ export function Controls({
                   step="0.0001"
                   value={airFrictionCoefficient}
                   onChange={(e) =>
-                    handleAirFrictionCoefficientChange(parseFloat(e.target.value))
+                    handleAirFrictionCoefficientChange(
+                      parseFloat(e.target.value)
+                    )
                   }
                   className="slider"
                 />
@@ -605,7 +623,9 @@ export function Controls({
                   step="0.01"
                   value={floorFrictionCoefficient}
                   onChange={(e) =>
-                    handleFloorFrictionCoefficientChange(parseFloat(e.target.value))
+                    handleFloorFrictionCoefficientChange(
+                      parseFloat(e.target.value)
+                    )
                   }
                   className="slider"
                 />
@@ -622,7 +642,9 @@ export function Controls({
                   step="1"
                   value={floorContactThreshold}
                   onChange={(e) =>
-                    handleFloorContactThresholdChange(parseFloat(e.target.value))
+                    handleFloorContactThresholdChange(
+                      parseFloat(e.target.value)
+                    )
                   }
                   className="slider"
                 />
@@ -677,7 +699,9 @@ export function Controls({
                   step="0.01"
                   value={collisionsFloorDamping}
                   onChange={(e) =>
-                    handleCollisionsFloorDampingChange(parseFloat(e.target.value))
+                    handleCollisionsFloorDampingChange(
+                      parseFloat(e.target.value)
+                    )
                   }
                   className="slider"
                 />
@@ -686,7 +710,8 @@ export function Controls({
 
             <div className="control-group">
               <label>
-                Collision Floor Distance: {collisionsFloorContactThreshold.toFixed(0)}px
+                Collision Floor Distance:{" "}
+                {collisionsFloorContactThreshold.toFixed(0)}px
                 <input
                   type="range"
                   min="0"
@@ -694,7 +719,9 @@ export function Controls({
                   step="1"
                   value={collisionsFloorContactThreshold}
                   onChange={(e) =>
-                    handleCollisionsFloorContactThresholdChange(parseFloat(e.target.value))
+                    handleCollisionsFloorContactThresholdChange(
+                      parseFloat(e.target.value)
+                    )
                   }
                   className="slider"
                 />
@@ -904,7 +931,7 @@ export function Controls({
             <input
               type="range"
               min="1"
-              max="500"
+              max="1500"
               step="1"
               value={numParticles}
               onChange={(e) => handleSpawnChange(parseInt(e.target.value))}
@@ -932,13 +959,38 @@ export function Controls({
           </label>
         </div>
 
+        <div className="control-group">
+          <label>
+            Particle Size: {particleSize}
+            <input
+              type="range"
+              min="3"
+              max="30"
+              step="1"
+              value={particleSize}
+              onChange={(e) => {
+                const newSize = parseInt(e.target.value);
+                // Ensure spacing is at least particle diameter when size changes
+                const newSpacing = Math.max(spacing, newSize * 2);
+                handleSpawnChange(
+                  undefined,
+                  undefined,
+                  newSpacing !== spacing ? newSpacing : undefined,
+                  newSize
+                );
+              }}
+              className="slider"
+            />
+          </label>
+        </div>
+
         {spawnShape === "grid" && (
           <div className="control-group">
             <label>
               Spacing: {spacing}
               <input
                 type="range"
-                min="20"
+                min={particleSize * 2} // Dynamic minimum based on particle size
                 max="150"
                 step="5"
                 value={spacing}

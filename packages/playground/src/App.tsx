@@ -74,6 +74,7 @@ function App() {
               numParticles: 100,
               shape: "grid" as const,
               spacing: 50,
+              particleSize: 10,
             })}
           />
         </div>
