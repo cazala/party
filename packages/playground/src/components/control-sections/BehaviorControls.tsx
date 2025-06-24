@@ -10,10 +10,9 @@ import {
 
 interface BehaviorControlsProps {
   flock: Flock | null;
-  renderer: Canvas2DRenderer | null;
 }
 
-export function BehaviorControls({ flock, renderer }: BehaviorControlsProps) {
+export function BehaviorControls({ flock }: BehaviorControlsProps) {
   const [cohesionWeight, setCohesionWeight] = useState(
     DEFAULT_FLOCK_COHESION_WEIGHT
   );

@@ -1,4 +1,11 @@
-import { Gravity, Flock, Bounds, Collisions, Canvas2DRenderer, SpatialGrid } from "../../../core/src";
+import {
+  Gravity,
+  Flock,
+  Bounds,
+  Collisions,
+  Canvas2DRenderer,
+  SpatialGrid,
+} from "../../../core/src";
 import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
@@ -65,9 +72,6 @@ export function Controls({
   onSpawnParticles,
   onGetSpawnConfig,
 }: ControlsProps) {
-
-
-
   const resetToDefaults = () => {
     // Reset gravity
     if (gravity) {
@@ -124,9 +128,16 @@ export function Controls({
         </button>
       </div>
 
-      <PhysicsControls gravity={gravity} bounds={bounds} collisions={collisions} />
-      <SpawnControls onSpawnParticles={onSpawnParticles} onGetSpawnConfig={onGetSpawnConfig} />
-      <BehaviorControls flock={flock} renderer={renderer} />
+      <PhysicsControls
+        gravity={gravity}
+        bounds={bounds}
+        collisions={collisions}
+      />
+      <SpawnControls
+        onSpawnParticles={onSpawnParticles}
+        onGetSpawnConfig={onGetSpawnConfig}
+      />
+      <BehaviorControls flock={flock} />
       <RenderControls renderer={renderer} flock={flock} />
       <PerformanceControls spatialGrid={spatialGrid} renderer={renderer} />
     </div>
