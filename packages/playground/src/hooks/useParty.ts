@@ -13,6 +13,10 @@ import {
 } from "../../../core/src";
 import { DEFAULT_GRAVITY_STRENGTH } from "../../../core/src/modules/forces/gravity.js";
 
+// Streaming configuration
+const STREAM_SPAWN_RATE = 10; // particles per second
+const STREAM_SPAWN_INTERVAL = 1000 / STREAM_SPAWN_RATE; // milliseconds between spawns
+
 export function useParty() {
   const systemRef = useRef<ParticleSystem | null>(null);
   const gravityRef = useRef<Gravity | null>(null);
@@ -65,6 +69,14 @@ export function useParty() {
       isDragging: false,
       dragThreshold: 5, // Will be updated with spawn config
       previewColor: "", // Store the color for the current drag session
+      // Streaming state
+      isStreaming: false,
+      streamInterval: null as number | null,
+      streamSize: 0,
+      streamPosition: { x: 0, y: 0 },
+      shiftPressed: false,
+      wasStreaming: false, // Track if we were streaming during this mouse session
+      activeStreamSize: 0, // Size to use for streaming while shift is held down
     };
 
     const getMousePos = (e: MouseEvent) => {
@@ -133,8 +145,112 @@ export function useParty() {
       });
     };
 
+    // Streaming functions
+    const startStreaming = (x: number, y: number, size: number) => {
+      if (mouseState.isStreaming) {
+        stopStreaming();
+      }
+      
+      mouseState.isStreaming = true;
+      mouseState.streamPosition = { x, y };
+      mouseState.streamSize = size;
+      
+      // Spawn the first particle immediately at the exact position
+      const firstParticle = createParticle(x, y, size);
+      system.addParticle(firstParticle);
+      
+      // Then start the interval for subsequent particles
+      mouseState.streamInterval = window.setInterval(() => {
+        const particle = createParticle(
+          mouseState.streamPosition.x,
+          mouseState.streamPosition.y,
+          mouseState.streamSize
+        );
+        system.addParticle(particle);
+      }, STREAM_SPAWN_INTERVAL);
+    };
+
+    const stopStreaming = () => {
+      if (mouseState.streamInterval) {
+        clearInterval(mouseState.streamInterval);
+        mouseState.streamInterval = null;
+      }
+      mouseState.isStreaming = false;
+    };
+
+    // Keyboard event listeners for shift key detection
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        mouseState.shiftPressed = true;
+        
+        // If mouse is down and we're not streaming yet, start streaming
+        if (mouseState.isDown && !mouseState.isStreaming) {
+          const distance = getDistance(mouseState.startPos, mouseState.currentPos);
+          const size = calculateParticleSize(distance);
+          startStreaming(mouseState.startPos.x, mouseState.startPos.y, size);
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        mouseState.shiftPressed = false;
+        mouseState.activeStreamSize = 0; // Reset stream size when shift is released
+        if (mouseState.isStreaming) {
+          stopStreaming();
+          mouseState.wasStreaming = true;
+        }
+      }
+    };
+
+    // Add keyboard listeners to both window and canvas
+    // Make canvas focusable
+    canvas.setAttribute('tabindex', '0');
+    canvas.style.outline = 'none'; // Remove focus outline
+    
+    // Test function to check if keyboard events work at all
+    const testKeyHandler = (_e: KeyboardEvent) => {
+      // Keyboard events for debugging if needed
+    };
+    
+    // Add global keyboard listeners - these should always work
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('keydown', testKeyHandler);
+    
+    // Also add to window as backup
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    // And to canvas for when it has focus
+    canvas.addEventListener('keydown', handleKeyDown);
+    canvas.addEventListener('keyup', handleKeyUp);
+    
+    // Focus the canvas so it can receive keyboard events
+    canvas.focus();
+    
+    // Add click handler to refocus canvas
+    canvas.addEventListener('click', () => {
+      canvas.focus();
+    });
+    
+
     canvas.addEventListener("mousedown", (e) => {
       const pos = getMousePos(e);
+      
+      // Ensure canvas has focus for keyboard events
+      canvas.focus();
+      
+      // Reset streaming state for new interaction - use ONLY the mouse event's shiftKey
+      const wasShiftPressedBefore = mouseState.shiftPressed;
+      mouseState.shiftPressed = e.shiftKey;
+      mouseState.wasStreaming = false; // Reset for new interaction
+      mouseState.isStreaming = false; // Make sure we're not streaming from previous interaction
+      
+      // If shift was released between interactions, reset the active stream size
+      if (wasShiftPressedBefore && !mouseState.shiftPressed) {
+        mouseState.activeStreamSize = 0;
+      }
 
       // Update threshold from current spawn config
       const spawnConfig = (window as any).__getSpawnConfig?.();
@@ -150,6 +266,22 @@ export function useParty() {
       // Pick a random color for this drag session and store it
       mouseState.previewColor = getRandomColor();
 
+      // If shift is pressed during mouse down, start streaming immediately
+      if (mouseState.shiftPressed) {
+        let streamSize;
+        if (mouseState.activeStreamSize > 0) {
+          // Use the preserved size from previous drag-to-size
+          streamSize = mouseState.activeStreamSize;
+        } else {
+          // Use default size for first shift+click
+          streamSize = spawnConfig?.particleSize || 10;
+          mouseState.activeStreamSize = streamSize; // Store for subsequent clicks
+        }
+        startStreaming(pos.x, pos.y, streamSize);
+        mouseState.wasStreaming = true; // Mark that we were streaming
+        return; // Don't show preview when streaming
+      }
+
       // Create and show preview particle with the selected color
       const distance = 0;
       const size = calculateParticleSize(distance);
@@ -164,10 +296,43 @@ export function useParty() {
 
     canvas.addEventListener("mousemove", (e) => {
       if (!mouseState.isDown) return;
-
+      
       const pos = getMousePos(e);
       mouseState.currentPos = pos;
-
+      
+      // Update shift state from mouse event
+      const wasShiftPressed = mouseState.shiftPressed;
+      mouseState.shiftPressed = e.shiftKey;
+      
+      // If shift was just released during streaming, stop streaming
+      if (wasShiftPressed && !mouseState.shiftPressed && mouseState.isStreaming) {
+        stopStreaming();
+        mouseState.wasStreaming = true; // Mark that we were streaming
+        // Don't show preview again - user already placed particles via streaming
+      }
+      
+      // If shift was just pressed during mouse move, start streaming
+      if (!wasShiftPressed && mouseState.shiftPressed && !mouseState.isStreaming) {
+        const distance = getDistance(mouseState.startPos, mouseState.currentPos);
+        const size = calculateParticleSize(distance);
+        mouseState.activeStreamSize = size; // Store this size for subsequent clicks
+        startStreaming(mouseState.startPos.x, mouseState.startPos.y, size);
+        mouseState.wasStreaming = true; // Mark that we were streaming
+        // Hide the preview particle when streaming starts
+        renderer.setPreviewParticle(null, false);
+      }
+      
+      // If we're streaming, update the stream position to follow the cursor
+      if (mouseState.isStreaming) {
+        mouseState.streamPosition = { x: pos.x, y: pos.y };
+        return; // Don't update preview when streaming
+      }
+      
+      // If we were streaming during this session, don't show preview
+      if (mouseState.wasStreaming) {
+        return;
+      }
+      
       const distance = getDistance(mouseState.startPos, pos);
 
       // Check if we should enter drag mode
@@ -186,8 +351,33 @@ export function useParty() {
       renderer.setPreviewParticle(previewParticle, mouseState.isDragging); // Show dashed outline only when dragging
     });
 
-    canvas.addEventListener("mouseup", () => {
+    canvas.addEventListener("mouseup", (e) => {
       if (!mouseState.isDown) return;
+      
+      // Update shift state from mouse event
+      mouseState.shiftPressed = e.shiftKey;
+
+      // If we're streaming, always stop when mouse is released
+      if (mouseState.isStreaming) {
+        stopStreaming();
+        // Reset mouse state
+        mouseState.isDown = false;
+        mouseState.isDragging = false;
+        mouseState.previewColor = "";
+        mouseState.wasStreaming = false; // Reset for next interaction
+        return;
+      }
+
+      // If we were streaming during this mouse session, don't spawn an extra particle
+      if (mouseState.wasStreaming) {
+        // Clear preview particle and reset state
+        renderer.setPreviewParticle(null, false);
+        mouseState.isDown = false;
+        mouseState.isDragging = false;
+        mouseState.previewColor = "";
+        mouseState.wasStreaming = false; // Reset for next interaction
+        return;
+      }
 
       const distance = getDistance(mouseState.startPos, mouseState.currentPos);
       const size = calculateParticleSize(distance);
@@ -208,14 +398,20 @@ export function useParty() {
       mouseState.isDown = false;
       mouseState.isDragging = false;
       mouseState.previewColor = "";
+      mouseState.wasStreaming = false; // Reset for next interaction
     });
 
     canvas.addEventListener("mouseleave", () => {
+      // Stop streaming when mouse leaves canvas
+      if (mouseState.isStreaming) {
+        stopStreaming();
+      }
       // Clear preview particle when mouse leaves canvas
       renderer.setPreviewParticle(null, false);
       mouseState.isDown = false;
       mouseState.isDragging = false;
       mouseState.previewColor = "";
+      mouseState.wasStreaming = false; // Reset for next interaction
     });
 
     setInterval(() => {
@@ -223,6 +419,20 @@ export function useParty() {
     }, 1000 / 60);
 
     system.play();
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener('keydown', testKeyHandler);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      canvas.removeEventListener('keydown', handleKeyDown);
+      canvas.removeEventListener('keyup', handleKeyUp);
+      if (mouseState.streamInterval) {
+        clearInterval(mouseState.streamInterval);
+      }
+    };
   }, []);
 
   const play = useCallback(() => {
