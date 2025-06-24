@@ -24,14 +24,18 @@ import {
 import { DEFAULT_BOUNDS_BOUNCE } from "../../../core/src/modules/forces/bounds.js";
 import {
   DEFAULT_COLLISIONS_ENABLED,
-  DEFAULT_COLLISIONS_DAMPING,
+  DEFAULT_COLLISIONS_AIR_DAMPING,
+  DEFAULT_COLLISIONS_FLOOR_DAMPING,
   DEFAULT_COLLISIONS_MIN_FORCE,
   DEFAULT_COLLISIONS_MAX_FORCE,
+  DEFAULT_COLLISIONS_FLOOR_CONTACT_THRESHOLD,
 } from "../../../core/src/modules/forces/collisions.js";
 import {
   DEFAULT_FRICTION_ENABLED,
-  DEFAULT_FRICTION_COEFFICIENT,
+  DEFAULT_AIR_FRICTION_COEFFICIENT,
+  DEFAULT_FLOOR_FRICTION_COEFFICIENT,
   DEFAULT_REST_THRESHOLD,
+  DEFAULT_FLOOR_CONTACT_THRESHOLD,
 } from "../../../core/src/modules/forces/friction.js";
 import {
   DEFAULT_BOUNDS_FRICTION,
@@ -101,8 +105,11 @@ export function Controls({
   const [collisionsEnabled, setCollisionsEnabled] = useState(
     DEFAULT_COLLISIONS_ENABLED
   );
-  const [collisionsDamping, setCollisionsDamping] = useState(
-    DEFAULT_COLLISIONS_DAMPING
+  const [collisionsAirDamping, setCollisionsAirDamping] = useState(
+    DEFAULT_COLLISIONS_AIR_DAMPING
+  );
+  const [collisionsFloorDamping, setCollisionsFloorDamping] = useState(
+    DEFAULT_COLLISIONS_FLOOR_DAMPING
   );
   const [collisionsMinForce, setCollisionsMinForce] = useState(
     DEFAULT_COLLISIONS_MIN_FORCE
@@ -110,15 +117,24 @@ export function Controls({
   const [collisionsMaxForce, setCollisionsMaxForce] = useState(
     DEFAULT_COLLISIONS_MAX_FORCE
   );
+  const [collisionsFloorContactThreshold, setCollisionsFloorContactThreshold] = useState(
+    DEFAULT_COLLISIONS_FLOOR_CONTACT_THRESHOLD
+  );
 
   // Friction state
   const [frictionEnabled, setFrictionEnabled] = useState(
     DEFAULT_FRICTION_ENABLED
   );
-  const [frictionCoefficient, setFrictionCoefficient] = useState(
-    DEFAULT_FRICTION_COEFFICIENT
+  const [airFrictionCoefficient, setAirFrictionCoefficient] = useState(
+    DEFAULT_AIR_FRICTION_COEFFICIENT
+  );
+  const [floorFrictionCoefficient, setFloorFrictionCoefficient] = useState(
+    DEFAULT_FLOOR_FRICTION_COEFFICIENT
   );
   const [restThreshold, setRestThreshold] = useState(DEFAULT_REST_THRESHOLD);
+  const [floorContactThreshold, setFloorContactThreshold] = useState(
+    DEFAULT_FLOOR_CONTACT_THRESHOLD
+  );
 
   // Bounds friction state
   const [boundsFriction, setBoundsFriction] = useState(DEFAULT_BOUNDS_FRICTION);
@@ -164,14 +180,18 @@ export function Controls({
     }
     if (collisions) {
       setCollisionsEnabled(collisions.enabled);
-      setCollisionsDamping(collisions.damping);
+      setCollisionsAirDamping(collisions.airDamping);
+      setCollisionsFloorDamping(collisions.floorDamping);
       setCollisionsMinForce(collisions.minForce);
       setCollisionsMaxForce(collisions.maxForce);
+      setCollisionsFloorContactThreshold(collisions.floorContactThreshold);
     }
     if (friction) {
       setFrictionEnabled(friction.enabled);
-      setFrictionCoefficient(friction.coefficient);
+      setAirFrictionCoefficient(friction.airFrictionCoefficient);
+      setFloorFrictionCoefficient(friction.floorFrictionCoefficient);
       setRestThreshold(friction.restThreshold);
+      setFloorContactThreshold(friction.floorContactThreshold);
     }
     if (renderer) {
       setColorMode(renderer.colorMode);
@@ -227,10 +247,24 @@ export function Controls({
     }
   };
 
-  const handleCollisionsDampingChange = (damping: number) => {
-    setCollisionsDamping(damping);
+  const handleCollisionsAirDampingChange = (damping: number) => {
+    setCollisionsAirDamping(damping);
     if (collisions) {
-      collisions.setDamping(damping);
+      collisions.setAirDamping(damping);
+    }
+  };
+
+  const handleCollisionsFloorDampingChange = (damping: number) => {
+    setCollisionsFloorDamping(damping);
+    if (collisions) {
+      collisions.setFloorDamping(damping);
+    }
+  };
+
+  const handleCollisionsFloorContactThresholdChange = (threshold: number) => {
+    setCollisionsFloorContactThreshold(threshold);
+    if (collisions) {
+      collisions.setFloorContactThreshold(threshold);
     }
   };
 
@@ -256,10 +290,24 @@ export function Controls({
     }
   };
 
-  const handleFrictionCoefficientChange = (coefficient: number) => {
-    setFrictionCoefficient(coefficient);
+  const handleAirFrictionCoefficientChange = (coefficient: number) => {
+    setAirFrictionCoefficient(coefficient);
     if (friction) {
-      friction.setCoefficient(coefficient);
+      friction.setAirFrictionCoefficient(coefficient);
+    }
+  };
+
+  const handleFloorFrictionCoefficientChange = (coefficient: number) => {
+    setFloorFrictionCoefficient(coefficient);
+    if (friction) {
+      friction.setFloorFrictionCoefficient(coefficient);
+    }
+  };
+
+  const handleFloorContactThresholdChange = (threshold: number) => {
+    setFloorContactThreshold(threshold);
+    if (friction) {
+      friction.setFloorContactThreshold(threshold);
     }
   };
 
@@ -376,12 +424,16 @@ export function Controls({
     handleBoundsFrictionChange(DEFAULT_BOUNDS_FRICTION);
     handleMinBounceVelocityChange(DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY);
     handleCollisionsEnabledChange(DEFAULT_COLLISIONS_ENABLED);
-    handleCollisionsDampingChange(DEFAULT_COLLISIONS_DAMPING);
+    handleCollisionsAirDampingChange(DEFAULT_COLLISIONS_AIR_DAMPING);
+    handleCollisionsFloorDampingChange(DEFAULT_COLLISIONS_FLOOR_DAMPING);
     handleCollisionsMinForceChange(DEFAULT_COLLISIONS_MIN_FORCE);
     handleCollisionsMaxForceChange(DEFAULT_COLLISIONS_MAX_FORCE);
+    handleCollisionsFloorContactThresholdChange(DEFAULT_COLLISIONS_FLOOR_CONTACT_THRESHOLD);
     handleFrictionEnabledChange(DEFAULT_FRICTION_ENABLED);
-    handleFrictionCoefficientChange(DEFAULT_FRICTION_COEFFICIENT);
+    handleAirFrictionCoefficientChange(DEFAULT_AIR_FRICTION_COEFFICIENT);
+    handleFloorFrictionCoefficientChange(DEFAULT_FLOOR_FRICTION_COEFFICIENT);
     handleRestThresholdChange(DEFAULT_REST_THRESHOLD);
+    handleFloorContactThresholdChange(DEFAULT_FLOOR_CONTACT_THRESHOLD);
     handleFlockingChange("cohesionWeight", DEFAULT_FLOCK_COHESION_WEIGHT);
     handleFlockingChange("alignmentWeight", DEFAULT_FLOCK_ALIGNMENT_WEIGHT);
     handleFlockingChange("separationWeight", DEFAULT_FLOCK_SEPARATION_WEIGHT);
@@ -520,7 +572,7 @@ export function Controls({
               onChange={(e) => handleFrictionEnabledChange(e.target.checked)}
               style={{ marginRight: "8px" }}
             />
-            Enable Global Friction
+            Enable Friction
           </label>
         </div>
 
@@ -528,15 +580,49 @@ export function Controls({
           <>
             <div className="control-group">
               <label>
-                Friction Strength: {(1 - frictionCoefficient).toFixed(3)}
+                Air Resistance: {(1 - airFrictionCoefficient).toFixed(4)}
                 <input
                   type="range"
-                  min="0.95"
-                  max="0.999"
-                  step="0.001"
-                  value={frictionCoefficient}
+                  min="0.990"
+                  max="0.9999"
+                  step="0.0001"
+                  value={airFrictionCoefficient}
                   onChange={(e) =>
-                    handleFrictionCoefficientChange(parseFloat(e.target.value))
+                    handleAirFrictionCoefficientChange(parseFloat(e.target.value))
+                  }
+                  className="slider"
+                />
+              </label>
+            </div>
+
+            <div className="control-group">
+              <label>
+                Floor Friction: {(1 - floorFrictionCoefficient).toFixed(3)}
+                <input
+                  type="range"
+                  min="0.5"
+                  max="0.99"
+                  step="0.01"
+                  value={floorFrictionCoefficient}
+                  onChange={(e) =>
+                    handleFloorFrictionCoefficientChange(parseFloat(e.target.value))
+                  }
+                  className="slider"
+                />
+              </label>
+            </div>
+
+            <div className="control-group">
+              <label>
+                Floor Contact Distance: {floorContactThreshold.toFixed(0)}px
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value={floorContactThreshold}
+                  onChange={(e) =>
+                    handleFloorContactThresholdChange(parseFloat(e.target.value))
                   }
                   className="slider"
                 />
@@ -566,15 +652,49 @@ export function Controls({
           <>
             <div className="control-group">
               <label>
-                Collision Damping: {collisionsDamping.toFixed(2)}
+                Air Collision Damping: {collisionsAirDamping.toFixed(2)}
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1"
+                  step="0.01"
+                  value={collisionsAirDamping}
+                  onChange={(e) =>
+                    handleCollisionsAirDampingChange(parseFloat(e.target.value))
+                  }
+                  className="slider"
+                />
+              </label>
+            </div>
+
+            <div className="control-group">
+              <label>
+                Floor Collision Damping: {collisionsFloorDamping.toFixed(2)}
+                <input
+                  type="range"
+                  min="0.1"
+                  max="0.8"
+                  step="0.01"
+                  value={collisionsFloorDamping}
+                  onChange={(e) =>
+                    handleCollisionsFloorDampingChange(parseFloat(e.target.value))
+                  }
+                  className="slider"
+                />
+              </label>
+            </div>
+
+            <div className="control-group">
+              <label>
+                Collision Floor Distance: {collisionsFloorContactThreshold.toFixed(0)}px
                 <input
                   type="range"
                   min="0"
-                  max="1"
-                  step="0.01"
-                  value={collisionsDamping}
+                  max="10"
+                  step="1"
+                  value={collisionsFloorContactThreshold}
                   onChange={(e) =>
-                    handleCollisionsDampingChange(parseFloat(e.target.value))
+                    handleCollisionsFloorContactThresholdChange(parseFloat(e.target.value))
                   }
                   className="slider"
                 />
