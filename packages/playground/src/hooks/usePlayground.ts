@@ -11,34 +11,89 @@ import {
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
 } from "../../../core/src";
-import { DEFAULT_GRAVITY_STRENGTH } from "../../../core/src/modules/forces/gravity.js";
-import { useSpawner } from "./useSpawner";
+import { DEFAULT_GRAVITY_STRENGTH } from "../../../core/src/modules/forces/gravity";
+import { useInteractions } from "./useInteractions";
 
-export function useParty() {
+/**
+ * Custom React hook that wires together the core particle *engine* with the
+ * interactive playground UI.
+ *
+ * It is responsible for:
+ * 1.  Lazy-initialising the `ParticleSystem`, renderer and default forces
+ *     when the component mounts.
+ * 2.  Exposing a set of imperative helpers (`play`, `pause`, `spawnParticles`, …)
+ *     that UI components can call.
+ * 3.  Delegating all pointer/keyboard interaction logic to `useInteractions`,
+ *     which in turn feeds previews / particles back into the system.
+ *
+ * Consumers only access **live** instances (system, gravity, bounds, …) via
+ * the returned fields – these are updated through mutable refs so re-renders
+ * aren't triggered for every internal mutation.
+ */
+export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
   const systemRef = useRef<ParticleSystem | null>(null);
+  // Individual force/utility refs – kept outside of React state because the
+  // physics engine mutates them on every tick.
   const gravityRef = useRef<Gravity | null>(null);
   const boundsRef = useRef<Bounds | null>(null);
   const flockRef = useRef<Flock | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
   const spatialGridRef = useRef<SpatialGrid | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Initialize spawner hook at top level
-  const spawner = useSpawner({
+  // ---------------------------------------------------------------------------
+  // Interaction handling (mouse + keyboard)
+  // ---------------------------------------------------------------------------
+  // All pointer/key logic lives in `useInteractions`.  We simply provide lazy
+  // getters so that the helper can always access the *latest* instances.
+  const interactions = useInteractions({
     getSystem: () => systemRef.current,
     getRenderer: () => rendererRef.current,
     getCanvas: () => canvasRef.current,
   });
 
+  // Attach / detach low-level DOM listeners once – they call back into the
+  // `spawner` helpers defined above.
+  useEffect(() => {
+    if (canvasRef.current) {
+      canvasRef.current.addEventListener("mousedown", interactions.onMouseDown);
+      canvasRef.current.addEventListener("mousemove", interactions.onMouseMove);
+      canvasRef.current.addEventListener("mouseup", interactions.onMouseUp);
+      canvasRef.current.addEventListener(
+        "mouseleave",
+        interactions.onMouseLeave
+      );
+    }
+    return () => {
+      if (canvasRef.current) {
+        canvasRef.current.removeEventListener(
+          "mousedown",
+          interactions.onMouseDown
+        );
+        canvasRef.current.removeEventListener(
+          "mousemove",
+          interactions.onMouseMove
+        );
+        canvasRef.current.removeEventListener(
+          "mouseup",
+          interactions.onMouseUp
+        );
+        canvasRef.current.removeEventListener(
+          "mouseleave",
+          interactions.onMouseLeave
+        );
+      }
+    };
+  }, [canvasRef, interactions]);
+
+  // ---------------------------------------------------------------------------
+  // Engine bootstrap – only runs once on mount.
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     if (systemRef.current) return;
 
     const gravity = new Gravity({ strength: DEFAULT_GRAVITY_STRENGTH });
     gravityRef.current = gravity;
-
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    canvasRef.current = canvas;
 
     const bounds = new Bounds();
     boundsRef.current = bounds;
@@ -50,14 +105,14 @@ export function useParty() {
     collisionsRef.current = collisions;
 
     const system = new ParticleSystem({
-      width: canvas.width || 1200,
-      height: canvas.height || 800,
+      width: canvasRef.current?.width || 1200,
+      height: canvasRef.current?.height || 800,
       cellSize: DEFAULT_SPATIAL_GRID_CELL_SIZE,
     });
     systemRef.current = system;
     spatialGridRef.current = system.spatialGrid;
     const renderer = new Canvas2DRenderer({
-      canvas,
+      canvas: canvasRef.current!,
       clearColor: "#0D0D12",
     });
     rendererRef.current = renderer;
@@ -67,15 +122,6 @@ export function useParty() {
     system.addForce(flock);
     system.addForce(collisions);
 
-    // Set up mouse event listeners after spawner is initialized
-    canvas.addEventListener("mousedown", spawner.onMouseDown);
-    canvas.addEventListener("mousemove", spawner.onMouseMove);
-    canvas.addEventListener("mouseup", spawner.onMouseUp);
-    canvas.addEventListener("mouseleave", spawner.onMouseLeave);
-
-    // Set up keyboard listeners
-    spawner.setupKeyboardListeners();
-
     setInterval(() => {
       renderer.render(system);
     }, 1000 / 60);
@@ -84,7 +130,7 @@ export function useParty() {
 
     // Cleanup function
     return () => {
-      spawner.cleanup();
+      interactions.cleanup();
     };
   }, []);
 
@@ -106,6 +152,9 @@ export function useParty() {
     }
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // Programmatic particle spawning helpers
+  // ---------------------------------------------------------------------------
   const spawnParticles = useCallback(
     (
       numParticles: number,
@@ -199,6 +248,8 @@ export function useParty() {
     []
   );
 
+  // Replace the entire particle array based on the current spawn configuration
+  // exposed globally by the Controls sidebar.
   const resetParticles = useCallback(() => {
     // This will be called with current spawn config from Controls
     const spawnConfig = (window as any).__getSpawnConfig?.();
@@ -282,6 +333,7 @@ export function useParty() {
   );
 
   return {
+    // Live engine handles ------------------------------------------------------
     system: systemRef.current,
     gravity: gravityRef.current,
     bounds: boundsRef.current,

@@ -1,6 +1,6 @@
-import { useParty } from "./hooks/useParty";
+import { usePlayground } from "./hooks/usePlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Controls } from "./components/Controls";
 import { TopBar } from "./components/TopBar";
 import "./styles/index.css";
@@ -12,6 +12,7 @@ const SIDEBAR_WIDTH = 320;
 const TOPBAR_HEIGHT = 60;
 
 function App() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const {
     system,
     gravity,
@@ -25,7 +26,7 @@ function App() {
     clear,
     resetParticles,
     spawnParticles,
-  } = useParty();
+  } = usePlayground(canvasRef);
   const size = useWindowSize();
 
   useEffect(() => {
@@ -52,6 +53,7 @@ function App() {
       <div className="app-content">
         <div className="canvas-container">
           <canvas
+            ref={canvasRef}
             id="canvas"
             width={size.width - SIDEBAR_WIDTH}
             height={size.height - TOPBAR_HEIGHT}
