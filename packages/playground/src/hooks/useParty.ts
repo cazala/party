@@ -115,11 +115,17 @@ export function useParty() {
     };
 
     const createParticle = (x: number, y: number, size: number, color?: string) => {
+      // Make mass proportional to area: mass = π * (radius)² / scale_factor
+      // radius = size (since size IS the radius), scale_factor keeps default reasonable
+      const radius = size;
+      const area = Math.PI * radius * radius;
+      const mass = area / 100; // Scale factor to keep default size=10 around mass=3.14
+      
       return new Particle({
         position: new Vector2D(x, y),
         velocity: new Vector2D(0, 0),
         acceleration: new Vector2D(0, 0),
-        mass: 1,
+        mass,
         size,
         color: color || getRandomColor(),
       });
@@ -261,11 +267,16 @@ export function useParty() {
             (Math.floor(i / particlesPerRow) - particlesPerCol / 2 + 0.5) *
               safeSpacing;
 
+          // Calculate mass based on area like createParticle function
+          const radius = particleSize;
+          const area = Math.PI * radius * radius;
+          const mass = area / 100;
+
           const particle = new Particle({
             position: new Vector2D(x, y),
             velocity: new Vector2D(0, 0),
             acceleration: new Vector2D(0, 0),
-            mass: 1,
+            mass: mass, // Mass proportional to area
             size: particleSize,
             color: colors[Math.floor(Math.random() * colors.length)],
           });
@@ -279,11 +290,16 @@ export function useParty() {
           const x = particleSize + Math.random() * (canvasWidth - particleSize * 2);
           const y = particleSize + Math.random() * (canvasHeight - particleSize * 2);
 
+          // Calculate mass based on area like createParticle function
+          const radius = particleSize;
+          const area = Math.PI * radius * radius;
+          const mass = area / 100;
+
           const particle = new Particle({
             position: new Vector2D(x, y),
             velocity: new Vector2D(0, 0),
             acceleration: new Vector2D(0, 0),
-            mass: 1,
+            mass: mass, // Mass proportional to area
             size: particleSize,
             color: colors[Math.floor(Math.random() * colors.length)],
           });
