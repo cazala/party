@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Flock, Canvas2DRenderer } from "../../../../core/src";
+import { Flock } from "../../../../core/src";
 import {
   DEFAULT_FLOCK_COHESION_WEIGHT,
   DEFAULT_FLOCK_ALIGNMENT_WEIGHT,
