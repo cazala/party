@@ -5,28 +5,20 @@ import { SpatialGrid } from "../spatial-grid.js";
 
 // Default constants for Collisions
 export const DEFAULT_COLLISIONS_ENABLED = true;
-export const DEFAULT_COLLISIONS_RESTITUTION = 0.9; // Coefficient of restitution (energy retained after collision)
 
 export interface CollisionsOptions {
   enabled?: boolean;
-  restitution?: number;
 }
 
 export class Collisions implements Force {
   public enabled: boolean;
-  public restitution: number;
 
   constructor(options: CollisionsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_COLLISIONS_ENABLED;
-    this.restitution = options.restitution ?? DEFAULT_COLLISIONS_RESTITUTION;
   }
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
-  }
-
-  setRestitution(restitution: number): void {
-    this.restitution = restitution;
   }
 
   apply(
@@ -160,9 +152,9 @@ export class Collisions implements Force {
       const v1t = v1.clone().subtract(n.clone().multiply(v1n));
       const v2t = v2.clone().subtract(n.clone().multiply(v2n));
 
-      const e = DEFAULT_COLLISIONS_RESTITUTION; // coefficient of restitution (damping)
       const m1 = particle1.mass;
       const m2 = particle2.mass;
+      const e = 0.95; // coefficient of restitution (damping)
 
       // New normal velocities after 1-D collision equations with restitution
       const v1nAfter = (v1n * (m1 - e * m2) + (1 + e) * m2 * v2n) / (m1 + m2);

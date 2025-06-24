@@ -8,7 +8,6 @@ import {
   Bounds,
   Flock,
   Collisions,
-  Friction,
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
 } from "../../../core/src";
@@ -20,7 +19,6 @@ export function useParty() {
   const boundsRef = useRef<Bounds | null>(null);
   const flockRef = useRef<Flock | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
-  const frictionRef = useRef<Friction | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
   const spatialGridRef = useRef<SpatialGrid | null>(null);
 
@@ -41,9 +39,6 @@ export function useParty() {
     const collisions = new Collisions();
     collisionsRef.current = collisions;
 
-    const friction = new Friction();
-    frictionRef.current = friction;
-
     const system = new ParticleSystem({
       width: canvas.width || 1200,
       height: canvas.height || 800,
@@ -61,7 +56,6 @@ export function useParty() {
     system.addForce(bounds);
     system.addForce(flock);
     system.addForce(collisions);
-    system.addForce(friction);
 
     // Mouse state for drag-to-size particle spawning
     let mouseState = {
@@ -81,19 +75,22 @@ export function useParty() {
       };
     };
 
-    const getDistance = (pos1: { x: number; y: number }, pos2: { x: number; y: number }) => {
+    const getDistance = (
+      pos1: { x: number; y: number },
+      pos2: { x: number; y: number }
+    ) => {
       return Math.sqrt((pos2.x - pos1.x) ** 2 + (pos2.y - pos1.y) ** 2);
     };
 
     const calculateParticleSize = (distance: number) => {
       const spawnConfig = (window as any).__getSpawnConfig?.();
       const baseSize = spawnConfig?.particleSize || 10;
-      
+
       // If user hasn't entered drag mode yet, use default size for small movements
       if (!mouseState.isDragging && distance < mouseState.dragThreshold) {
         return baseSize;
       }
-      
+
       // Once in drag mode, always calculate size based on distance (no clamping to default)
       const calculatedSize = Math.max(3, Math.min(50, distance / 2));
       return calculatedSize;
@@ -114,13 +111,18 @@ export function useParty() {
       return colors[(Math.random() * colors.length) | 0];
     };
 
-    const createParticle = (x: number, y: number, size: number, color?: string) => {
+    const createParticle = (
+      x: number,
+      y: number,
+      size: number,
+      color?: string
+    ) => {
       // Make mass proportional to area: mass = π * (radius)² / scale_factor
       // radius = size (since size IS the radius), scale_factor keeps default reasonable
       const radius = size;
       const area = Math.PI * radius * radius;
       const mass = area / 100; // Scale factor to keep default size=10 around mass=3.14
-      
+
       return new Particle({
         position: new Vector2D(x, y),
         velocity: new Vector2D(0, 0),
@@ -133,60 +135,75 @@ export function useParty() {
 
     canvas.addEventListener("mousedown", (e) => {
       const pos = getMousePos(e);
-      
+
       // Update threshold from current spawn config
       const spawnConfig = (window as any).__getSpawnConfig?.();
       if (spawnConfig?.dragThreshold !== undefined) {
         mouseState.dragThreshold = spawnConfig.dragThreshold;
       }
-      
+
       mouseState.isDown = true;
       mouseState.startPos = pos;
       mouseState.currentPos = pos;
       mouseState.isDragging = false;
-      
+
       // Pick a random color for this drag session and store it
       mouseState.previewColor = getRandomColor();
-      
+
       // Create and show preview particle with the selected color
       const distance = 0;
       const size = calculateParticleSize(distance);
-      const previewParticle = createParticle(pos.x, pos.y, size, mouseState.previewColor);
+      const previewParticle = createParticle(
+        pos.x,
+        pos.y,
+        size,
+        mouseState.previewColor
+      );
       renderer.setPreviewParticle(previewParticle, false); // Not in drag mode yet
     });
 
     canvas.addEventListener("mousemove", (e) => {
       if (!mouseState.isDown) return;
-      
+
       const pos = getMousePos(e);
       mouseState.currentPos = pos;
-      
+
       const distance = getDistance(mouseState.startPos, pos);
-      
+
       // Check if we should enter drag mode
       if (distance >= mouseState.dragThreshold) {
         mouseState.isDragging = true;
       }
-      
+
       // Update preview particle size based on distance, but keep the same color
       const size = calculateParticleSize(distance);
-      const previewParticle = createParticle(mouseState.startPos.x, mouseState.startPos.y, size, mouseState.previewColor);
+      const previewParticle = createParticle(
+        mouseState.startPos.x,
+        mouseState.startPos.y,
+        size,
+        mouseState.previewColor
+      );
       renderer.setPreviewParticle(previewParticle, mouseState.isDragging); // Show dashed outline only when dragging
     });
 
     canvas.addEventListener("mouseup", () => {
       if (!mouseState.isDown) return;
-      
+
       const distance = getDistance(mouseState.startPos, mouseState.currentPos);
       const size = calculateParticleSize(distance);
-      
+
       // Add the final particle to the system with the same color as preview
-      const finalParticle = createParticle(mouseState.startPos.x, mouseState.startPos.y, size, mouseState.previewColor);
+      const finalParticle = createParticle(
+        mouseState.startPos.x,
+        mouseState.startPos.y,
+        size,
+        mouseState.previewColor
+      );
       system.addParticle(finalParticle);
-      
+
       // Clear preview particle
       renderer.setPreviewParticle(null, false);
-      
+
       // Reset mouse state
       mouseState.isDown = false;
       mouseState.isDragging = false;
@@ -227,7 +244,13 @@ export function useParty() {
   }, []);
 
   const spawnParticles = useCallback(
-    (numParticles: number, shape: "grid" | "random", spacing: number, particleSize: number = 10, _dragThreshold: number = 5) => {
+    (
+      numParticles: number,
+      shape: "grid" | "random",
+      spacing: number,
+      particleSize: number = 10,
+      _dragThreshold: number = 5
+    ) => {
       if (!systemRef.current) return;
 
       // dragThreshold is handled via spawn config in mouse events
@@ -254,7 +277,7 @@ export function useParty() {
       if (shape === "grid") {
         const particlesPerRow = Math.ceil(Math.sqrt(numParticles));
         const particlesPerCol = Math.ceil(numParticles / particlesPerRow);
-        
+
         // Ensure spacing is at least particle diameter to prevent touching
         const safeSpacing = Math.max(spacing, particleSize * 2);
 
@@ -287,8 +310,10 @@ export function useParty() {
         // Random placement
         for (let i = 0; i < numParticles; i++) {
           // Keep particles within bounds considering their size
-          const x = particleSize + Math.random() * (canvasWidth - particleSize * 2);
-          const y = particleSize + Math.random() * (canvasHeight - particleSize * 2);
+          const x =
+            particleSize + Math.random() * (canvasWidth - particleSize * 2);
+          const y =
+            particleSize + Math.random() * (canvasHeight - particleSize * 2);
 
           // Calculate mass based on area like createParticle function
           const radius = particleSize;
@@ -399,7 +424,6 @@ export function useParty() {
     bounds: boundsRef.current,
     flock: flockRef.current,
     collisions: collisionsRef.current,
-    friction: frictionRef.current,
     renderer: rendererRef.current,
     spatialGrid: spatialGridRef.current,
     // Control functions

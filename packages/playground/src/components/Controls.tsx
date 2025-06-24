@@ -4,7 +4,6 @@ import {
   Flock,
   Bounds,
   Collisions,
-  Friction,
   Canvas2DRenderer,
   SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
@@ -21,22 +20,11 @@ import {
   DEFAULT_FLOCK_SEPARATION_RANGE,
   DEFAULT_FLOCK_NEIGHBOR_RADIUS,
 } from "../../../core/src/modules/forces/flock.js";
-import { DEFAULT_BOUNDS_BOUNCE } from "../../../core/src/modules/forces/bounds.js";
 import {
-  DEFAULT_COLLISIONS_ENABLED,
-  DEFAULT_COLLISIONS_RESTITUTION,
-} from "../../../core/src/modules/forces/collisions.js";
-import {
-  DEFAULT_FRICTION_ENABLED,
-  DEFAULT_AIR_FRICTION_COEFFICIENT,
-  DEFAULT_FLOOR_FRICTION_COEFFICIENT,
-  DEFAULT_REST_THRESHOLD,
-  DEFAULT_FLOOR_CONTACT_THRESHOLD,
-} from "../../../core/src/modules/forces/friction.js";
-import {
+  DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_FRICTION,
-  DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY,
 } from "../../../core/src/modules/forces/bounds.js";
+import { DEFAULT_COLLISIONS_ENABLED } from "../../../core/src/modules/forces/collisions.js";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
@@ -53,7 +41,6 @@ interface ControlsProps {
   flock: Flock | null;
   bounds: Bounds | null;
   collisions: Collisions | null;
-  friction: Friction | null;
   renderer: Canvas2DRenderer | null;
   spatialGrid: SpatialGrid | null;
   onSpawnParticles?: (
@@ -77,7 +64,6 @@ export function Controls({
   flock,
   bounds,
   collisions,
-  friction,
   renderer,
   spatialGrid,
   onSpawnParticles,
@@ -104,36 +90,10 @@ export function Controls({
     DEFAULT_FLOCK_NEIGHBOR_RADIUS
   );
   const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
+  const [boundsFriction, setBoundsFriction] = useState(DEFAULT_BOUNDS_FRICTION);
   const [collisionsEnabled, setCollisionsEnabled] = useState(
     DEFAULT_COLLISIONS_ENABLED
   );
-  const [collisionsRestitution, setCollisionsRestitution] = useState(
-    DEFAULT_COLLISIONS_RESTITUTION
-  );
-
-  // Friction state
-  const [frictionEnabled, setFrictionEnabled] = useState(
-    DEFAULT_FRICTION_ENABLED
-  );
-  const [airFrictionCoefficient, setAirFrictionCoefficient] = useState(
-    DEFAULT_AIR_FRICTION_COEFFICIENT
-  );
-  const [floorFrictionCoefficient, setFloorFrictionCoefficient] = useState(
-    DEFAULT_FLOOR_FRICTION_COEFFICIENT
-  );
-  const [restThreshold, setRestThreshold] = useState(DEFAULT_REST_THRESHOLD);
-  const [floorContactThreshold, setFloorContactThreshold] = useState(
-    DEFAULT_FLOOR_CONTACT_THRESHOLD
-  );
-
-  // Bounds friction state
-  const [boundsFriction, setBoundsFriction] = useState(DEFAULT_BOUNDS_FRICTION);
-  const [minBounceVelocity, setMinBounceVelocity] = useState(
-    DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY
-  );
-
-  const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
-  const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
 
   // Spawn state
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
@@ -147,6 +107,10 @@ export function Controls({
   // Performance state
   const [cellSize, setCellSize] = useState(DEFAULT_SPATIAL_GRID_CELL_SIZE);
   const [showSpatialGrid, setShowSpatialGrid] = useState(false);
+
+  // Render state
+  const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
+  const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
 
   // Initialize state from current values
   useEffect(() => {
@@ -168,18 +132,9 @@ export function Controls({
     if (bounds) {
       setBounce(bounds.bounce);
       setBoundsFriction(bounds.friction);
-      setMinBounceVelocity(bounds.minBounceVelocity);
     }
     if (collisions) {
       setCollisionsEnabled(collisions.enabled);
-      setCollisionsRestitution(collisions.restitution);
-    }
-    if (friction) {
-      setFrictionEnabled(friction.enabled);
-      setAirFrictionCoefficient(friction.airFrictionCoefficient);
-      setFloorFrictionCoefficient(friction.floorFrictionCoefficient);
-      setRestThreshold(friction.restThreshold);
-      setFloorContactThreshold(friction.floorContactThreshold);
     }
     if (renderer) {
       setColorMode(renderer.colorMode);
@@ -190,7 +145,7 @@ export function Controls({
       const { cellSize: gridCellSize } = spatialGrid.getGridDimensions();
       setCellSize(gridCellSize);
     }
-  }, [gravity, flock, bounds, collisions, friction, renderer, spatialGrid]);
+  }, [gravity, flock, bounds, collisions, renderer, spatialGrid]);
 
   // Initialize spawn on component mount
   useEffect(() => {
@@ -252,59 +207,9 @@ export function Controls({
     if (bounds) {
       bounds.bounce = value;
     }
+    handleBoundsFrictionChange(DEFAULT_BOUNDS_FRICTION);
   };
 
-  const handleCollisionsEnabledChange = (enabled: boolean) => {
-    setCollisionsEnabled(enabled);
-    if (collisions) {
-      collisions.setEnabled(enabled);
-    }
-  };
-
-  const handleCollisionsRestitutionChange = (restitution: number) => {
-    setCollisionsRestitution(restitution);
-    if (collisions) {
-      collisions.setRestitution(restitution);
-    }
-  };
-
-  // Friction handlers
-  const handleFrictionEnabledChange = (enabled: boolean) => {
-    setFrictionEnabled(enabled);
-    if (friction) {
-      friction.setEnabled(enabled);
-    }
-  };
-
-  const handleAirFrictionCoefficientChange = (coefficient: number) => {
-    setAirFrictionCoefficient(coefficient);
-    if (friction) {
-      friction.setAirFrictionCoefficient(coefficient);
-    }
-  };
-
-  const handleFloorFrictionCoefficientChange = (coefficient: number) => {
-    setFloorFrictionCoefficient(coefficient);
-    if (friction) {
-      friction.setFloorFrictionCoefficient(coefficient);
-    }
-  };
-
-  const handleFloorContactThresholdChange = (threshold: number) => {
-    setFloorContactThreshold(threshold);
-    if (friction) {
-      friction.setFloorContactThreshold(threshold);
-    }
-  };
-
-  const handleRestThresholdChange = (threshold: number) => {
-    setRestThreshold(threshold);
-    if (friction) {
-      friction.setRestThreshold(threshold);
-    }
-  };
-
-  // Bounds friction handlers
   const handleBoundsFrictionChange = (frictionValue: number) => {
     setBoundsFriction(frictionValue);
     if (bounds) {
@@ -312,10 +217,10 @@ export function Controls({
     }
   };
 
-  const handleMinBounceVelocityChange = (velocity: number) => {
-    setMinBounceVelocity(velocity);
-    if (bounds) {
-      bounds.setMinBounceVelocity(velocity);
+  const handleCollisionsEnabledChange = (enabled: boolean) => {
+    setCollisionsEnabled(enabled);
+    if (collisions) {
+      collisions.setEnabled(enabled);
     }
   };
 
@@ -414,15 +319,7 @@ export function Controls({
     handleGravityStrengthChange(DEFAULT_GRAVITY_STRENGTH);
     handleGravityAngleChange(DEFAULT_GRAVITY_ANGLE);
     handleBounceChange(DEFAULT_BOUNDS_BOUNCE);
-    handleBoundsFrictionChange(DEFAULT_BOUNDS_FRICTION);
-    handleMinBounceVelocityChange(DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY);
     handleCollisionsEnabledChange(DEFAULT_COLLISIONS_ENABLED);
-    handleCollisionsRestitutionChange(DEFAULT_COLLISIONS_RESTITUTION);
-    handleFrictionEnabledChange(DEFAULT_FRICTION_ENABLED);
-    handleAirFrictionCoefficientChange(DEFAULT_AIR_FRICTION_COEFFICIENT);
-    handleFloorFrictionCoefficientChange(DEFAULT_FLOOR_FRICTION_COEFFICIENT);
-    handleRestThresholdChange(DEFAULT_REST_THRESHOLD);
-    handleFloorContactThresholdChange(DEFAULT_FLOOR_CONTACT_THRESHOLD);
     handleFlockingChange("cohesionWeight", DEFAULT_FLOCK_COHESION_WEIGHT);
     handleFlockingChange("alignmentWeight", DEFAULT_FLOCK_ALIGNMENT_WEIGHT);
     handleFlockingChange("separationWeight", DEFAULT_FLOCK_SEPARATION_WEIGHT);
@@ -464,7 +361,7 @@ export function Controls({
 
         <div className="control-group">
           <label>
-            Gravity Strength: {gravityStrength.toFixed(3)}
+            Gravity: {gravityStrength.toFixed(3)}
             <input
               type="range"
               min="0"
@@ -481,7 +378,7 @@ export function Controls({
 
         <div className="control-group">
           <label>
-            Gravity Direction: {gravityAngle.toFixed(0)}°
+            Direction: {gravityAngle.toFixed(0)}°
             <input
               type="range"
               min="0"
@@ -498,7 +395,7 @@ export function Controls({
 
         <div className="control-group">
           <label>
-            Bounds Bounce: {bounce.toFixed(2)}
+            Bounce: {bounce.toFixed(2)}
             <input
               type="range"
               min="0"
@@ -513,19 +410,7 @@ export function Controls({
 
         <div className="control-group">
           <label>
-            <input
-              type="checkbox"
-              checked={collisionsEnabled}
-              onChange={(e) => handleCollisionsEnabledChange(e.target.checked)}
-              style={{ marginRight: "8px" }}
-            />
-            Enable Collisions
-          </label>
-        </div>
-
-        <div className="control-group">
-          <label>
-            Bounds Friction: {boundsFriction.toFixed(2)}
+            Friction: {boundsFriction.toFixed(2)}
             <input
               type="range"
               min="0"
@@ -542,16 +427,31 @@ export function Controls({
 
         <div className="control-group">
           <label>
-            Min Bounce Velocity: {minBounceVelocity.toFixed(0)}
+            <input
+              type="checkbox"
+              checked={collisionsEnabled}
+              onChange={(e) => handleCollisionsEnabledChange(e.target.checked)}
+              style={{ marginRight: "8px" }}
+            />
+            Enable Collisions
+          </label>
+        </div>
+      </div>
+
+      {/* Spawn Controls */}
+      <div className="control-section">
+        <h4>Spawn</h4>
+
+        <div className="control-group">
+          <label>
+            Number of Particles: {numParticles}
             <input
               type="range"
-              min="0"
-              max="200"
-              step="5"
-              value={minBounceVelocity}
-              onChange={(e) =>
-                handleMinBounceVelocityChange(parseFloat(e.target.value))
-              }
+              min="1"
+              max="1500"
+              step="1"
+              value={numParticles}
+              onChange={(e) => handleSpawnChange(parseInt(e.target.value))}
               className="slider"
             />
           </label>
@@ -559,121 +459,75 @@ export function Controls({
 
         <div className="control-group">
           <label>
+            Particle Size: {particleSize}
             <input
-              type="checkbox"
-              checked={frictionEnabled}
-              onChange={(e) => handleFrictionEnabledChange(e.target.checked)}
-              style={{ marginRight: "8px" }}
+              type="range"
+              min="3"
+              max="30"
+              step="1"
+              value={particleSize}
+              onChange={(e) => {
+                const newSize = parseInt(e.target.value);
+                // Ensure spacing is at least particle diameter when size changes
+                const newSpacing = Math.max(spacing, newSize * 2);
+                handleSpawnChange(
+                  undefined,
+                  undefined,
+                  newSpacing !== spacing ? newSpacing : undefined,
+                  newSize
+                );
+              }}
+              className="slider"
             />
-            Enable Friction
           </label>
         </div>
 
-        {frictionEnabled && (
-          <>
-            <div className="control-group">
-              <label>
-                Air Resistance: {(1 - airFrictionCoefficient).toFixed(4)}
-                <input
-                  type="range"
-                  min="0.990"
-                  max="0.9999"
-                  step="0.0001"
-                  value={airFrictionCoefficient}
-                  onChange={(e) =>
-                    handleAirFrictionCoefficientChange(
-                      parseFloat(e.target.value)
-                    )
-                  }
-                  className="slider"
-                />
-              </label>
-            </div>
+        <div className="control-group">
+          <label>
+            Shape
+            <select
+              value={spawnShape}
+              onChange={(e) =>
+                handleSpawnChange(
+                  undefined,
+                  e.target.value as "grid" | "random"
+                )
+              }
+              className="form-select"
+            >
+              <option value="grid">Grid</option>
+              <option value="random">Random</option>
+            </select>
+          </label>
+        </div>
 
-            <div className="control-group">
-              <label>
-                Floor Friction: {(1 - floorFrictionCoefficient).toFixed(3)}
-                <input
-                  type="range"
-                  min="0.5"
-                  max="0.99"
-                  step="0.01"
-                  value={floorFrictionCoefficient}
-                  onChange={(e) =>
-                    handleFloorFrictionCoefficientChange(
-                      parseFloat(e.target.value)
-                    )
-                  }
-                  className="slider"
-                />
-              </label>
-            </div>
-
-            <div className="control-group">
-              <label>
-                Floor Contact Distance: {floorContactThreshold.toFixed(0)}px
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="1"
-                  value={floorContactThreshold}
-                  onChange={(e) =>
-                    handleFloorContactThresholdChange(
-                      parseFloat(e.target.value)
-                    )
-                  }
-                  className="slider"
-                />
-              </label>
-            </div>
-
-            <div className="control-group">
-              <label>
-                Rest Threshold: {restThreshold.toFixed(1)}
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={restThreshold}
-                  onChange={(e) =>
-                    handleRestThresholdChange(parseFloat(e.target.value))
-                  }
-                  className="slider"
-                />
-              </label>
-            </div>
-          </>
-        )}
-
-        {collisionsEnabled && (
-          <>
-            <div className="control-group">
-              <label>
-                Collision Restitution: {collisionsRestitution.toFixed(2)}
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={collisionsRestitution}
-                  onChange={(e) =>
-                    handleCollisionsRestitutionChange(
-                      parseFloat(e.target.value)
-                    )
-                  }
-                  className="slider"
-                />
-              </label>
-            </div>
-          </>
+        {spawnShape === "grid" && (
+          <div className="control-group">
+            <label>
+              Spacing: {spacing}
+              <input
+                type="range"
+                min={particleSize * 2 + 2} // Dynamic minimum based on particle size
+                max="150"
+                step="5"
+                value={spacing}
+                onChange={(e) =>
+                  handleSpawnChange(
+                    undefined,
+                    undefined,
+                    parseInt(e.target.value)
+                  )
+                }
+                className="slider"
+              />
+            </label>
+          </div>
         )}
       </div>
 
-      {/* Flocking Controls */}
+      {/* Behavior Controls */}
       <div className="control-section">
-        <h4>Flocking Behavior</h4>
+        <h4>Behavior</h4>
 
         <div className="control-group">
           <label>
@@ -774,23 +628,6 @@ export function Controls({
             />
           </label>
         </div>
-
-        <div className="control-group">
-          <label>
-            Max Speed: {maxSpeed.toFixed(1)}
-            <input
-              type="range"
-              min="0"
-              max="3000"
-              step="1"
-              value={maxSpeed}
-              onChange={(e) =>
-                handleFlockingChange("maxSpeed", parseFloat(e.target.value))
-              }
-              className="slider"
-            />
-          </label>
-        </div>
       </div>
 
       {/* Render Controls */}
@@ -821,116 +658,6 @@ export function Controls({
                 value={customColor}
                 onChange={(e) => handleCustomColorChange(e.target.value)}
                 className="color-picker"
-              />
-            </label>
-          </div>
-        )}
-      </div>
-
-      {/* Spawn Controls */}
-      <div className="control-section">
-        <h4>Spawn</h4>
-
-        <div className="control-group">
-          <label>
-            Number of Particles: {numParticles}
-            <input
-              type="range"
-              min="1"
-              max="1500"
-              step="1"
-              value={numParticles}
-              onChange={(e) => handleSpawnChange(parseInt(e.target.value))}
-              className="slider"
-            />
-          </label>
-        </div>
-
-        <div className="control-group">
-          <label>
-            Shape
-            <select
-              value={spawnShape}
-              onChange={(e) =>
-                handleSpawnChange(
-                  undefined,
-                  e.target.value as "grid" | "random"
-                )
-              }
-              className="form-select"
-            >
-              <option value="grid">Grid</option>
-              <option value="random">Random</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="control-group">
-          <label>
-            Particle Size: {particleSize}
-            <input
-              type="range"
-              min="3"
-              max="30"
-              step="1"
-              value={particleSize}
-              onChange={(e) => {
-                const newSize = parseInt(e.target.value);
-                // Ensure spacing is at least particle diameter when size changes
-                const newSpacing = Math.max(spacing, newSize * 2);
-                handleSpawnChange(
-                  undefined,
-                  undefined,
-                  newSpacing !== spacing ? newSpacing : undefined,
-                  newSize
-                );
-              }}
-              className="slider"
-            />
-          </label>
-        </div>
-
-        <div className="control-group">
-          <label>
-            Drag Threshold: {dragThreshold}px
-            <input
-              type="range"
-              min="5"
-              max="50"
-              step="1"
-              value={dragThreshold}
-              onChange={(e) =>
-                handleSpawnChange(
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  parseInt(e.target.value)
-                )
-              }
-              className="slider"
-            />
-          </label>
-        </div>
-
-        {spawnShape === "grid" && (
-          <div className="control-group">
-            <label>
-              Spacing: {spacing}
-              <input
-                type="range"
-                min={particleSize * 2 + 2} // Dynamic minimum based on particle size
-                max="150"
-                step="5"
-                value={spacing}
-                onChange={(e) =>
-                  handleSpawnChange(
-                    undefined,
-                    undefined,
-                    parseInt(e.target.value)
-                  )
-                }
-                className="slider"
               />
             </label>
           </div>

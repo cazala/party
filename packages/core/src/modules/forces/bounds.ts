@@ -19,20 +19,14 @@ export interface BoundingBoxOptions {
 export class Bounds implements Force {
   public bounce: number;
   public friction: number;
-  public minBounceVelocity: number;
 
   constructor(options: BoundingBoxOptions = {}) {
     this.bounce = options.bounce || DEFAULT_BOUNDS_BOUNCE;
     this.friction = options.friction || DEFAULT_BOUNDS_FRICTION;
-    this.minBounceVelocity = options.minBounceVelocity || DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY;
   }
 
   setFriction(friction: number): void {
     this.friction = friction;
-  }
-
-  setMinBounceVelocity(velocity: number): void {
-    this.minBounceVelocity = velocity;
   }
 
   contains(particle: Particle, spatialGrid: SpatialGrid): boolean {
@@ -56,50 +50,45 @@ export class Bounds implements Force {
     const { width, height } = spatialGrid.getSize();
     const radius = particle.size; // particle.size is the radius
 
-    // Calculate current speed for velocity-based bounce reduction
-    const speed = particle.velocity.magnitude();
-    let effectiveBounce = this.bounce;
-
-    // Reduce bounce coefficient for slow-moving particles
-    if (speed < this.minBounceVelocity) {
-      const reductionFactor = speed / this.minBounceVelocity;
-      effectiveBounce *= reductionFactor * 0.5; // Further reduce bounce for slow particles
-    }
-
     // Left wall collision
     if (particle.position.x < radius) {
       particle.position.x = radius; // Keep particle edge at wall
-      particle.velocity.x = Math.abs(particle.velocity.x) * effectiveBounce; // Force velocity away from wall
+      particle.velocity.x = Math.abs(particle.velocity.x) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce y velocity)
-      particle.velocity.y *= (1 - this.friction);
+      particle.velocity.y *= 1 - this.friction;
     }
-    
-    // Right wall collision  
+
+    // Right wall collision
     else if (particle.position.x > width - radius) {
       particle.position.x = width - radius; // Keep particle edge at wall
-      particle.velocity.x = -Math.abs(particle.velocity.x) * effectiveBounce; // Force velocity away from wall
+      particle.velocity.x = -Math.abs(particle.velocity.x) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce y velocity)
-      particle.velocity.y *= (1 - this.friction);
+      particle.velocity.y *= 1 - this.friction;
     }
 
     // Top wall collision
     if (particle.position.y < radius) {
       particle.position.y = radius; // Keep particle edge at wall
-      particle.velocity.y = Math.abs(particle.velocity.y) * effectiveBounce; // Force velocity away from wall
+      particle.velocity.y = Math.abs(particle.velocity.y) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce x velocity)
-      particle.velocity.x *= (1 - this.friction);
+      particle.velocity.x *= 1 - this.friction;
     }
-    
+
     // Bottom wall collision
     else if (particle.position.y > height - radius) {
       particle.position.y = height - radius; // Keep particle edge at wall
-      particle.velocity.y = -Math.abs(particle.velocity.y) * effectiveBounce; // Force velocity away from wall
+      particle.velocity.y = -Math.abs(particle.velocity.y) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce x velocity)
-      particle.velocity.x *= (1 - this.friction);
+      particle.velocity.x *= 1 - this.friction;
     }
   }
 
-  apply(particle: Particle, _deltaTime: number, _index: number, spatialGrid: SpatialGrid) {
+  apply(
+    particle: Particle,
+    _deltaTime: number,
+    _index: number,
+    spatialGrid: SpatialGrid
+  ) {
     this.constrain(particle, spatialGrid);
     return new Vector2D(0, 0);
   }
