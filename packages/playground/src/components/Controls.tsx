@@ -591,6 +591,26 @@ export function Controls({
 
         <div className="control-group">
           <label>
+            Max Speed: {maxSpeed.toFixed(0)}
+            <input
+              type="range"
+              min="0"
+              max="500"
+              step="1"
+              value={maxSpeed}
+              onChange={(e) =>
+                handleFlockingChange(
+                  "maxSpeed",
+                  parseFloat(e.target.value)
+                )
+              }
+              className="slider"
+            />
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
             Separation Range: {separationRange.toFixed(0)}
             <input
               type="range"

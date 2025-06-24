@@ -17,6 +17,9 @@ import { DEFAULT_GRAVITY_STRENGTH } from "../../../core/src/modules/forces/gravi
 const STREAM_SPAWN_RATE = 10; // particles per second
 const STREAM_SPAWN_INTERVAL = 1000 / STREAM_SPAWN_RATE; // milliseconds between spawns
 
+// Velocity configuration
+const MAX_VELOCITY = 300; // maximum velocity magnitude in pixels/second
+
 export function useParty() {
   const systemRef = useRef<ParticleSystem | null>(null);
   const gravityRef = useRef<Gravity | null>(null);
@@ -77,6 +80,11 @@ export function useParty() {
       shiftPressed: false,
       wasStreaming: false, // Track if we were streaming during this mouse session
       activeStreamSize: 0, // Size to use for streaming while shift is held down
+      // Velocity mode state
+      cmdPressed: false,
+      isDragToVelocity: false, // Track if we're in velocity mode vs size mode
+      initialVelocity: { x: 0, y: 0 }, // Store calculated velocity
+      velocityModeSize: 0, // Store the size to use when in velocity mode
     };
 
     const getMousePos = (e: MouseEvent) => {
@@ -127,7 +135,8 @@ export function useParty() {
       x: number,
       y: number,
       size: number,
-      color?: string
+      color?: string,
+      velocity?: { x: number; y: number }
     ) => {
       // Make mass proportional to area: mass = π * (radius)² / scale_factor
       // radius = size (since size IS the radius), scale_factor keeps default reasonable
@@ -137,7 +146,7 @@ export function useParty() {
 
       return new Particle({
         position: new Vector2D(x, y),
-        velocity: new Vector2D(0, 0),
+        velocity: new Vector2D(velocity?.x || 0, velocity?.y || 0),
         acceleration: new Vector2D(0, 0),
         mass,
         size,
@@ -178,7 +187,7 @@ export function useParty() {
       mouseState.isStreaming = false;
     };
 
-    // Keyboard event listeners for shift key detection
+    // Keyboard event listeners for shift and cmd/ctrl key detection
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift') {
         mouseState.shiftPressed = true;
@@ -188,6 +197,23 @@ export function useParty() {
           const distance = getDistance(mouseState.startPos, mouseState.currentPos);
           const size = calculateParticleSize(distance);
           startStreaming(mouseState.startPos.x, mouseState.startPos.y, size);
+        }
+      }
+      
+      // Handle CMD (Mac) or Ctrl (Windows/Linux) key
+      if (e.key === 'Meta' || e.key === 'Control') {
+        // Ignore CMD/Ctrl when shift is pressed (streaming mode)
+        if (!mouseState.shiftPressed) {
+          mouseState.cmdPressed = true;
+          
+          // If mouse is down, switch to velocity mode
+          if (mouseState.isDown && !mouseState.isStreaming) {
+            mouseState.isDragToVelocity = true;
+            // Clear any existing velocity preview and update with current mouse position
+            if (mouseState.currentPos) {
+              updateVelocityPreview();
+            }
+          }
         }
       }
     };
@@ -201,6 +227,70 @@ export function useParty() {
           mouseState.wasStreaming = true;
         }
       }
+      
+      // Handle CMD (Mac) or Ctrl (Windows/Linux) key release
+      if (e.key === 'Meta' || e.key === 'Control') {
+        mouseState.cmdPressed = false;
+        
+        // If mouse is down, switch back to size mode
+        if (mouseState.isDown && !mouseState.isStreaming) {
+          mouseState.isDragToVelocity = false;
+          // Clear velocity preview and show size preview instead
+          renderer.setPreviewVelocity(null);
+          updateSizePreview();
+        }
+      }
+    };
+    
+    // Helper function to update velocity preview
+    const updateVelocityPreview = () => {
+      if (!mouseState.isDown || mouseState.isStreaming) return;
+      
+      const dx = mouseState.currentPos.x - mouseState.startPos.x;
+      const dy = mouseState.currentPos.y - mouseState.startPos.y;
+      
+      // Calculate velocity magnitude and cap it
+      const magnitude = Math.sqrt(dx * dx + dy * dy);
+      const cappedMagnitude = Math.min(magnitude, MAX_VELOCITY);
+      
+      // Calculate normalized direction and apply capped magnitude
+      if (magnitude > 0) {
+        const normalizedX = dx / magnitude;
+        const normalizedY = dy / magnitude;
+        mouseState.initialVelocity = {
+          x: normalizedX * cappedMagnitude,
+          y: normalizedY * cappedMagnitude
+        };
+      } else {
+        mouseState.initialVelocity = { x: 0, y: 0 };
+      }
+      
+      // Show velocity arrow preview
+      renderer.setPreviewVelocity(new Vector2D(mouseState.initialVelocity.x, mouseState.initialVelocity.y));
+      
+      // Also update the particle preview to show as dashed (drag mode style) in velocity mode
+      const previewParticle = createParticle(
+        mouseState.startPos.x,
+        mouseState.startPos.y,
+        mouseState.velocityModeSize,
+        mouseState.previewColor
+      );
+      renderer.setPreviewParticle(previewParticle, true); // true = show as dashed
+    };
+    
+    // Helper function to update size preview
+    const updateSizePreview = () => {
+      if (!mouseState.isDown || mouseState.isStreaming) return;
+      
+      const distance = getDistance(mouseState.startPos, mouseState.currentPos);
+      const size = calculateParticleSize(distance);
+      const previewParticle = createParticle(
+        mouseState.startPos.x,
+        mouseState.startPos.y,
+        size,
+        mouseState.previewColor
+      );
+      renderer.setPreviewParticle(previewParticle, mouseState.isDragging);
     };
 
     // Add keyboard listeners to both window and canvas
@@ -241,11 +331,20 @@ export function useParty() {
       // Ensure canvas has focus for keyboard events
       canvas.focus();
       
-      // Reset streaming state for new interaction - use ONLY the mouse event's shiftKey
+      // Reset streaming state for new interaction - use ONLY the mouse event's modifier keys
       const wasShiftPressedBefore = mouseState.shiftPressed;
       mouseState.shiftPressed = e.shiftKey;
+      mouseState.cmdPressed = e.metaKey || e.ctrlKey;
       mouseState.wasStreaming = false; // Reset for new interaction
       mouseState.isStreaming = false; // Make sure we're not streaming from previous interaction
+      mouseState.isDragToVelocity = mouseState.cmdPressed && !mouseState.shiftPressed; // Set initial mode
+      mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
+      
+      // Set the size for velocity mode
+      if (mouseState.isDragToVelocity) {
+        const spawnConfig = (window as any).__getSpawnConfig?.();
+        mouseState.velocityModeSize = spawnConfig?.particleSize || 10; // Use default size when starting in velocity mode
+      }
       
       // If shift was released between interactions, reset the active stream size
       if (wasShiftPressedBefore && !mouseState.shiftPressed) {
@@ -291,7 +390,14 @@ export function useParty() {
         size,
         mouseState.previewColor
       );
-      renderer.setPreviewParticle(previewParticle, false); // Not in drag mode yet
+      
+      // Show particle preview - dashed if in velocity mode, normal if in size mode
+      renderer.setPreviewParticle(previewParticle, mouseState.isDragToVelocity);
+      
+      // If in velocity mode, also initialize velocity preview
+      if (mouseState.isDragToVelocity) {
+        renderer.setPreviewVelocity(new Vector2D(0, 0)); // Start with zero velocity
+      }
     });
 
     canvas.addEventListener("mousemove", (e) => {
@@ -300,9 +406,11 @@ export function useParty() {
       const pos = getMousePos(e);
       mouseState.currentPos = pos;
       
-      // Update shift state from mouse event
+      // Update modifier key states from mouse event
       const wasShiftPressed = mouseState.shiftPressed;
+      const wasCmdPressed = mouseState.cmdPressed;
       mouseState.shiftPressed = e.shiftKey;
+      mouseState.cmdPressed = e.metaKey || e.ctrlKey;
       
       // If shift was just released during streaming, stop streaming
       if (wasShiftPressed && !mouseState.shiftPressed && mouseState.isStreaming) {
@@ -311,7 +419,7 @@ export function useParty() {
         // Don't show preview again - user already placed particles via streaming
       }
       
-      // If shift was just pressed during mouse move, start streaming
+      // If shift was just pressed during mouse move, start streaming (ignore CMD in streaming mode)
       if (!wasShiftPressed && mouseState.shiftPressed && !mouseState.isStreaming) {
         const distance = getDistance(mouseState.startPos, mouseState.currentPos);
         const size = calculateParticleSize(distance);
@@ -320,6 +428,8 @@ export function useParty() {
         mouseState.wasStreaming = true; // Mark that we were streaming
         // Hide the preview particle when streaming starts
         renderer.setPreviewParticle(null, false);
+        renderer.setPreviewVelocity(null); // Clear velocity preview
+        return;
       }
       
       // If we're streaming, update the stream position to follow the cursor
@@ -333,6 +443,25 @@ export function useParty() {
         return;
       }
       
+      // Handle CMD/Ctrl mode switching (only when not in streaming mode)
+      if (!mouseState.shiftPressed) {
+        if (!wasCmdPressed && mouseState.cmdPressed) {
+          // Just pressed CMD: switch to velocity mode
+          mouseState.isDragToVelocity = true;
+          // Store the current size for velocity mode
+          const distance = getDistance(mouseState.startPos, mouseState.currentPos);
+          mouseState.velocityModeSize = calculateParticleSize(distance);
+          updateVelocityPreview();
+          return;
+        } else if (wasCmdPressed && !mouseState.cmdPressed) {
+          // Just released CMD: switch to size mode
+          mouseState.isDragToVelocity = false;
+          renderer.setPreviewVelocity(null); // Clear velocity preview
+          updateSizePreview();
+          return;
+        }
+      }
+      
       const distance = getDistance(mouseState.startPos, pos);
 
       // Check if we should enter drag mode
@@ -340,15 +469,14 @@ export function useParty() {
         mouseState.isDragging = true;
       }
 
-      // Update preview particle size based on distance, but keep the same color
-      const size = calculateParticleSize(distance);
-      const previewParticle = createParticle(
-        mouseState.startPos.x,
-        mouseState.startPos.y,
-        size,
-        mouseState.previewColor
-      );
-      renderer.setPreviewParticle(previewParticle, mouseState.isDragging); // Show dashed outline only when dragging
+      // Update preview based on current mode
+      if (mouseState.isDragToVelocity && !mouseState.shiftPressed) {
+        // Velocity mode: update velocity arrow (ignore shift in velocity mode)
+        updateVelocityPreview();
+      } else if (!mouseState.shiftPressed) {
+        // Size mode: update particle size (normal behavior when not streaming)
+        updateSizePreview();
+      }
     });
 
     canvas.addEventListener("mouseup", (e) => {
@@ -372,6 +500,7 @@ export function useParty() {
       if (mouseState.wasStreaming) {
         // Clear preview particle and reset state
         renderer.setPreviewParticle(null, false);
+        renderer.setPreviewVelocity(null);
         mouseState.isDown = false;
         mouseState.isDragging = false;
         mouseState.previewColor = "";
@@ -379,26 +508,43 @@ export function useParty() {
         return;
       }
 
-      const distance = getDistance(mouseState.startPos, mouseState.currentPos);
-      const size = calculateParticleSize(distance);
-
-      // Add the final particle to the system with the same color as preview
-      const finalParticle = createParticle(
-        mouseState.startPos.x,
-        mouseState.startPos.y,
-        size,
-        mouseState.previewColor
-      );
+      let finalParticle;
+      
+      if (mouseState.isDragToVelocity) {
+        // Velocity mode: create particle with the stored size and initial velocity
+        finalParticle = createParticle(
+          mouseState.startPos.x,
+          mouseState.startPos.y,
+          mouseState.velocityModeSize, // Use the size that was active when we entered velocity mode
+          mouseState.previewColor,
+          mouseState.initialVelocity
+        );
+      } else {
+        // Size mode: create particle with drag-to-size
+        const distance = getDistance(mouseState.startPos, mouseState.currentPos);
+        const size = calculateParticleSize(distance);
+        finalParticle = createParticle(
+          mouseState.startPos.x,
+          mouseState.startPos.y,
+          size,
+          mouseState.previewColor
+        );
+      }
+      
       system.addParticle(finalParticle);
 
-      // Clear preview particle
+      // Clear preview particle and velocity
       renderer.setPreviewParticle(null, false);
+      renderer.setPreviewVelocity(null);
 
       // Reset mouse state
       mouseState.isDown = false;
       mouseState.isDragging = false;
       mouseState.previewColor = "";
       mouseState.wasStreaming = false; // Reset for next interaction
+      mouseState.isDragToVelocity = false; // Reset velocity mode
+      mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
+      mouseState.velocityModeSize = 0; // Reset velocity mode size
     });
 
     canvas.addEventListener("mouseleave", () => {
@@ -408,10 +554,14 @@ export function useParty() {
       }
       // Clear preview particle when mouse leaves canvas
       renderer.setPreviewParticle(null, false);
+      renderer.setPreviewVelocity(null);
       mouseState.isDown = false;
       mouseState.isDragging = false;
       mouseState.previewColor = "";
       mouseState.wasStreaming = false; // Reset for next interaction
+      mouseState.isDragToVelocity = false; // Reset velocity mode
+      mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
+      mouseState.velocityModeSize = 0; // Reset velocity mode size
     });
 
     setInterval(() => {
