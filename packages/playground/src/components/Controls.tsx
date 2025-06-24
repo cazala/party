@@ -5,28 +5,22 @@ import {
   Collisions,
   Canvas2DRenderer,
   SpatialGrid,
-} from "../../../core/src";
-import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
-} from "../../../core/src/modules/forces/gravity.js";
-import {
   DEFAULT_FLOCK_MAX_SPEED,
   DEFAULT_FLOCK_COHESION_WEIGHT,
   DEFAULT_FLOCK_ALIGNMENT_WEIGHT,
   DEFAULT_FLOCK_SEPARATION_WEIGHT,
   DEFAULT_FLOCK_SEPARATION_RANGE,
   DEFAULT_FLOCK_NEIGHBOR_RADIUS,
-} from "../../../core/src/modules/forces/flock.js";
-import {
   DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_FRICTION,
-} from "../../../core/src/modules/forces/bounds.js";
-import { DEFAULT_COLLISIONS_ENABLED } from "../../../core/src/modules/forces/collisions.js";
+  DEFAULT_COLLISIONS_ENABLED,
+} from "@party/core";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
-} from "../../../core/src/modules/render.js";
+} from "@party/core/modules/render";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { SpawnControls } from "./control-sections/SpawnControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";

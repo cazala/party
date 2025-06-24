@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@party/core': fileURLToPath(new URL('../core/src/index.ts', import.meta.url))
+      '@party/core': fileURLToPath(new URL('../core/src', import.meta.url))
     }
   },
   server: {

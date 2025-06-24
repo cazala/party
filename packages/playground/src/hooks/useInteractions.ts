@@ -1,5 +1,5 @@
 import { useRef, useCallback } from "react";
-import { ParticleSystem, Canvas2DRenderer, Vector2D } from "../../../core/src";
+import { ParticleSystem, Canvas2DRenderer, Vector2D } from "@party/core";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
 import { createParticle, calculateParticleSize } from "../utils/particle";

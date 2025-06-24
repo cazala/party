@@ -1,4 +1,4 @@
-import { Particle, Vector2D } from "../../../core/src";
+import { Particle, Vector2D } from "@party/core";
 
 export const getRandomColor = () => {
   const colors = [

@@ -10,8 +10,8 @@ import {
   Collisions,
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
-} from "../../../core/src";
-import { DEFAULT_GRAVITY_STRENGTH } from "../../../core/src/modules/forces/gravity";
+  DEFAULT_GRAVITY_STRENGTH,
+} from "@party/core";
 import { useInteractions } from "./useInteractions";
 
 /**
