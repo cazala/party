@@ -83,12 +83,7 @@ export class Bounds implements Force {
     }
   }
 
-  apply(
-    particle: Particle,
-    _deltaTime: number,
-    _index: number,
-    spatialGrid: SpatialGrid
-  ) {
+  apply(particle: Particle, spatialGrid: SpatialGrid) {
     this.constrain(particle, spatialGrid);
     return new Vector2D(0, 0);
   }

@@ -8,6 +8,7 @@ import {
   Bounds,
   Flock,
   Collisions,
+  Fluid,
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
   DEFAULT_GRAVITY_STRENGTH,
@@ -38,6 +39,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
   const boundsRef = useRef<Bounds | null>(null);
   const flockRef = useRef<Flock | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
+  const fluidRef = useRef<Fluid | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
   const spatialGridRef = useRef<SpatialGrid | null>(null);
 
@@ -104,6 +106,9 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     const collisions = new Collisions();
     collisionsRef.current = collisions;
 
+    const fluid = new Fluid();
+    fluidRef.current = fluid;
+
     const system = new ParticleSystem({
       width: canvasRef.current?.width || 1200,
       height: canvasRef.current?.height || 800,
@@ -121,6 +126,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     system.addForce(bounds);
     system.addForce(flock);
     system.addForce(collisions);
+    system.addForce(fluid);
 
     setInterval(() => {
       renderer.render(system);
@@ -339,6 +345,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     bounds: boundsRef.current,
     flock: flockRef.current,
     collisions: collisionsRef.current,
+    fluid: fluidRef.current,
     renderer: rendererRef.current,
     spatialGrid: spatialGridRef.current,
     // Control functions

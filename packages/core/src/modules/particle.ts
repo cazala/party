@@ -9,15 +9,20 @@ export interface ParticleOptions {
   color?: string;
 }
 
+let idCounter = 0;
+
 export class Particle {
+  public id: number;
   public position: Vector2D;
   public velocity: Vector2D;
   public acceleration: Vector2D;
   public mass: number;
   public size: number;
   public color: string;
+  public density?: number;
 
   constructor(options: ParticleOptions = {}) {
+    this.id = idCounter++;
     this.position = options.position || new Vector2D();
     this.velocity = options.velocity || new Vector2D();
     this.acceleration = options.acceleration || new Vector2D();

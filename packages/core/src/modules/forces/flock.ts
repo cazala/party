@@ -31,14 +31,24 @@ export class Flock implements Force {
     } = {}
   ) {
     this.maxSpeed = options.maxSpeed ?? DEFAULT_FLOCK_MAX_SPEED;
-    this.cohesionWeight = options.cohesionWeight ?? DEFAULT_FLOCK_COHESION_WEIGHT;
-    this.alignmentWeight = options.alignmentWeight ?? DEFAULT_FLOCK_ALIGNMENT_WEIGHT;
-    this.separationWeight = options.separationWeight ?? DEFAULT_FLOCK_SEPARATION_WEIGHT;
-    this.separationRange = options.separationRange ?? DEFAULT_FLOCK_SEPARATION_RANGE;
-    this.neighborRadius = options.neighborRadius ?? DEFAULT_FLOCK_NEIGHBOR_RADIUS;
+    this.cohesionWeight =
+      options.cohesionWeight ?? DEFAULT_FLOCK_COHESION_WEIGHT;
+    this.alignmentWeight =
+      options.alignmentWeight ?? DEFAULT_FLOCK_ALIGNMENT_WEIGHT;
+    this.separationWeight =
+      options.separationWeight ?? DEFAULT_FLOCK_SEPARATION_WEIGHT;
+    this.separationRange =
+      options.separationRange ?? DEFAULT_FLOCK_SEPARATION_RANGE;
+    this.neighborRadius =
+      options.neighborRadius ?? DEFAULT_FLOCK_NEIGHBOR_RADIUS;
   }
 
-  separate(particle: Particle, neighbors: Particle[], range: number, effectiveMaxSpeed: number): Vector2D {
+  separate(
+    particle: Particle,
+    neighbors: Particle[],
+    range: number,
+    effectiveMaxSpeed: number
+  ): Vector2D {
     const sum = new Vector2D(0, 0);
 
     if (neighbors.length) {
@@ -63,7 +73,11 @@ export class Flock implements Force {
     return sum;
   }
 
-  align(particle: Particle, neighbors: Particle[], effectiveMaxSpeed: number): Vector2D {
+  align(
+    particle: Particle,
+    neighbors: Particle[],
+    effectiveMaxSpeed: number
+  ): Vector2D {
     const sum = new Vector2D(0, 0);
 
     if (neighbors.length) {
@@ -80,7 +94,11 @@ export class Flock implements Force {
     return sum;
   }
 
-  cohesion(particle: Particle, neighbors: Particle[], effectiveMaxSpeed: number): Vector2D {
+  cohesion(
+    particle: Particle,
+    neighbors: Particle[],
+    effectiveMaxSpeed: number
+  ): Vector2D {
     const sum = new Vector2D(0, 0);
 
     if (neighbors.length) {
@@ -94,7 +112,11 @@ export class Flock implements Force {
     return sum;
   }
 
-  seek(particle: Particle, target: Vector2D, effectiveMaxSpeed: number): Vector2D {
+  seek(
+    particle: Particle,
+    target: Vector2D,
+    effectiveMaxSpeed: number
+  ): Vector2D {
     const seek = target.clone().subtract(particle.position);
     seek.normalize();
     seek.multiply(effectiveMaxSpeed);
@@ -103,20 +125,25 @@ export class Flock implements Force {
     return seek;
   }
 
-  apply(
-    particle: Particle,
-    _deltaTime: number,
-    _index: number,
-    spatialGrid: SpatialGrid
-  ) {
+  apply(particle: Particle, spatialGrid: SpatialGrid) {
     // Calculate effective maxSpeed - use user maxSpeed or minimum default when forces are active
-    const hasActiveForces = this.cohesionWeight > 0 || this.alignmentWeight > 0 || this.separationWeight > 0;
-    const effectiveMaxSpeed = hasActiveForces ? Math.max(this.maxSpeed, 1000) : this.maxSpeed;
+    const hasActiveForces =
+      this.cohesionWeight > 0 ||
+      this.alignmentWeight > 0 ||
+      this.separationWeight > 0;
+    const effectiveMaxSpeed = hasActiveForces
+      ? Math.max(this.maxSpeed, 1000)
+      : this.maxSpeed;
 
     // Use spatial grid for efficient neighbor lookup
     const neighbors = spatialGrid.getNeighbors(particle, this.neighborRadius);
 
-    const separate = this.separate(particle, neighbors, this.separationRange, effectiveMaxSpeed);
+    const separate = this.separate(
+      particle,
+      neighbors,
+      this.separationRange,
+      effectiveMaxSpeed
+    );
     const align = this.align(particle, neighbors, effectiveMaxSpeed);
     const cohesion = this.cohesion(particle, neighbors, effectiveMaxSpeed);
 

@@ -3,12 +3,8 @@ import { Vector2D } from "./vector.js";
 import { SpatialGrid } from "./spatial-grid.js";
 
 export interface Force {
-  apply(
-    particle: Particle,
-    deltaTime: number,
-    index: number,
-    spatialGrid: SpatialGrid
-  ): Vector2D;
+  warmup?(particles: Particle[], deltaTime: number): void;
+  apply(particle: Particle, spatialGrid: SpatialGrid): Vector2D;
 }
 
 // Default constants for ParticleSystem
@@ -34,7 +30,7 @@ export class ParticleSystem {
   constructor(options: SystemOptions) {
     this.width = options.width;
     this.height = options.height;
-    
+
     this.spatialGrid = new SpatialGrid({
       width: this.width,
       height: this.height,
@@ -76,19 +72,22 @@ export class ParticleSystem {
   update(deltaTime: number): void {
     // Clear and repopulate spatial grid
     this.spatialGrid.clear();
-    this.particles.forEach((particle) => {
+
+    for (const particle of this.particles) {
       this.spatialGrid.insert(particle);
-    });
+    }
 
-    // Apply forces using spatial grid
-    this.particles.forEach((particle, i) => {
-      this.forces.forEach((force) => {
-        const forceVector = force.apply(particle, deltaTime, i, this.spatialGrid);
+    for (const force of this.forces) {
+      force.warmup?.(this.particles, deltaTime);
+    }
+
+    for (const particle of this.particles) {
+      for (const force of this.forces) {
+        const forceVector = force.apply(particle, this.spatialGrid);
         particle.applyForce(forceVector);
-      });
-
+      }
       particle.update(deltaTime);
-    });
+    }
   }
 
   play(): void {

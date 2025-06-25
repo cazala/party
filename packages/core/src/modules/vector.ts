@@ -20,7 +20,7 @@ export class Vector2D {
   }
 
   divide(scalar: number): Vector2D {
-    if (scalar === 0) throw new Error('Cannot divide by zero');
+    if (scalar === 0) throw new Error("Cannot divide by zero");
     this.x /= scalar;
     this.y /= scalar;
     return this;
@@ -58,6 +58,14 @@ export class Vector2D {
     const dx = this.x - vector.x;
     const dy = this.y - vector.y;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  direction(vector: Vector2D): Vector2D {
+    const distance = this.distance(vector);
+    return new Vector2D(
+      (vector.x - this.x) / distance,
+      (vector.y - this.y) / distance
+    );
   }
 
   clone(): Vector2D {

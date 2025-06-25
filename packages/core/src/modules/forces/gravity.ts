@@ -34,7 +34,7 @@ export class Gravity implements Force {
     this.direction = Vector2D.fromAngle(angle);
   }
 
-  apply(particle: Particle, _deltaTime: number, _index: number, _spatialGrid: SpatialGrid) {
+  apply(particle: Particle, _spatialGrid: SpatialGrid) {
     return this.direction
       .clone()
       .normalize()

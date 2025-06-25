@@ -3,6 +3,7 @@ import {
   Flock,
   Bounds,
   Collisions,
+  Fluid,
   Canvas2DRenderer,
   SpatialGrid,
   DEFAULT_GRAVITY_STRENGTH,
@@ -16,6 +17,9 @@ import {
   DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_FRICTION,
   DEFAULT_COLLISIONS_ENABLED,
+  DEFAULT_INFLUENCE_RADIUS,
+  DEFAULT_TARGET_DENSITY,
+  DEFAULT_PRESSURE_MULTIPLIER,
 } from "@party/core";
 import {
   DEFAULT_RENDER_COLOR_MODE,
@@ -38,6 +42,7 @@ interface ControlsProps {
   flock: Flock | null;
   bounds: Bounds | null;
   collisions: Collisions | null;
+  fluid: Fluid | null;
   renderer: Canvas2DRenderer | null;
   spatialGrid: SpatialGrid | null;
   onSpawnParticles?: (
@@ -61,6 +66,7 @@ export function Controls({
   flock,
   bounds,
   collisions,
+  fluid,
   renderer,
   spatialGrid,
   onSpawnParticles,
@@ -92,6 +98,13 @@ export function Controls({
       flock.maxSpeed = DEFAULT_FLOCK_MAX_SPEED;
       flock.separationRange = DEFAULT_FLOCK_SEPARATION_RANGE;
       flock.neighborRadius = DEFAULT_FLOCK_NEIGHBOR_RADIUS;
+    }
+
+    // Reset fluid
+    if (fluid) {
+      fluid.influenceRadius = DEFAULT_INFLUENCE_RADIUS;
+      fluid.targetDensity = DEFAULT_TARGET_DENSITY;
+      fluid.pressureMultiplier = DEFAULT_PRESSURE_MULTIPLIER;
     }
 
     // Reset renderer
@@ -131,7 +144,7 @@ export function Controls({
         onSpawnParticles={onSpawnParticles}
         onGetSpawnConfig={onGetSpawnConfig}
       />
-      <BehaviorControls flock={flock} />
+      <BehaviorControls flock={flock} fluid={fluid} />
       <RenderControls renderer={renderer} flock={flock} />
       <PerformanceControls spatialGrid={spatialGrid} renderer={renderer} />
     </div>

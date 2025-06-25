@@ -15,7 +15,11 @@ export const getRandomColor = () => {
   return colors[(Math.random() * colors.length) | 0];
 };
 
-export const calculateParticleSize = (distance: number, isDragging: boolean, dragThreshold: number) => {
+export const calculateParticleSize = (
+  distance: number,
+  isDragging: boolean,
+  dragThreshold: number
+) => {
   const spawnConfig = (window as any).__getSpawnConfig?.();
   const baseSize = spawnConfig?.particleSize || 10;
 
@@ -40,7 +44,7 @@ export const createParticle = (
   // radius = size (since size IS the radius), scale_factor keeps default reasonable
   const radius = size;
   const area = Math.PI * radius * radius;
-  const mass = area / 100; // Scale factor to keep default size=10 around mass=3.14
+  const mass = area; // Scale factor to keep default size=10 around mass=3.14
 
   return new Particle({
     position: new Vector2D(x, y),

@@ -21,12 +21,7 @@ export class Collisions implements Force {
     this.enabled = enabled;
   }
 
-  apply(
-    particle: Particle,
-    _deltaTime: number,
-    _index: number,
-    spatialGrid: SpatialGrid
-  ): Vector2D {
+  apply(particle: Particle, spatialGrid: SpatialGrid): Vector2D {
     if (!this.enabled) {
       return Vector2D.zero();
     }
