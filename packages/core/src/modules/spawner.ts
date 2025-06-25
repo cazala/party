@@ -1,5 +1,5 @@
-import { Particle, ParticleOptions } from "./particle.js";
-import { Vector2D } from "./vector.js";
+import { Particle, ParticleOptions } from "./particle";
+import { Vector2D } from "./vector";
 
 export interface GridSpawnOptions {
   particleOptions?: ParticleOptions;

@@ -1,7 +1,7 @@
-import { Particle } from "../particle.js";
-import { Force } from "../system.js";
-import { Vector2D } from "../vector.js";
-import { SpatialGrid } from "../spatial-grid.js";
+import { Particle } from "../particle";
+import { Force } from "../system";
+import { Vector2D } from "../vector";
+import { SpatialGrid } from "../spatial-grid";
 
 // Default constants for Collisions
 export const DEFAULT_COLLISIONS_ENABLED = true;

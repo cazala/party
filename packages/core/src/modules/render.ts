@@ -1,7 +1,7 @@
-import { Particle } from "./particle.js";
-import { ParticleSystem } from "./system.js";
-import { SpatialGrid } from "./spatial-grid.js";
-import { Vector2D } from "./vector.js";
+import { Particle } from "./particle";
+import { ParticleSystem } from "./system";
+import { SpatialGrid } from "./spatial-grid";
+import { Vector2D } from "./vector";
 
 // Default constants for Render options
 export const DEFAULT_RENDER_COLOR_MODE = "particle";

@@ -1,4 +1,4 @@
-import { Vector2D } from "./vector.js";
+import { Vector2D } from "./vector";
 
 export interface ParticleOptions {
   position?: Vector2D;

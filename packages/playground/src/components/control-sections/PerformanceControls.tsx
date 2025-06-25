@@ -1,12 +1,19 @@
 import { useState, useEffect } from "react";
-import { SpatialGrid, Canvas2DRenderer, DEFAULT_SPATIAL_GRID_CELL_SIZE } from "../../../../core/src";
+import {
+  SpatialGrid,
+  Canvas2DRenderer,
+  DEFAULT_SPATIAL_GRID_CELL_SIZE,
+} from "@party/core";
 
 interface PerformanceControlsProps {
   spatialGrid: SpatialGrid | null;
   renderer: Canvas2DRenderer | null;
 }
 
-export function PerformanceControls({ spatialGrid, renderer }: PerformanceControlsProps) {
+export function PerformanceControls({
+  spatialGrid,
+  renderer,
+}: PerformanceControlsProps) {
   const [cellSize, setCellSize] = useState(DEFAULT_SPATIAL_GRID_CELL_SIZE);
   const [showSpatialGrid, setShowSpatialGrid] = useState(false);
 

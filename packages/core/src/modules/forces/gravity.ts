@@ -1,7 +1,7 @@
-import { Vector2D } from "../vector.js";
-import { Particle } from "../particle.js";
-import { Force } from "../system.js";
-import { SpatialGrid } from "../spatial-grid.js";
+import { Vector2D } from "../vector";
+import { Particle } from "../particle";
+import { Force } from "../system";
+import { SpatialGrid } from "../spatial-grid";
 
 // Default constants for Gravity
 export const DEFAULT_GRAVITY_STRENGTH = 0;

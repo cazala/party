@@ -1,6 +1,6 @@
-import { Particle } from "./particle.js";
-import { Vector2D } from "./vector.js";
-import { SpatialGrid } from "./spatial-grid.js";
+import { Particle } from "./particle";
+import { Vector2D } from "./vector";
+import { SpatialGrid } from "./spatial-grid";
 
 export interface Force {
   warmup?(particles: Particle[], deltaTime: number): void;

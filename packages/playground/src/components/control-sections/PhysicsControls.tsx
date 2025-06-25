@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { Gravity, Bounds, Collisions } from "../../../../core/src";
+import { Gravity, Bounds, Collisions } from "@party/core";
 import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
-} from "../../../../core/src/modules/forces/gravity.js";
+} from "@party/core/modules/forces/gravity";
 import {
   DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_FRICTION,
-} from "../../../../core/src/modules/forces/bounds.js";
-import { DEFAULT_COLLISIONS_ENABLED } from "../../../../core/src/modules/forces/collisions.js";
+} from "@party/core/modules/forces/bounds";
+import { DEFAULT_COLLISIONS_ENABLED } from "@party/core/modules/forces/collisions";
 
 interface PhysicsControlsProps {
   gravity: Gravity | null;
@@ -16,17 +16,26 @@ interface PhysicsControlsProps {
   collisions: Collisions | null;
 }
 
-export function PhysicsControls({ gravity, bounds, collisions }: PhysicsControlsProps) {
-  const [gravityStrength, setGravityStrength] = useState(DEFAULT_GRAVITY_STRENGTH);
+export function PhysicsControls({
+  gravity,
+  bounds,
+  collisions,
+}: PhysicsControlsProps) {
+  const [gravityStrength, setGravityStrength] = useState(
+    DEFAULT_GRAVITY_STRENGTH
+  );
   const [gravityAngle, setGravityAngle] = useState(DEFAULT_GRAVITY_ANGLE);
   const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
   const [boundsFriction, setBoundsFriction] = useState(DEFAULT_BOUNDS_FRICTION);
-  const [collisionsEnabled, setCollisionsEnabled] = useState(DEFAULT_COLLISIONS_ENABLED);
+  const [collisionsEnabled, setCollisionsEnabled] = useState(
+    DEFAULT_COLLISIONS_ENABLED
+  );
 
   useEffect(() => {
     if (gravity) {
       setGravityStrength(gravity.strength);
-      const angle = Math.atan2(gravity.direction.y, gravity.direction.x) * (180 / Math.PI);
+      const angle =
+        Math.atan2(gravity.direction.y, gravity.direction.x) * (180 / Math.PI);
       setGravityAngle((angle + 360) % 360);
     }
     if (bounds) {
@@ -87,7 +96,9 @@ export function PhysicsControls({ gravity, bounds, collisions }: PhysicsControls
             max="1000"
             step="0.01"
             value={gravityStrength}
-            onChange={(e) => handleGravityStrengthChange(parseFloat(e.target.value))}
+            onChange={(e) =>
+              handleGravityStrengthChange(parseFloat(e.target.value))
+            }
             className="slider"
           />
         </label>
@@ -132,7 +143,9 @@ export function PhysicsControls({ gravity, bounds, collisions }: PhysicsControls
             max="0.5"
             step="0.01"
             value={boundsFriction}
-            onChange={(e) => handleBoundsFrictionChange(parseFloat(e.target.value))}
+            onChange={(e) =>
+              handleBoundsFrictionChange(parseFloat(e.target.value))
+            }
             className="slider"
           />
         </label>

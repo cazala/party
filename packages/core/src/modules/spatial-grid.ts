@@ -1,4 +1,4 @@
-import { Particle } from "./particle.js";
+import { Particle } from "./particle";
 
 export interface SpatialGridOptions {
   width: number;
@@ -45,11 +45,11 @@ export class SpatialGrid {
   insert(particle: Particle): void {
     const col = Math.floor(particle.position.x / this.cellSize);
     const row = Math.floor(particle.position.y / this.cellSize);
-    
+
     // Clamp to grid bounds
     const clampedCol = Math.max(0, Math.min(col, this.cols - 1));
     const clampedRow = Math.max(0, Math.min(row, this.rows - 1));
-    
+
     this.grid[clampedRow][clampedCol].push(particle);
   }
 
@@ -57,12 +57,20 @@ export class SpatialGrid {
     const neighbors: Particle[] = [];
     const centerCol = Math.floor(particle.position.x / this.cellSize);
     const centerRow = Math.floor(particle.position.y / this.cellSize);
-    
+
     // Calculate how many cells to check in each direction
     const cellRadius = Math.ceil(radius / this.cellSize);
-    
-    for (let row = centerRow - cellRadius; row <= centerRow + cellRadius; row++) {
-      for (let col = centerCol - cellRadius; col <= centerCol + cellRadius; col++) {
+
+    for (
+      let row = centerRow - cellRadius;
+      row <= centerRow + cellRadius;
+      row++
+    ) {
+      for (
+        let col = centerCol - cellRadius;
+        col <= centerCol + cellRadius;
+        col++
+      ) {
         if (row >= 0 && row < this.rows && col >= 0 && col < this.cols) {
           const cellParticles = this.grid[row][col];
           for (const candidate of cellParticles) {
@@ -76,7 +84,7 @@ export class SpatialGrid {
         }
       }
     }
-    
+
     return neighbors;
   }
 
@@ -91,14 +99,14 @@ export class SpatialGrid {
     return {
       cols: this.cols,
       rows: this.rows,
-      cellSize: this.cellSize
+      cellSize: this.cellSize,
     };
   }
 
   getSize(): { width: number; height: number } {
     return {
       width: this.width,
-      height: this.height
+      height: this.height,
     };
   }
 

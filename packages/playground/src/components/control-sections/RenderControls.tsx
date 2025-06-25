@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Canvas2DRenderer, Flock } from "../../../../core/src";
+import { Canvas2DRenderer, Flock } from "@party/core";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
-} from "../../../../core/src/modules/render.js";
+} from "@party/core/modules/render";
 
 interface RenderControlsProps {
   renderer: Canvas2DRenderer | null;

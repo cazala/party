@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
-import { Flock, Fluid } from "../../../../core/src";
+import { Flock, Fluid } from "@party/core";
 import {
   DEFAULT_FLOCK_COHESION_WEIGHT,
   DEFAULT_FLOCK_ALIGNMENT_WEIGHT,
   DEFAULT_FLOCK_SEPARATION_WEIGHT,
   DEFAULT_FLOCK_SEPARATION_RANGE,
   DEFAULT_FLOCK_NEIGHBOR_RADIUS,
-} from "../../../../core/src/modules/forces/flock.js";
+} from "@party/core/modules/forces/flock";
 import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
-} from "../../../../core/src/modules/forces/fluid.js";
+} from "@party/core/modules/forces/fluid";
 
 interface BehaviorControlsProps {
   flock: Flock | null;
@@ -151,7 +151,7 @@ export function BehaviorControls({ flock, fluid }: BehaviorControlsProps) {
 
       <div className="control-group">
         <label>
-          Separation: {separationWeight.toFixed(1)}
+          Repulsion: {separationWeight.toFixed(1)}
           <input
             type="range"
             min="0"
@@ -171,7 +171,7 @@ export function BehaviorControls({ flock, fluid }: BehaviorControlsProps) {
 
       <div className="control-group">
         <label>
-          Range: {separationRange.toFixed(0)}
+          Separation: {separationRange.toFixed(0)}
           <input
             type="range"
             min="0"

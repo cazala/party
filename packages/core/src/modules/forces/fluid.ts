@@ -154,7 +154,7 @@ export class Fluid implements Force {
       );
       const gradient = direction
         .multiply(sharedPressure * slope)
-        .divide(density);
+        .divide(density !== 0 ? density : 0.001);
       pressureForce.add(gradient);
     }
 
