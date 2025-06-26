@@ -136,7 +136,10 @@ export class Flock implements Force {
       : this.maxSpeed;
 
     // Use spatial grid for efficient neighbor lookup
-    const neighbors = spatialGrid.getNeighbors(particle, this.neighborRadius);
+    const neighbors = spatialGrid.getParticles(
+      particle.position,
+      this.neighborRadius
+    );
 
     const separate = this.separate(
       particle,

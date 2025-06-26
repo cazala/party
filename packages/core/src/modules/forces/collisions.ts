@@ -4,7 +4,7 @@ import { Vector2D } from "../vector";
 import { SpatialGrid } from "../spatial-grid";
 
 // Default constants for Collisions
-export const DEFAULT_COLLISIONS_ENABLED = true;
+export const DEFAULT_COLLISIONS_ENABLED = false;
 
 export interface CollisionsOptions {
   enabled?: boolean;
@@ -29,7 +29,10 @@ export class Collisions implements Force {
     const force = new Vector2D(0, 0);
 
     // Get nearby particles using spatial grid (check larger radius for collision detection)
-    const neighbors = spatialGrid.getNeighbors(particle, particle.size * 2);
+    const neighbors = spatialGrid.getParticles(
+      particle.position,
+      particle.size * 2
+    );
 
     for (const other of neighbors) {
       if (other === particle) continue;

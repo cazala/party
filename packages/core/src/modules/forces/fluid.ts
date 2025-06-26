@@ -4,8 +4,8 @@ import { Force } from "../system";
 import { Vector2D } from "../vector";
 
 // Default parameters for fluid simulation
-export const DEFAULT_INFLUENCE_RADIUS = 0;
-export const DEFAULT_TARGET_DENSITY = 3.5;
+export const DEFAULT_INFLUENCE_RADIUS = 100;
+export const DEFAULT_TARGET_DENSITY = 0.5;
 export const DEFAULT_PRESSURE_MULTIPLIER = 2.5;
 
 /**
@@ -15,7 +15,10 @@ export const DEFAULT_PRESSURE_MULTIPLIER = 2.5;
  * @param distance - The distance between particles
  * @returns The kernel weight value
  */
-function calculateSmoothingKernel(radius: number, distance: number) {
+export function calculateDensitySmoothingKernel(
+  radius: number,
+  distance: number
+) {
   if (distance >= radius) {
     return 0;
   }
@@ -30,10 +33,32 @@ function calculateSmoothingKernel(radius: number, distance: number) {
  * @param distance - The distance between particles
  * @returns The kernel derivative value
  */
-function calculateSmoothingKernelDerivative(radius: number, distance: number) {
+export function calculateDensitySmoothingKernelDerivative(
+  radius: number,
+  distance: number
+) {
   if (distance >= radius) return 0;
   const scale = -12 / (Math.PI * Math.pow(radius, 4));
   return (distance - radius) * scale;
+}
+
+export function calculateViscositySmoothingKernel(
+  radius: number,
+  distance: number
+) {
+  const volume = (Math.PI * Math.pow(radius, 8)) / 4;
+  const value = Math.max(0, radius * radius - distance * distance);
+  return (value * value * value) / volume;
+}
+
+export function calculateViscositySmoothingKernelDerivative(
+  radius: number,
+  distance: number
+) {
+  if (distance >= radius) return 0;
+  const factor = radius * radius - distance * distance;
+  const scale = -24 / (Math.PI * Math.pow(radius, 8));
+  return scale * distance * factor * factor;
 }
 
 /**
@@ -44,7 +69,7 @@ function calculateSmoothingKernelDerivative(radius: number, distance: number) {
  * @param particles - Array of nearby particles to consider
  * @returns The calculated density value
  */
-function calculateDensity(
+export function calculateDensity(
   point: Vector2D,
   radius: number,
   particles: Particle[]
@@ -52,8 +77,8 @@ function calculateDensity(
   let density = 0;
   for (const particle of particles) {
     const distance = point.distance(particle.position);
-    const influence = calculateSmoothingKernel(radius, distance);
-    density += influence;
+    const influence = calculateDensitySmoothingKernel(radius, distance);
+    density += influence * 1000;
   }
   return density;
 }
@@ -110,15 +135,19 @@ export class Fluid implements Force {
    * @returns The calculated pressure force vector
    */
   apply(particle: Particle, spatialGrid: SpatialGrid) {
-    const particles = spatialGrid.getNeighbors(particle, this.influenceRadius);
+    const particles = spatialGrid.getParticles(
+      particle.position,
+      this.influenceRadius
+    );
     const pressure = this.calculatePressureForce(particle, particles);
 
     // do A = F/d instead of F/m because this is a fluid
     const density = this.densities.get(particle.id);
     if (density) {
       const force = pressure.divide(density);
-      particle.acceleration.add(force);
-      // particle.velocity.add(force.multiply(-1));
+      // particle.acceleration.add(force);
+      particle.velocity.add(new Vector2D(0, 500).divide(120));
+      // particle.velocity.add(force);
     }
 
     return Vector2D.zero();
@@ -143,7 +172,7 @@ export class Fluid implements Force {
         .clone()
         .subtract(point)
         .divide(distance);
-      const slope = calculateSmoothingKernelDerivative(
+      const slope = calculateDensitySmoothingKernelDerivative(
         this.influenceRadius,
         distance
       );

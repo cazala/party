@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Flock, Fluid } from "@party/core";
+import { Flock, Fluid, Renderer } from "@party/core";
 import {
   DEFAULT_FLOCK_COHESION_WEIGHT,
   DEFAULT_FLOCK_ALIGNMENT_WEIGHT,
@@ -228,9 +228,9 @@ export function BehaviorControls({ flock, fluid }: BehaviorControlsProps) {
           Density: {targetDensity.toFixed(2)}
           <input
             type="range"
-            min="0.1"
-            max="100"
-            step="0.1"
+            min="0.001"
+            max="1"
+            step="0.0001"
             value={targetDensity}
             onChange={(e) =>
               handleFluidChange("targetDensity", parseFloat(e.target.value))

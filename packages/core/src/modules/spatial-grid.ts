@@ -1,4 +1,5 @@
 import { Particle } from "./particle";
+import { Vector2D } from "./vector";
 
 export interface SpatialGridOptions {
   width: number;
@@ -53,10 +54,10 @@ export class SpatialGrid {
     this.grid[clampedRow][clampedCol].push(particle);
   }
 
-  getNeighbors(particle: Particle, radius: number): Particle[] {
+  getParticles(point: Vector2D, radius: number): Particle[] {
     const neighbors: Particle[] = [];
-    const centerCol = Math.floor(particle.position.x / this.cellSize);
-    const centerRow = Math.floor(particle.position.y / this.cellSize);
+    const centerCol = Math.floor(point.x / this.cellSize);
+    const centerRow = Math.floor(point.y / this.cellSize);
 
     // Calculate how many cells to check in each direction
     const cellRadius = Math.ceil(radius / this.cellSize);
@@ -74,11 +75,9 @@ export class SpatialGrid {
         if (row >= 0 && row < this.rows && col >= 0 && col < this.cols) {
           const cellParticles = this.grid[row][col];
           for (const candidate of cellParticles) {
-            if (candidate !== particle) {
-              const distance = particle.position.distance(candidate.position);
-              if (distance < radius) {
-                neighbors.push(candidate);
-              }
+            const distance = point.distance(candidate.position);
+            if (distance > 0 && distance < radius) {
+              neighbors.push(candidate);
             }
           }
         }

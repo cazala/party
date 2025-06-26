@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 
-const DEFAULT_SPAWN_NUM_PARTICLES = 100;
-const DEFAULT_SPAWN_SHAPE = "grid";
+const DEFAULT_SPAWN_NUM_PARTICLES = 500;
+const DEFAULT_SPAWN_SHAPE = "random";
 const DEFAULT_SPAWN_SPACING = 25;
-const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
+const DEFAULT_SPAWN_PARTICLE_SIZE = 3;
 const DEFAULT_DRAG_THRESHOLD = 5;
 
 interface SpawnControlsProps {
@@ -23,18 +23,36 @@ interface SpawnControlsProps {
   };
 }
 
-export function SpawnControls({ onSpawnParticles, onGetSpawnConfig }: SpawnControlsProps) {
+export function SpawnControls({
+  onSpawnParticles,
+  onGetSpawnConfig,
+}: SpawnControlsProps) {
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
-  const [spawnShape, setSpawnShape] = useState<"grid" | "random">(DEFAULT_SPAWN_SHAPE);
+  const [spawnShape, setSpawnShape] = useState<"grid" | "random">(
+    DEFAULT_SPAWN_SHAPE
+  );
   const [spacing, setSpacing] = useState(DEFAULT_SPAWN_SPACING);
   const [particleSize, setParticleSize] = useState(DEFAULT_SPAWN_PARTICLE_SIZE);
   const [dragThreshold, setDragThreshold] = useState(DEFAULT_DRAG_THRESHOLD);
 
   useEffect(() => {
     if (onSpawnParticles) {
-      onSpawnParticles(numParticles, spawnShape, spacing, particleSize, dragThreshold);
+      onSpawnParticles(
+        numParticles,
+        spawnShape,
+        spacing,
+        particleSize,
+        dragThreshold
+      );
     }
-  }, [onSpawnParticles, numParticles, spawnShape, spacing, particleSize, dragThreshold]);
+  }, [
+    onSpawnParticles,
+    numParticles,
+    spawnShape,
+    spacing,
+    particleSize,
+    dragThreshold,
+  ]);
 
   useEffect(() => {
     if (onGetSpawnConfig) {
@@ -47,7 +65,14 @@ export function SpawnControls({ onSpawnParticles, onGetSpawnConfig }: SpawnContr
       });
       (window as any).__getSpawnConfig = getConfig;
     }
-  }, [onGetSpawnConfig, numParticles, spawnShape, spacing, particleSize, dragThreshold]);
+  }, [
+    onGetSpawnConfig,
+    numParticles,
+    spawnShape,
+    spacing,
+    particleSize,
+    dragThreshold,
+  ]);
 
   const handleSpawnChange = (
     newNumParticles?: number,
@@ -143,7 +168,11 @@ export function SpawnControls({ onSpawnParticles, onGetSpawnConfig }: SpawnContr
               step="5"
               value={spacing}
               onChange={(e) =>
-                handleSpawnChange(undefined, undefined, parseInt(e.target.value))
+                handleSpawnChange(
+                  undefined,
+                  undefined,
+                  parseInt(e.target.value)
+                )
               }
               className="slider"
             />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Canvas2DRenderer, Flock } from "@party/core";
+import { Canvas2DRenderer, Flock, Fluid } from "@party/core";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
@@ -8,18 +8,25 @@ import {
 interface RenderControlsProps {
   renderer: Canvas2DRenderer | null;
   flock: Flock | null;
+  fluid: Fluid | null;
 }
 
-export function RenderControls({ renderer, flock }: RenderControlsProps) {
+export function RenderControls({
+  renderer,
+  flock,
+  fluid,
+}: RenderControlsProps) {
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
+  const [showDensity, setShowDensity] = useState(true);
 
   useEffect(() => {
     if (renderer) {
       setColorMode(renderer.colorMode);
       setCustomColor(renderer.customColor);
+      setShowDensity(renderer.showDensityAtCursor);
     }
-  }, [renderer]);
+  }, [renderer, fluid]);
 
   const handleColorModeChange = (mode: string) => {
     setColorMode(mode as "particle" | "custom" | "velocity");
@@ -35,6 +42,13 @@ export function RenderControls({ renderer, flock }: RenderControlsProps) {
     setCustomColor(color);
     if (renderer) {
       renderer.setCustomColor(color);
+    }
+  };
+
+  const handleShowDensityChange = (show: boolean) => {
+    setShowDensity(show);
+    if (renderer) {
+      renderer.setShowDensityAtCursor(show);
     }
   };
 
@@ -70,6 +84,18 @@ export function RenderControls({ renderer, flock }: RenderControlsProps) {
           </label>
         </div>
       )}
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={showDensity}
+            onChange={(e) => handleShowDensityChange(e.target.checked)}
+            className="checkbox"
+          />
+          Show Density
+        </label>
+      </div>
     </div>
   );
 }

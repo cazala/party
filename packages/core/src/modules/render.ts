@@ -2,6 +2,7 @@ import { Particle } from "./particle";
 import { ParticleSystem } from "./system";
 import { SpatialGrid } from "./spatial-grid";
 import { Vector2D } from "./vector";
+import { calculateDensity, Fluid } from "./forces/fluid";
 
 // Default constants for Render options
 export const DEFAULT_RENDER_COLOR_MODE = "particle";
@@ -27,6 +28,8 @@ export abstract class Renderer {
   public customColor: string;
   public maxSpeed: number;
   public showSpatialGrid: boolean;
+  public showDensityAtCursor: boolean;
+  public cursorPosition: Vector2D | null;
 
   constructor(options: RenderOptions) {
     this.canvas = options.canvas;
@@ -37,6 +40,8 @@ export abstract class Renderer {
     this.customColor = options.customColor || DEFAULT_RENDER_CUSTOM_COLOR;
     this.maxSpeed = options.maxSpeed || 300;
     this.showSpatialGrid = false;
+    this.showDensityAtCursor = true;
+    this.cursorPosition = null;
 
     const ctx = this.canvas.getContext("2d");
     if (!ctx) {
@@ -82,6 +87,14 @@ export abstract class Renderer {
   setShowSpatialGrid(show: boolean): void {
     this.showSpatialGrid = show;
   }
+
+  setShowDensityAtCursor(show: boolean): void {
+    this.showDensityAtCursor = show;
+  }
+
+  setCursorPosition(position: Vector2D | null): void {
+    this.cursorPosition = position;
+  }
 }
 
 export class Canvas2DRenderer extends Renderer {
@@ -99,6 +112,14 @@ export class Canvas2DRenderer extends Renderer {
 
   setPreviewVelocity(velocity: Vector2D | null): void {
     this.previewVelocity = velocity;
+  }
+
+  setShowDensityAtCursor(show: boolean): void {
+    this.showDensityAtCursor = show;
+  }
+
+  setCursorPosition(position: Vector2D | null): void {
+    this.cursorPosition = position;
   }
 
   render(system: ParticleSystem): void {
@@ -141,6 +162,11 @@ export class Canvas2DRenderer extends Renderer {
       if (this.previewVelocity) {
         this.renderVelocityArrow(this.previewParticle, this.previewVelocity);
       }
+    }
+
+    // Render density at cursor if enabled
+    if (this.showDensityAtCursor && this.cursorPosition) {
+      this.renderDensityAtCursor(system);
     }
 
     this.ctx.restore();
@@ -398,6 +424,79 @@ export class Canvas2DRenderer extends Renderer {
         }
       }
     }
+
+    this.ctx.restore();
+  }
+
+  private renderDensityAtCursor(system: ParticleSystem): void {
+    if (!this.cursorPosition) return;
+
+    this.ctx.save();
+
+    const fluid = system.forces.find(
+      (force) => force instanceof Fluid
+    ) as Fluid;
+
+    // Get particles near cursor
+    const particles = system.spatialGrid.getParticles(
+      this.cursorPosition,
+      fluid.influenceRadius
+    );
+
+    // Calculate density at cursor position
+    const density = calculateDensity(
+      this.cursorPosition,
+      fluid.influenceRadius,
+      particles
+    );
+
+    const pressure = fluid.convertDensityToPressure(density);
+
+    // Use same color palette as spatial grid
+    const baseColor = "#dee7f0";
+
+    // Draw circle at cursor with influence radius
+    this.ctx.strokeStyle = baseColor;
+    this.ctx.lineWidth = 2;
+    this.ctx.globalAlpha = 0.6;
+    this.ctx.setLineDash([5, 5]);
+
+    this.ctx.beginPath();
+    this.ctx.arc(
+      this.cursorPosition.x,
+      this.cursorPosition.y,
+      fluid.influenceRadius,
+      0,
+      Math.PI * 2
+    );
+    this.ctx.stroke();
+    this.ctx.setLineDash([]);
+
+    // Draw density text with smart positioning
+    this.ctx.globalAlpha = 1;
+    this.ctx.font = "14px monospace";
+    this.ctx.textAlign = "left";
+    this.ctx.textBaseline = "top";
+
+    const longestText = Math.max(
+      this.ctx.measureText(`Density: ${density.toFixed(2)}`).width,
+      this.ctx.measureText(`Pressure: ${pressure.toFixed(2)}`).width,
+      this.ctx.measureText(`Particles: ${particles.length}`).width
+    );
+
+    // Background panel: outline in grid color, interior in translucent black
+    this.ctx.strokeStyle = baseColor;
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(10, 10, longestText + 10, 55);
+
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.9)"; // 50% black
+    this.ctx.fillRect(10, 10, longestText + 10, 55);
+
+    // Draw text
+    this.ctx.fillStyle = baseColor;
+    this.ctx.fillText(`Density: ${density.toFixed(2)}`, 15, 15);
+    this.ctx.fillText(`Pressure: ${pressure.toFixed(2)}`, 15, 30);
+    this.ctx.fillText(`Particles: ${particles.length}`, 15, 45);
 
     this.ctx.restore();
   }

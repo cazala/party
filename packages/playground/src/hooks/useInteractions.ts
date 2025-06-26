@@ -322,10 +322,16 @@ export function useInteractions({
       const renderer = getRenderer();
       if (!canvas || !renderer) return;
 
+      const pos = getMousePosition(e, canvas);
+      
+      // Always update cursor position for density display
+      if (renderer.setCursorPosition) {
+        renderer.setCursorPosition(new Vector2D(pos.x, pos.y));
+      }
+
       const mouseState = mouseStateRef.current;
       if (!mouseState.isDown) return;
 
-      const pos = getMousePosition(e, canvas);
       mouseState.currentPos = pos;
 
       // Update modifier key states from mouse event
@@ -524,9 +530,12 @@ export function useInteractions({
     if (mouseState.isStreaming) {
       stopStreaming();
     }
-    // Clear preview particle when mouse leaves canvas
+    // Clear preview particle and cursor position when mouse leaves canvas
     renderer.setPreviewParticle(null, false);
     renderer.setPreviewVelocity(null);
+    if (renderer.setCursorPosition) {
+      renderer.setCursorPosition(null);
+    }
     mouseState.isDown = false;
     mouseState.isDragging = false;
     mouseState.previewColor = "";

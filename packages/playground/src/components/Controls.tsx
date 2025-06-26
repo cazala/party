@@ -112,6 +112,7 @@ export function Controls({
       renderer.setColorMode(DEFAULT_RENDER_COLOR_MODE);
       renderer.setCustomColor(DEFAULT_RENDER_CUSTOM_COLOR);
       renderer.setShowSpatialGrid(false);
+      renderer.setShowDensityAtCursor(true);
     }
 
     // Reset spawn - trigger spawn through callback
@@ -145,7 +146,7 @@ export function Controls({
         onGetSpawnConfig={onGetSpawnConfig}
       />
       <BehaviorControls flock={flock} fluid={fluid} />
-      <RenderControls renderer={renderer} flock={flock} />
+      <RenderControls renderer={renderer} flock={flock} fluid={fluid} />
       <PerformanceControls spatialGrid={spatialGrid} renderer={renderer} />
     </div>
   );
