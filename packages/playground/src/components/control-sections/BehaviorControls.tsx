@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Flock, Fluid, Renderer } from "@party/core";
+import { Flock, Fluid } from "@party/core";
 import {
   DEFAULT_FLOCK_COHESION_WEIGHT,
   DEFAULT_FLOCK_ALIGNMENT_WEIGHT,

@@ -154,7 +154,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
 
   const clear = useCallback(() => {
     if (systemRef.current) {
-      systemRef.current.particles = [];
+      systemRef.current.clear();
     }
   }, []);
 

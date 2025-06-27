@@ -113,6 +113,7 @@ export function Controls({
       renderer.setCustomColor(DEFAULT_RENDER_CUSTOM_COLOR);
       renderer.setShowSpatialGrid(false);
       renderer.setShowDensityAtCursor(true);
+      renderer.setShowVelocity(true);
     }
 
     // Reset spawn - trigger spawn through callback

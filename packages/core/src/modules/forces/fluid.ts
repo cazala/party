@@ -117,12 +117,12 @@ export class Fluid implements Force {
 
   warmup(particles: Particle[], deltaTime: number) {
     for (const particle of particles) {
-      const predictedPosition = particle.position
-        .clone()
-        .add(particle.velocity.clone().multiply(deltaTime));
+      // const predictedPosition = particle.position
+      // .clone()
+      // .add(particle.velocity.clone().multiply(deltaTime));
       this.densities.set(
         particle.id,
-        calculateDensity(predictedPosition, this.influenceRadius, particles)
+        calculateDensity(particle.position, this.influenceRadius, particles)
       );
     }
   }
@@ -139,15 +139,19 @@ export class Fluid implements Force {
       particle.position,
       this.influenceRadius
     );
-    const pressure = this.calculatePressureForce(particle, particles);
+    const pressureForce = this.calculatePressureForce(
+      particle.position,
+      particles
+    );
 
     // do A = F/d instead of F/m because this is a fluid
     const density = this.densities.get(particle.id);
     if (density) {
-      const force = pressure.divide(density);
+      // const pressure = this.convertDensityToPressure(density);
+      // const force = pressureForce.divide(pressure);
       // particle.acceleration.add(force);
-      particle.velocity.add(new Vector2D(0, 500).divide(120));
-      // particle.velocity.add(force);
+      // particle.velocity.add(new Vector2D(0, 500).divide(120));
+      particle.velocity.add(pressureForce.multiply(10000));
     }
 
     return Vector2D.zero();
@@ -160,15 +164,14 @@ export class Fluid implements Force {
    * @param particles - Array of nearby particles contributing to pressure
    * @returns The accumulated pressure force vector
    */
-  calculatePressureForce(particle: Particle, particles: Particle[]) {
+  calculatePressureForce(point: Vector2D, particles: Particle[]) {
     const pressureForce = Vector2D.zero();
-    const point = particle.position;
-    for (const otherParticle of particles) {
-      if (otherParticle.id === particle.id) {
+    for (const particle of particles) {
+      const distance = point.distance(particle.position);
+      if (distance === 0) {
         continue;
       }
-      const distance = point.distance(otherParticle.position);
-      const direction = otherParticle.position
+      const direction = particle.position
         .clone()
         .subtract(point)
         .divide(distance);
@@ -176,18 +179,20 @@ export class Fluid implements Force {
         this.influenceRadius,
         distance
       );
-      const density = this.densities.get(otherParticle.id)!;
-      const sharedPressure = this.calculateSharedPressure(
-        density,
-        this.densities.get(particle.id)!
-      );
-      const gradient = direction
-        .multiply(sharedPressure * slope)
-        .divide(density !== 0 ? density : 0.001);
+      const density = this.densities.get(particle.id)!;
+      // const sharedPressure = this.calculateSharedPressure(
+      //   density,
+      //   this.densities.get(particle.id)!
+      // );
+      const pressure = this.convertDensityToPressure(density);
+      const gradient =
+        density > 0
+          ? direction.multiply(pressure * slope).divide(density)
+          : Vector2D.zero();
       pressureForce.add(gradient);
     }
 
-    return pressureForce;
+    return pressureForce.multiply(-1);
   }
 
   /**

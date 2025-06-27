@@ -19,12 +19,14 @@ export function RenderControls({
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
   const [showDensity, setShowDensity] = useState(true);
+  const [showVelocity, setShowVelocity] = useState(true);
 
   useEffect(() => {
     if (renderer) {
       setColorMode(renderer.colorMode);
       setCustomColor(renderer.customColor);
       setShowDensity(renderer.showDensityAtCursor);
+      setShowVelocity(renderer.showVelocity);
     }
   }, [renderer, fluid]);
 
@@ -49,6 +51,13 @@ export function RenderControls({
     setShowDensity(show);
     if (renderer) {
       renderer.setShowDensityAtCursor(show);
+    }
+  };
+
+  const handleShowVelocityChange = (show: boolean) => {
+    setShowVelocity(show);
+    if (renderer) {
+      renderer.setShowVelocity(show);
     }
   };
 
@@ -94,6 +103,18 @@ export function RenderControls({
             className="checkbox"
           />
           Show Density
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={showVelocity}
+            onChange={(e) => handleShowVelocityChange(e.target.checked)}
+            className="checkbox"
+          />
+          Show Velocity
         </label>
       </div>
     </div>

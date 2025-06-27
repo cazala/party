@@ -29,6 +29,7 @@ export abstract class Renderer {
   public maxSpeed: number;
   public showSpatialGrid: boolean;
   public showDensityAtCursor: boolean;
+  public showVelocity: boolean;
   public cursorPosition: Vector2D | null;
 
   constructor(options: RenderOptions) {
@@ -41,6 +42,7 @@ export abstract class Renderer {
     this.maxSpeed = options.maxSpeed || 300;
     this.showSpatialGrid = false;
     this.showDensityAtCursor = true;
+    this.showVelocity = true;
     this.cursorPosition = null;
 
     const ctx = this.canvas.getContext("2d");
@@ -90,6 +92,10 @@ export abstract class Renderer {
 
   setShowDensityAtCursor(show: boolean): void {
     this.showDensityAtCursor = show;
+  }
+
+  setShowVelocity(show: boolean): void {
+    this.showVelocity = show;
   }
 
   setCursorPosition(position: Vector2D | null): void {
@@ -152,6 +158,13 @@ export class Canvas2DRenderer extends Renderer {
 
     for (const particle of system.particles) {
       this.renderParticle(particle, minSpeed, maxSpeed);
+    }
+
+    // Render velocity arrows if enabled
+    if (this.showVelocity) {
+      for (const particle of system.particles) {
+        this.renderParticleVelocityArrow(particle);
+      }
     }
 
     // Render preview particle if it exists
@@ -381,6 +394,71 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.restore();
   }
 
+  private renderParticleVelocityArrow(particle: Particle): void {
+    this.ctx.save();
+
+    const velocityMagnitude = particle.velocity.magnitude();
+
+    // Don't render if velocity is zero or very small
+    if (velocityMagnitude < 0.1) {
+      this.ctx.restore();
+      return;
+    }
+
+    // Calculate arrow direction
+    const direction = particle.velocity.clone().normalize();
+
+    // Scale the arrow length proportional to velocity magnitude
+    // Use a scaling factor to make arrows visible but not too long
+    const scaleFactor = 0.1; // Adjust this to control arrow length
+    const arrowLength = Math.min(velocityMagnitude * scaleFactor, 50); // Cap at 50px
+
+    // Start point: at the edge of the particle, not the center
+    const startX = particle.position.x + direction.x * particle.size;
+    const startY = particle.position.y + direction.y * particle.size;
+
+    // End point
+    const endX = startX + direction.x * arrowLength;
+    const endY = startY + direction.y * arrowLength;
+
+    // Use particle color for the arrow
+    const arrowColor = particle.color;
+
+    this.ctx.strokeStyle = arrowColor;
+    this.ctx.globalAlpha = 0.8;
+    this.ctx.lineWidth = 2;
+    this.ctx.lineCap = "round";
+
+    // Draw arrow line
+    this.ctx.beginPath();
+    this.ctx.moveTo(startX, startY);
+    this.ctx.lineTo(endX, endY);
+    this.ctx.stroke();
+
+    // Draw arrowhead
+    const arrowHeadLength = 8;
+    const arrowHeadAngle = Math.PI / 6; // 30 degrees
+
+    // Calculate arrowhead points
+    const angle = Math.atan2(direction.y, direction.x);
+    const leftX = endX - arrowHeadLength * Math.cos(angle - arrowHeadAngle);
+    const leftY = endY - arrowHeadLength * Math.sin(angle - arrowHeadAngle);
+    const rightX = endX - arrowHeadLength * Math.cos(angle + arrowHeadAngle);
+    const rightY = endY - arrowHeadLength * Math.sin(angle + arrowHeadAngle);
+
+    // Draw arrowhead as filled triangle
+    this.ctx.fillStyle = arrowColor;
+    this.ctx.globalAlpha = 0.8;
+    this.ctx.beginPath();
+    this.ctx.moveTo(endX, endY);
+    this.ctx.lineTo(leftX, leftY);
+    this.ctx.lineTo(rightX, rightY);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    this.ctx.restore();
+  }
+
   private renderSpatialGrid(spatialGrid: SpatialGrid): void {
     this.ctx.save();
 
@@ -451,6 +529,9 @@ export class Canvas2DRenderer extends Renderer {
     );
 
     const pressure = fluid.convertDensityToPressure(density);
+    const vector = fluid.calculatePressureForce(this.cursorPosition, particles);
+    const force =
+      density > 0 ? vector.clone().normalize().multiply(100) : Vector2D.zero();
 
     // Use same color palette as spatial grid
     const baseColor = "#dee7f0";
@@ -471,6 +552,17 @@ export class Canvas2DRenderer extends Renderer {
     );
     this.ctx.stroke();
     this.ctx.setLineDash([]);
+
+    // draw arrow from cursor position to force vector
+    this.ctx.strokeStyle = baseColor;
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.cursorPosition.x, this.cursorPosition.y);
+    this.ctx.lineTo(
+      this.cursorPosition.x + force.x,
+      this.cursorPosition.y + force.y
+    );
+    this.ctx.stroke();
 
     // Draw density text with smart positioning
     this.ctx.globalAlpha = 1;

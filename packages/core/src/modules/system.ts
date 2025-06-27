@@ -122,6 +122,7 @@ export class ParticleSystem {
 
   clear(): void {
     this.particles = [];
+    this.spatialGrid.clear();
   }
 
   getParticleCount(): number {
