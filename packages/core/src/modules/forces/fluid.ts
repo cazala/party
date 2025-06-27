@@ -148,10 +148,11 @@ export class Fluid implements Force {
     const density = this.densities.get(particle.id);
     if (density) {
       // const pressure = this.convertDensityToPressure(density);
-      // const force = pressureForce.divide(pressure);
+      const force = pressureForce.clone().divide(density);
       // particle.acceleration.add(force);
       // particle.velocity.add(new Vector2D(0, 500).divide(120));
-      particle.velocity.add(pressureForce.multiply(10000));
+      particle.velocity = force.multiply(10000000);
+      // particle.velocity = force.multiply(10000000);
     }
 
     return Vector2D.zero();

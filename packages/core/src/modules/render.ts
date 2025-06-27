@@ -532,6 +532,7 @@ export class Canvas2DRenderer extends Renderer {
     const vector = fluid.calculatePressureForce(this.cursorPosition, particles);
     const force =
       density > 0 ? vector.clone().normalize().multiply(100) : Vector2D.zero();
+    // not devided by density
 
     // Use same color palette as spatial grid
     const baseColor = "#dee7f0";
