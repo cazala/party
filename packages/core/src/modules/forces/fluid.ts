@@ -80,7 +80,7 @@ export function calculateDensity(
   for (const particle of particles) {
     const distance = point.distance(particle.position);
     const influence = calculateDensitySmoothingKernel(radius, distance);
-    density += influence * 1000;
+    density += influence * 1000 * particle.mass;
   }
   return density;
 }
@@ -136,7 +136,7 @@ export class Fluid implements Force {
     if (!this.enabled) {
       return;
     }
-    
+
     this.resistance = (Math.min(this.wobbleFactor, 10) / 10) * 0.049 + 0.95;
     for (const particle of particles) {
       const predictedPosition = particle.position
@@ -160,7 +160,7 @@ export class Fluid implements Force {
     if (!this.enabled) {
       return Vector2D.zero();
     }
-    
+
     const particles = spatialGrid.getParticles(
       particle.position,
       this.influenceRadius
