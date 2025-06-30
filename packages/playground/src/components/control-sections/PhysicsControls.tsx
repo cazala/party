@@ -93,8 +93,8 @@ export function PhysicsControls({
           <input
             type="range"
             min="0"
-            max="1000"
-            step="0.01"
+            max="2000"
+            step="1"
             value={gravityStrength}
             onChange={(e) =>
               handleGravityStrengthChange(parseFloat(e.target.value))

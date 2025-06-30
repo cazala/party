@@ -34,9 +34,6 @@ export function RenderControls({
     setColorMode(mode as "particle" | "custom" | "velocity");
     if (renderer) {
       renderer.setColorMode(mode as "particle" | "custom" | "velocity");
-      if (mode === "velocity" && flock) {
-        renderer.setMaxSpeed(flock.maxSpeed);
-      }
     }
   };
 
