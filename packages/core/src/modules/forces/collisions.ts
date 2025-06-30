@@ -21,12 +21,10 @@ export class Collisions implements Force {
     this.enabled = enabled;
   }
 
-  apply(particle: Particle, spatialGrid: SpatialGrid): Vector2D {
+  apply(particle: Particle, spatialGrid: SpatialGrid): void {
     if (!this.enabled) {
-      return Vector2D.zero();
+      return;
     }
-
-    const force = new Vector2D(0, 0);
 
     // Get nearby particles using spatial grid (check larger radius for collision detection)
     const neighbors = spatialGrid.getParticles(
@@ -37,25 +35,20 @@ export class Collisions implements Force {
     for (const other of neighbors) {
       if (other === particle) continue;
 
-      const collisionForce = this.checkCollision(particle, other);
-      if (collisionForce) {
-        force.add(collisionForce);
-      }
+      this.checkCollision(particle, other);
     }
-
-    return force;
   }
 
   private checkCollision(
     particle1: Particle,
     particle2: Particle
-  ): Vector2D | null {
+  ): void {
     const distance = particle1.position.distance(particle2.position);
     const combinedRadius = particle1.size + particle2.size; // Sum of both radii (size IS radius)
 
     // Check if particles are colliding (overlapping)
     if (distance >= combinedRadius) {
-      return null;
+      return;
     }
 
     // Calculate collision vector (from particle2 to particle1)
@@ -78,7 +71,7 @@ export class Collisions implements Force {
         particle2.position.x - collisionVector.x * separationDistance,
         particle2.position.y - collisionVector.y * separationDistance
       );
-      return Vector2D.zero(); // No force needed since we corrected positions
+      return; // No force needed since we corrected positions
     }
 
     // SYMMETRY BREAKING: Detect near-perfect vertical or horizontal alignment
@@ -181,8 +174,8 @@ export class Collisions implements Force {
       particle2.velocity.normalize().multiply(maxVelocity);
     }
 
-    // Return force vector for particle1 (away from particle2)
-    return Vector2D.zero();
+    // Forces are applied directly to particle velocities above
+    return;
   }
 }
 

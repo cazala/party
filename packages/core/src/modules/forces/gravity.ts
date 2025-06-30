@@ -34,11 +34,12 @@ export class Gravity implements Force {
     this.direction = Vector2D.fromAngle(angle);
   }
 
-  apply(particle: Particle, _spatialGrid: SpatialGrid) {
-    return this.direction
+  apply(particle: Particle, _spatialGrid: SpatialGrid): void {
+    const force = this.direction
       .clone()
       .normalize()
       .multiply(this.strength * particle.mass);
+    particle.applyForce(force);
   }
 }
 

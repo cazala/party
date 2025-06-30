@@ -154,11 +154,10 @@ export class Fluid implements Force {
    * based on local density differences from the target density.
    * @param particle - The particle to apply force to
    * @param spatialGrid - Spatial grid for efficient neighbor finding
-   * @returns The calculated pressure force vector
    */
-  apply(particle: Particle, spatialGrid: SpatialGrid) {
+  apply(particle: Particle, spatialGrid: SpatialGrid): void {
     if (!this.enabled) {
-      return Vector2D.zero();
+      return;
     }
 
     const particles = spatialGrid.getParticles(
@@ -177,8 +176,6 @@ export class Fluid implements Force {
       particle.velocity.multiply(this.resistance);
       particle.velocity.add(force.multiply(1000000));
     }
-
-    return Vector2D.zero();
   }
 
   /**

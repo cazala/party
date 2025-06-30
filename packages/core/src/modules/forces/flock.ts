@@ -125,39 +125,48 @@ export class Flock implements Force {
     return seek;
   }
 
-  apply(particle: Particle, spatialGrid: SpatialGrid) {
+  apply(particle: Particle, spatialGrid: SpatialGrid): void {
     // Calculate effective maxSpeed - use user maxSpeed or minimum default when forces are active
     const hasActiveForces =
       this.cohesionWeight > 0 ||
       this.alignmentWeight > 0 ||
       this.separationWeight > 0;
-    const effectiveMaxSpeed = hasActiveForces
-      ? Math.max(this.maxSpeed, 1000)
-      : this.maxSpeed;
+    
+    // Early return if no forces are active
+    if (!hasActiveForces) {
+      return;
+    }
+    
+    const effectiveMaxSpeed = Math.max(this.maxSpeed, 1000);
 
-    // Use spatial grid for efficient neighbor lookup
+    // Use spatial grid for efficient neighbor lookup - only when needed
     const neighbors = spatialGrid.getParticles(
       particle.position,
       this.neighborRadius
     );
 
-    const separate = this.separate(
-      particle,
-      neighbors,
-      this.separationRange,
-      effectiveMaxSpeed
-    );
-    const align = this.align(particle, neighbors, effectiveMaxSpeed);
-    const cohesion = this.cohesion(particle, neighbors, effectiveMaxSpeed);
+    // Only compute forces that have non-zero weights
+    if (this.separationWeight > 0) {
+      const separate = this.separate(
+        particle,
+        neighbors,
+        this.separationRange,
+        effectiveMaxSpeed
+      );
+      separate.multiply(this.separationWeight);
+      particle.applyForce(separate);
+    }
 
-    cohesion.multiply(this.cohesionWeight);
-    separate.multiply(this.separationWeight);
-    align.multiply(this.alignmentWeight);
+    if (this.alignmentWeight > 0) {
+      const align = this.align(particle, neighbors, effectiveMaxSpeed);
+      align.multiply(this.alignmentWeight);
+      particle.applyForce(align);
+    }
 
-    particle.applyForce(separate);
-    particle.applyForce(align);
-    particle.applyForce(cohesion);
-
-    return Vector2D.zero();
+    if (this.cohesionWeight > 0) {
+      const cohesion = this.cohesion(particle, neighbors, effectiveMaxSpeed);
+      cohesion.multiply(this.cohesionWeight);
+      particle.applyForce(cohesion);
+    }
   }
 }

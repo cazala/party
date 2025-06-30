@@ -1,10 +1,9 @@
 import { Particle } from "./particle";
-import { Vector2D } from "./vector";
 import { SpatialGrid } from "./spatial-grid";
 
 export interface Force {
   warmup?(particles: Particle[], deltaTime: number): void;
-  apply(particle: Particle, spatialGrid: SpatialGrid): Vector2D;
+  apply(particle: Particle, spatialGrid: SpatialGrid): void;
 }
 
 // Default constants for ParticleSystem
@@ -83,8 +82,7 @@ export class ParticleSystem {
 
     for (const particle of this.particles) {
       for (const force of this.forces) {
-        const forceVector = force.apply(particle, this.spatialGrid);
-        particle.applyForce(forceVector);
+        force.apply(particle, this.spatialGrid);
       }
       particle.update(deltaTime);
     }
