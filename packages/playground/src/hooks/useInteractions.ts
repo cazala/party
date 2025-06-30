@@ -108,6 +108,36 @@ export function useInteractions({
     mouseState.isStreaming = false;
   }, []);
 
+  // Helper function to get preview color based on renderer color mode
+  const getPreviewColor = useCallback((velocity?: { x: number; y: number }) => {
+    const renderer = getRenderer();
+    if (!renderer) return getRandomColor();
+
+    const colorMode = renderer.getColorMode();
+    
+    switch (colorMode) {
+      case "custom":
+        return renderer.getCustomColor();
+      case "velocity":
+        if (velocity) {
+          // Calculate color based on velocity magnitude for preview
+          const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+          const maxSpeed = renderer.maxSpeed || 300;
+          const ratio = Math.min(speed / maxSpeed, 1);
+          
+          // Interpolate from green (slow) to red (fast) - same logic as renderer
+          const red = Math.floor(ratio * 255);
+          const green = Math.floor((1 - ratio) * 255);
+          return `rgb(${red}, ${green}, 0)`;
+        }
+        // Fallback to green for stationary preview
+        return "rgb(0, 255, 0)";
+      case "particle":
+      default:
+        return getRandomColor();
+    }
+  }, [getRenderer]);
+
   // Helper function to update velocity preview
   const updateVelocityPreview = useCallback(() => {
     const mouseState = mouseStateRef.current;
@@ -123,15 +153,23 @@ export function useInteractions({
     // Show velocity arrow preview
     renderer.setPreviewVelocity(new Vector2D(velocity.x, velocity.y));
 
+    // Update color based on current velocity for velocity mode, but preserve initial color for particle mode
+    let currentColor = mouseState.previewColor; // Use initially generated color
+    
+    if (renderer.getColorMode() === "velocity") {
+      // Only recalculate color for velocity mode to show real-time velocity changes
+      currentColor = getPreviewColor(velocity);
+    }
+    
     // Also update the particle preview to show as dashed (drag mode style) in velocity mode
     const previewParticle = createParticle(
       mouseState.startPos.x,
       mouseState.startPos.y,
       mouseState.velocityModeSize,
-      mouseState.previewColor
+      currentColor
     );
     renderer.setPreviewParticle(previewParticle, true); // true = show as dashed
-  }, [getRenderer]);
+  }, [getRenderer, getPreviewColor]);
 
   // Helper function to update size preview
   const updateSizePreview = useCallback(() => {
@@ -290,8 +328,8 @@ export function useInteractions({
       mouseState.currentPos = pos;
       mouseState.isDragging = false;
 
-      // Pick a random color for this drag session and store it
-      mouseState.previewColor = getRandomColor();
+      // Pick appropriate color based on renderer color mode
+      mouseState.previewColor = getPreviewColor();
 
       // If shift is pressed during mouse down, start streaming immediately
       if (mouseState.shiftPressed) {

@@ -82,6 +82,14 @@ export abstract class Renderer {
     this.customColor = color;
   }
 
+  getColorMode(): "particle" | "custom" | "velocity" {
+    return this.colorMode;
+  }
+
+  getCustomColor(): string {
+    return this.customColor;
+  }
+
   setMaxSpeed(speed: number): void {
     this.maxSpeed = speed;
   }
@@ -163,7 +171,7 @@ export class Canvas2DRenderer extends Renderer {
     // Render velocity arrows if enabled
     if (this.showVelocity) {
       for (const particle of system.particles) {
-        this.renderParticleVelocityArrow(particle);
+        this.renderParticleVelocityArrow(particle, minSpeed, maxSpeed);
       }
     }
 
@@ -215,6 +223,39 @@ export class Canvas2DRenderer extends Renderer {
           minSpeed || 0,
           maxSpeed || 1
         );
+      case "particle":
+      default:
+        return particle.color;
+    }
+  }
+
+  private getVelocityArrowColor(
+    particle: Particle,
+    velocity?: Vector2D,
+    minSpeed?: number,
+    maxSpeed?: number
+  ): string {
+    switch (this.colorMode) {
+      case "custom":
+        return this.customColor;
+      case "velocity":
+        if (velocity) {
+          // Calculate color based on the provided velocity (for previews)
+          const speed = velocity.magnitude();
+          const speedRange = (maxSpeed || this.maxSpeed) - (minSpeed || 0);
+          const ratio = speedRange > 0 ? (speed - (minSpeed || 0)) / speedRange : 0;
+          
+          const red = Math.floor(Math.min(ratio, 1) * 255);
+          const green = Math.floor((1 - Math.min(ratio, 1)) * 255);
+          return `rgb(${red}, ${green}, 0)`;
+        } else {
+          // Use particle's velocity (for regular arrows)
+          return this.calculateVelocityColor(
+            particle,
+            minSpeed || 0,
+            maxSpeed || this.maxSpeed
+          );
+        }
       case "particle":
       default:
         return particle.color;
@@ -353,8 +394,8 @@ export class Canvas2DRenderer extends Renderer {
     const endX = startX + direction.x * arrowLength;
     const endY = startY + direction.y * arrowLength;
 
-    // Arrow color - match particle color with same alpha as particle preview
-    const arrowColor = particle.color;
+    // Arrow color - respect renderer color mode
+    const arrowColor = this.getVelocityArrowColor(particle, velocity);
 
     this.ctx.strokeStyle = arrowColor;
     this.ctx.globalAlpha = 1; // Match particle preview alpha
@@ -394,7 +435,11 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.restore();
   }
 
-  private renderParticleVelocityArrow(particle: Particle): void {
+  private renderParticleVelocityArrow(
+    particle: Particle,
+    minSpeed?: number,
+    maxSpeed?: number
+  ): void {
     this.ctx.save();
 
     const velocityMagnitude = particle.velocity.magnitude();
@@ -421,8 +466,8 @@ export class Canvas2DRenderer extends Renderer {
     const endX = startX + direction.x * arrowLength;
     const endY = startY + direction.y * arrowLength;
 
-    // Use particle color for the arrow
-    const arrowColor = particle.color;
+    // Use appropriate color based on renderer color mode
+    const arrowColor = this.getVelocityArrowColor(particle, undefined, minSpeed, maxSpeed);
 
     this.ctx.strokeStyle = arrowColor;
     this.ctx.globalAlpha = 0.8;
