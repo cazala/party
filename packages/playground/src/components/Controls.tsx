@@ -143,18 +143,18 @@ export function Controls({
         </button>
       </div>
 
+      <CollapsibleSection title="Spawn" defaultOpen={true}>
+        <SpawnControls
+          onSpawnParticles={onSpawnParticles}
+          onGetSpawnConfig={onGetSpawnConfig}
+        />
+      </CollapsibleSection>
+
       <CollapsibleSection title="Physics" defaultOpen={true}>
         <PhysicsControls
           gravity={gravity}
           bounds={bounds}
           collisions={collisions}
-        />
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Spawn" defaultOpen={true}>
-        <SpawnControls
-          onSpawnParticles={onSpawnParticles}
-          onGetSpawnConfig={onGetSpawnConfig}
         />
       </CollapsibleSection>
 
