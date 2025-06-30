@@ -44,7 +44,7 @@ export const createParticle = (
   // radius = size (since size IS the radius), scale_factor keeps default reasonable
   const radius = size;
   const area = Math.PI * radius * radius;
-  const mass = area; // Scale factor to keep default size=10 around mass=3.14
+  const mass = area / 100; // Use same scale factor as spawnParticles to ensure consistent collision behavior
 
   return new Particle({
     position: new Vector2D(x, y),
