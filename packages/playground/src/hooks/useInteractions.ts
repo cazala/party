@@ -29,6 +29,7 @@ interface MouseState {
   isDragToVelocity: boolean;
   initialVelocity: { x: number; y: number };
   velocityModeSize: number;
+  activeVelocitySize: number;
 }
 
 interface UseSpawnerProps {
@@ -60,6 +61,7 @@ export function useInteractions({
     isDragToVelocity: false,
     initialVelocity: { x: 0, y: 0 },
     velocityModeSize: 0,
+    activeVelocitySize: 0,
   });
 
   // Streaming functions
@@ -211,6 +213,7 @@ export function useInteractions({
       // Handle CMD (Mac) or Ctrl (Windows/Linux) key release
       if (e.key === "Meta" || e.key === "Control") {
         mouseState.cmdPressed = false;
+        mouseState.activeVelocitySize = 0; // Reset velocity size when cmd is released
 
         // If mouse is down, switch back to size mode
         if (mouseState.isDown && !mouseState.isStreaming) {
@@ -242,6 +245,7 @@ export function useInteractions({
 
       // Reset streaming state for new interaction - use ONLY the mouse event's modifier keys
       const wasShiftPressedBefore = mouseState.shiftPressed;
+      const wasCmdPressedBefore = mouseState.cmdPressed;
       mouseState.shiftPressed = e.shiftKey;
       mouseState.cmdPressed = e.metaKey || e.ctrlKey;
       mouseState.wasStreaming = false; // Reset for new interaction
@@ -252,13 +256,27 @@ export function useInteractions({
 
       // Set the size for velocity mode
       if (mouseState.isDragToVelocity) {
-        const spawnConfig = (window as any).__getSpawnConfig?.();
-        mouseState.velocityModeSize = spawnConfig?.particleSize || 10; // Use default size when starting in velocity mode
+        let velocitySize;
+        if (mouseState.activeVelocitySize > 0) {
+          // Use the preserved size from previous drag-to-velocity
+          velocitySize = mouseState.activeVelocitySize;
+        } else {
+          // Use default size for first cmd+click
+          const spawnConfig = (window as any).__getSpawnConfig?.();
+          velocitySize = spawnConfig?.particleSize || 10;
+          mouseState.activeVelocitySize = velocitySize; // Store for subsequent clicks
+        }
+        mouseState.velocityModeSize = velocitySize;
       }
 
       // If shift was released between interactions, reset the active stream size
       if (wasShiftPressedBefore && !mouseState.shiftPressed) {
         mouseState.activeStreamSize = 0;
+      }
+
+      // If cmd was released between interactions, reset the active velocity size
+      if (wasCmdPressedBefore && !mouseState.cmdPressed) {
+        mouseState.activeVelocitySize = 0;
       }
 
       // Update threshold from current spawn config
@@ -396,11 +414,13 @@ export function useInteractions({
             mouseState.startPos,
             mouseState.currentPos
           );
-          mouseState.velocityModeSize = calculateParticleSize(
+          const currentSize = calculateParticleSize(
             distance,
             mouseState.isDragging,
             mouseState.dragThreshold
           );
+          mouseState.velocityModeSize = currentSize;
+          mouseState.activeVelocitySize = currentSize; // Store for subsequent clicks
           updateVelocityPreview();
           return;
         } else if (wasCmdPressed && !mouseState.cmdPressed) {
