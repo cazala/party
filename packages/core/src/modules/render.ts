@@ -411,7 +411,7 @@ export class Canvas2DRenderer extends Renderer {
     // Scale the arrow length proportional to velocity magnitude
     // Use a scaling factor to make arrows visible but not too long
     const scaleFactor = 0.1; // Adjust this to control arrow length
-    const arrowLength = Math.min(velocityMagnitude * scaleFactor, 50); // Cap at 50px
+    const arrowLength = Math.min(velocityMagnitude * scaleFactor, 20); // Cap at 50px
 
     // Start point: at the edge of the particle, not the center
     const startX = particle.position.x + direction.x * particle.size;
@@ -531,7 +531,9 @@ export class Canvas2DRenderer extends Renderer {
     const pressure = fluid.convertDensityToPressure(density);
     const vector = fluid.calculatePressureForce(this.cursorPosition, particles);
     const force =
-      density > 0 ? vector.clone().normalize().multiply(100) : Vector2D.zero();
+      density > 0
+        ? vector.clone().normalize().multiply(fluid.influenceRadius)
+        : Vector2D.zero();
     // not devided by density
 
     // Use same color palette as spatial grid

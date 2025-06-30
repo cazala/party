@@ -7,6 +7,8 @@ import { Vector2D } from "../vector";
 export const DEFAULT_INFLUENCE_RADIUS = 100;
 export const DEFAULT_TARGET_DENSITY = 0.5;
 export const DEFAULT_PRESSURE_MULTIPLIER = 2.5;
+export const DEFAULT_WOBBLE_FACTOR = 5;
+export const DEFAULT_FLUID_ENABLED = false;
 
 /**
  * Calculates the smoothing kernel function used for particle interactions.
@@ -89,12 +91,18 @@ export function calculateDensity(
  * target density and applying pressure forces to particles.
  */
 export class Fluid implements Force {
+  /** Whether the fluid simulation is enabled */
+  public enabled: boolean;
   /** The radius within which particles influence each other */
   public influenceRadius: number;
   /** The desired density for the fluid */
   public targetDensity: number;
   /** Multiplier for pressure force strength */
   public pressureMultiplier: number;
+  /** The wobbliness of the fluid */
+  public wobbleFactor: number;
+  /** Makes the fluid more stable */
+  public resistance: number;
   /** Cache for calculated densities to avoid redundant computation */
   public densities: Map<number, number> = new Map();
 
@@ -104,25 +112,39 @@ export class Fluid implements Force {
    */
   constructor(
     options: {
+      enabled?: boolean;
       influenceRadius?: number;
       targetDensity?: number;
       pressureMultiplier?: number;
+      wobbleFactor?: number;
     } = {}
   ) {
+    this.enabled = options.enabled ?? DEFAULT_FLUID_ENABLED;
     this.influenceRadius = options.influenceRadius ?? DEFAULT_INFLUENCE_RADIUS;
     this.targetDensity = options.targetDensity ?? DEFAULT_TARGET_DENSITY;
     this.pressureMultiplier =
       options.pressureMultiplier ?? DEFAULT_PRESSURE_MULTIPLIER;
+    this.wobbleFactor = options.wobbleFactor ?? DEFAULT_WOBBLE_FACTOR;
+    this.resistance = 1;
+  }
+
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
   }
 
   warmup(particles: Particle[], deltaTime: number) {
+    if (!this.enabled) {
+      return;
+    }
+    
+    this.resistance = (Math.min(this.wobbleFactor, 10) / 10) * 0.049 + 0.95;
     for (const particle of particles) {
-      // const predictedPosition = particle.position
-      // .clone()
-      // .add(particle.velocity.clone().multiply(deltaTime));
+      const predictedPosition = particle.position
+        .clone()
+        .add(particle.velocity.clone().multiply(deltaTime));
       this.densities.set(
         particle.id,
-        calculateDensity(particle.position, this.influenceRadius, particles)
+        calculateDensity(predictedPosition, this.influenceRadius, particles)
       );
     }
   }
@@ -135,6 +157,10 @@ export class Fluid implements Force {
    * @returns The calculated pressure force vector
    */
   apply(particle: Particle, spatialGrid: SpatialGrid) {
+    if (!this.enabled) {
+      return Vector2D.zero();
+    }
+    
     const particles = spatialGrid.getParticles(
       particle.position,
       this.influenceRadius
@@ -147,13 +173,9 @@ export class Fluid implements Force {
     // do A = F/d instead of F/m because this is a fluid
     const density = this.densities.get(particle.id);
     if (density) {
-      // const pressure = this.convertDensityToPressure(density);
       const force = pressureForce.clone().divide(density);
-      // particle.acceleration.add(force);
-      // particle.velocity.add(new Vector2D(0, 500).divide(120));
-      const inertia = particle.velocity.clone().multiply(0.99);
-      particle.velocity = force.multiply(1000000).add(inertia);
-      // particle.velocity = force.multiply(10000000);
+      particle.velocity.multiply(this.resistance);
+      particle.velocity.add(force.multiply(1000000));
     }
 
     return Vector2D.zero();

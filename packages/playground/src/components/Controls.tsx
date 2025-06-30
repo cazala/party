@@ -20,6 +20,8 @@ import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
+  DEFAULT_WOBBLE_FACTOR,
+  DEFAULT_FLUID_ENABLED,
 } from "@party/core";
 import {
   DEFAULT_RENDER_COLOR_MODE,
@@ -102,9 +104,11 @@ export function Controls({
 
     // Reset fluid
     if (fluid) {
+      fluid.setEnabled(DEFAULT_FLUID_ENABLED);
       fluid.influenceRadius = DEFAULT_INFLUENCE_RADIUS;
       fluid.targetDensity = DEFAULT_TARGET_DENSITY;
       fluid.pressureMultiplier = DEFAULT_PRESSURE_MULTIPLIER;
+      fluid.wobbleFactor = DEFAULT_WOBBLE_FACTOR;
     }
 
     // Reset renderer

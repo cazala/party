@@ -11,6 +11,8 @@ import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
+  DEFAULT_WOBBLE_FACTOR,
+  DEFAULT_FLUID_ENABLED,
 } from "@party/core/modules/forces/fluid";
 
 interface BehaviorControlsProps {
@@ -36,6 +38,7 @@ export function BehaviorControls({ flock, fluid }: BehaviorControlsProps) {
   );
 
   // Fluid state
+  const [fluidEnabled, setFluidEnabled] = useState(DEFAULT_FLUID_ENABLED);
   const [influenceRadius, setInfluenceRadius] = useState(
     DEFAULT_INFLUENCE_RADIUS
   );
@@ -43,6 +46,7 @@ export function BehaviorControls({ flock, fluid }: BehaviorControlsProps) {
   const [pressureMultiplier, setPressureMultiplier] = useState(
     DEFAULT_PRESSURE_MULTIPLIER
   );
+  const [wobbleFactor, setWobbleFactor] = useState(DEFAULT_WOBBLE_FACTOR);
 
   useEffect(() => {
     if (flock) {
@@ -56,9 +60,11 @@ export function BehaviorControls({ flock, fluid }: BehaviorControlsProps) {
 
   useEffect(() => {
     if (fluid) {
+      setFluidEnabled(fluid.enabled);
       setInfluenceRadius(fluid.influenceRadius);
       setTargetDensity(fluid.targetDensity);
       setPressureMultiplier(fluid.pressureMultiplier);
+      setWobbleFactor(fluid.wobbleFactor);
     }
   }, [fluid]);
 
@@ -89,21 +95,32 @@ export function BehaviorControls({ flock, fluid }: BehaviorControlsProps) {
     }
   };
 
-  const handleFluidChange = (property: keyof Fluid, value: number) => {
+  const handleFluidChange = (
+    property: keyof Fluid,
+    value: number | boolean
+  ) => {
     if (!fluid) return;
 
     switch (property) {
+      case "enabled":
+        setFluidEnabled(value as boolean);
+        fluid.setEnabled(value as boolean);
+        break;
       case "influenceRadius":
-        setInfluenceRadius(value);
-        fluid.influenceRadius = value;
+        setInfluenceRadius(value as number);
+        fluid.influenceRadius = value as number;
         break;
       case "targetDensity":
-        setTargetDensity(value);
-        fluid.targetDensity = value;
+        setTargetDensity(value as number);
+        fluid.targetDensity = value as number;
         break;
       case "pressureMultiplier":
-        setPressureMultiplier(value);
-        fluid.pressureMultiplier = value;
+        setPressureMultiplier(value as number);
+        fluid.pressureMultiplier = value as number;
+        break;
+      case "wobbleFactor":
+        setWobbleFactor(value as number);
+        fluid.wobbleFactor = value as number;
         break;
     }
   };
@@ -111,6 +128,18 @@ export function BehaviorControls({ flock, fluid }: BehaviorControlsProps) {
   return (
     <div className="control-section">
       <h4>Behavior</h4>
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={fluidEnabled}
+            onChange={(e) => handleFluidChange("enabled", e.target.checked)}
+            className="checkbox"
+          />
+          Enable Fluids
+        </label>
+      </div>
 
       <div className="control-group">
         <label>
@@ -254,6 +283,23 @@ export function BehaviorControls({ flock, fluid }: BehaviorControlsProps) {
                 "pressureMultiplier",
                 parseFloat(e.target.value)
               )
+            }
+            className="slider"
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Wobble: {wobbleFactor.toFixed(1)}
+          <input
+            type="range"
+            min="0"
+            max="10"
+            step="0.1"
+            value={wobbleFactor}
+            onChange={(e) =>
+              handleFluidChange("wobbleFactor", parseFloat(e.target.value))
             }
             className="slider"
           />
