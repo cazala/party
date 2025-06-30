@@ -100,7 +100,6 @@ export function SpawnControls({
 
   return (
     <div className="control-section">
-      <h4>Spawn</h4>
 
       <div className="control-group">
         <label>

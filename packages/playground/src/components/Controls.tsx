@@ -33,6 +33,7 @@ import { BehaviorControls } from "./control-sections/BehaviorControls";
 import { FluidControls } from "./control-sections/FluidControls";
 import { RenderControls } from "./control-sections/RenderControls";
 import { PerformanceControls } from "./control-sections/PerformanceControls";
+import { CollapsibleSection } from "./CollapsibleSection";
 
 const DEFAULT_SPAWN_NUM_PARTICLES = 100;
 const DEFAULT_SPAWN_SHAPE = "grid";
@@ -142,19 +143,36 @@ export function Controls({
         </button>
       </div>
 
-      <PhysicsControls
-        gravity={gravity}
-        bounds={bounds}
-        collisions={collisions}
-      />
-      <SpawnControls
-        onSpawnParticles={onSpawnParticles}
-        onGetSpawnConfig={onGetSpawnConfig}
-      />
-      <BehaviorControls flock={flock} />
-      <FluidControls fluid={fluid} />
-      <RenderControls renderer={renderer} flock={flock} fluid={fluid} />
-      <PerformanceControls spatialGrid={spatialGrid} renderer={renderer} />
+      <CollapsibleSection title="Physics" defaultOpen={true}>
+        <PhysicsControls
+          gravity={gravity}
+          bounds={bounds}
+          collisions={collisions}
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Spawn" defaultOpen={true}>
+        <SpawnControls
+          onSpawnParticles={onSpawnParticles}
+          onGetSpawnConfig={onGetSpawnConfig}
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Behavior" defaultOpen={false}>
+        <BehaviorControls flock={flock} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Fluids" defaultOpen={false}>
+        <FluidControls fluid={fluid} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Render" defaultOpen={true}>
+        <RenderControls renderer={renderer} flock={flock} fluid={fluid} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Performance" defaultOpen={false}>
+        <PerformanceControls spatialGrid={spatialGrid} renderer={renderer} />
+      </CollapsibleSection>
     </div>
   );
 }

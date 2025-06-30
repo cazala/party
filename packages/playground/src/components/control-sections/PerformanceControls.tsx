@@ -43,7 +43,6 @@ export function PerformanceControls({
 
   return (
     <div className="control-section">
-      <h4>Performance</h4>
 
       <div className="control-group">
         <label>

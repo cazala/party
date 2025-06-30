@@ -71,7 +71,6 @@ export function BehaviorControls({ flock }: BehaviorControlsProps) {
 
   return (
     <div className="control-section">
-      <h4>Behavior</h4>
 
       <div className="control-group">
         <label>

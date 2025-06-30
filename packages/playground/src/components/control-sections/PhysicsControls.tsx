@@ -85,7 +85,6 @@ export function PhysicsControls({
 
   return (
     <div className="control-section">
-      <h4>Physics</h4>
 
       <div className="control-group">
         <label>

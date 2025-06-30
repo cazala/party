@@ -56,7 +56,6 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
 
   return (
     <div className="control-section">
-      <h4>Render</h4>
 
       <div className="control-group">
         <label>

@@ -66,7 +66,6 @@ export function FluidControls({ fluid }: FluidControlsProps) {
 
   return (
     <div className="control-section">
-      <h4>Fluids</h4>
 
       <div className="control-group">
         <label>
