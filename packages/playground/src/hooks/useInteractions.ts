@@ -2,7 +2,7 @@ import { useRef, useCallback } from "react";
 import { ParticleSystem, Canvas2DRenderer, Vector2D } from "@party/core";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
-import { createParticle, calculateParticleSize } from "../utils/particle";
+import { createParticle, calculateParticleSize, getRandomColor } from "../utils/particle";
 import { calculateVelocity } from "../utils/velocity";
 
 // Streaming configuration
@@ -291,7 +291,7 @@ export function useInteractions({
       mouseState.isDragging = false;
 
       // Pick a random color for this drag session and store it
-      mouseState.previewColor = "#F8F8F8"; // Will be updated by createParticle
+      mouseState.previewColor = getRandomColor();
 
       // If shift is pressed during mouse down, start streaming immediately
       if (mouseState.shiftPressed) {
@@ -501,7 +501,7 @@ export function useInteractions({
           mouseState.startPos.x,
           mouseState.startPos.y,
           mouseState.velocityModeSize, // Use the size that was active when we entered velocity mode
-          mouseState.previewColor,
+          mouseState.previewColor, // Use the same color as preview
           mouseState.initialVelocity
         );
       } else {
@@ -519,7 +519,7 @@ export function useInteractions({
           mouseState.startPos.x,
           mouseState.startPos.y,
           size,
-          mouseState.previewColor
+          mouseState.previewColor // Use the same color as preview
         );
       }
 
