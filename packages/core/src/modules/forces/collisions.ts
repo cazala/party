@@ -4,7 +4,7 @@ import { Vector2D } from "../vector";
 import { SpatialGrid } from "../spatial-grid";
 
 // Default constants for Collisions
-export const DEFAULT_COLLISIONS_ENABLED = false;
+export const DEFAULT_COLLISIONS_ENABLED = true;
 
 export interface CollisionsOptions {
   enabled?: boolean;

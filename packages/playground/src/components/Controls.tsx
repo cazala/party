@@ -30,6 +30,7 @@ import {
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { SpawnControls } from "./control-sections/SpawnControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
+import { FluidControls } from "./control-sections/FluidControls";
 import { RenderControls } from "./control-sections/RenderControls";
 import { PerformanceControls } from "./control-sections/PerformanceControls";
 
@@ -150,7 +151,8 @@ export function Controls({
         onSpawnParticles={onSpawnParticles}
         onGetSpawnConfig={onGetSpawnConfig}
       />
-      <BehaviorControls flock={flock} fluid={fluid} />
+      <BehaviorControls flock={flock} />
+      <FluidControls fluid={fluid} />
       <RenderControls renderer={renderer} flock={flock} fluid={fluid} />
       <PerformanceControls spatialGrid={spatialGrid} renderer={renderer} />
     </div>

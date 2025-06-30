@@ -75,6 +75,10 @@
   font-weight: 400;
 }
 
+.control-group label input[type="checkbox"] {
+  margin-right: 8px;
+}
+
 .slider {
   width: 100%;
   height: 4px;
@@ -116,6 +120,37 @@
   cursor: pointer;
   border: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Disabled slider styles */
+.slider.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: #444;
+}
+
+.slider.disabled:hover {
+  opacity: 0.3;
+}
+
+.slider.disabled::-webkit-slider-thumb {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.slider.disabled::-webkit-slider-thumb:hover {
+  background: #666;
+}
+
+.slider.disabled::-moz-range-thumb {
+  background: #666;
+  cursor: not-allowed;
+}
+
+/* Disabled label styling */
+.control-group label:has(.slider.disabled) {
+  opacity: 0.5;
+  color: #666;
 }
 
 .preset-buttons {

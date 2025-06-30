@@ -41,8 +41,8 @@ export abstract class Renderer {
     this.customColor = options.customColor || DEFAULT_RENDER_CUSTOM_COLOR;
     this.maxSpeed = options.maxSpeed || 300;
     this.showSpatialGrid = false;
-    this.showDensityAtCursor = true;
-    this.showVelocity = true;
+    this.showDensityAtCursor = false;
+    this.showVelocity = false;
     this.cursorPosition = null;
 
     const ctx = this.canvas.getContext("2d");

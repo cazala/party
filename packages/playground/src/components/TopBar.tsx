@@ -87,7 +87,7 @@ export function TopBar({
               <path d="M6 0.5a5.5 5.5 0 0 1 5.5 5.5h-1A4.5 4.5 0 0 0 6 1.5v1.5L3.5 1.5 6 0V0.5z" />
               <path d="M6 11.5a5.5 5.5 0 0 1-5.5-5.5h1A4.5 4.5 0 0 0 6 10.5V9l2.5 1.5L6 12v-0.5z" />
             </svg>
-            <span>Reset</span>
+            <span>Restart</span>
           </button>
         </div>
         <div className="topbar-right"></div>

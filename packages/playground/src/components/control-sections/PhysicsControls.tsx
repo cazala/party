@@ -157,7 +157,6 @@ export function PhysicsControls({
             type="checkbox"
             checked={collisionsEnabled}
             onChange={(e) => handleCollisionsEnabledChange(e.target.checked)}
-            style={{ marginRight: "8px" }}
           />
           Enable Collisions
         </label>

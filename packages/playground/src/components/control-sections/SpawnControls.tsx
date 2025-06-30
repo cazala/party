@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 
-const DEFAULT_SPAWN_NUM_PARTICLES = 500;
-const DEFAULT_SPAWN_SHAPE = "random";
+const DEFAULT_SPAWN_NUM_PARTICLES = 100;
+const DEFAULT_SPAWN_SHAPE = "grid";
 const DEFAULT_SPAWN_SPACING = 25;
-const DEFAULT_SPAWN_PARTICLE_SIZE = 3;
+const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
 const DEFAULT_DRAG_THRESHOLD = 5;
 
 interface SpawnControlsProps {
