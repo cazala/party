@@ -11,11 +11,7 @@ interface RenderControlsProps {
   fluid: Fluid | null;
 }
 
-export function RenderControls({
-  renderer,
-  flock,
-  fluid,
-}: RenderControlsProps) {
+export function RenderControls({ renderer, fluid }: RenderControlsProps) {
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
   const [showDensity, setShowDensity] = useState(true);

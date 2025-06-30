@@ -128,9 +128,9 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     system.addForce(collisions);
     system.addForce(fluid);
 
-    setInterval(() => {
+    system.setRenderCallback((system) => {
       renderer.render(system);
-    }, 1000 / 60);
+    });
 
     system.play();
 

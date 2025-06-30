@@ -26,6 +26,8 @@ export class ParticleSystem {
   private lastTime: number = 0;
   private animationId: number | null = null;
 
+  private renderCallback?: (system: ParticleSystem) => void;
+
   constructor(options: SystemOptions) {
     this.width = options.width;
     this.height = options.height;
@@ -143,5 +145,17 @@ export class ParticleSystem {
     this.update(deltaTime);
 
     this.animationId = requestAnimationFrame(this.animate);
+
+    if (this.renderCallback) {
+      this.renderCallback(this);
+    }
   };
+
+  setRenderCallback(callback: (system: ParticleSystem) => void): void {
+    this.renderCallback = callback;
+  }
+
+  clearRenderCallback(): void {
+    this.renderCallback = undefined;
+  }
 }

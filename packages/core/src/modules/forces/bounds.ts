@@ -1,4 +1,3 @@
-import { Vector2D } from "../vector";
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
