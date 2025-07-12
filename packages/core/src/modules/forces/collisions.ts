@@ -39,10 +39,7 @@ export class Collisions implements Force {
     }
   }
 
-  private checkCollision(
-    particle1: Particle,
-    particle2: Particle
-  ): void {
+  private checkCollision(particle1: Particle, particle2: Particle): void {
     const distance = particle1.position.distance(particle2.position);
     const combinedRadius = particle1.size + particle2.size; // Sum of both radii (size IS radius)
 
@@ -80,8 +77,10 @@ export class Collisions implements Force {
     const alignmentThreshold = 0.05; // Very small horizontal/vertical component indicates alignment
 
     // Check if particles are nearly perfectly aligned vertically or horizontally
-    const isNearlyVertical = dx < alignmentThreshold && dy > 0.95;
-    const isNearlyHorizontal = dy < alignmentThreshold && dx > 0.95;
+    const isNearlyVertical =
+      dx < alignmentThreshold && dy > 1 - alignmentThreshold; // Vertical
+    const isNearlyHorizontal =
+      dy < alignmentThreshold && dx > 1 - alignmentThreshold; // Horizontal
 
     if (isNearlyVertical || isNearlyHorizontal) {
       // Add small random perturbation to break symmetry
@@ -160,18 +159,6 @@ export class Collisions implements Force {
 
       particle1.velocity.set(newV1.x, newV1.y);
       particle2.velocity.set(newV2.x, newV2.y);
-    }
-
-    // Additional safety: Cap velocity in any direction if it gets too high
-    const maxVelocity = 200; // Increased for more dramatic bounces
-    const particle1Speed = particle1.velocity.magnitude();
-    const particle2Speed = particle2.velocity.magnitude();
-
-    if (particle1Speed > maxVelocity) {
-      particle1.velocity.normalize().multiply(maxVelocity);
-    }
-    if (particle2Speed > maxVelocity) {
-      particle2.velocity.normalize().multiply(maxVelocity);
     }
 
     // Forces are applied directly to particle velocities above
