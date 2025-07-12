@@ -14,6 +14,32 @@ import {
 } from "../utils/particle";
 import { calculateVelocity } from "../utils/velocity";
 
+/**
+ * Custom React hook that handles all mouse and keyboard interactions for the particle playground.
+ * 
+ * ## Features:
+ * 
+ * ### Mouse Controls:
+ * - **Click**: Spawn a single particle at cursor position
+ * - **Click & Drag**: Set particle size based on drag distance
+ * - **Right Click**: Attract particles to cursor position
+ * - **Ctrl/⌘ + Right Click**: Repel particles from cursor position
+ * 
+ * ### Keyboard Modifiers:
+ * - **Hold Shift + Click**: Stream particles continuously at cursor
+ * - **Hold Ctrl/⌘ + Click & Drag**: Set particle direction and speed (velocity mode)
+ * - **Delete/Backspace**: Remove the last spawned particle (up to 50 particles tracked)
+ * 
+ * ### Advanced Features:
+ * - **Mode Switching**: Press Ctrl/⌘ while dragging to switch from size mode to velocity mode
+ * - **Particle History**: Tracks up to 50 most recently spawned particles for deletion
+ * - **Size Preservation**: Maintains particle size when switching between modes
+ * - **Streaming**: Continuous particle spawning with adjustable rate
+ * 
+ * @param props - Configuration object containing system accessors
+ * @returns Object with mouse event handlers and utility functions
+ */
+
 // Streaming configuration
 const STREAM_SPAWN_RATE = 10; // particles per second
 const STREAM_SPAWN_INTERVAL = 1000 / STREAM_SPAWN_RATE; // milliseconds between spawns
@@ -86,7 +112,12 @@ export function useInteractions({
     lastCalculatedSize: 10,
   });
 
-  // Helper function to track spawned particle IDs with 50 particle limit
+  /**
+   * Tracks a spawned particle ID for potential deletion via Delete/Backspace.
+   * Maintains a FIFO queue of up to 50 particle IDs.
+   * 
+   * @param particleId - The unique ID of the spawned particle
+   */
   const trackParticleId = useCallback((particleId: number) => {
     const mouseState = mouseStateRef.current;
     mouseState.spawnedParticleIds.push(particleId);

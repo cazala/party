@@ -1,0 +1,160 @@
+.hotkeys-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.hotkeys-modal {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  max-width: 600px;
+  max-height: 80vh;
+  width: 90%;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.hotkeys-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #333;
+  background: #222;
+}
+
+.hotkeys-modal-header h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.hotkeys-modal-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.hotkeys-modal-close:hover {
+  background: #333;
+  color: #fff;
+}
+
+.hotkeys-modal-content {
+  padding: 24px;
+  max-height: calc(80vh - 80px);
+  overflow-y: auto;
+}
+
+.hotkeys-section {
+  margin-bottom: 28px;
+}
+
+.hotkeys-section:last-child {
+  margin-bottom: 0;
+}
+
+.hotkeys-section h3 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.hotkeys-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hotkey-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.hotkey-action {
+  min-width: 160px;
+  padding: 8px 12px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.hotkey-description {
+  color: #ccc;
+  font-size: 14px;
+  line-height: 1.5;
+  padding-top: 6px;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .hotkeys-modal {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .hotkeys-modal-header {
+    padding: 16px 20px;
+  }
+  
+  .hotkeys-modal-content {
+    padding: 20px;
+  }
+  
+  .hotkey-item {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .hotkey-action {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .hotkey-description {
+    padding-top: 0;
+  }
+}
+
+/* Scrollbar styling */
+.hotkeys-modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.hotkeys-modal-content::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.hotkeys-modal-content::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+.hotkeys-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

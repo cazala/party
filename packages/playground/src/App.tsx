@@ -1,8 +1,9 @@
 import { usePlayground } from "./hooks/usePlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controls } from "./components/Controls";
 import { TopBar } from "./components/TopBar";
+import { HotkeysModal } from "./components/HotkeysModal";
 import "./styles/index.css";
 import "./components/Controls.css";
 import "./components/TopBar.css";
@@ -13,6 +14,8 @@ const TOPBAR_HEIGHT = 60;
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isHotkeysModalOpen, setIsHotkeysModalOpen] = useState(false);
+  
   const {
     system,
     gravity,
@@ -42,6 +45,20 @@ function App() {
     }
   }, [system, resetParticles]);
 
+  // Global keyboard shortcut to open hotkeys modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Open hotkeys modal with '?' key
+      if (e.key === '?' && !isHotkeysModalOpen) {
+        e.preventDefault();
+        setIsHotkeysModalOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isHotkeysModalOpen]);
+
   return (
     <div className="app">
       <TopBar
@@ -50,6 +67,7 @@ function App() {
         onPause={pause}
         onClear={clear}
         onReset={resetParticles}
+        onShowHotkeys={() => setIsHotkeysModalOpen(true)}
       />
       <div className="app-content">
         <div className="canvas-container">
@@ -80,6 +98,11 @@ function App() {
           />
         </div>
       </div>
+      
+      <HotkeysModal 
+        isOpen={isHotkeysModalOpen} 
+        onClose={() => setIsHotkeysModalOpen(false)} 
+      />
     </div>
   );
 }

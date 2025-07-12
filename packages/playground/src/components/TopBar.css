@@ -32,6 +32,9 @@
 
 .topbar-right {
   flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 .play-pause-button,
@@ -52,11 +55,33 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+.topbar-right .hotkeys-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  outline: none;
+}
+
 .play-pause-button:hover,
 .clear-button:hover,
 .reset-spawn-button:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+.topbar-right .hotkeys-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--color-text-primary);
 }
 
 .play-pause-button.playing {
@@ -81,22 +106,32 @@
   .top-bar-content {
     padding: 0 12px;
   }
-  
+
   .title h1 {
     font-size: 16px;
   }
-  
+
   .play-pause-button span,
   .clear-button span,
   .reset-spawn-button span {
     display: none;
   }
-  
+
   .play-pause-button,
   .clear-button,
   .reset-spawn-button {
     padding: 8px 10px;
     min-width: 40px;
     justify-content: center;
+  }
+
+  .topbar-right .hotkeys-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .topbar-right .hotkeys-button svg {
+    width: 14px;
+    height: 14px;
   }
 }
