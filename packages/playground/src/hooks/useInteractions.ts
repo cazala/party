@@ -79,6 +79,7 @@ interface UseSpawnerProps {
   getRenderer: () => Canvas2DRenderer | null;
   getCanvas: () => HTMLCanvasElement | null;
   getInteraction: () => Interaction | null;
+  onZoom?: (deltaY: number, centerX: number, centerY: number) => void;
 }
 
 export function useInteractions({
@@ -86,6 +87,7 @@ export function useInteractions({
   getRenderer,
   getCanvas,
   getInteraction,
+  onZoom,
 }: UseSpawnerProps) {
   const mouseStateRef = useRef<MouseState>({
     isDown: false,
@@ -173,6 +175,16 @@ export function useInteractions({
     }
     mouseState.isStreaming = false;
   }, []);
+
+  // Helper function to get world position from mouse event
+  const getWorldPosition = useCallback((e: MouseEvent) => {
+    const canvas = getCanvas();
+    const renderer = getRenderer();
+    if (!canvas || !renderer) return { x: 0, y: 0 };
+
+    const screenPos = getMousePosition(e, canvas);
+    return renderer.screenToWorld(screenPos.x, screenPos.y);
+  }, [getCanvas, getRenderer]);
 
   // Helper function to get preview color based on renderer color mode
   const getPreviewColor = useCallback(
@@ -372,7 +384,7 @@ export function useInteractions({
       if (!canvas || !interaction) return;
 
       const mouseState = mouseStateRef.current;
-      const pos = getMousePosition(e, canvas);
+      const pos = getWorldPosition(e);
 
       // Determine interaction mode based on modifier keys
       const isRepelMode = e.metaKey || e.ctrlKey;
@@ -387,7 +399,7 @@ export function useInteractions({
         interaction.attract();
       }
     },
-    [getCanvas, getInteraction]
+    [getCanvas, getInteraction, getWorldPosition]
   );
 
   const onRightMouseMove = useCallback(
@@ -399,7 +411,7 @@ export function useInteractions({
       const mouseState = mouseStateRef.current;
       if (!mouseState.isRightClicking) return;
 
-      const pos = getMousePosition(e, canvas);
+      const pos = getWorldPosition(e);
 
       // Update interaction position to follow cursor
       interaction.setPosition(pos.x, pos.y);
@@ -415,7 +427,7 @@ export function useInteractions({
         }
       }
     },
-    [getCanvas, getInteraction]
+    [getCanvas, getInteraction, getWorldPosition]
   );
 
   const onRightMouseUp = useCallback(() => {
@@ -448,7 +460,7 @@ export function useInteractions({
       if (!canvas || !renderer) return;
 
       const mouseState = mouseStateRef.current;
-      const pos = getMousePosition(e, canvas);
+      const pos = getWorldPosition(e);
 
       // Ensure canvas has focus for keyboard events
       canvas.focus();
@@ -541,7 +553,7 @@ export function useInteractions({
         renderer.setPreviewVelocity(new Vector2D(0, 0)); // Start with zero velocity
       }
     },
-    [getCanvas, getRenderer, startStreaming]
+    [getCanvas, getRenderer, startStreaming, getWorldPosition, getPreviewColor]
   );
 
   const onMouseMove = useCallback(
@@ -556,17 +568,17 @@ export function useInteractions({
       const renderer = getRenderer();
       if (!canvas || !renderer) return;
 
-      const pos = getMousePosition(e, canvas);
+      const worldPos = getWorldPosition(e);
 
-      // Always update cursor position for density display
+      // Always update cursor position for density display (use world coordinates)
       if (renderer.setCursorPosition) {
-        renderer.setCursorPosition(new Vector2D(pos.x, pos.y));
+        renderer.setCursorPosition(new Vector2D(worldPos.x, worldPos.y));
       }
 
       const mouseState = mouseStateRef.current;
       if (!mouseState.isDown) return;
 
-      mouseState.currentPos = pos;
+      mouseState.currentPos = worldPos;
 
       // Update modifier key states from mouse event
       const wasShiftPressed = mouseState.shiftPressed;
@@ -611,7 +623,7 @@ export function useInteractions({
 
       // If we're streaming, update the stream position to follow the cursor
       if (mouseState.isStreaming) {
-        mouseState.streamPosition = { x: pos.x, y: pos.y };
+        mouseState.streamPosition = { x: worldPos.x, y: worldPos.y };
         return; // Don't update preview when streaming
       }
 
@@ -639,7 +651,7 @@ export function useInteractions({
         }
       }
 
-      const distance = getDistance(mouseState.startPos, pos);
+      const distance = getDistance(mouseState.startPos, worldPos);
 
       // Check if we should enter drag mode
       if (distance >= mouseState.dragThreshold) {
@@ -658,6 +670,7 @@ export function useInteractions({
     [
       getCanvas,
       getRenderer,
+      getWorldPosition,
       stopStreaming,
       startStreaming,
       updateVelocityPreview,
@@ -811,12 +824,29 @@ export function useInteractions({
     document.addEventListener("keyup", handleKeyUp);
   }, [getCanvas, handleKeyDown, handleKeyUp]);
 
+  const onWheel = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault(); // Prevent page scroll
+      
+      const canvas = getCanvas();
+      if (!canvas || !onZoom) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const centerX = e.clientX - rect.left;
+      const centerY = e.clientY - rect.top;
+
+      onZoom(e.deltaY, centerX, centerY);
+    },
+    [getCanvas, onZoom]
+  );
+
   return {
     onMouseDown,
     onMouseMove,
     onMouseUp,
     onMouseLeave,
     onContextMenu,
+    onWheel,
     cleanup,
     setupKeyboardListeners,
   };

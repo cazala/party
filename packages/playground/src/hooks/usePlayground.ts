@@ -46,6 +46,100 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
   const spatialGridRef = useRef<SpatialGrid | null>(null);
 
   // ---------------------------------------------------------------------------
+  // Zoom handling
+  // ---------------------------------------------------------------------------
+  const zoomStateRef = useRef({
+    targetZoom: 1,
+    targetCameraX: 0,
+    targetCameraY: 0,
+    isAnimating: false,
+    animationId: null as number | null,
+  });
+
+  const animateZoom = useCallback(() => {
+    const renderer = rendererRef.current;
+    const bounds = boundsRef.current;
+    const spatialGrid = spatialGridRef.current;
+    const zoomState = zoomStateRef.current;
+    
+    if (!renderer || !bounds || !spatialGrid) return;
+
+    const currentZoom = renderer.getZoom();
+    const camera = renderer.getCamera();
+    
+    // Smooth interpolation with easing
+    const easeFactor = 0.15; // Higher = faster, lower = smoother
+    const zoomDiff = zoomState.targetZoom - currentZoom;
+    const cameraDiffX = zoomState.targetCameraX - camera.x;
+    const cameraDiffY = zoomState.targetCameraY - camera.y;
+    
+    // Check if we're close enough to the target (within 0.01% difference)
+    const threshold = 0.001;
+    if (Math.abs(zoomDiff) < threshold && 
+        Math.abs(cameraDiffX) < threshold && 
+        Math.abs(cameraDiffY) < threshold) {
+      // Animation complete - set exact target values
+      renderer.setZoom(zoomState.targetZoom);
+      renderer.setCamera(zoomState.targetCameraX, zoomState.targetCameraY);
+      bounds.setCamera(zoomState.targetCameraX, zoomState.targetCameraY, zoomState.targetZoom);
+      spatialGrid.setCamera(zoomState.targetCameraX, zoomState.targetCameraY, zoomState.targetZoom);
+      
+      zoomState.isAnimating = false;
+      if (zoomState.animationId) {
+        cancelAnimationFrame(zoomState.animationId);
+        zoomState.animationId = null;
+      }
+      return;
+    }
+    
+    // Apply smooth interpolation
+    const newZoom = currentZoom + zoomDiff * easeFactor;
+    const newCameraX = camera.x + cameraDiffX * easeFactor;
+    const newCameraY = camera.y + cameraDiffY * easeFactor;
+    
+    renderer.setZoom(newZoom);
+    renderer.setCamera(newCameraX, newCameraY);
+    bounds.setCamera(newCameraX, newCameraY, newZoom);
+    spatialGrid.setCamera(newCameraX, newCameraY, newZoom);
+    
+    // Continue animation
+    zoomState.animationId = requestAnimationFrame(animateZoom);
+  }, []);
+
+  const handleZoom = useCallback((deltaY: number, centerX: number, centerY: number) => {
+    const renderer = rendererRef.current;
+    const zoomState = zoomStateRef.current;
+    if (!renderer) return;
+
+    // Much smaller zoom steps for smoother control
+    const zoomSensitivity = 0.02; // Reduced from 0.1 (10x smoother)
+    const zoomDirection = deltaY > 0 ? -zoomSensitivity : zoomSensitivity;
+    
+    const currentTargetZoom = zoomState.isAnimating ? zoomState.targetZoom : renderer.getZoom();
+    const newTargetZoom = Math.max(0.1, Math.min(2, currentTargetZoom + zoomDirection));
+    
+    // Calculate camera adjustment to zoom towards the cursor position
+    const currentTargetCamera = zoomState.isAnimating 
+      ? { x: zoomState.targetCameraX, y: zoomState.targetCameraY }
+      : renderer.getCamera();
+    
+    const zoomDelta = newTargetZoom / currentTargetZoom;
+    const newTargetCameraX = currentTargetCamera.x + (centerX - currentTargetCamera.x) * (1 - zoomDelta);
+    const newTargetCameraY = currentTargetCamera.y + (centerY - currentTargetCamera.y) * (1 - zoomDelta);
+    
+    // Update target values
+    zoomState.targetZoom = newTargetZoom;
+    zoomState.targetCameraX = newTargetCameraX;
+    zoomState.targetCameraY = newTargetCameraY;
+    
+    // Start animation if not already running
+    if (!zoomState.isAnimating) {
+      zoomState.isAnimating = true;
+      zoomState.animationId = requestAnimationFrame(animateZoom);
+    }
+  }, [animateZoom]);
+
+  // ---------------------------------------------------------------------------
   // Interaction handling (mouse + keyboard)
   // ---------------------------------------------------------------------------
   // All pointer/key logic lives in `useInteractions`.  We simply provide lazy
@@ -55,6 +149,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     getRenderer: () => rendererRef.current,
     getCanvas: () => canvasRef.current,
     getInteraction: () => interactionRef.current,
+    onZoom: handleZoom,
   });
 
   // Attach / detach low-level DOM listeners once – they call back into the
@@ -72,6 +167,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
         "contextmenu",
         interactions.onContextMenu
       );
+      canvasRef.current.addEventListener("wheel", interactions.onWheel);
     }
     return () => {
       if (canvasRef.current) {
@@ -95,6 +191,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
           "contextmenu",
           interactions.onContextMenu
         );
+        canvasRef.current.removeEventListener("wheel", interactions.onWheel);
       }
     };
   }, [canvasRef, interactions]);
@@ -147,6 +244,9 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
       renderer.render(system);
     });
 
+    // Initialize bounds with initial camera position and zoom
+    bounds.setCamera(0, 0, 1);
+
     system.play();
 
     interactions.setupKeyboardListeners();
@@ -154,6 +254,14 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     // Cleanup function
     return () => {
       interactions.cleanup();
+      
+      // Cleanup zoom animation
+      const zoomState = zoomStateRef.current;
+      if (zoomState.animationId) {
+        cancelAnimationFrame(zoomState.animationId);
+        zoomState.animationId = null;
+        zoomState.isAnimating = false;
+      }
     };
   }, []);
 

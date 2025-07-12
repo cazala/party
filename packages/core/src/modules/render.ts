@@ -112,6 +112,11 @@ export class Canvas2DRenderer extends Renderer {
   private previewParticle: Particle | null = null;
   private isDragMode: boolean = false;
   private previewVelocity: Vector2D | null = null;
+  
+  // Camera/Zoom properties
+  private zoom: number = 1;
+  private cameraX: number = 0;
+  private cameraY: number = 0;
 
   setPreviewParticle(
     particle: Particle | null,
@@ -133,11 +138,48 @@ export class Canvas2DRenderer extends Renderer {
     this.cursorPosition = position;
   }
 
+  setZoom(zoom: number): void {
+    this.zoom = Math.max(0.1, Math.min(2, zoom)); // Limit zoom between 0.1x and 2x
+  }
+
+  getZoom(): number {
+    return this.zoom;
+  }
+
+  setCamera(x: number, y: number): void {
+    this.cameraX = x;
+    this.cameraY = y;
+  }
+
+  getCamera(): { x: number; y: number } {
+    return { x: this.cameraX, y: this.cameraY };
+  }
+
+  // Convert screen coordinates to world coordinates
+  screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
+    return {
+      x: (screenX - this.cameraX) / this.zoom,
+      y: (screenY - this.cameraY) / this.zoom
+    };
+  }
+
+  // Convert world coordinates to screen coordinates
+  worldToScreen(worldX: number, worldY: number): { x: number; y: number } {
+    return {
+      x: worldX * this.zoom + this.cameraX,
+      y: worldY * this.zoom + this.cameraY
+    };
+  }
+
   render(system: ParticleSystem): void {
     this.clear();
 
     this.ctx.save();
     this.ctx.globalAlpha = this.globalAlpha;
+
+    // Apply camera transform (zoom and pan)
+    this.ctx.translate(this.cameraX, this.cameraY);
+    this.ctx.scale(this.zoom, this.zoom);
 
     // Render spatial grid if enabled
     if (this.showSpatialGrid) {
@@ -464,6 +506,7 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.save();
 
     const { cols, rows, cellSize } = spatialGrid.getGridDimensions();
+    const { minX, minY } = spatialGrid.getGridBounds();
 
     // Base grid color
     const baseColor = "#dee7f0";
@@ -471,20 +514,20 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.lineWidth = 0.5;
     this.ctx.globalAlpha = 0.3;
 
-    // Draw grid lines
+    // Draw grid lines using world coordinates
     for (let col = 0; col <= cols; col++) {
-      const x = col * cellSize;
+      const x = minX + col * cellSize;
       this.ctx.beginPath();
-      this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, rows * cellSize);
+      this.ctx.moveTo(x, minY);
+      this.ctx.lineTo(x, minY + rows * cellSize);
       this.ctx.stroke();
     }
 
     for (let row = 0; row <= rows; row++) {
-      const y = row * cellSize;
+      const y = minY + row * cellSize;
       this.ctx.beginPath();
-      this.ctx.moveTo(0, y);
-      this.ctx.lineTo(cols * cellSize, y);
+      this.ctx.moveTo(minX, y);
+      this.ctx.lineTo(minX + cols * cellSize, y);
       this.ctx.stroke();
     }
 
@@ -499,7 +542,11 @@ export class Canvas2DRenderer extends Renderer {
 
           this.ctx.fillStyle = baseColor;
           this.ctx.globalAlpha = alpha;
-          this.ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+          
+          // Draw cell using world coordinates
+          const cellX = minX + col * cellSize;
+          const cellY = minY + row * cellSize;
+          this.ctx.fillRect(cellX, cellY, cellSize, cellSize);
         }
       }
     }
