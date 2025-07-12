@@ -1,7 +1,8 @@
 import { usePlayground } from "./hooks/usePlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useEffect, useRef, useState } from "react";
-import { Controls } from "./components/Controls";
+import { SystemControls } from "./components/SystemControls";
+import { ForcesControls } from "./components/ForcesControls";
 import { TopBar } from "./components/TopBar";
 import { HotkeysModal } from "./components/HotkeysModal";
 import "./styles/index.css";
@@ -9,7 +10,8 @@ import "./components/Controls.css";
 import "./components/TopBar.css";
 import "./App.css";
 
-const SIDEBAR_WIDTH = 320;
+const LEFT_SIDEBAR_WIDTH = 280;
+const RIGHT_SIDEBAR_WIDTH = 320;
 const TOPBAR_HEIGHT = 60;
 
 function App() {
@@ -36,7 +38,7 @@ function App() {
   useEffect(() => {
     if (!system || !gravity || !bounds || !flock || !collisions || !fluid || !renderer)
       return;
-    system.setSize(size.width - SIDEBAR_WIDTH, size.height - TOPBAR_HEIGHT);
+    system.setSize(size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH, size.height - TOPBAR_HEIGHT);
   }, [system, gravity, bounds, flock, collisions, fluid, renderer, size]);
 
   useEffect(() => {
@@ -70,21 +72,8 @@ function App() {
         onShowHotkeys={() => setIsHotkeysModalOpen(true)}
       />
       <div className="app-content">
-        <div className="canvas-container">
-          <canvas
-            ref={canvasRef}
-            id="canvas"
-            width={size.width - SIDEBAR_WIDTH}
-            height={size.height - TOPBAR_HEIGHT}
-          />
-        </div>
-        <div className="sidebar">
-          <Controls
-            gravity={gravity}
-            flock={flock}
-            bounds={bounds}
-            collisions={collisions}
-            fluid={fluid}
+        <div className="left-sidebar">
+          <SystemControls
             renderer={renderer}
             spatialGrid={spatialGrid}
             onSpawnParticles={spawnParticles}
@@ -95,6 +84,24 @@ function App() {
               particleSize: 10,
               dragThreshold: 5,
             })}
+          />
+        </div>
+        <div className="canvas-container">
+          <canvas
+            ref={canvasRef}
+            id="canvas"
+            width={size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH}
+            height={size.height - TOPBAR_HEIGHT}
+          />
+        </div>
+        <div className="right-sidebar">
+          <ForcesControls
+            system={system}
+            gravity={gravity}
+            flock={flock}
+            bounds={bounds}
+            collisions={collisions}
+            fluid={fluid}
           />
         </div>
       </div>

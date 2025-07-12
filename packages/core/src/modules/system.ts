@@ -1,9 +1,45 @@
 import { Particle } from "./particle";
 import { SpatialGrid } from "./spatial-grid";
+import { Gravity } from "./forces/gravity";
+import { Bounds } from "./forces/bounds";
+import { Collisions } from "./forces/collisions";
+import { Flock } from "./forces/flock";
+import { Fluid } from "./forces/fluid";
+import { Vector2D } from "./vector";
 
 export interface Force {
   warmup?(particles: Particle[], deltaTime: number): void;
   apply(particle: Particle, spatialGrid: SpatialGrid): void;
+}
+
+export interface Config {
+  gravity?: {
+    strength: number;
+    direction: { x: number; y: number };
+  };
+  bounds?: {
+    bounce: number;
+    friction: number;
+  };
+  collisions?: {
+    enabled: boolean;
+  };
+  flock?: {
+    maxSpeed: number;
+    cohesionWeight: number;
+    alignmentWeight: number;
+    separationWeight: number;
+    separationRange: number;
+    neighborRadius: number;
+  };
+  fluid?: {
+    enabled: boolean;
+    influenceRadius: number;
+    targetDensity: number;
+    pressureMultiplier: number;
+    wobbleFactor: number;
+    resistance: number;
+  };
 }
 
 // Default constants for ParticleSystem
@@ -163,5 +199,77 @@ export class ParticleSystem {
 
   clearRenderCallback(): void {
     this.renderCallback = undefined;
+  }
+
+  export(): Config {
+    const config: Config = {};
+
+    // Export configuration for each force type present in the system
+    for (const force of this.forces) {
+      if (force instanceof Gravity) {
+        config.gravity = {
+          strength: force.strength,
+          direction: { x: force.direction.x, y: force.direction.y }
+        };
+      } else if (force instanceof Bounds) {
+        config.bounds = {
+          bounce: force.bounce,
+          friction: force.friction
+        };
+      } else if (force instanceof Collisions) {
+        config.collisions = {
+          enabled: force.enabled
+        };
+      } else if (force instanceof Flock) {
+        config.flock = {
+          maxSpeed: force.maxSpeed,
+          cohesionWeight: force.cohesionWeight,
+          alignmentWeight: force.alignmentWeight,
+          separationWeight: force.separationWeight,
+          separationRange: force.separationRange,
+          neighborRadius: force.neighborRadius
+        };
+      } else if (force instanceof Fluid) {
+        config.fluid = {
+          enabled: force.enabled,
+          influenceRadius: force.influenceRadius,
+          targetDensity: force.targetDensity,
+          pressureMultiplier: force.pressureMultiplier,
+          wobbleFactor: force.wobbleFactor,
+          resistance: force.resistance
+        };
+      }
+    }
+
+    return config;
+  }
+
+  import(config: Config): void {
+    // Apply configuration for each force type present in the system
+    for (const force of this.forces) {
+      if (force instanceof Gravity && config.gravity) {
+        force.setStrength(config.gravity.strength);
+        force.setDirection(new Vector2D(config.gravity.direction.x, config.gravity.direction.y));
+      } else if (force instanceof Bounds && config.bounds) {
+        force.bounce = config.bounds.bounce;
+        force.setFriction(config.bounds.friction);
+      } else if (force instanceof Collisions && config.collisions) {
+        force.setEnabled(config.collisions.enabled);
+      } else if (force instanceof Flock && config.flock) {
+        force.maxSpeed = config.flock.maxSpeed;
+        force.cohesionWeight = config.flock.cohesionWeight;
+        force.alignmentWeight = config.flock.alignmentWeight;
+        force.separationWeight = config.flock.separationWeight;
+        force.separationRange = config.flock.separationRange;
+        force.neighborRadius = config.flock.neighborRadius;
+      } else if (force instanceof Fluid && config.fluid) {
+        force.setEnabled(config.fluid.enabled);
+        force.influenceRadius = config.fluid.influenceRadius;
+        force.targetDensity = config.fluid.targetDensity;
+        force.pressureMultiplier = config.fluid.pressureMultiplier;
+        force.wobbleFactor = config.fluid.wobbleFactor;
+        force.resistance = config.fluid.resistance;
+      }
+    }
   }
 }

@@ -29,27 +29,6 @@
   font-weight: 600;
 }
 
-.reset-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.reset-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
 .control-section {
   margin-bottom: 20px;
 }

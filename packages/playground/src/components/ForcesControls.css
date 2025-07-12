@@ -1,0 +1,46 @@
+.forces-controls-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.forces-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.forces-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--color-text-primary);
+}
+
+.forces-button.reset-button:hover {
+  background: rgba(255, 176, 32, 0.2);
+  border-color: rgba(255, 176, 32, 0.4);
+  color: rgba(255, 176, 32, 1);
+}
+
+.forces-button.save-button:hover {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: rgba(76, 175, 80, 0.4);
+  color: rgba(76, 175, 80, 1);
+}
+
+.forces-button.load-button:hover {
+  background: rgba(33, 150, 243, 0.2);
+  border-color: rgba(33, 150, 243, 0.4);
+  color: rgba(33, 150, 243, 1);
+}
+
+/* Icons are sized via the size prop in the component */
