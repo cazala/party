@@ -85,14 +85,13 @@ export function PhysicsControls({
 
   return (
     <div className="control-section">
-
       <div className="control-group">
         <label>
           Gravity: {gravityStrength.toFixed(3)}
           <input
             type="range"
             min="0"
-            max="2000"
+            max="5000"
             step="1"
             value={gravityStrength}
             onChange={(e) =>

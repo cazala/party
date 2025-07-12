@@ -1,5 +1,5 @@
 import { useRef, useCallback } from "react";
-import { ParticleSystem, Canvas2DRenderer, Vector2D } from "@party/core";
+import { ParticleSystem, Canvas2DRenderer, Vector2D, Interaction } from "@party/core";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
 import { createParticle, calculateParticleSize, getRandomColor } from "../utils/particle";
@@ -30,18 +30,23 @@ interface MouseState {
   initialVelocity: { x: number; y: number };
   velocityModeSize: number;
   activeVelocitySize: number;
+  // Right-click interaction state
+  isRightClicking: boolean;
+  rightClickMode: 'attract' | 'repel';
 }
 
 interface UseSpawnerProps {
   getSystem: () => ParticleSystem | null;
   getRenderer: () => Canvas2DRenderer | null;
   getCanvas: () => HTMLCanvasElement | null;
+  getInteraction: () => Interaction | null;
 }
 
 export function useInteractions({
   getSystem,
   getRenderer,
   getCanvas,
+  getInteraction,
 }: UseSpawnerProps) {
   const mouseStateRef = useRef<MouseState>({
     isDown: false,
@@ -62,6 +67,8 @@ export function useInteractions({
     initialVelocity: { x: 0, y: 0 },
     velocityModeSize: 0,
     activeVelocitySize: 0,
+    isRightClicking: false,
+    rightClickMode: 'attract',
   });
 
   // Streaming functions
@@ -268,9 +275,89 @@ export function useInteractions({
     [stopStreaming, updateSizePreview, getRenderer]
   );
 
+  // Right-click interaction handlers
+  const onRightMouseDown = useCallback(
+    (e: MouseEvent) => {
+      e.preventDefault(); // Prevent context menu
+      const canvas = getCanvas();
+      const interaction = getInteraction();
+      if (!canvas || !interaction) return;
+
+      const mouseState = mouseStateRef.current;
+      const pos = getMousePosition(e, canvas);
+
+      // Determine interaction mode based on modifier keys
+      const isRepelMode = e.metaKey || e.ctrlKey;
+      mouseState.isRightClicking = true;
+      mouseState.rightClickMode = isRepelMode ? 'repel' : 'attract';
+
+      // Set interaction position and activate
+      interaction.setPosition(pos.x, pos.y);
+      if (isRepelMode) {
+        interaction.repel();
+      } else {
+        interaction.attract();
+      }
+    },
+    [getCanvas, getInteraction]
+  );
+
+  const onRightMouseMove = useCallback(
+    (e: MouseEvent) => {
+      const canvas = getCanvas();
+      const interaction = getInteraction();
+      if (!canvas || !interaction) return;
+
+      const mouseState = mouseStateRef.current;
+      if (!mouseState.isRightClicking) return;
+
+      const pos = getMousePosition(e, canvas);
+      
+      // Update interaction position to follow cursor
+      interaction.setPosition(pos.x, pos.y);
+
+      // Check for modifier key changes during drag
+      const isRepelMode = e.metaKey || e.ctrlKey;
+      if (mouseState.rightClickMode !== (isRepelMode ? 'repel' : 'attract')) {
+        mouseState.rightClickMode = isRepelMode ? 'repel' : 'attract';
+        if (isRepelMode) {
+          interaction.repel();
+        } else {
+          interaction.attract();
+        }
+      }
+    },
+    [getCanvas, getInteraction]
+  );
+
+  const onRightMouseUp = useCallback(
+    () => {
+      const interaction = getInteraction();
+      if (!interaction) return;
+
+      const mouseState = mouseStateRef.current;
+      if (mouseState.isRightClicking) {
+        // Deactivate interaction
+        interaction.setActive(false);
+        mouseState.isRightClicking = false;
+      }
+    },
+    [getInteraction]
+  );
+
+  const onContextMenu = useCallback((e: MouseEvent) => {
+    e.preventDefault(); // Always prevent context menu on canvas
+  }, []);
+
   // Mouse event handlers
   const onMouseDown = useCallback(
     (e: MouseEvent) => {
+      // Handle right-click separately
+      if (e.button === 2) {
+        onRightMouseDown(e);
+        return;
+      }
+
       const canvas = getCanvas();
       const renderer = getRenderer();
       if (!canvas || !renderer) return;
@@ -374,6 +461,12 @@ export function useInteractions({
 
   const onMouseMove = useCallback(
     (e: MouseEvent) => {
+      // Handle right-click move separately
+      if (e.button === 2 || mouseStateRef.current.isRightClicking) {
+        onRightMouseMove(e);
+        return;
+      }
+
       const canvas = getCanvas();
       const renderer = getRenderer();
       if (!canvas || !renderer) return;
@@ -493,11 +586,18 @@ export function useInteractions({
       startStreaming,
       updateVelocityPreview,
       updateSizePreview,
+      onRightMouseMove,
     ]
   );
 
   const onMouseUp = useCallback(
     (e: MouseEvent) => {
+      // Handle right-click up separately
+      if (e.button === 2 || mouseStateRef.current.isRightClicking) {
+        onRightMouseUp();
+        return;
+      }
+
       const system = getSystem();
       const renderer = getRenderer();
       if (!system || !renderer) return;
@@ -576,17 +676,23 @@ export function useInteractions({
       mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
       mouseState.velocityModeSize = 0; // Reset velocity mode size
     },
-    [getSystem, getRenderer, stopStreaming]
+    [getSystem, getRenderer, stopStreaming, onRightMouseUp]
   );
 
   const onMouseLeave = useCallback(() => {
     const renderer = getRenderer();
+    const interaction = getInteraction();
     if (!renderer) return;
 
     const mouseState = mouseStateRef.current;
     // Stop streaming when mouse leaves canvas
     if (mouseState.isStreaming) {
       stopStreaming();
+    }
+    // Stop right-click interaction when mouse leaves canvas
+    if (mouseState.isRightClicking && interaction) {
+      interaction.setActive(false);
+      mouseState.isRightClicking = false;
     }
     // Clear preview particle and cursor position when mouse leaves canvas
     renderer.setPreviewParticle(null, false);
@@ -601,7 +707,7 @@ export function useInteractions({
     mouseState.isDragToVelocity = false; // Reset velocity mode
     mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
     mouseState.velocityModeSize = 0; // Reset velocity mode size
-  }, [getRenderer, stopStreaming]);
+  }, [getRenderer, stopStreaming, getInteraction]);
 
   const cleanup = useCallback(() => {
     const mouseState = mouseStateRef.current;
@@ -656,6 +762,7 @@ export function useInteractions({
     onMouseMove,
     onMouseUp,
     onMouseLeave,
+    onContextMenu,
     cleanup,
     setupKeyboardListeners,
   };

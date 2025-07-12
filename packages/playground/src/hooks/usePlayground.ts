@@ -9,6 +9,7 @@ import {
   Flock,
   Collisions,
   Fluid,
+  Interaction,
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
   DEFAULT_GRAVITY_STRENGTH,
@@ -40,6 +41,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
   const flockRef = useRef<Flock | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
   const fluidRef = useRef<Fluid | null>(null);
+  const interactionRef = useRef<Interaction | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
   const spatialGridRef = useRef<SpatialGrid | null>(null);
 
@@ -52,6 +54,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     getSystem: () => systemRef.current,
     getRenderer: () => rendererRef.current,
     getCanvas: () => canvasRef.current,
+    getInteraction: () => interactionRef.current,
   });
 
   // Attach / detach low-level DOM listeners once – they call back into the
@@ -64,6 +67,10 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
       canvasRef.current.addEventListener(
         "mouseleave",
         interactions.onMouseLeave
+      );
+      canvasRef.current.addEventListener(
+        "contextmenu",
+        interactions.onContextMenu
       );
     }
     return () => {
@@ -83,6 +90,10 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
         canvasRef.current.removeEventListener(
           "mouseleave",
           interactions.onMouseLeave
+        );
+        canvasRef.current.removeEventListener(
+          "contextmenu",
+          interactions.onContextMenu
         );
       }
     };
@@ -109,6 +120,9 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     const fluid = new Fluid();
     fluidRef.current = fluid;
 
+    const interaction = new Interaction();
+    interactionRef.current = interaction;
+
     const system = new ParticleSystem({
       width: canvasRef.current?.width || 1200,
       height: canvasRef.current?.height || 800,
@@ -127,6 +141,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     system.addForce(flock);
     system.addForce(collisions);
     system.addForce(fluid);
+    system.addForce(interaction);
 
     system.setRenderCallback((system) => {
       renderer.render(system);
@@ -346,6 +361,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     flock: flockRef.current,
     collisions: collisionsRef.current,
     fluid: fluidRef.current,
+    interaction: interactionRef.current,
     renderer: rendererRef.current,
     spatialGrid: spatialGridRef.current,
     // Control functions
