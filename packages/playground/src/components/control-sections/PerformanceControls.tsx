@@ -43,14 +43,13 @@ export function PerformanceControls({
 
   return (
     <div className="control-section">
-
       <div className="control-group">
         <label>
           Spatial Grid Cell Size: {cellSize}px
           <input
             type="range"
             min="20"
-            max="200"
+            max="1000"
             step="10"
             value={cellSize}
             onChange={(e) => handleCellSizeChange(parseInt(e.target.value))}

@@ -321,13 +321,15 @@ export class Canvas2DRenderer extends Renderer {
       // Add a dashed outline to distinguish it as drag mode
       this.ctx.globalAlpha = 1;
       this.ctx.strokeStyle = particle.color;
-      this.ctx.lineWidth = 2;
-      this.ctx.setLineDash([5, 5]); // Dashed line pattern
+      // Scale line width and dash pattern to match velocity arrow
+      this.ctx.lineWidth = Math.max(1, 2 / this.zoom);
+      const dashSize = Math.max(2, 5 / this.zoom);
+      this.ctx.setLineDash([dashSize, dashSize]); // Dashed line pattern
       this.ctx.beginPath();
       this.ctx.arc(
         particle.position.x,
         particle.position.y,
-        particle.size + 2, // Slightly larger outline
+        particle.size + Math.max(1, 2 / this.zoom), // Slightly larger outline, scaled with zoom
         0,
         Math.PI * 2
       );
@@ -388,8 +390,8 @@ export class Canvas2DRenderer extends Renderer {
     // Reach 95% of the distance to avoid cursor overlap when far away
     const targetDistance = Math.max(0, distanceFromEdge) * 0.9;
 
-    // Only apply size limitation if the distance would be excessive (>300px from edge)
-    const maxArrowLength = 300;
+    // Scale max arrow length based on zoom to maintain pixel size
+    const maxArrowLength = 300 / this.zoom;
     const arrowLength = Math.min(maxArrowLength, targetDistance);
 
     // End point
@@ -401,18 +403,21 @@ export class Canvas2DRenderer extends Renderer {
 
     this.ctx.strokeStyle = arrowColor;
     this.ctx.globalAlpha = 1; // Match particle preview alpha
-    this.ctx.lineWidth = 2;
+    // Scale line width based on zoom - thicker when zoomed out
+    this.ctx.lineWidth = Math.max(1, 2 / this.zoom);
     this.ctx.lineCap = "round";
 
-    this.ctx.setLineDash([5, 5]); // Always dashed for velocity arrows
+    // Scale dash pattern based on zoom
+    const dashSize = Math.max(2, 5 / this.zoom);
+    this.ctx.setLineDash([dashSize, dashSize]); // Always dashed for velocity arrows
 
     this.ctx.beginPath();
     this.ctx.moveTo(startX, startY);
     this.ctx.lineTo(endX, endY);
     this.ctx.stroke();
 
-    // Draw arrowhead
-    const arrowHeadLength = 12;
+    // Draw arrowhead - scale size based on zoom
+    const arrowHeadLength = Math.max(6, 12 / this.zoom);
     const arrowHeadAngle = Math.PI / 6; // 30 degrees
 
     // Calculate arrowhead points

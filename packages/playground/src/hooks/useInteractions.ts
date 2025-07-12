@@ -229,7 +229,8 @@ export function useInteractions({
 
     const velocity = calculateVelocity(
       mouseState.startPos,
-      mouseState.currentPos
+      mouseState.currentPos,
+      renderer.getZoom()
     );
     mouseState.initialVelocity = velocity;
 
@@ -264,7 +265,8 @@ export function useInteractions({
     const size = calculateParticleSize(
       distance,
       mouseState.isDragging,
-      mouseState.dragThreshold
+      mouseState.dragThreshold,
+      renderer.getZoom()
     );
     // Store the calculated size for potential mode switching
     mouseState.lastCalculatedSize = size;
@@ -313,7 +315,8 @@ export function useInteractions({
           const size = calculateParticleSize(
             distance,
             mouseState.isDragging,
-            mouseState.dragThreshold
+            mouseState.dragThreshold,
+            getRenderer()?.getZoom() || 1
           );
           startStreaming(mouseState.startPos.x, mouseState.startPos.y, size);
         }
@@ -536,7 +539,8 @@ export function useInteractions({
       const size = calculateParticleSize(
         distance,
         mouseState.isDragging,
-        mouseState.dragThreshold
+        mouseState.dragThreshold,
+        renderer.getZoom()
       );
       const previewParticle = createParticle(
         pos.x,
@@ -610,7 +614,8 @@ export function useInteractions({
         const size = calculateParticleSize(
           distance,
           mouseState.isDragging,
-          mouseState.dragThreshold
+          mouseState.dragThreshold,
+          renderer.getZoom()
         );
         mouseState.activeStreamSize = size; // Store this size for subsequent clicks
         startStreaming(mouseState.startPos.x, mouseState.startPos.y, size);
@@ -740,7 +745,8 @@ export function useInteractions({
         const size = calculateParticleSize(
           distance,
           mouseState.isDragging,
-          mouseState.dragThreshold
+          mouseState.dragThreshold,
+          renderer.getZoom()
         );
         finalParticle = createParticle(
           mouseState.startPos.x,

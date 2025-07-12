@@ -18,7 +18,8 @@ export const getRandomColor = () => {
 export const calculateParticleSize = (
   distance: number,
   isDragging: boolean,
-  dragThreshold: number
+  dragThreshold: number,
+  zoomScale: number = 1
 ) => {
   const spawnConfig = (window as any).__getSpawnConfig?.();
   const baseSize = spawnConfig?.particleSize || 10;
@@ -28,8 +29,11 @@ export const calculateParticleSize = (
     return baseSize;
   }
 
+  // Scale max size based on zoom - when zoomed out, allow larger particles
+  const maxSize = 50 / zoomScale;
+
   // Once in drag mode, always calculate size based on distance (no clamping to default)
-  const calculatedSize = Math.max(3, Math.min(50, distance / 2));
+  const calculatedSize = Math.max(3, Math.min(maxSize, distance / 2));
   return calculatedSize;
 };
 
