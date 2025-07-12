@@ -40,13 +40,13 @@ export class Bounds implements Force {
   contains(particle: Particle, spatialGrid: SpatialGrid): boolean {
     const { width, height } = spatialGrid.getSize();
     const radius = particle.size; // particle.size is the radius
-    
+
     // Calculate visible world bounds accounting for camera position and zoom
     const worldLeft = -this.cameraX / this.zoom;
     const worldTop = -this.cameraY / this.zoom;
     const worldRight = (width - this.cameraX) / this.zoom;
     const worldBottom = (height - this.cameraY) / this.zoom;
-    
+
     return (
       particle.position.x >= worldLeft + radius &&
       particle.position.x <= worldRight - radius &&
@@ -64,21 +64,16 @@ export class Bounds implements Force {
   private bounceParticle(particle: Particle, spatialGrid: SpatialGrid): void {
     const { width, height } = spatialGrid.getSize();
     const radius = particle.size; // particle.size is the radius
-    
+
     // Calculate visible world bounds accounting for camera position and zoom
     const worldLeft = -this.cameraX / this.zoom;
     const worldTop = -this.cameraY / this.zoom;
     const worldRight = (width - this.cameraX) / this.zoom;
     const worldBottom = (height - this.cameraY) / this.zoom;
 
-    // Small random offset to prevent particles from stacking at exact same position
-    // Make the offset relative to particle size for better separation
-    const randomOffset = () => (Math.random() - 0.5) * particle.size * 0.5; // Random value up to ±25% of particle radius
-
     // Left wall collision
     if (particle.position.x < worldLeft + radius) {
-      const offset = Math.abs(randomOffset()); // Ensure positive offset to stay inside bounds
-      particle.position.x = worldLeft + radius + offset;
+      particle.position.x = worldLeft + radius;
       particle.velocity.x = Math.abs(particle.velocity.x) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce y velocity)
       particle.velocity.y *= 1 - this.friction;
@@ -86,8 +81,7 @@ export class Bounds implements Force {
 
     // Right wall collision
     else if (particle.position.x > worldRight - radius) {
-      const offset = Math.abs(randomOffset()); // Ensure negative offset to stay inside bounds
-      particle.position.x = worldRight - radius - offset;
+      particle.position.x = worldRight - radius;
       particle.velocity.x = -Math.abs(particle.velocity.x) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce y velocity)
       particle.velocity.y *= 1 - this.friction;
@@ -95,8 +89,7 @@ export class Bounds implements Force {
 
     // Top wall collision
     if (particle.position.y < worldTop + radius) {
-      const offset = Math.abs(randomOffset()); // Ensure positive offset to stay inside bounds
-      particle.position.y = worldTop + radius + offset;
+      particle.position.y = worldTop + radius;
       particle.velocity.y = Math.abs(particle.velocity.y) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce x velocity)
       particle.velocity.x *= 1 - this.friction;
@@ -104,8 +97,7 @@ export class Bounds implements Force {
 
     // Bottom wall collision
     else if (particle.position.y > worldBottom - radius) {
-      const offset = Math.abs(randomOffset()); // Ensure negative offset to stay inside bounds
-      particle.position.y = worldBottom - radius - offset;
+      particle.position.y = worldBottom - radius;
       particle.velocity.y = -Math.abs(particle.velocity.y) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce x velocity)
       particle.velocity.x *= 1 - this.friction;
