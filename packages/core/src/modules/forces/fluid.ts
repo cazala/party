@@ -164,6 +164,11 @@ export class Fluid implements Force {
       particle.position,
       this.influenceRadius
     );
+
+    if (particles.length === 0) {
+      return;
+    }
+
     const pressureForce = this.calculatePressureForce(
       particle.position,
       particles
