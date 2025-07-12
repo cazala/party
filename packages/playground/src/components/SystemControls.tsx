@@ -1,5 +1,6 @@
-import { Canvas2DRenderer, SpatialGrid } from "@party/core";
+import { Canvas2DRenderer, SpatialGrid, Interaction } from "@party/core";
 import { SpawnControls } from "./control-sections/SpawnControls";
+import { InteractionControls } from "./control-sections/InteractionControls";
 import { RenderControls } from "./control-sections/RenderControls";
 import { PerformanceControls } from "./control-sections/PerformanceControls";
 import { CollapsibleSection } from "./CollapsibleSection";
@@ -7,6 +8,7 @@ import { CollapsibleSection } from "./CollapsibleSection";
 interface SystemControlsProps {
   renderer: Canvas2DRenderer | null;
   spatialGrid: SpatialGrid | null;
+  interaction: Interaction | null;
   onSpawnParticles?: (
     numParticles: number,
     shape: "grid" | "random",
@@ -26,6 +28,7 @@ interface SystemControlsProps {
 export function SystemControls({
   renderer,
   spatialGrid,
+  interaction,
   onSpawnParticles,
   onGetSpawnConfig,
 }: SystemControlsProps) {
@@ -40,6 +43,10 @@ export function SystemControls({
           onSpawnParticles={onSpawnParticles}
           onGetSpawnConfig={onGetSpawnConfig}
         />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Interaction">
+        <InteractionControls interaction={interaction} />
       </CollapsibleSection>
 
       <CollapsibleSection title="Render">

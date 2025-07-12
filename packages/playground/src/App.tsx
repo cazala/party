@@ -25,6 +25,7 @@ function App() {
     flock,
     collisions,
     fluid,
+    interaction,
     renderer,
     spatialGrid,
     play,
@@ -36,10 +37,10 @@ function App() {
   const size = useWindowSize();
 
   useEffect(() => {
-    if (!system || !gravity || !bounds || !flock || !collisions || !fluid || !renderer)
+    if (!system || !gravity || !bounds || !flock || !collisions || !fluid || !interaction || !renderer)
       return;
     system.setSize(size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH, size.height - TOPBAR_HEIGHT);
-  }, [system, gravity, bounds, flock, collisions, fluid, renderer, size]);
+  }, [system, gravity, bounds, flock, collisions, fluid, interaction, renderer, size]);
 
   useEffect(() => {
     if (system) {
@@ -76,6 +77,7 @@ function App() {
           <SystemControls
             renderer={renderer}
             spatialGrid={spatialGrid}
+            interaction={interaction}
             onSpawnParticles={spawnParticles}
             onGetSpawnConfig={() => ({
               numParticles: 100,
