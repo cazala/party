@@ -61,29 +61,39 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     const bounds = boundsRef.current;
     const spatialGrid = spatialGridRef.current;
     const zoomState = zoomStateRef.current;
-    
+
     if (!renderer || !bounds || !spatialGrid) return;
 
     const currentZoom = renderer.getZoom();
     const camera = renderer.getCamera();
-    
+
     // Smooth interpolation with easing
     const easeFactor = 0.15; // Higher = faster, lower = smoother
     const zoomDiff = zoomState.targetZoom - currentZoom;
     const cameraDiffX = zoomState.targetCameraX - camera.x;
     const cameraDiffY = zoomState.targetCameraY - camera.y;
-    
+
     // Check if we're close enough to the target (within 0.01% difference)
     const threshold = 0.001;
-    if (Math.abs(zoomDiff) < threshold && 
-        Math.abs(cameraDiffX) < threshold && 
-        Math.abs(cameraDiffY) < threshold) {
+    if (
+      Math.abs(zoomDiff) < threshold &&
+      Math.abs(cameraDiffX) < threshold &&
+      Math.abs(cameraDiffY) < threshold
+    ) {
       // Animation complete - set exact target values
       renderer.setZoom(zoomState.targetZoom);
       renderer.setCamera(zoomState.targetCameraX, zoomState.targetCameraY);
-      bounds.setCamera(zoomState.targetCameraX, zoomState.targetCameraY, zoomState.targetZoom);
-      spatialGrid.setCamera(zoomState.targetCameraX, zoomState.targetCameraY, zoomState.targetZoom);
-      
+      bounds.setCamera(
+        zoomState.targetCameraX,
+        zoomState.targetCameraY,
+        zoomState.targetZoom
+      );
+      spatialGrid.setCamera(
+        zoomState.targetCameraX,
+        zoomState.targetCameraY,
+        zoomState.targetZoom
+      );
+
       zoomState.isAnimating = false;
       if (zoomState.animationId) {
         cancelAnimationFrame(zoomState.animationId);
@@ -91,53 +101,65 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
       }
       return;
     }
-    
+
     // Apply smooth interpolation
     const newZoom = currentZoom + zoomDiff * easeFactor;
     const newCameraX = camera.x + cameraDiffX * easeFactor;
     const newCameraY = camera.y + cameraDiffY * easeFactor;
-    
+
     renderer.setZoom(newZoom);
     renderer.setCamera(newCameraX, newCameraY);
     bounds.setCamera(newCameraX, newCameraY, newZoom);
     spatialGrid.setCamera(newCameraX, newCameraY, newZoom);
-    
+
     // Continue animation
     zoomState.animationId = requestAnimationFrame(animateZoom);
   }, []);
 
-  const handleZoom = useCallback((deltaY: number, centerX: number, centerY: number) => {
-    const renderer = rendererRef.current;
-    const zoomState = zoomStateRef.current;
-    if (!renderer) return;
+  const handleZoom = useCallback(
+    (deltaY: number, centerX: number, centerY: number) => {
+      const renderer = rendererRef.current;
+      const zoomState = zoomStateRef.current;
+      if (!renderer) return;
 
-    // Much smaller zoom steps for smoother control
-    const zoomSensitivity = 0.02; // Reduced from 0.1 (10x smoother)
-    const zoomDirection = deltaY > 0 ? -zoomSensitivity : zoomSensitivity;
-    
-    const currentTargetZoom = zoomState.isAnimating ? zoomState.targetZoom : renderer.getZoom();
-    const newTargetZoom = Math.max(0.1, Math.min(2, currentTargetZoom + zoomDirection));
-    
-    // Calculate camera adjustment to zoom towards the cursor position
-    const currentTargetCamera = zoomState.isAnimating 
-      ? { x: zoomState.targetCameraX, y: zoomState.targetCameraY }
-      : renderer.getCamera();
-    
-    const zoomDelta = newTargetZoom / currentTargetZoom;
-    const newTargetCameraX = currentTargetCamera.x + (centerX - currentTargetCamera.x) * (1 - zoomDelta);
-    const newTargetCameraY = currentTargetCamera.y + (centerY - currentTargetCamera.y) * (1 - zoomDelta);
-    
-    // Update target values
-    zoomState.targetZoom = newTargetZoom;
-    zoomState.targetCameraX = newTargetCameraX;
-    zoomState.targetCameraY = newTargetCameraY;
-    
-    // Start animation if not already running
-    if (!zoomState.isAnimating) {
-      zoomState.isAnimating = true;
-      zoomState.animationId = requestAnimationFrame(animateZoom);
-    }
-  }, [animateZoom]);
+      // Much smaller zoom steps for smoother control
+      const zoomSensitivity = 0.01; // Reduced from 0.1 (10x smoother)
+      const zoomDirection = deltaY > 0 ? -zoomSensitivity : zoomSensitivity;
+
+      const currentTargetZoom = zoomState.isAnimating
+        ? zoomState.targetZoom
+        : renderer.getZoom();
+      const newTargetZoom = Math.max(
+        0.1,
+        Math.min(2, currentTargetZoom + zoomDirection)
+      );
+
+      // Calculate camera adjustment to zoom towards the cursor position
+      const currentTargetCamera = zoomState.isAnimating
+        ? { x: zoomState.targetCameraX, y: zoomState.targetCameraY }
+        : renderer.getCamera();
+
+      const zoomDelta = newTargetZoom / currentTargetZoom;
+      const newTargetCameraX =
+        currentTargetCamera.x +
+        (centerX - currentTargetCamera.x) * (1 - zoomDelta);
+      const newTargetCameraY =
+        currentTargetCamera.y +
+        (centerY - currentTargetCamera.y) * (1 - zoomDelta);
+
+      // Update target values
+      zoomState.targetZoom = newTargetZoom;
+      zoomState.targetCameraX = newTargetCameraX;
+      zoomState.targetCameraY = newTargetCameraY;
+
+      // Start animation if not already running
+      if (!zoomState.isAnimating) {
+        zoomState.isAnimating = true;
+        zoomState.animationId = requestAnimationFrame(animateZoom);
+      }
+    },
+    [animateZoom]
+  );
 
   // ---------------------------------------------------------------------------
   // Interaction handling (mouse + keyboard)
@@ -254,7 +276,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     // Cleanup function
     return () => {
       interactions.cleanup();
-      
+
       // Cleanup zoom animation
       const zoomState = zoomStateRef.current;
       if (zoomState.animationId) {
@@ -314,8 +336,17 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
 
       const canvasWidth = systemRef.current.width;
       const canvasHeight = systemRef.current.height;
-      const centerX = canvasWidth / 2;
-      const centerY = canvasHeight / 2;
+
+      // Calculate visible world center based on current camera position and zoom
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+
+      const camera = renderer.getCamera();
+      const zoom = renderer.getZoom();
+
+      // Center of visible world area
+      const centerX = (-camera.x + canvasWidth / 2) / zoom;
+      const centerY = (-camera.y + canvasHeight / 2) / zoom;
 
       if (shape === "grid") {
         const particlesPerRow = Math.ceil(Math.sqrt(numParticles));
@@ -350,13 +381,23 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
           systemRef.current.addParticle(particle);
         }
       } else {
-        // Random placement
+        // Random placement within visible world area
         for (let i = 0; i < numParticles; i++) {
+          // Calculate visible world bounds
+          const worldLeft = -camera.x / zoom;
+          const worldTop = -camera.y / zoom;
+          const worldRight = (canvasWidth - camera.x) / zoom;
+          const worldBottom = (canvasHeight - camera.y) / zoom;
+
           // Keep particles within bounds considering their size
           const x =
-            particleSize + Math.random() * (canvasWidth - particleSize * 2);
+            worldLeft +
+            particleSize +
+            Math.random() * (worldRight - worldLeft - particleSize * 2);
           const y =
-            particleSize + Math.random() * (canvasHeight - particleSize * 2);
+            worldTop +
+            particleSize +
+            Math.random() * (worldBottom - worldTop - particleSize * 2);
 
           // Calculate mass based on area like createParticle function
           const radius = particleSize;

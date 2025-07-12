@@ -37,7 +37,7 @@ export function HotkeysModal({ isOpen, onClose }: HotkeysModalProps) {
             ×
           </button>
         </div>
-        
+
         <div className="hotkeys-modal-content">
           <section className="hotkeys-section">
             <h3>Mouse Controls</h3>
@@ -48,15 +48,27 @@ export function HotkeysModal({ isOpen, onClose }: HotkeysModalProps) {
               </div>
               <div className="hotkey-item">
                 <div className="hotkey-action">Click & Drag</div>
-                <div className="hotkey-description">Set particle size by drag distance</div>
+                <div className="hotkey-description">
+                  Set particle size by drag distance
+                </div>
               </div>
               <div className="hotkey-item">
                 <div className="hotkey-action">Right Click</div>
-                <div className="hotkey-description">Attract particles to cursor</div>
+                <div className="hotkey-description">
+                  Attract particles to cursor
+                </div>
               </div>
               <div className="hotkey-item">
                 <div className="hotkey-action">Ctrl/⌘ + Right Click</div>
-                <div className="hotkey-description">Repel particles from cursor</div>
+                <div className="hotkey-description">
+                  Repel particles from cursor
+                </div>
+              </div>
+              <div className="hotkey-item">
+                <div className="hotkey-action">
+                  Mouse Wheel / Trackpad Scroll
+                </div>
+                <div className="hotkey-description">Zoom in / out</div>
               </div>
             </div>
           </section>
@@ -66,11 +78,15 @@ export function HotkeysModal({ isOpen, onClose }: HotkeysModalProps) {
             <div className="hotkeys-list">
               <div className="hotkey-item">
                 <div className="hotkey-action">Hold Shift + Click</div>
-                <div className="hotkey-description">Stream particles continuously</div>
+                <div className="hotkey-description">
+                  Stream particles continuously
+                </div>
               </div>
               <div className="hotkey-item">
                 <div className="hotkey-action">Hold Ctrl/⌘ + Click & Drag</div>
-                <div className="hotkey-description">Set particle direction and speed</div>
+                <div className="hotkey-description">
+                  Set particle direction and speed
+                </div>
               </div>
             </div>
           </section>
@@ -80,7 +96,9 @@ export function HotkeysModal({ isOpen, onClose }: HotkeysModalProps) {
             <div className="hotkeys-list">
               <div className="hotkey-item">
                 <div className="hotkey-action">Delete / Backspace</div>
-                <div className="hotkey-description">Remove the last spawned particle</div>
+                <div className="hotkey-description">
+                  Remove the last spawned particle
+                </div>
               </div>
               <div className="hotkey-item">
                 <div className="hotkey-action">?</div>
@@ -98,11 +116,17 @@ export function HotkeysModal({ isOpen, onClose }: HotkeysModalProps) {
             <div className="hotkeys-list">
               <div className="hotkey-item">
                 <div className="hotkey-action">Mode Switching</div>
-                <div className="hotkey-description">Press Ctrl/⌘ while dragging to switch from size mode to velocity mode</div>
+                <div className="hotkey-description">
+                  Press Ctrl/⌘ while dragging to switch from size mode to
+                  velocity mode
+                </div>
               </div>
               <div className="hotkey-item">
                 <div className="hotkey-action">Particle History</div>
-                <div className="hotkey-description">Up to 50 most recent particles can be deleted with Delete/Backspace</div>
+                <div className="hotkey-description">
+                  Up to 50 most recent particles can be deleted with
+                  Delete/Backspace
+                </div>
               </div>
             </div>
           </section>
