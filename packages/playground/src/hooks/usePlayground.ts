@@ -149,6 +149,8 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
 
     system.play();
 
+    interactions.setupKeyboardListeners();
+
     // Cleanup function
     return () => {
       interactions.cleanup();

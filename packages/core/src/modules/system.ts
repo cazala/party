@@ -49,8 +49,14 @@ export class ParticleSystem {
     }
   }
 
-  removeParticle(index: number): void {
-    if (index >= 0 && index < this.particles.length) {
+  getParticle(id: number): Particle | null {
+    const particle = this.particles.find((particle) => particle.id === id);
+    return particle || null;
+  }
+
+  removeParticle(particle: Particle): void {
+    const index = this.particles.indexOf(particle);
+    if (index > -1) {
       this.particles.splice(index, 1);
     }
   }

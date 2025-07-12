@@ -1,8 +1,17 @@
 import { useRef, useCallback } from "react";
-import { ParticleSystem, Canvas2DRenderer, Vector2D, Interaction } from "@party/core";
+import {
+  ParticleSystem,
+  Canvas2DRenderer,
+  Vector2D,
+  Interaction,
+} from "@party/core";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
-import { createParticle, calculateParticleSize, getRandomColor } from "../utils/particle";
+import {
+  createParticle,
+  calculateParticleSize,
+  getRandomColor,
+} from "../utils/particle";
 import { calculateVelocity } from "../utils/velocity";
 
 // Streaming configuration
@@ -32,7 +41,11 @@ interface MouseState {
   activeVelocitySize: number;
   // Right-click interaction state
   isRightClicking: boolean;
-  rightClickMode: 'attract' | 'repel';
+  rightClickMode: "attract" | "repel";
+  // Particle tracking for delete functionality
+  spawnedParticleIds: number[];
+  // Store the last calculated size for mode switching
+  lastCalculatedSize: number;
 }
 
 interface UseSpawnerProps {
@@ -68,8 +81,21 @@ export function useInteractions({
     velocityModeSize: 0,
     activeVelocitySize: 0,
     isRightClicking: false,
-    rightClickMode: 'attract',
+    rightClickMode: "attract",
+    spawnedParticleIds: [],
+    lastCalculatedSize: 10,
   });
+
+  // Helper function to track spawned particle IDs with 50 particle limit
+  const trackParticleId = useCallback((particleId: number) => {
+    const mouseState = mouseStateRef.current;
+    mouseState.spawnedParticleIds.push(particleId);
+
+    // Keep only the most recent 50 particles
+    if (mouseState.spawnedParticleIds.length > 50) {
+      mouseState.spawnedParticleIds.shift();
+    }
+  }, []);
 
   // Streaming functions
   const startStreaming = useCallback(
@@ -88,6 +114,7 @@ export function useInteractions({
       if (system) {
         const firstParticle = createParticle(x, y, size);
         system.addParticle(firstParticle);
+        trackParticleId(firstParticle.id);
       }
 
       // Then start the interval for subsequent particles
@@ -100,10 +127,11 @@ export function useInteractions({
             mouseState.streamSize
           );
           system.addParticle(particle);
+          trackParticleId(particle.id);
         }
       }, STREAM_SPAWN_INTERVAL);
     },
-    [getSystem]
+    [getSystem, trackParticleId]
   );
 
   const stopStreaming = useCallback(() => {
@@ -116,34 +144,39 @@ export function useInteractions({
   }, []);
 
   // Helper function to get preview color based on renderer color mode
-  const getPreviewColor = useCallback((velocity?: { x: number; y: number }) => {
-    const renderer = getRenderer();
-    if (!renderer) return getRandomColor();
+  const getPreviewColor = useCallback(
+    (velocity?: { x: number; y: number }) => {
+      const renderer = getRenderer();
+      if (!renderer) return getRandomColor();
 
-    const colorMode = renderer.getColorMode();
-    
-    switch (colorMode) {
-      case "custom":
-        return renderer.getCustomColor();
-      case "velocity":
-        if (velocity) {
-          // Calculate color based on velocity magnitude for preview
-          const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-          const maxSpeed = renderer.maxSpeed || 300;
-          const ratio = Math.min(speed / maxSpeed, 1);
-          
-          // Interpolate from green (slow) to red (fast) - same logic as renderer
-          const red = Math.floor(ratio * 255);
-          const green = Math.floor((1 - ratio) * 255);
-          return `rgb(${red}, ${green}, 0)`;
-        }
-        // Fallback to green for stationary preview
-        return "rgb(0, 255, 0)";
-      case "particle":
-      default:
-        return getRandomColor();
-    }
-  }, [getRenderer]);
+      const colorMode = renderer.getColorMode();
+
+      switch (colorMode) {
+        case "custom":
+          return renderer.getCustomColor();
+        case "velocity":
+          if (velocity) {
+            // Calculate color based on velocity magnitude for preview
+            const speed = Math.sqrt(
+              velocity.x * velocity.x + velocity.y * velocity.y
+            );
+            const maxSpeed = renderer.maxSpeed || 300;
+            const ratio = Math.min(speed / maxSpeed, 1);
+
+            // Interpolate from green (slow) to red (fast) - same logic as renderer
+            const red = Math.floor(ratio * 255);
+            const green = Math.floor((1 - ratio) * 255);
+            return `rgb(${red}, ${green}, 0)`;
+          }
+          // Fallback to green for stationary preview
+          return "rgb(0, 255, 0)";
+        case "particle":
+        default:
+          return getRandomColor();
+      }
+    },
+    [getRenderer]
+  );
 
   // Helper function to update velocity preview
   const updateVelocityPreview = useCallback(() => {
@@ -162,12 +195,12 @@ export function useInteractions({
 
     // Update color based on current velocity for velocity mode, but preserve initial color for particle mode
     let currentColor = mouseState.previewColor; // Use initially generated color
-    
+
     if (renderer.getColorMode() === "velocity") {
       // Only recalculate color for velocity mode to show real-time velocity changes
       currentColor = getPreviewColor(velocity);
     }
-    
+
     // Also update the particle preview to show as dashed (drag mode style) in velocity mode
     const previewParticle = createParticle(
       mouseState.startPos.x,
@@ -190,6 +223,8 @@ export function useInteractions({
       mouseState.isDragging,
       mouseState.dragThreshold
     );
+    // Store the calculated size for potential mode switching
+    mouseState.lastCalculatedSize = size;
     const previewParticle = createParticle(
       mouseState.startPos.x,
       mouseState.startPos.y,
@@ -203,6 +238,25 @@ export function useInteractions({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const mouseState = mouseStateRef.current;
+
+      // Handle delete/backspace to remove last spawned particle
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (mouseState.spawnedParticleIds.length > 0) {
+          const system = getSystem();
+          if (system) {
+            // Get the most recently spawned particle ID
+            const lastParticleId = mouseState.spawnedParticleIds.pop();
+            if (lastParticleId !== undefined) {
+              // Find and remove the particle from the system
+              const particle = system.getParticle(lastParticleId);
+              if (particle) {
+                system.removeParticle(particle);
+              }
+            }
+          }
+        }
+        return; // Don't process other key events when delete/backspace is pressed
+      }
 
       if (e.key === "Shift") {
         mouseState.shiftPressed = true;
@@ -231,6 +285,9 @@ export function useInteractions({
           // If mouse is down, switch to velocity mode
           if (mouseState.isDown && !mouseState.isStreaming) {
             mouseState.isDragToVelocity = true;
+            // Use the last calculated size from the size preview to preserve the current size
+            mouseState.velocityModeSize = mouseState.lastCalculatedSize;
+            mouseState.activeVelocitySize = mouseState.lastCalculatedSize; // Store for subsequent clicks
             // Clear any existing velocity preview and update with current mouse position
             if (mouseState.currentPos) {
               updateVelocityPreview();
@@ -239,7 +296,7 @@ export function useInteractions({
         }
       }
     },
-    [startStreaming, updateVelocityPreview]
+    [getSystem, startStreaming, updateVelocityPreview]
   );
 
   const handleKeyUp = useCallback(
@@ -289,7 +346,7 @@ export function useInteractions({
       // Determine interaction mode based on modifier keys
       const isRepelMode = e.metaKey || e.ctrlKey;
       mouseState.isRightClicking = true;
-      mouseState.rightClickMode = isRepelMode ? 'repel' : 'attract';
+      mouseState.rightClickMode = isRepelMode ? "repel" : "attract";
 
       // Set interaction position and activate
       interaction.setPosition(pos.x, pos.y);
@@ -312,14 +369,14 @@ export function useInteractions({
       if (!mouseState.isRightClicking) return;
 
       const pos = getMousePosition(e, canvas);
-      
+
       // Update interaction position to follow cursor
       interaction.setPosition(pos.x, pos.y);
 
       // Check for modifier key changes during drag
       const isRepelMode = e.metaKey || e.ctrlKey;
-      if (mouseState.rightClickMode !== (isRepelMode ? 'repel' : 'attract')) {
-        mouseState.rightClickMode = isRepelMode ? 'repel' : 'attract';
+      if (mouseState.rightClickMode !== (isRepelMode ? "repel" : "attract")) {
+        mouseState.rightClickMode = isRepelMode ? "repel" : "attract";
         if (isRepelMode) {
           interaction.repel();
         } else {
@@ -330,20 +387,17 @@ export function useInteractions({
     [getCanvas, getInteraction]
   );
 
-  const onRightMouseUp = useCallback(
-    () => {
-      const interaction = getInteraction();
-      if (!interaction) return;
+  const onRightMouseUp = useCallback(() => {
+    const interaction = getInteraction();
+    if (!interaction) return;
 
-      const mouseState = mouseStateRef.current;
-      if (mouseState.isRightClicking) {
-        // Deactivate interaction
-        interaction.setActive(false);
-        mouseState.isRightClicking = false;
-      }
-    },
-    [getInteraction]
-  );
+    const mouseState = mouseStateRef.current;
+    if (mouseState.isRightClicking) {
+      // Deactivate interaction
+      interaction.setActive(false);
+      mouseState.isRightClicking = false;
+    }
+  }, [getInteraction]);
 
   const onContextMenu = useCallback((e: MouseEvent) => {
     e.preventDefault(); // Always prevent context menu on canvas
@@ -472,7 +526,7 @@ export function useInteractions({
       if (!canvas || !renderer) return;
 
       const pos = getMousePosition(e, canvas);
-      
+
       // Always update cursor position for density display
       if (renderer.setCursorPosition) {
         renderer.setCursorPosition(new Vector2D(pos.x, pos.y));
@@ -540,18 +594,9 @@ export function useInteractions({
         if (!wasCmdPressed && mouseState.cmdPressed) {
           // Just pressed CMD: switch to velocity mode
           mouseState.isDragToVelocity = true;
-          // Store the current size for velocity mode
-          const distance = getDistance(
-            mouseState.startPos,
-            mouseState.currentPos
-          );
-          const currentSize = calculateParticleSize(
-            distance,
-            mouseState.isDragging,
-            mouseState.dragThreshold
-          );
-          mouseState.velocityModeSize = currentSize;
-          mouseState.activeVelocitySize = currentSize; // Store for subsequent clicks
+          // Use the last calculated size from the size preview to preserve the current size
+          mouseState.velocityModeSize = mouseState.lastCalculatedSize;
+          mouseState.activeVelocitySize = mouseState.lastCalculatedSize; // Store for subsequent clicks
           updateVelocityPreview();
           return;
         } else if (wasCmdPressed && !mouseState.cmdPressed) {
@@ -663,6 +708,9 @@ export function useInteractions({
 
       system.addParticle(finalParticle);
 
+      // Track the spawned particle ID for delete functionality
+      trackParticleId(finalParticle.id);
+
       // Clear preview particle and velocity
       renderer.setPreviewParticle(null, false);
       renderer.setPreviewVelocity(null);
@@ -676,7 +724,7 @@ export function useInteractions({
       mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
       mouseState.velocityModeSize = 0; // Reset velocity mode size
     },
-    [getSystem, getRenderer, stopStreaming, onRightMouseUp]
+    [getSystem, getRenderer, stopStreaming, onRightMouseUp, trackParticleId]
   );
 
   const onMouseLeave = useCallback(() => {
@@ -714,18 +762,9 @@ export function useInteractions({
     if (mouseState.streamInterval) {
       clearInterval(mouseState.streamInterval);
     }
-
-    // Remove global keyboard listeners
-    document.removeEventListener("keydown", handleKeyDown);
+    // // Remove global keyboard listeners
+    document.removeEventListener("keydown", (e) => handleKeyDown(e));
     document.removeEventListener("keyup", handleKeyUp);
-    window.removeEventListener("keydown", handleKeyDown);
-    window.removeEventListener("keyup", handleKeyUp);
-
-    const canvas = getCanvas();
-    if (canvas) {
-      canvas.removeEventListener("keydown", handleKeyDown);
-      canvas.removeEventListener("keyup", handleKeyUp);
-    }
   }, [getCanvas, handleKeyDown, handleKeyUp]);
 
   const setupKeyboardListeners = useCallback(() => {
@@ -739,22 +778,6 @@ export function useInteractions({
     // Add global keyboard listeners - these should always work
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("keyup", handleKeyUp);
-
-    // Also add to window as backup
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    // And to canvas for when it has focus
-    canvas.addEventListener("keydown", handleKeyDown);
-    canvas.addEventListener("keyup", handleKeyUp);
-
-    // Focus the canvas so it can receive keyboard events
-    canvas.focus();
-
-    // Add click handler to refocus canvas
-    canvas.addEventListener("click", () => {
-      canvas.focus();
-    });
   }, [getCanvas, handleKeyDown, handleKeyUp]);
 
   return {
