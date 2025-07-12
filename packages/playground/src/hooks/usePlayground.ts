@@ -311,10 +311,11 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
   const spawnParticles = useCallback(
     (
       numParticles: number,
-      shape: "grid" | "random",
+      shape: "grid" | "random" | "circle",
       spacing: number,
       particleSize: number = 10,
-      _dragThreshold: number = 5
+      _dragThreshold: number = 5,
+      radius: number = 100
     ) => {
       if (!systemRef.current) return;
 
@@ -380,6 +381,82 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
 
           systemRef.current.addParticle(particle);
         }
+      } else if (shape === "circle") {
+        // Circle placement with uniform distribution in concentric rings
+        if (numParticles === 1) {
+          // Special case: single particle at center
+          const particleRadius = particleSize;
+          const area = Math.PI * particleRadius * particleRadius;
+          const mass = area / 100;
+
+          const particle = new Particle({
+            position: new Vector2D(centerX, centerY),
+            velocity: new Vector2D(0, 0),
+            acceleration: new Vector2D(0, 0),
+            mass: mass,
+            size: particleSize,
+            color: colors[Math.floor(Math.random() * colors.length)],
+          });
+
+          systemRef.current.addParticle(particle);
+        } else {
+          // Calculate optimal number of rings to fill the entire radius
+          const minSpacing = particleSize * 1.5; // Minimum spacing between particles
+          
+          // Estimate number of rings needed to distribute particles evenly
+          const estimatedRings = Math.max(1, Math.ceil(Math.sqrt(numParticles / Math.PI)));
+          
+          let particlesPlaced = 0;
+          
+          for (let ring = 0; ring < estimatedRings && particlesPlaced < numParticles; ring++) {
+            const ringRadius = ring === 0 ? 0 : (radius * (ring + 1)) / estimatedRings;
+            
+            // Calculate particles for this ring
+            let particlesInRing;
+            if (ring === 0) {
+              // Center ring gets 1 particle
+              particlesInRing = 1;
+            } else {
+              // Calculate based on circumference and remaining particles
+              const circumference = 2 * Math.PI * ringRadius;
+              const maxParticlesInRing = Math.max(1, Math.floor(circumference / minSpacing));
+              
+              // Distribute remaining particles among remaining rings
+              const remainingRings = estimatedRings - ring;
+              const remainingParticles = numParticles - particlesPlaced;
+              const averagePerRing = Math.ceil(remainingParticles / remainingRings);
+              
+              particlesInRing = Math.min(maxParticlesInRing, averagePerRing, remainingParticles);
+            }
+            
+            for (let p = 0; p < particlesInRing; p++) {
+              const angle = (2 * Math.PI * p) / particlesInRing;
+              
+              // Calculate position relative to center
+              const x = centerX + ringRadius * Math.cos(angle);
+              const y = centerY + ringRadius * Math.sin(angle);
+
+              // Calculate mass based on area like createParticle function
+              const particleRadius = particleSize;
+              const area = Math.PI * particleRadius * particleRadius;
+              const mass = area / 100;
+
+              const particle = new Particle({
+                position: new Vector2D(x, y),
+                velocity: new Vector2D(0, 0),
+                acceleration: new Vector2D(0, 0),
+                mass: mass, // Mass proportional to area
+                size: particleSize,
+                color: colors[Math.floor(Math.random() * colors.length)],
+              });
+
+              systemRef.current.addParticle(particle);
+              particlesPlaced++;
+              
+              if (particlesPlaced >= numParticles) break;
+            }
+          }
+        }
       } else {
         // Random placement within visible world area
         for (let i = 0; i < numParticles; i++) {
@@ -431,11 +508,12 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
         spawnConfig.shape,
         spawnConfig.spacing,
         spawnConfig.particleSize,
-        spawnConfig.dragThreshold
+        spawnConfig.dragThreshold,
+        spawnConfig.radius
       );
     } else {
       // Fallback to default
-      spawnParticles(100, "grid", 50, 10, 5);
+      spawnParticles(100, "grid", 50, 10, 5, 100);
     }
   }, [spawnParticles]);
 
