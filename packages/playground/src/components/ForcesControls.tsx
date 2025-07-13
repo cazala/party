@@ -11,6 +11,7 @@ import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
   DEFAULT_FLOCK_MAX_SPEED,
+  DEFAULT_FLOCK_WANDER_WEIGHT,
   DEFAULT_FLOCK_COHESION_WEIGHT,
   DEFAULT_FLOCK_ALIGNMENT_WEIGHT,
   DEFAULT_FLOCK_SEPARATION_WEIGHT,
@@ -71,6 +72,7 @@ export function ForcesControls({
 
     // Reset flock
     if (flock) {
+      flock.wanderWeight = DEFAULT_FLOCK_WANDER_WEIGHT;
       flock.cohesionWeight = DEFAULT_FLOCK_COHESION_WEIGHT;
       flock.alignmentWeight = DEFAULT_FLOCK_ALIGNMENT_WEIGHT;
       flock.separationWeight = DEFAULT_FLOCK_SEPARATION_WEIGHT;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Flock } from "@party/core";
 import {
+  DEFAULT_FLOCK_WANDER_WEIGHT,
   DEFAULT_FLOCK_COHESION_WEIGHT,
   DEFAULT_FLOCK_ALIGNMENT_WEIGHT,
   DEFAULT_FLOCK_SEPARATION_WEIGHT,
@@ -13,6 +14,9 @@ interface BehaviorControlsProps {
 }
 
 export function BehaviorControls({ flock }: BehaviorControlsProps) {
+  const [wanderWeight, setWanderWeight] = useState(
+    DEFAULT_FLOCK_WANDER_WEIGHT
+  );
   const [cohesionWeight, setCohesionWeight] = useState(
     DEFAULT_FLOCK_COHESION_WEIGHT
   );
@@ -32,6 +36,7 @@ export function BehaviorControls({ flock }: BehaviorControlsProps) {
 
   useEffect(() => {
     if (flock) {
+      setWanderWeight(flock.wanderWeight);
       setCohesionWeight(flock.cohesionWeight);
       setAlignmentWeight(flock.alignmentWeight);
       setSeparationWeight(flock.separationWeight);
@@ -45,6 +50,10 @@ export function BehaviorControls({ flock }: BehaviorControlsProps) {
     if (!flock) return;
 
     switch (property) {
+      case "wanderWeight":
+        setWanderWeight(value);
+        flock.wanderWeight = value;
+        break;
       case "cohesionWeight":
         setCohesionWeight(value);
         flock.cohesionWeight = value;
@@ -71,6 +80,23 @@ export function BehaviorControls({ flock }: BehaviorControlsProps) {
 
   return (
     <div className="control-section">
+
+      <div className="control-group">
+        <label>
+          Wander: {wanderWeight.toFixed(1)}
+          <input
+            type="range"
+            min="0"
+            max="10"
+            step="0.1"
+            value={wanderWeight}
+            onChange={(e) =>
+              handleFlockingChange("wanderWeight", parseFloat(e.target.value))
+            }
+            className="slider"
+          />
+        </label>
+      </div>
 
       <div className="control-group">
         <label>
