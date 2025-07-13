@@ -25,7 +25,6 @@ export interface Config {
     enabled: boolean;
   };
   flock?: {
-    maxSpeed: number;
     cohesionWeight: number;
     alignmentWeight: number;
     separationWeight: number;
@@ -209,25 +208,24 @@ export class ParticleSystem {
       if (force instanceof Gravity) {
         config.gravity = {
           strength: force.strength,
-          direction: { x: force.direction.x, y: force.direction.y }
+          direction: { x: force.direction.x, y: force.direction.y },
         };
       } else if (force instanceof Bounds) {
         config.bounds = {
           bounce: force.bounce,
-          friction: force.friction
+          friction: force.friction,
         };
       } else if (force instanceof Collisions) {
         config.collisions = {
-          enabled: force.enabled
+          enabled: force.enabled,
         };
       } else if (force instanceof Flock) {
         config.flock = {
-          maxSpeed: force.maxSpeed,
           cohesionWeight: force.cohesionWeight,
           alignmentWeight: force.alignmentWeight,
           separationWeight: force.separationWeight,
           separationRange: force.separationRange,
-          neighborRadius: force.neighborRadius
+          neighborRadius: force.neighborRadius,
         };
       } else if (force instanceof Fluid) {
         config.fluid = {
@@ -236,7 +234,7 @@ export class ParticleSystem {
           targetDensity: force.targetDensity,
           pressureMultiplier: force.pressureMultiplier,
           wobbleFactor: force.wobbleFactor,
-          resistance: force.resistance
+          resistance: force.resistance,
         };
       }
     }
@@ -249,14 +247,15 @@ export class ParticleSystem {
     for (const force of this.forces) {
       if (force instanceof Gravity && config.gravity) {
         force.setStrength(config.gravity.strength);
-        force.setDirection(new Vector2D(config.gravity.direction.x, config.gravity.direction.y));
+        force.setDirection(
+          new Vector2D(config.gravity.direction.x, config.gravity.direction.y)
+        );
       } else if (force instanceof Bounds && config.bounds) {
         force.bounce = config.bounds.bounce;
         force.setFriction(config.bounds.friction);
       } else if (force instanceof Collisions && config.collisions) {
         force.setEnabled(config.collisions.enabled);
       } else if (force instanceof Flock && config.flock) {
-        force.maxSpeed = config.flock.maxSpeed;
         force.cohesionWeight = config.flock.cohesionWeight;
         force.alignmentWeight = config.flock.alignmentWeight;
         force.separationWeight = config.flock.separationWeight;

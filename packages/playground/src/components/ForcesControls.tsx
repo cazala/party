@@ -10,7 +10,6 @@ import {
   Config,
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
-  DEFAULT_FLOCK_MAX_SPEED,
   DEFAULT_FLOCK_WANDER_WEIGHT,
   DEFAULT_FLOCK_COHESION_WEIGHT,
   DEFAULT_FLOCK_ALIGNMENT_WEIGHT,
@@ -76,7 +75,6 @@ export function ForcesControls({
       flock.cohesionWeight = DEFAULT_FLOCK_COHESION_WEIGHT;
       flock.alignmentWeight = DEFAULT_FLOCK_ALIGNMENT_WEIGHT;
       flock.separationWeight = DEFAULT_FLOCK_SEPARATION_WEIGHT;
-      flock.maxSpeed = DEFAULT_FLOCK_MAX_SPEED;
       flock.separationRange = DEFAULT_FLOCK_SEPARATION_RANGE;
       flock.neighborRadius = DEFAULT_FLOCK_NEIGHBOR_RADIUS;
     }
