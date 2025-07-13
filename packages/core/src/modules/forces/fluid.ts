@@ -179,7 +179,9 @@ export class Fluid implements Force {
     if (density) {
       const force = pressureForce.clone().divide(density);
       particle.velocity.multiply(this.resistance);
-      particle.velocity.add(force.multiply(1000000));
+      force.multiply(1000000);
+      force.limit(100);
+      particle.velocity.add(force);
     }
   }
 
