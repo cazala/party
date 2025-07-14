@@ -35,9 +35,7 @@ export function BehaviorControls({ behavior }: BehaviorControlsProps) {
   const [separationRange, setSeparationRange] = useState(
     DEFAULT_BEHAVIOR_SEPARATION_RANGE
   );
-  const [viewRadius, setViewRadius] = useState(
-    DEFAULT_BEHAVIOR_VIEW_RADIUS
-  );
+  const [viewRadius, setViewRadius] = useState(DEFAULT_BEHAVIOR_VIEW_RADIUS);
   const [viewAngle, setViewAngle] = useState(DEFAULT_BEHAVIOR_VIEW_ANGLE);
 
   useEffect(() => {
@@ -107,7 +105,7 @@ export function BehaviorControls({ behavior }: BehaviorControlsProps) {
 
   return (
     <div className="control-section">
-      <div className="control-group">
+      {/* <div className="control-group">
         <label>
           <input
             type="checkbox"
@@ -117,7 +115,7 @@ export function BehaviorControls({ behavior }: BehaviorControlsProps) {
           />
           Enable
         </label>
-      </div>
+      </div> */}
 
       <div className="control-group">
         <label>

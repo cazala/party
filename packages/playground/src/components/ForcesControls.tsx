@@ -29,7 +29,6 @@ import {
 } from "@party/core";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
-import { FluidControls } from "./control-sections/FluidControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import "./ForcesControls.css";
 
@@ -193,15 +192,12 @@ export function ForcesControls({
           gravity={gravity}
           bounds={bounds}
           collisions={collisions}
+          fluid={fluid}
         />
       </CollapsibleSection>
 
       <CollapsibleSection title="Behavior">
         <BehaviorControls key={`behavior-${refreshKey}`} behavior={behavior} />
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Fluids">
-        <FluidControls key={`fluids-${refreshKey}`} fluid={fluid} />
       </CollapsibleSection>
     </div>
   );
