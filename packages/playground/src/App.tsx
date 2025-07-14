@@ -37,6 +37,7 @@ function App() {
     clear,
     resetParticles,
     spawnParticles,
+    setSpawnConfig,
   } = usePlayground(canvasRef);
   const size = useWindowSize();
 
@@ -92,6 +93,7 @@ function App() {
               particleSize: 10,
               dragThreshold: 5,
             })}
+            onSpawnConfigChange={setSpawnConfig}
           />
         </div>
         <div className="canvas-container">

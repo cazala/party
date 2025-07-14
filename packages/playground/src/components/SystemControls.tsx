@@ -1,9 +1,11 @@
 import { Canvas2DRenderer, SpatialGrid, Interaction } from "@party/core";
 import { SpawnControls } from "./control-sections/SpawnControls";
+import { ParticleSpawnControls, SpawnConfig } from "./control-sections/ParticleSpawnControls";
 import { InteractionControls } from "./control-sections/InteractionControls";
 import { RenderControls } from "./control-sections/RenderControls";
 import { PerformanceControls } from "./control-sections/PerformanceControls";
 import { CollapsibleSection } from "./CollapsibleSection";
+import { useState } from "react";
 
 interface SystemControlsProps {
   renderer: Canvas2DRenderer | null;
@@ -25,6 +27,7 @@ interface SystemControlsProps {
     dragThreshold: number;
     radius?: number;
   };
+  onSpawnConfigChange?: (config: SpawnConfig) => void;
 }
 
 export function SystemControls({
@@ -33,7 +36,13 @@ export function SystemControls({
   interaction,
   onSpawnParticles,
   onGetSpawnConfig,
+  onSpawnConfigChange,
 }: SystemControlsProps) {
+  const [particleSize, setParticleSize] = useState(10);
+
+  const handleParticleSizeChange = (size: number) => {
+    setParticleSize(size);
+  };
   return (
     <div className="controls-panel">
       <div className="controls-header">
@@ -44,6 +53,14 @@ export function SystemControls({
         <SpawnControls
           onSpawnParticles={onSpawnParticles}
           onGetSpawnConfig={onGetSpawnConfig}
+          onParticleSizeChange={handleParticleSizeChange}
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Spawn">
+        <ParticleSpawnControls
+          onSpawnConfigChange={onSpawnConfigChange}
+          initialSize={particleSize}
         />
       </CollapsibleSection>
 

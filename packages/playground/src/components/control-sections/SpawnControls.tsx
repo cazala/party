@@ -24,11 +24,13 @@ interface SpawnControlsProps {
     dragThreshold: number;
     radius?: number;
   };
+  onParticleSizeChange?: (size: number) => void;
 }
 
 export function SpawnControls({
   onSpawnParticles,
   onGetSpawnConfig,
+  onParticleSizeChange,
 }: SpawnControlsProps) {
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
   const [spawnShape, setSpawnShape] = useState<"grid" | "random" | "circle">(
@@ -144,6 +146,8 @@ export function SpawnControls({
                 newSpacing !== spacing ? newSpacing : undefined,
                 newSize
               );
+              // Notify parent component about particle size change
+              onParticleSizeChange?.(newSize);
             }}
             className="slider"
           />

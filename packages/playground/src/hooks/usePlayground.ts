@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import {
   Canvas2DRenderer,
   Gravity,
@@ -15,6 +15,7 @@ import {
   DEFAULT_GRAVITY_STRENGTH,
 } from "@party/core";
 import { useInteractions } from "./useInteractions";
+import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
 
 /**
  * Custom React hook that wires together the core particle *engine* with the
@@ -44,6 +45,15 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
   const interactionRef = useRef<Interaction | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
   const spatialGridRef = useRef<SpatialGrid | null>(null);
+
+  // Spawn configuration state
+  const [spawnConfig, setSpawnConfig] = useState<SpawnConfig>({
+    defaultSize: 10,
+    defaultMass: (Math.PI * 10 * 10) / 100,
+    colorMode: "random",
+    customColor: "#F8F8F8",
+    streamMode: false,
+  });
 
   // ---------------------------------------------------------------------------
   // Zoom handling
@@ -171,6 +181,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     getRenderer: () => rendererRef.current,
     getCanvas: () => canvasRef.current,
     getInteraction: () => interactionRef.current,
+    getSpawnConfig: () => spawnConfig,
     onZoom: handleZoom,
   });
 
@@ -602,5 +613,8 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     updateGravity,
     addParticle,
     updateParticleDefaults,
+    // Spawn config
+    spawnConfig,
+    setSpawnConfig,
   };
 }

@@ -13,6 +13,7 @@ import {
   getRandomColor,
 } from "../utils/particle";
 import { calculateVelocity } from "../utils/velocity";
+import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
 
 /**
  * Custom React hook that handles all mouse and keyboard interactions for the particle playground.
@@ -79,6 +80,7 @@ interface UseSpawnerProps {
   getRenderer: () => Canvas2DRenderer | null;
   getCanvas: () => HTMLCanvasElement | null;
   getInteraction: () => Interaction | null;
+  getSpawnConfig: () => SpawnConfig;
   onZoom?: (deltaY: number, centerX: number, centerY: number) => void;
 }
 
@@ -87,6 +89,7 @@ export function useInteractions({
   getRenderer,
   getCanvas,
   getInteraction,
+  getSpawnConfig,
   onZoom,
 }: UseSpawnerProps) {
   const mouseStateRef = useRef<MouseState>({
@@ -142,10 +145,14 @@ export function useInteractions({
       mouseState.streamPosition = { x, y };
       mouseState.streamSize = size;
 
+      // Get spawn config for color
+      const spawnConfig = getSpawnConfig();
+      const color = spawnConfig.colorMode === "custom" ? spawnConfig.customColor : undefined;
+
       // Spawn the first particle immediately at the exact position
       const system = getSystem();
       if (system) {
-        const firstParticle = createParticle(x, y, size);
+        const firstParticle = createParticle(x, y, size, color);
         system.addParticle(firstParticle);
         trackParticleId(firstParticle.id);
       }
@@ -154,17 +161,19 @@ export function useInteractions({
       mouseState.streamInterval = window.setInterval(() => {
         const system = getSystem();
         if (system) {
+          const color = spawnConfig.colorMode === "custom" ? spawnConfig.customColor : undefined;
           const particle = createParticle(
             mouseState.streamPosition.x,
             mouseState.streamPosition.y,
-            mouseState.streamSize
+            mouseState.streamSize,
+            color
           );
           system.addParticle(particle);
           trackParticleId(particle.id);
         }
       }, STREAM_SPAWN_INTERVAL);
     },
-    [getSystem, trackParticleId]
+    [getSystem, getSpawnConfig, trackParticleId]
   );
 
   const stopStreaming = useCallback(() => {
@@ -186,7 +195,7 @@ export function useInteractions({
     return renderer.screenToWorld(screenPos.x, screenPos.y);
   }, [getCanvas, getRenderer]);
 
-  // Helper function to get preview color based on renderer color mode
+  // Helper function to get preview color based on spawn config and renderer color mode
   const getPreviewColor = useCallback(
     (velocity?: { x: number; y: number }) => {
       const renderer = getRenderer();
@@ -215,10 +224,15 @@ export function useInteractions({
           return "rgb(0, 255, 0)";
         case "particle":
         default:
+          // Use spawn config for color mode
+          const spawnConfig = getSpawnConfig();
+          if (spawnConfig.colorMode === "custom") {
+            return spawnConfig.customColor;
+          }
           return getRandomColor();
       }
     },
-    [getRenderer]
+    [getRenderer, getSpawnConfig]
   );
 
   // Helper function to update velocity preview
@@ -479,6 +493,9 @@ export function useInteractions({
         mouseState.cmdPressed && !mouseState.shiftPressed; // Set initial mode
       mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
 
+      // Get spawn config early for use throughout the function
+      const spawnConfig = getSpawnConfig();
+      
       // Set the size for velocity mode
       if (mouseState.isDragToVelocity) {
         let velocitySize;
@@ -486,9 +503,8 @@ export function useInteractions({
           // Use the preserved size from previous drag-to-velocity
           velocitySize = mouseState.activeVelocitySize;
         } else {
-          // Use default size for first cmd+click
-          const spawnConfig = (window as any).__getSpawnConfig?.();
-          velocitySize = spawnConfig?.particleSize || 10;
+          // Use default size from spawn config for first cmd+click
+          velocitySize = spawnConfig.defaultSize;
           mouseState.activeVelocitySize = velocitySize; // Store for subsequent clicks
         }
         mouseState.velocityModeSize = velocitySize;
@@ -505,9 +521,9 @@ export function useInteractions({
       }
 
       // Update threshold from current spawn config
-      const spawnConfig = (window as any).__getSpawnConfig?.();
-      if (spawnConfig?.dragThreshold !== undefined) {
-        mouseState.dragThreshold = spawnConfig.dragThreshold;
+      const legacySpawnConfig = (window as any).__getSpawnConfig?.();
+      if (legacySpawnConfig?.dragThreshold !== undefined) {
+        mouseState.dragThreshold = legacySpawnConfig.dragThreshold;
       }
 
       mouseState.isDown = true;
@@ -518,15 +534,15 @@ export function useInteractions({
       // Pick appropriate color based on renderer color mode
       mouseState.previewColor = getPreviewColor();
 
-      // If shift is pressed during mouse down, start streaming immediately
-      if (mouseState.shiftPressed) {
+      // Start streaming if shift is pressed OR if stream mode is enabled in spawn config
+      if (mouseState.shiftPressed || spawnConfig.streamMode) {
         let streamSize;
         if (mouseState.activeStreamSize > 0) {
           // Use the preserved size from previous drag-to-size
           streamSize = mouseState.activeStreamSize;
         } else {
-          // Use default size for first shift+click
-          streamSize = spawnConfig?.particleSize || 10;
+          // Use default size from spawn config for first shift+click or stream mode
+          streamSize = spawnConfig.defaultSize;
           mouseState.activeStreamSize = streamSize; // Store for subsequent clicks
         }
         startStreaming(pos.x, pos.y, streamSize);
@@ -535,13 +551,8 @@ export function useInteractions({
       }
 
       // Create and show preview particle with the selected color
-      const distance = 0;
-      const size = calculateParticleSize(
-        distance,
-        mouseState.isDragging,
-        mouseState.dragThreshold,
-        renderer.getZoom()
-      );
+      // Use spawn config default size for initial preview
+      const size = spawnConfig.defaultSize;
       const previewParticle = createParticle(
         pos.x,
         pos.y,
@@ -726,32 +737,47 @@ export function useInteractions({
       }
 
       let finalParticle;
+      const spawnConfig = getSpawnConfig();
 
       if (mouseState.isDragToVelocity) {
         // Velocity mode: create particle with the stored size and initial velocity
+        // Use drag-to-size when dragging, otherwise use spawn config defaults
+        let finalSize = mouseState.velocityModeSize;
+        if (!mouseState.isDragging) {
+          finalSize = spawnConfig.defaultSize;
+        }
+        
         finalParticle = createParticle(
           mouseState.startPos.x,
           mouseState.startPos.y,
-          mouseState.velocityModeSize, // Use the size that was active when we entered velocity mode
+          finalSize,
           mouseState.previewColor, // Use the same color as preview
           mouseState.initialVelocity
         );
       } else {
-        // Size mode: create particle with drag-to-size
-        const distance = getDistance(
-          mouseState.startPos,
-          mouseState.currentPos
-        );
-        const size = calculateParticleSize(
-          distance,
-          mouseState.isDragging,
-          mouseState.dragThreshold,
-          renderer.getZoom()
-        );
+        // Size mode: create particle with drag-to-size or spawn config defaults
+        let finalSize;
+        if (mouseState.isDragging) {
+          // Use drag-to-size when dragging
+          const distance = getDistance(
+            mouseState.startPos,
+            mouseState.currentPos
+          );
+          finalSize = calculateParticleSize(
+            distance,
+            mouseState.isDragging,
+            mouseState.dragThreshold,
+            renderer.getZoom()
+          );
+        } else {
+          // Use spawn config defaults for click without drag
+          finalSize = spawnConfig.defaultSize;
+        }
+        
         finalParticle = createParticle(
           mouseState.startPos.x,
           mouseState.startPos.y,
-          size,
+          finalSize,
           mouseState.previewColor // Use the same color as preview
         );
       }
