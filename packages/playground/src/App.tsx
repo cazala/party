@@ -5,6 +5,8 @@ import { SystemControls } from "./components/SystemControls";
 import { ForcesControls } from "./components/ForcesControls";
 import { TopBar } from "./components/TopBar";
 import { HotkeysModal } from "./components/HotkeysModal";
+import { SaveSessionModal } from "./components/modals/SaveSessionModal";
+import { LoadSessionModal } from "./components/modals/LoadSessionModal";
 import "./styles/index.css";
 import "./components/Controls.css";
 import "./components/TopBar.css";
@@ -17,6 +19,8 @@ const TOPBAR_HEIGHT = 60;
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isHotkeysModalOpen, setIsHotkeysModalOpen] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   
   const {
     system,
@@ -71,6 +75,8 @@ function App() {
         onClear={clear}
         onReset={resetParticles}
         onShowHotkeys={() => setIsHotkeysModalOpen(true)}
+        onSave={() => setIsSaveModalOpen(true)}
+        onLoad={() => setIsLoadModalOpen(true)}
       />
       <div className="app-content">
         <div className="left-sidebar">
@@ -111,6 +117,24 @@ function App() {
       <HotkeysModal 
         isOpen={isHotkeysModalOpen} 
         onClose={() => setIsHotkeysModalOpen(false)} 
+      />
+      
+      <SaveSessionModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        system={system}
+        onSaveSuccess={(sessionName) => {
+          console.log(`Session "${sessionName}" saved successfully`);
+        }}
+      />
+
+      <LoadSessionModal
+        isOpen={isLoadModalOpen}
+        onClose={() => setIsLoadModalOpen(false)}
+        system={system}
+        onLoadSuccess={(sessionName) => {
+          console.log(`Session "${sessionName}" loaded successfully`);
+        }}
       />
     </div>
   );

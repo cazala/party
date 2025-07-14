@@ -164,15 +164,15 @@ export function ForcesControls({
           </button>
           <button
             onClick={handleSave}
-            className="forces-button save-button"
-            title="Save configuration"
+            className="forces-button export-button"
+            title="Export configuration"
           >
             <Download size={12} />
           </button>
           <button
             onClick={handleLoad}
-            className="forces-button load-button"
-            title="Load configuration"
+            className="forces-button import-button"
+            title="Import configuration"
           >
             <Upload size={12} />
           </button>

@@ -1,0 +1,342 @@
+/* Modal Base Styles */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-content {
+  background: #1f1f28;
+  border: 1px solid #2a2a35;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+.modal-header {
+  padding: 20px 24px 16px 24px;
+  border-bottom: 1px solid #2a2a35;
+}
+
+.modal-title {
+  margin: 0;
+  color: #e8e8f0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: 20px 24px;
+}
+
+.modal-footer {
+  padding: 16px 24px 20px 24px;
+  border-top: 1px solid #2a2a35;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Form Elements */
+.modal-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #404050;
+  border-radius: 8px;
+  background: #1c1c25;
+  color: #e8e8f0;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+  background: #202028;
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+}
+
+.modal-input::placeholder {
+  color: #6b7280;
+}
+
+.modal-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #b0b0c0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.modal-error {
+  margin-top: 8px;
+  color: #ff6b6b;
+  font-size: 13px;
+}
+
+.modal-info {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* Buttons */
+.modal-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.modal-button-primary {
+  background: #4a9eff;
+  color: white;
+  border-color: #4a9eff;
+}
+
+.modal-button-primary:hover:not(:disabled) {
+  background: #357abd;
+  border-color: #357abd;
+}
+
+.modal-button-primary:disabled {
+  background: #404050;
+  border-color: #404050;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.modal-button-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e8e8f0;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.modal-button-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.modal-button-danger {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.modal-button-danger:hover {
+  background: rgba(255, 107, 107, 0.3);
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+/* Session List */
+.session-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid #2a2a35;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #1c1c25;
+  transition: all 0.2s ease;
+}
+
+.session-item:hover {
+  background: #252530;
+  border-color: #404050;
+}
+
+.session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-name {
+  color: #e8e8f0;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-meta {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.session-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.session-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.session-button-load {
+  background: rgba(74, 158, 255, 0.2);
+  color: #4a9eff;
+  border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+.session-button-load:hover {
+  background: rgba(74, 158, 255, 0.3);
+  border-color: rgba(74, 158, 255, 0.4);
+}
+
+.session-button-delete {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.session-button-delete:hover {
+  background: rgba(255, 107, 107, 0.3);
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+/* Storage Info */
+.storage-info {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #2a2a35;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.storage-info-title {
+  color: #b0b0c0;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 6px 0;
+}
+
+.storage-info-details {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.storage-warning {
+  color: #ff9f43;
+  font-weight: 500;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state-text {
+  font-size: 16px;
+  margin: 0 0 8px 0;
+}
+
+.empty-state-subtext {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* Animations */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Scrollbar Styling */
+.modal-content::-webkit-scrollbar,
+.session-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track,
+.session-list::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb,
+.session-list::-webkit-scrollbar-thumb {
+  background: #404050;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover,
+.session-list::-webkit-scrollbar-thumb:hover {
+  background: #505060;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .modal-backdrop {
+    padding: 16px;
+  }
+
+  .modal-content {
+    max-height: 90vh;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .session-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .session-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

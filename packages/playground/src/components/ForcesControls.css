@@ -31,13 +31,13 @@
   color: rgba(255, 176, 32, 1);
 }
 
-.forces-button.save-button:hover {
+.forces-button.export-button:hover {
   background: rgba(76, 175, 80, 0.2);
   border-color: rgba(76, 175, 80, 0.4);
   color: rgba(76, 175, 80, 1);
 }
 
-.forces-button.load-button:hover {
+.forces-button.import-button:hover {
   background: rgba(33, 150, 243, 0.2);
   border-color: rgba(33, 150, 243, 0.4);
   color: rgba(33, 150, 243, 1);

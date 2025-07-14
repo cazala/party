@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Save, FolderOpen } from "lucide-react";
 import { ParticleSystem } from "@party/core";
 
 interface TopBarProps {
@@ -9,6 +9,8 @@ interface TopBarProps {
   onClear: () => void;
   onReset: () => void;
   onShowHotkeys?: () => void;
+  onSave?: () => void;
+  onLoad?: () => void;
 }
 
 export function TopBar({
@@ -18,6 +20,8 @@ export function TopBar({
   onClear,
   onReset,
   onShowHotkeys,
+  onSave,
+  onLoad,
 }: TopBarProps) {
   const [isPlaying, setIsPlaying] = useState(true);
 
@@ -89,6 +93,18 @@ export function TopBar({
             <RefreshCw width="12" height="12" />
             <span>Restart</span>
           </button>
+          {onSave && (
+            <button onClick={onSave} className="topbar-save-button">
+              <Save width="12" height="12" />
+              <span>Save</span>
+            </button>
+          )}
+          {onLoad && (
+            <button onClick={onLoad} className="topbar-load-button">
+              <FolderOpen width="12" height="12" />
+              <span>Load</span>
+            </button>
+          )}
         </div>
         <div className="topbar-right">
           {onShowHotkeys && (
