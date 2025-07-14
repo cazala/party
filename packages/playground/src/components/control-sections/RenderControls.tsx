@@ -55,35 +55,30 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
 
   return (
     <div className="control-section">
-
       <div className="control-group">
         <label>
-          Color Mode
-          <select
-            value={colorMode}
-            onChange={(e) => handleColorModeChange(e.target.value)}
-            className="form-select"
-          >
-            <option value="particle">Use Particle Color</option>
-            <option value="custom">Custom Color</option>
-            <option value="velocity">Velocity</option>
-          </select>
+          Color
+          <div className="color-control-inline">
+            <select
+              value={colorMode}
+              onChange={(e) => handleColorModeChange(e.target.value)}
+              className="form-select"
+            >
+              <option value="particle">Particle</option>
+              <option value="custom">Custom</option>
+              <option value="velocity">Velocity</option>
+            </select>
+            {colorMode === "custom" && (
+              <input
+                type="color"
+                value={customColor}
+                onChange={(e) => handleCustomColorChange(e.target.value)}
+                className="color-picker-inline"
+              />
+            )}
+          </div>
         </label>
       </div>
-
-      {colorMode === "custom" && (
-        <div className="control-group">
-          <label>
-            Custom Color
-            <input
-              type="color"
-              value={customColor}
-              onChange={(e) => handleCustomColorChange(e.target.value)}
-              className="color-picker"
-            />
-          </label>
-        </div>
-      )}
 
       <div className="control-group">
         <label>

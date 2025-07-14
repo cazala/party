@@ -242,45 +242,41 @@ export function SpawnControls({
 
       <div className="control-group">
         <label>
-          Color Mode
-          <select
-            value={colorConfig.colorMode}
-            onChange={(e) => {
-              const newColorConfig = {
-                ...colorConfig,
-                colorMode: e.target.value as "random" | "custom"
-              };
-              setColorConfig(newColorConfig);
-              onColorConfigChange?.(newColorConfig);
-            }}
-            className="form-select"
-          >
-            <option value="random">Random</option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-      </div>
-
-      {colorConfig.colorMode === "custom" && (
-        <div className="control-group">
-          <label>
-            Custom Color
-            <input
-              type="color"
-              value={colorConfig.customColor}
+          Color
+          <div className="color-control-inline">
+            <select
+              value={colorConfig.colorMode}
               onChange={(e) => {
                 const newColorConfig = {
                   ...colorConfig,
-                  customColor: e.target.value
+                  colorMode: e.target.value as "random" | "custom"
                 };
                 setColorConfig(newColorConfig);
                 onColorConfigChange?.(newColorConfig);
               }}
-              className="color-picker"
-            />
-          </label>
-        </div>
-      )}
+              className="form-select"
+            >
+              <option value="random">Random</option>
+              <option value="custom">Custom</option>
+            </select>
+            {colorConfig.colorMode === "custom" && (
+              <input
+                type="color"
+                value={colorConfig.customColor}
+                onChange={(e) => {
+                  const newColorConfig = {
+                    ...colorConfig,
+                    customColor: e.target.value
+                  };
+                  setColorConfig(newColorConfig);
+                  onColorConfigChange?.(newColorConfig);
+                }}
+                className="color-picker-inline"
+              />
+            )}
+          </div>
+        </label>
+      </div>
     </div>
   );
 }

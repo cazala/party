@@ -225,6 +225,35 @@
   border-color: rgba(255, 255, 255, 0.4);
 }
 
+/* Inline color control styling */
+.color-control-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.color-picker-inline {
+  width: 40px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.color-picker-inline:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.color-picker-inline:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
 /* Scrollbar styling for the panel */
 .controls-panel::-webkit-scrollbar {
   width: 6px;
