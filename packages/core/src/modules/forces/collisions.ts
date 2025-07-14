@@ -137,6 +137,21 @@ export class Collisions implements Force {
       particle1.position.add(correction1);
       particle2.position.subtract(correction2);
 
+      // ---- Eating logic ----
+      if (this.eat) {
+        // Bigger particle eats smaller one
+        if (particle1.mass > particle2.mass) {
+          particle2.mass = 0; // Mark for removal
+          particle2.size = 0;
+          return; // No velocity response needed for eaten particle
+        } else if (particle2.mass > particle1.mass) {
+          particle1.mass = 0; // Mark for removal
+          particle1.size = 0;
+          return; // No velocity response needed for eaten particle
+        }
+        // If masses are equal, proceed with normal collision response
+      }
+
       // ---- Velocity response (angle & mass aware) ----
       const n = collisionVector; // already normalized
 
@@ -167,23 +182,6 @@ export class Collisions implements Force {
 
       particle1.velocity.set(newV1.x, newV1.y);
       particle2.velocity.set(newV2.x, newV2.y);
-
-      // ---- Eating logic ----
-      if (this.eat) {
-        // Bigger particle eats smaller one
-        if (particle1.mass > particle2.mass) {
-          particle2.velocity.set(0, 0);
-          particle2.mass = 0; // Mark for removal
-          particle2.size = 0;
-          return; // No velocity response needed for eaten particle
-        } else if (particle2.mass > particle1.mass) {
-          particle1.velocity.set(0, 0);
-          particle1.mass = 0; // Mark for removal
-          particle1.size = 0;
-          return; // No velocity response needed for eaten particle
-        }
-        // If masses are equal, proceed with normal collision response
-      }
     }
 
     // Forces are applied directly to particle velocities above
