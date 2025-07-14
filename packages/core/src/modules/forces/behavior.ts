@@ -137,7 +137,7 @@ export class Behavior implements Force {
       }
     }
 
-    return chaseForce.limit(1000000);
+    return chaseForce.limit(500000);
   }
 
   avoid(particle: Particle, neighbors: Particle[]): Vector2D {
@@ -157,7 +157,7 @@ export class Behavior implements Force {
 
         if (distance > 0) {
           repulsion.normalize();
-          repulsion.multiply(1000000);
+          repulsion.multiply(10000);
 
           // Apply mass difference multiplier and linear distance scaling
           repulsion.multiply(massDifference * (1 / Math.max(distance, 1)));
@@ -166,7 +166,7 @@ export class Behavior implements Force {
       }
     }
 
-    return avoidForce.limit(900000);
+    return avoidForce.limit(500000);
   }
 
   setEnabled(enabled: boolean): void {

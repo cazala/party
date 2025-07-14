@@ -45,6 +45,9 @@ export class Particle {
   }
 
   applyForce(force: Vector2D): void {
+    if (this.mass <= 0) {
+      return; // Skip force application for zero or negative mass particles
+    }
     const f = force.clone().divide(this.mass);
     this.acceleration.add(f);
   }

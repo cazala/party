@@ -66,6 +66,27 @@ export function PerformanceControls({
 
   return (
     <div className="control-section">
+      {/* Performance Metrics - Top Priority */}
+      <div className="control-group">
+        <div
+          style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}
+        >
+          Particles: {particleCount}
+        </div>
+      </div>
+
+      <div className="control-group">
+        <div
+          style={{ 
+            fontSize: "12px", 
+            color: fps < 30 ? "#ff9f43" : "var(--color-text-secondary)" 
+          }}
+        >
+          FPS: {fps.toFixed(1)}
+        </div>
+      </div>
+
+      {/* Spatial Grid Controls */}
       <div className="control-group">
         <label>
           Spatial Grid Cell Size: {cellSize}px
@@ -103,22 +124,6 @@ export function PerformanceControls({
           </div>
         </div>
       )}
-
-      <div className="control-group">
-        <div
-          style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}
-        >
-          FPS: {fps.toFixed(1)}
-        </div>
-      </div>
-
-      <div className="control-group">
-        <div
-          style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}
-        >
-          Particles: {particleCount}
-        </div>
-      </div>
     </div>
   );
 }

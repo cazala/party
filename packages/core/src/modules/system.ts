@@ -66,7 +66,7 @@ export class ParticleSystem {
 
   private lastTime: number = 0;
   private animationId: number | null = null;
-
+  
   // FPS tracking
   private fpsFrameTimes: number[] = [];
   private fpsMaxSamples: number = 60; // Track last 60 frames
