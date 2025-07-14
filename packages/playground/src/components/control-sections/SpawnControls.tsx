@@ -164,8 +164,8 @@ export function SpawnControls({
             className="form-select"
           >
             <option value="grid">Grid</option>
-            <option value="random">Random</option>
             <option value="circle">Circle</option>
+            <option value="random">Random</option>
           </select>
         </label>
       </div>

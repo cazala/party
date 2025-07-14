@@ -40,7 +40,7 @@ export function SystemControls({
         <h3>System</h3>
       </div>
 
-      <CollapsibleSection title="Spawn">
+      <CollapsibleSection title="Init">
         <SpawnControls
           onSpawnParticles={onSpawnParticles}
           onGetSpawnConfig={onGetSpawnConfig}
