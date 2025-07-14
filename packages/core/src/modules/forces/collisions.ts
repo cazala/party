@@ -5,20 +5,28 @@ import { SpatialGrid } from "../spatial-grid";
 
 // Default constants for Collisions
 export const DEFAULT_COLLISIONS_ENABLED = true;
+export const DEFAULT_COLLISIONS_EAT = false;
 
 export interface CollisionsOptions {
   enabled?: boolean;
+  eat?: boolean;
 }
 
 export class Collisions implements Force {
   public enabled: boolean;
+  public eat: boolean;
 
   constructor(options: CollisionsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_COLLISIONS_ENABLED;
+    this.eat = options.eat ?? DEFAULT_COLLISIONS_EAT;
   }
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+  }
+
+  setEat(eat: boolean): void {
+    this.eat = eat;
   }
 
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
@@ -128,6 +136,27 @@ export class Collisions implements Force {
 
       particle1.position.add(correction1);
       particle2.position.subtract(correction2);
+
+      // ---- Eating logic ----
+      if (this.eat) {
+        // Bigger particle eats smaller one
+        if (particle1.mass > particle2.mass) {
+          // particle1 eats particle2
+          particle1.mass += particle2.mass;
+          particle1.size = Math.sqrt(particle1.mass / Math.PI); // Maintain density
+          particle2.mass = 0; // Mark for removal
+          particle2.size = 0;
+          return; // No velocity response needed for eaten particle
+        } else if (particle2.mass > particle1.mass) {
+          // particle2 eats particle1
+          particle2.mass += particle1.mass;
+          particle2.size = Math.sqrt(particle2.mass / Math.PI); // Maintain density
+          particle1.mass = 0; // Mark for removal
+          particle1.size = 0;
+          return; // No velocity response needed for eaten particle
+        }
+        // If masses are equal, proceed with normal collision response
+      }
 
       // ---- Velocity response (angle & mass aware) ----
       const n = collisionVector; // already normalized

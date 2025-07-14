@@ -22,6 +22,7 @@ import {
   DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_FRICTION,
   DEFAULT_COLLISIONS_ENABLED,
+  DEFAULT_COLLISIONS_EAT,
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
@@ -77,6 +78,7 @@ export function ForcesControls({
     // Reset collisions
     if (collisions) {
       collisions.setEnabled(DEFAULT_COLLISIONS_ENABLED);
+      collisions.setEat(DEFAULT_COLLISIONS_EAT);
     }
 
     // Reset behavior

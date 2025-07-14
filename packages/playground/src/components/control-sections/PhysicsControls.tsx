@@ -8,7 +8,7 @@ import {
   DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_FRICTION,
 } from "@party/core/modules/forces/bounds";
-import { DEFAULT_COLLISIONS_ENABLED } from "@party/core/modules/forces/collisions";
+import { DEFAULT_COLLISIONS_ENABLED, DEFAULT_COLLISIONS_EAT } from "@party/core/modules/forces/collisions";
 import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
@@ -38,6 +38,9 @@ export function PhysicsControls({
   const [collisionsEnabled, setCollisionsEnabled] = useState(
     DEFAULT_COLLISIONS_ENABLED
   );
+  const [collisionsEat, setCollisionsEat] = useState(
+    DEFAULT_COLLISIONS_EAT
+  );
   
   // Fluid state
   const [fluidEnabled, setFluidEnabled] = useState(false); // Playground default: off
@@ -63,6 +66,7 @@ export function PhysicsControls({
     }
     if (collisions) {
       setCollisionsEnabled(collisions.enabled);
+      setCollisionsEat(collisions.eat);
     }
     if (fluid) {
       setFluidEnabled(fluid.enabled);
@@ -106,6 +110,13 @@ export function PhysicsControls({
     setCollisionsEnabled(enabled);
     if (collisions) {
       collisions.setEnabled(enabled);
+    }
+  };
+
+  const handleCollisionsEatChange = (eat: boolean) => {
+    setCollisionsEat(eat);
+    if (collisions) {
+      collisions.setEat(eat);
     }
   };
 
@@ -213,6 +224,19 @@ export function PhysicsControls({
             onChange={(e) => handleCollisionsEnabledChange(e.target.checked)}
           />
           Enable Collisions
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={collisionsEat}
+            disabled={!collisionsEnabled}
+            onChange={(e) => handleCollisionsEatChange(e.target.checked)}
+            className={`checkbox ${!collisionsEnabled ? "disabled" : ""}`}
+          />
+          Eat on Collision
         </label>
       </div>
 

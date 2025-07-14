@@ -23,6 +23,7 @@ export interface Config {
   };
   collisions?: {
     enabled: boolean;
+    eat: boolean;
   };
   behavior?: {
     enabled: boolean;
@@ -134,6 +135,9 @@ export class ParticleSystem {
       }
       particle.update(deltaTime);
     }
+
+    // Remove eaten particles (marked with mass = 0)
+    this.particles = this.particles.filter(particle => particle.mass > 0);
   }
 
   play(): void {
@@ -223,6 +227,7 @@ export class ParticleSystem {
       } else if (force instanceof Collisions) {
         config.collisions = {
           enabled: force.enabled,
+          eat: force.eat,
         };
       } else if (force instanceof Behavior) {
         config.behavior = {
@@ -265,6 +270,7 @@ export class ParticleSystem {
         force.setFriction(config.bounds.friction);
       } else if (force instanceof Collisions && config.collisions) {
         force.setEnabled(config.collisions.enabled);
+        force.setEat(config.collisions.eat);
       } else if (force instanceof Behavior && config.behavior) {
         force.setEnabled(config.behavior.enabled);
         force.wanderWeight = config.behavior.wanderWeight;
