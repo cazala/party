@@ -209,12 +209,17 @@ export class Canvas2DRenderer extends Renderer {
       }
     }
 
-    // Render density at cursor if enabled
+    // Render density circle and arrow in world coordinates
     if (this.showDensityAtCursor && this.cursorPosition) {
-      this.renderDensityAtCursor(system);
+      this.renderDensityCircleAndArrow(system);
     }
 
     this.ctx.restore();
+
+    // Render density info box in screen coordinates (fixed position)
+    if (this.showDensityAtCursor && this.cursorPosition) {
+      this.renderDensityInfoBox(system);
+    }
   }
 
   private calculateVelocityColor(particle: Particle): string {
@@ -559,7 +564,7 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.restore();
   }
 
-  private renderDensityAtCursor(system: ParticleSystem): void {
+  private renderDensityCircleAndArrow(system: ParticleSystem): void {
     if (!this.cursorPosition) return;
 
     this.ctx.save();
@@ -581,7 +586,6 @@ export class Canvas2DRenderer extends Renderer {
       particles
     );
 
-    const pressure = fluid.convertDensityToPressure(density);
     const vector = fluid.calculatePressureForce(this.cursorPosition, particles);
     const force =
       density > 0
@@ -619,6 +623,36 @@ export class Canvas2DRenderer extends Renderer {
       this.cursorPosition.y + force.y
     );
     this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
+  private renderDensityInfoBox(system: ParticleSystem): void {
+    if (!this.cursorPosition) return;
+
+    this.ctx.save();
+
+    const fluid = system.forces.find(
+      (force) => force instanceof Fluid
+    ) as Fluid;
+
+    // Get particles near cursor
+    const particles = system.spatialGrid.getParticles(
+      this.cursorPosition,
+      fluid.influenceRadius
+    );
+
+    // Calculate density at cursor position
+    const density = calculateDensity(
+      this.cursorPosition,
+      fluid.influenceRadius,
+      particles
+    );
+
+    const pressure = fluid.convertDensityToPressure(density);
+
+    // Use same color palette as spatial grid
+    const baseColor = "#dee7f0";
 
     // Draw density text with smart positioning
     this.ctx.globalAlpha = 1;
