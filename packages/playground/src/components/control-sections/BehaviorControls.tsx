@@ -1,98 +1,100 @@
 import { useState, useEffect } from "react";
-import { Boids } from "@party/core";
+import { Behavior } from "@party/core";
 import {
-  DEFAULT_BOIDS_ENABLED,
-  DEFAULT_BOIDS_WANDER_WEIGHT,
-  DEFAULT_BOIDS_COHESION_WEIGHT,
-  DEFAULT_BOIDS_ALIGNMENT_WEIGHT,
-  DEFAULT_BOIDS_SEPARATION_WEIGHT,
-  DEFAULT_BOIDS_CHASE_WEIGHT,
-  DEFAULT_BOIDS_AVOID_WEIGHT,
-  DEFAULT_BOIDS_SEPARATION_RANGE,
-  DEFAULT_BOIDS_NEIGHBOR_RADIUS,
-} from "@party/core/modules/forces/boids";
+  DEFAULT_BEHAVIOR_ENABLED,
+  DEFAULT_BEHAVIOR_WANDER_WEIGHT,
+  DEFAULT_BEHAVIOR_COHESION_WEIGHT,
+  DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT,
+  DEFAULT_BEHAVIOR_SEPARATION_WEIGHT,
+  DEFAULT_BEHAVIOR_CHASE_WEIGHT,
+  DEFAULT_BEHAVIOR_AVOID_WEIGHT,
+  DEFAULT_BEHAVIOR_SEPARATION_RANGE,
+  DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS,
+} from "@party/core/modules/forces/behavior";
 
-interface BoidsControlsProps {
-  boids: Boids | null;
+interface BehaviorControlsProps {
+  behavior: Behavior | null;
 }
 
-export function BoidsControls({ boids }: BoidsControlsProps) {
-  const [boidsEnabled, setBoidsEnabled] = useState(false); // Playground default: off
-  const [wanderWeight, setWanderWeight] = useState(DEFAULT_BOIDS_WANDER_WEIGHT);
+export function BehaviorControls({ behavior }: BehaviorControlsProps) {
+  const [behaviorEnabled, setBehaviorEnabled] = useState(false); // Playground default: off
+  const [wanderWeight, setWanderWeight] = useState(
+    DEFAULT_BEHAVIOR_WANDER_WEIGHT
+  );
   const [cohesionWeight, setCohesionWeight] = useState(
-    DEFAULT_BOIDS_COHESION_WEIGHT
+    DEFAULT_BEHAVIOR_COHESION_WEIGHT
   );
   const [alignmentWeight, setAlignmentWeight] = useState(
-    DEFAULT_BOIDS_ALIGNMENT_WEIGHT
+    DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT
   );
   const [separationWeight, setSeparationWeight] = useState(
-    DEFAULT_BOIDS_SEPARATION_WEIGHT
+    DEFAULT_BEHAVIOR_SEPARATION_WEIGHT
   );
-  const [chaseWeight, setChaseWeight] = useState(DEFAULT_BOIDS_CHASE_WEIGHT);
-  const [avoidWeight, setAvoidWeight] = useState(DEFAULT_BOIDS_AVOID_WEIGHT);
+  const [chaseWeight, setChaseWeight] = useState(DEFAULT_BEHAVIOR_CHASE_WEIGHT);
+  const [avoidWeight, setAvoidWeight] = useState(DEFAULT_BEHAVIOR_AVOID_WEIGHT);
   const [separationRange, setSeparationRange] = useState(
-    DEFAULT_BOIDS_SEPARATION_RANGE
+    DEFAULT_BEHAVIOR_SEPARATION_RANGE
   );
   const [neighborRadius, setNeighborRadius] = useState(
-    DEFAULT_BOIDS_NEIGHBOR_RADIUS
+    DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS
   );
 
   useEffect(() => {
-    if (boids) {
-      setBoidsEnabled(boids.enabled);
-      setWanderWeight(boids.wanderWeight);
-      setCohesionWeight(boids.cohesionWeight);
-      setAlignmentWeight(boids.alignmentWeight);
-      setSeparationWeight(boids.separationWeight);
-      setChaseWeight(boids.chaseWeight);
-      setAvoidWeight(boids.avoidWeight);
-      setSeparationRange(boids.separationRange);
-      setNeighborRadius(boids.neighborRadius);
+    if (behavior) {
+      setBehaviorEnabled(behavior.enabled);
+      setWanderWeight(behavior.wanderWeight);
+      setCohesionWeight(behavior.cohesionWeight);
+      setAlignmentWeight(behavior.alignmentWeight);
+      setSeparationWeight(behavior.separationWeight);
+      setChaseWeight(behavior.chaseWeight);
+      setAvoidWeight(behavior.avoidWeight);
+      setSeparationRange(behavior.separationRange);
+      setNeighborRadius(behavior.neighborRadius);
     }
-  }, [boids]);
+  }, [behavior]);
 
-  const handleBoidsChange = (
-    property: keyof Boids,
+  const handleBehaviorChange = (
+    property: keyof Behavior,
     value: number | boolean
   ) => {
-    if (!boids) return;
+    if (!behavior) return;
 
     switch (property) {
       case "enabled":
-        setBoidsEnabled(value as boolean);
-        boids.setEnabled(value as boolean);
+        setBehaviorEnabled(value as boolean);
+        behavior.setEnabled(value as boolean);
         break;
       case "wanderWeight":
         setWanderWeight(value as number);
-        boids.wanderWeight = value as number;
+        behavior.wanderWeight = value as number;
         break;
       case "cohesionWeight":
         setCohesionWeight(value as number);
-        boids.cohesionWeight = value as number;
+        behavior.cohesionWeight = value as number;
         break;
       case "alignmentWeight":
         setAlignmentWeight(value as number);
-        boids.alignmentWeight = value as number;
+        behavior.alignmentWeight = value as number;
         break;
       case "separationWeight":
         setSeparationWeight(value as number);
-        boids.separationWeight = value as number;
+        behavior.separationWeight = value as number;
         break;
       case "chaseWeight":
         setChaseWeight(value as number);
-        boids.chaseWeight = value as number;
+        behavior.chaseWeight = value as number;
         break;
       case "avoidWeight":
         setAvoidWeight(value as number);
-        boids.avoidWeight = value as number;
+        behavior.avoidWeight = value as number;
         break;
       case "separationRange":
         setSeparationRange(value as number);
-        boids.separationRange = value as number;
+        behavior.separationRange = value as number;
         break;
       case "neighborRadius":
         setNeighborRadius(value as number);
-        boids.neighborRadius = value as number;
+        behavior.neighborRadius = value as number;
         break;
     }
   };
@@ -103,8 +105,8 @@ export function BoidsControls({ boids }: BoidsControlsProps) {
         <label>
           <input
             type="checkbox"
-            checked={boidsEnabled}
-            onChange={(e) => handleBoidsChange("enabled", e.target.checked)}
+            checked={behaviorEnabled}
+            onChange={(e) => handleBehaviorChange("enabled", e.target.checked)}
             className="checkbox"
           />
           Enable
@@ -120,11 +122,11 @@ export function BoidsControls({ boids }: BoidsControlsProps) {
             max="10"
             step="0.1"
             value={wanderWeight}
-            disabled={!boidsEnabled}
+            disabled={!behaviorEnabled}
             onChange={(e) =>
-              handleBoidsChange("wanderWeight", parseFloat(e.target.value))
+              handleBehaviorChange("wanderWeight", parseFloat(e.target.value))
             }
-            className={`slider ${!boidsEnabled ? "disabled" : ""}`}
+            className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -138,11 +140,11 @@ export function BoidsControls({ boids }: BoidsControlsProps) {
             max="10"
             step="0.1"
             value={cohesionWeight}
-            disabled={!boidsEnabled}
+            disabled={!behaviorEnabled}
             onChange={(e) =>
-              handleBoidsChange("cohesionWeight", parseFloat(e.target.value))
+              handleBehaviorChange("cohesionWeight", parseFloat(e.target.value))
             }
-            className={`slider ${!boidsEnabled ? "disabled" : ""}`}
+            className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -156,11 +158,14 @@ export function BoidsControls({ boids }: BoidsControlsProps) {
             max="10"
             step="0.1"
             value={alignmentWeight}
-            disabled={!boidsEnabled}
+            disabled={!behaviorEnabled}
             onChange={(e) =>
-              handleBoidsChange("alignmentWeight", parseFloat(e.target.value))
+              handleBehaviorChange(
+                "alignmentWeight",
+                parseFloat(e.target.value)
+              )
             }
-            className={`slider ${!boidsEnabled ? "disabled" : ""}`}
+            className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -174,11 +179,14 @@ export function BoidsControls({ boids }: BoidsControlsProps) {
             max="10"
             step="0.1"
             value={separationWeight}
-            disabled={!boidsEnabled}
+            disabled={!behaviorEnabled}
             onChange={(e) =>
-              handleBoidsChange("separationWeight", parseFloat(e.target.value))
+              handleBehaviorChange(
+                "separationWeight",
+                parseFloat(e.target.value)
+              )
             }
-            className={`slider ${!boidsEnabled ? "disabled" : ""}`}
+            className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -192,11 +200,14 @@ export function BoidsControls({ boids }: BoidsControlsProps) {
             max="150"
             step="1"
             value={separationRange}
-            disabled={!boidsEnabled}
+            disabled={!behaviorEnabled}
             onChange={(e) =>
-              handleBoidsChange("separationRange", parseFloat(e.target.value))
+              handleBehaviorChange(
+                "separationRange",
+                parseFloat(e.target.value)
+              )
             }
-            className={`slider ${!boidsEnabled ? "disabled" : ""}`}
+            className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -207,14 +218,14 @@ export function BoidsControls({ boids }: BoidsControlsProps) {
           <input
             type="range"
             min="0"
-            max="2"
+            max="10"
             step="0.1"
             value={chaseWeight}
-            disabled={!boidsEnabled}
+            disabled={!behaviorEnabled}
             onChange={(e) =>
-              handleBoidsChange("chaseWeight", parseFloat(e.target.value))
+              handleBehaviorChange("chaseWeight", parseFloat(e.target.value))
             }
-            className={`slider ${!boidsEnabled ? "disabled" : ""}`}
+            className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -228,11 +239,11 @@ export function BoidsControls({ boids }: BoidsControlsProps) {
             max="10"
             step="0.1"
             value={avoidWeight}
-            disabled={!boidsEnabled}
+            disabled={!behaviorEnabled}
             onChange={(e) =>
-              handleBoidsChange("avoidWeight", parseFloat(e.target.value))
+              handleBehaviorChange("avoidWeight", parseFloat(e.target.value))
             }
-            className={`slider ${!boidsEnabled ? "disabled" : ""}`}
+            className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -246,11 +257,11 @@ export function BoidsControls({ boids }: BoidsControlsProps) {
             max="500"
             step="1"
             value={neighborRadius}
-            disabled={!boidsEnabled}
+            disabled={!behaviorEnabled}
             onChange={(e) =>
-              handleBoidsChange("neighborRadius", parseFloat(e.target.value))
+              handleBehaviorChange("neighborRadius", parseFloat(e.target.value))
             }
-            className={`slider ${!boidsEnabled ? "disabled" : ""}`}
+            className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>

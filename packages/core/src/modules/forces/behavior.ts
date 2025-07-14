@@ -3,18 +3,18 @@ import { Force } from "../system";
 import { Vector2D } from "../vector";
 import { SpatialGrid } from "../spatial-grid";
 
-// Default constants for Boids behavior
-export const DEFAULT_BOIDS_ENABLED = true;
-export const DEFAULT_BOIDS_WANDER_WEIGHT = 0;
-export const DEFAULT_BOIDS_COHESION_WEIGHT = 0;
-export const DEFAULT_BOIDS_ALIGNMENT_WEIGHT = 0;
-export const DEFAULT_BOIDS_SEPARATION_WEIGHT = 0;
-export const DEFAULT_BOIDS_CHASE_WEIGHT = 0;
-export const DEFAULT_BOIDS_AVOID_WEIGHT = 0;
-export const DEFAULT_BOIDS_SEPARATION_RANGE = 30;
-export const DEFAULT_BOIDS_NEIGHBOR_RADIUS = 100;
+// Default constants for Behavior
+export const DEFAULT_BEHAVIOR_ENABLED = true;
+export const DEFAULT_BEHAVIOR_WANDER_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_COHESION_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_SEPARATION_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_CHASE_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_AVOID_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_SEPARATION_RANGE = 30;
+export const DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS = 100;
 
-export class Boids implements Force {
+export class Behavior implements Force {
   public enabled: boolean;
   wanderWeight: number;
   cohesionWeight: number;
@@ -39,20 +39,20 @@ export class Boids implements Force {
       neighborRadius?: number;
     } = {}
   ) {
-    this.enabled = options.enabled ?? DEFAULT_BOIDS_ENABLED;
-    this.wanderWeight = options.wanderWeight ?? DEFAULT_BOIDS_WANDER_WEIGHT;
+    this.enabled = options.enabled ?? DEFAULT_BEHAVIOR_ENABLED;
+    this.wanderWeight = options.wanderWeight ?? DEFAULT_BEHAVIOR_WANDER_WEIGHT;
     this.cohesionWeight =
-      options.cohesionWeight ?? DEFAULT_BOIDS_COHESION_WEIGHT;
+      options.cohesionWeight ?? DEFAULT_BEHAVIOR_COHESION_WEIGHT;
     this.alignmentWeight =
-      options.alignmentWeight ?? DEFAULT_BOIDS_ALIGNMENT_WEIGHT;
+      options.alignmentWeight ?? DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT;
     this.separationWeight =
-      options.separationWeight ?? DEFAULT_BOIDS_SEPARATION_WEIGHT;
-    this.chaseWeight = options.chaseWeight ?? DEFAULT_BOIDS_CHASE_WEIGHT;
-    this.avoidWeight = options.avoidWeight ?? DEFAULT_BOIDS_AVOID_WEIGHT;
+      options.separationWeight ?? DEFAULT_BEHAVIOR_SEPARATION_WEIGHT;
+    this.chaseWeight = options.chaseWeight ?? DEFAULT_BEHAVIOR_CHASE_WEIGHT;
+    this.avoidWeight = options.avoidWeight ?? DEFAULT_BEHAVIOR_AVOID_WEIGHT;
     this.separationRange =
-      options.separationRange ?? DEFAULT_BOIDS_SEPARATION_RANGE;
+      options.separationRange ?? DEFAULT_BEHAVIOR_SEPARATION_RANGE;
     this.neighborRadius =
-      options.neighborRadius ?? DEFAULT_BOIDS_NEIGHBOR_RADIUS;
+      options.neighborRadius ?? DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS;
   }
 
   separate(particle: Particle, neighbors: Particle[], range: number): Vector2D {
@@ -134,7 +134,7 @@ export class Boids implements Force {
       }
     }
 
-    return chaseForce.limit(1000);
+    return chaseForce.limit(1000000);
   }
 
   avoid(particle: Particle, neighbors: Particle[]): Vector2D {
@@ -143,15 +143,18 @@ export class Boids implements Force {
     for (const neighbor of neighbors) {
       // Only avoid particles with larger mass
       if (particle.mass < neighbor.mass) {
-        const massDifference = (neighbor.mass - particle.mass) / neighbor.mass;
-
         // Create repulsion force away from heavier particle
         const repulsion = particle.position.clone().subtract(neighbor.position);
         const distance = repulsion.magnitude();
+        if (distance > this.neighborRadius / 2) {
+          continue;
+        }
+
+        const massDifference = (neighbor.mass - particle.mass) / neighbor.mass;
 
         if (distance > 0) {
           repulsion.normalize();
-          repulsion.multiply(100000);
+          repulsion.multiply(1000000);
 
           // Apply mass difference multiplier and linear distance scaling
           repulsion.multiply(massDifference * (1 / Math.max(distance, 1)));
@@ -231,21 +234,13 @@ export class Boids implements Force {
     }
 
     if (this.chaseWeight > 0) {
-      const chaseNeighbors = spatialGrid.getParticles(
-        particle.position,
-        this.neighborRadius * 2
-      );
-      const chase = this.chase(particle, chaseNeighbors);
+      const chase = this.chase(particle, neighbors);
       chase.multiply(this.chaseWeight);
       particle.applyForce(chase);
     }
 
     if (this.avoidWeight > 0) {
-      const avoidNeighbors = spatialGrid.getParticles(
-        particle.position,
-        this.neighborRadius * 1.5
-      );
-      const avoid = this.avoid(particle, avoidNeighbors);
+      const avoid = this.avoid(particle, neighbors);
       avoid.multiply(this.avoidWeight);
       particle.applyForce(avoid);
     }

@@ -3,7 +3,7 @@ import { SpatialGrid } from "./spatial-grid";
 import { Gravity } from "./forces/gravity";
 import { Bounds } from "./forces/bounds";
 import { Collisions } from "./forces/collisions";
-import { Boids } from "./forces/boids";
+import { Behavior } from "./forces/behavior";
 import { Fluid } from "./forces/fluid";
 import { Vector2D } from "./vector";
 
@@ -24,7 +24,7 @@ export interface Config {
   collisions?: {
     enabled: boolean;
   };
-  boids?: {
+  behavior?: {
     enabled: boolean;
     wanderWeight: number;
     cohesionWeight: number;
@@ -223,8 +223,8 @@ export class ParticleSystem {
         config.collisions = {
           enabled: force.enabled,
         };
-      } else if (force instanceof Boids) {
-        config.boids = {
+      } else if (force instanceof Behavior) {
+        config.behavior = {
           enabled: force.enabled,
           wanderWeight: force.wanderWeight,
           cohesionWeight: force.cohesionWeight,
@@ -263,16 +263,16 @@ export class ParticleSystem {
         force.setFriction(config.bounds.friction);
       } else if (force instanceof Collisions && config.collisions) {
         force.setEnabled(config.collisions.enabled);
-      } else if (force instanceof Boids && config.boids) {
-        force.setEnabled(config.boids.enabled);
-        force.wanderWeight = config.boids.wanderWeight;
-        force.cohesionWeight = config.boids.cohesionWeight;
-        force.alignmentWeight = config.boids.alignmentWeight;
-        force.separationWeight = config.boids.separationWeight;
-        force.chaseWeight = config.boids.chaseWeight;
-        force.avoidWeight = config.boids.avoidWeight;
-        force.separationRange = config.boids.separationRange;
-        force.neighborRadius = config.boids.neighborRadius;
+      } else if (force instanceof Behavior && config.behavior) {
+        force.setEnabled(config.behavior.enabled);
+        force.wanderWeight = config.behavior.wanderWeight;
+        force.cohesionWeight = config.behavior.cohesionWeight;
+        force.alignmentWeight = config.behavior.alignmentWeight;
+        force.separationWeight = config.behavior.separationWeight;
+        force.chaseWeight = config.behavior.chaseWeight;
+        force.avoidWeight = config.behavior.avoidWeight;
+        force.separationRange = config.behavior.separationRange;
+        force.neighborRadius = config.behavior.neighborRadius;
       } else if (force instanceof Fluid && config.fluid) {
         force.setEnabled(config.fluid.enabled);
         force.influenceRadius = config.fluid.influenceRadius;

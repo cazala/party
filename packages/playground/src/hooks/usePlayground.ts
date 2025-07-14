@@ -6,7 +6,7 @@ import {
   ParticleSystem,
   Vector2D,
   Bounds,
-  Boids,
+  Behavior,
   Collisions,
   Fluid,
   Interaction,
@@ -38,7 +38,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
   // physics engine mutates them on every tick.
   const gravityRef = useRef<Gravity | null>(null);
   const boundsRef = useRef<Bounds | null>(null);
-  const boidsRef = useRef<Boids | null>(null);
+  const behaviorRef = useRef<Behavior | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
   const fluidRef = useRef<Fluid | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
@@ -230,8 +230,8 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     const bounds = new Bounds();
     boundsRef.current = bounds;
 
-    const boids = new Boids({ enabled: false }); // Playground default: off
-    boidsRef.current = boids;
+    const behavior = new Behavior({ enabled: false }); // Playground default: off
+    behaviorRef.current = behavior;
 
     const collisions = new Collisions();
     collisionsRef.current = collisions;
@@ -257,7 +257,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
 
     system.addForce(gravity);
     system.addForce(bounds);
-    system.addForce(boids);
+    system.addForce(behavior);
     system.addForce(collisions);
     system.addForce(fluid);
     system.addForce(interaction);
@@ -587,7 +587,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     system: systemRef.current,
     gravity: gravityRef.current,
     bounds: boundsRef.current,
-    boids: boidsRef.current,
+    behavior: behaviorRef.current,
     collisions: collisionsRef.current,
     fluid: fluidRef.current,
     interaction: interactionRef.current,

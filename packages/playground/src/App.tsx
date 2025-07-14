@@ -22,7 +22,7 @@ function App() {
     system,
     gravity,
     bounds,
-    boids,
+    behavior,
     collisions,
     fluid,
     interaction,
@@ -37,10 +37,10 @@ function App() {
   const size = useWindowSize();
 
   useEffect(() => {
-    if (!system || !gravity || !bounds || !boids || !collisions || !fluid || !interaction || !renderer)
+    if (!system || !gravity || !bounds || !behavior || !collisions || !fluid || !interaction || !renderer)
       return;
     system.setSize(size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH, size.height - TOPBAR_HEIGHT);
-  }, [system, gravity, bounds, boids, collisions, fluid, interaction, renderer, size]);
+  }, [system, gravity, bounds, behavior, collisions, fluid, interaction, renderer, size]);
 
   useEffect(() => {
     if (system) {
@@ -100,7 +100,7 @@ function App() {
           <ForcesControls
             system={system}
             gravity={gravity}
-            boids={boids}
+            behavior={behavior}
             bounds={bounds}
             collisions={collisions}
             fluid={fluid}
