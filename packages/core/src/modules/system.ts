@@ -67,6 +67,11 @@ export class ParticleSystem {
   private lastTime: number = 0;
   private animationId: number | null = null;
 
+  // FPS tracking
+  private fpsFrameTimes: number[] = [];
+  private fpsMaxSamples: number = 60; // Track last 60 frames
+  private currentFPS: number = 0;
+
   private renderCallback?: (system: ParticleSystem) => void;
 
   constructor(options: SystemOptions) {
@@ -179,6 +184,10 @@ export class ParticleSystem {
     return this.particles.length;
   }
 
+  getFPS(): number {
+    return this.currentFPS;
+  }
+
   setSize(width: number, height: number): void {
     this.width = width;
     this.height = height;
@@ -192,6 +201,9 @@ export class ParticleSystem {
     const deltaTime = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
 
+    // Update FPS calculation
+    this.updateFPS(currentTime);
+
     this.update(deltaTime);
 
     this.animationId = requestAnimationFrame(this.animate);
@@ -200,6 +212,23 @@ export class ParticleSystem {
       this.renderCallback(this);
     }
   };
+
+  private updateFPS(currentTime: number): void {
+    // Add current frame time
+    this.fpsFrameTimes.push(currentTime);
+    
+    // Remove old frames (keep only last N frames)
+    if (this.fpsFrameTimes.length > this.fpsMaxSamples) {
+      this.fpsFrameTimes.shift();
+    }
+    
+    // Calculate FPS from recent frames
+    if (this.fpsFrameTimes.length >= 2) {
+      const timeSpan = this.fpsFrameTimes[this.fpsFrameTimes.length - 1] - this.fpsFrameTimes[0];
+      const frames = this.fpsFrameTimes.length - 1;
+      this.currentFPS = frames / (timeSpan / 1000);
+    }
+  }
 
   setRenderCallback(callback: (system: ParticleSystem) => void): void {
     this.renderCallback = callback;

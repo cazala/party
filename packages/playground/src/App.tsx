@@ -83,6 +83,7 @@ function App() {
       <div className="app-content">
         <div className="left-sidebar">
           <SystemControls
+            system={system}
             renderer={renderer}
             spatialGrid={spatialGrid}
             interaction={interaction}

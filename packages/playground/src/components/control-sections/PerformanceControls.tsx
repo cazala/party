@@ -2,20 +2,25 @@ import { useState, useEffect } from "react";
 import {
   SpatialGrid,
   Canvas2DRenderer,
+  ParticleSystem,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
 } from "@party/core";
 
 interface PerformanceControlsProps {
+  system: ParticleSystem | null;
   spatialGrid: SpatialGrid | null;
   renderer: Canvas2DRenderer | null;
 }
 
 export function PerformanceControls({
+  system,
   spatialGrid,
   renderer,
 }: PerformanceControlsProps) {
   const [cellSize, setCellSize] = useState(DEFAULT_SPATIAL_GRID_CELL_SIZE);
   const [showSpatialGrid, setShowSpatialGrid] = useState(false);
+  const [fps, setFps] = useState(0);
+  const [particleCount, setParticleCount] = useState(0);
 
   useEffect(() => {
     if (renderer) {
@@ -26,6 +31,24 @@ export function PerformanceControls({
       setCellSize(gridCellSize);
     }
   }, [renderer, spatialGrid]);
+
+  // Update FPS and particle count periodically
+  useEffect(() => {
+    if (!system) return;
+
+    const updatePerformanceMetrics = () => {
+      setFps(system.getFPS());
+      setParticleCount(system.getParticleCount());
+    };
+
+    // Update immediately
+    updatePerformanceMetrics();
+
+    // Update every 100ms for smooth display
+    const interval = setInterval(updatePerformanceMetrics, 100);
+
+    return () => clearInterval(interval);
+  }, [system]);
 
   const handleCellSizeChange = (size: number) => {
     setCellSize(size);
@@ -80,6 +103,22 @@ export function PerformanceControls({
           </div>
         </div>
       )}
+
+      <div className="control-group">
+        <div
+          style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}
+        >
+          FPS: {fps.toFixed(1)}
+        </div>
+      </div>
+
+      <div className="control-group">
+        <div
+          style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}
+        >
+          Particles: {particleCount}
+        </div>
+      </div>
     </div>
   );
 }

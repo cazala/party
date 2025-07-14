@@ -1,4 +1,4 @@
-import { Canvas2DRenderer, SpatialGrid, Interaction } from "@party/core";
+import { Canvas2DRenderer, SpatialGrid, Interaction, ParticleSystem } from "@party/core";
 import { SpawnControls } from "./control-sections/SpawnControls";
 import { ParticleSpawnControls, SpawnConfig } from "./control-sections/ParticleSpawnControls";
 import { InteractionControls } from "./control-sections/InteractionControls";
@@ -13,6 +13,7 @@ interface InitColorConfig {
 }
 
 interface SystemControlsProps {
+  system: ParticleSystem | null;
   renderer: Canvas2DRenderer | null;
   spatialGrid: SpatialGrid | null;
   interaction: Interaction | null;
@@ -38,6 +39,7 @@ interface SystemControlsProps {
 }
 
 export function SystemControls({
+  system,
   renderer,
   spatialGrid,
   interaction,
@@ -96,7 +98,7 @@ export function SystemControls({
       </CollapsibleSection>
 
       <CollapsibleSection title="Performance">
-        <PerformanceControls spatialGrid={spatialGrid} renderer={renderer} />
+        <PerformanceControls system={system} spatialGrid={spatialGrid} renderer={renderer} />
       </CollapsibleSection>
     </div>
   );
