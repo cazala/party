@@ -201,7 +201,7 @@ export class Behavior implements Force {
     }
 
     const normalizedVelocity = particle.velocity.clone().normalize();
-    const cosQuarterViewAngle = Math.cos(this.viewAngle / 8);
+    const cosQuarterViewAngle = Math.cos(this.viewAngle / 6);
 
     return neighbors.filter((neighbor) => {
       const toNeighbor = neighbor.position.clone().subtract(particle.position);
