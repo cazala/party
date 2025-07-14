@@ -53,6 +53,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     colorMode: "random",
     customColor: "#F8F8F8",
     streamMode: false,
+    streamRate: 10,
   });
 
   // ---------------------------------------------------------------------------
@@ -326,7 +327,8 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
       spacing: number,
       particleSize: number = 10,
       _dragThreshold: number = 5,
-      radius: number = 100
+      radius: number = 100,
+      colorConfig?: { colorMode: "random" | "custom"; customColor: string }
     ) => {
       if (!systemRef.current) return;
 
@@ -345,6 +347,14 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
         "#3B82F6", // Deep Blue Glow
         "#00FFC6", // Turquoise Mint
       ];
+
+      // Determine color based on color configuration
+      const getParticleColor = () => {
+        if (colorConfig?.colorMode === "custom") {
+          return colorConfig.customColor;
+        }
+        return colors[Math.floor(Math.random() * colors.length)];
+      };
 
       const canvasWidth = systemRef.current.width;
       const canvasHeight = systemRef.current.height;
@@ -387,7 +397,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
             acceleration: new Vector2D(0, 0),
             mass: mass, // Mass proportional to area
             size: particleSize,
-            color: colors[Math.floor(Math.random() * colors.length)],
+            color: getParticleColor(),
           });
 
           systemRef.current.addParticle(particle);
@@ -406,7 +416,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
             acceleration: new Vector2D(0, 0),
             mass: mass,
             size: particleSize,
-            color: colors[Math.floor(Math.random() * colors.length)],
+            color: getParticleColor(),
           });
 
           systemRef.current.addParticle(particle);
@@ -458,7 +468,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
                 acceleration: new Vector2D(0, 0),
                 mass: mass, // Mass proportional to area
                 size: particleSize,
-                color: colors[Math.floor(Math.random() * colors.length)],
+                color: getParticleColor(),
               });
 
               systemRef.current.addParticle(particle);
@@ -498,7 +508,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
             acceleration: new Vector2D(0, 0),
             mass: mass, // Mass proportional to area
             size: particleSize,
-            color: colors[Math.floor(Math.random() * colors.length)],
+            color: getParticleColor(),
           });
 
           systemRef.current.addParticle(particle);

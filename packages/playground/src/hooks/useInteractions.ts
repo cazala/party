@@ -41,9 +41,8 @@ import { SpawnConfig } from "../components/control-sections/ParticleSpawnControl
  * @returns Object with mouse event handlers and utility functions
  */
 
-// Streaming configuration
-const STREAM_SPAWN_RATE = 10; // particles per second
-const STREAM_SPAWN_INTERVAL = 1000 / STREAM_SPAWN_RATE; // milliseconds between spawns
+// Default streaming configuration (used as fallback)
+const DEFAULT_STREAM_SPAWN_RATE = 10; // particles per second
 
 interface MouseState {
   isDown: boolean;
@@ -158,10 +157,14 @@ export function useInteractions({
       }
 
       // Then start the interval for subsequent particles
+      const streamRate = spawnConfig.streamRate || DEFAULT_STREAM_SPAWN_RATE;
+      const streamInterval = 1000 / streamRate; // milliseconds between spawns
+      
       mouseState.streamInterval = window.setInterval(() => {
         const system = getSystem();
         if (system) {
-          const color = spawnConfig.colorMode === "custom" ? spawnConfig.customColor : undefined;
+          const currentSpawnConfig = getSpawnConfig(); // Get fresh config for color updates
+          const color = currentSpawnConfig.colorMode === "custom" ? currentSpawnConfig.customColor : undefined;
           const particle = createParticle(
             mouseState.streamPosition.x,
             mouseState.streamPosition.y,
@@ -171,7 +174,7 @@ export function useInteractions({
           system.addParticle(particle);
           trackParticleId(particle.id);
         }
-      }, STREAM_SPAWN_INTERVAL);
+      }, streamInterval);
     },
     [getSystem, getSpawnConfig, trackParticleId]
   );

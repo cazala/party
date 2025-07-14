@@ -6,6 +6,7 @@ export const DEFAULT_SPAWN_PARTICLE_MASS = (Math.PI * DEFAULT_SPAWN_PARTICLE_SIZ
 export const DEFAULT_SPAWN_COLOR_MODE = "random";
 export const DEFAULT_SPAWN_CUSTOM_COLOR = "#F8F8F8";
 export const DEFAULT_SPAWN_STREAM_MODE = false;
+export const DEFAULT_SPAWN_STREAM_RATE = 10; // particles per second
 
 export interface SpawnConfig {
   defaultSize: number;
@@ -13,11 +14,18 @@ export interface SpawnConfig {
   colorMode: "random" | "custom";
   customColor: string;
   streamMode: boolean;
+  streamRate: number; // particles per second
+}
+
+interface InitColorConfig {
+  colorMode: "random" | "custom";
+  customColor: string;
 }
 
 interface ParticleSpawnControlsProps {
   onSpawnConfigChange?: (config: SpawnConfig) => void;
   initialSize?: number; // For synchronization with Init section
+  initialColorConfig?: InitColorConfig; // For synchronization with Init section
 }
 
 const calculateMassFromSize = (size: number): number => {
@@ -28,19 +36,33 @@ const calculateMassFromSize = (size: number): number => {
 
 export function ParticleSpawnControls({ 
   onSpawnConfigChange,
-  initialSize = DEFAULT_SPAWN_PARTICLE_SIZE 
+  initialSize = DEFAULT_SPAWN_PARTICLE_SIZE,
+  initialColorConfig
 }: ParticleSpawnControlsProps) {
   const [particleSize, setParticleSize] = useState(initialSize);
   const [particleMass, setParticleMass] = useState(calculateMassFromSize(initialSize));
-  const [colorMode, setColorMode] = useState<"random" | "custom">(DEFAULT_SPAWN_COLOR_MODE);
-  const [customColor, setCustomColor] = useState(DEFAULT_SPAWN_CUSTOM_COLOR);
+  const [colorMode, setColorMode] = useState<"random" | "custom">(
+    initialColorConfig?.colorMode || DEFAULT_SPAWN_COLOR_MODE
+  );
+  const [customColor, setCustomColor] = useState(
+    initialColorConfig?.customColor || DEFAULT_SPAWN_CUSTOM_COLOR
+  );
   const [streamMode, setStreamMode] = useState(DEFAULT_SPAWN_STREAM_MODE);
+  const [streamRate, setStreamRate] = useState(DEFAULT_SPAWN_STREAM_RATE);
 
   // Update particle size when initialSize prop changes (from Init section)
   useEffect(() => {
     setParticleSize(initialSize);
     setParticleMass(calculateMassFromSize(initialSize));
   }, [initialSize]);
+
+  // Update color config when initialColorConfig prop changes (from Init section)
+  useEffect(() => {
+    if (initialColorConfig) {
+      setColorMode(initialColorConfig.colorMode);
+      setCustomColor(initialColorConfig.customColor);
+    }
+  }, [initialColorConfig]);
 
   // Notify parent of config changes
   useEffect(() => {
@@ -50,9 +72,10 @@ export function ParticleSpawnControls({
       colorMode,
       customColor,
       streamMode,
+      streamRate,
     };
     onSpawnConfigChange?.(config);
-  }, [particleSize, particleMass, colorMode, customColor, streamMode, onSpawnConfigChange]);
+  }, [particleSize, particleMass, colorMode, customColor, streamMode, streamRate, onSpawnConfigChange]);
 
   const handleSizeChange = (newSize: number) => {
     setParticleSize(newSize);
@@ -103,6 +126,35 @@ export function ParticleSpawnControls({
 
       <div className="control-group">
         <label>
+          <input
+            type="checkbox"
+            checked={streamMode}
+            onChange={(e) => setStreamMode(e.target.checked)}
+            className="checkbox"
+          />
+          Stream Mode
+        </label>
+      </div>
+
+      {streamMode && (
+        <div className="control-group">
+          <label>
+            Stream Rate: {streamRate} particles/sec
+            <input
+              type="range"
+              min="1"
+              max="50"
+              step="1"
+              value={streamRate}
+              onChange={(e) => setStreamRate(parseInt(e.target.value))}
+              className="slider"
+            />
+          </label>
+        </div>
+      )}
+
+      <div className="control-group">
+        <label>
           Color Mode
           <select
             value={colorMode}
@@ -128,18 +180,6 @@ export function ParticleSpawnControls({
           </label>
         </div>
       )}
-
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={streamMode}
-            onChange={(e) => setStreamMode(e.target.checked)}
-            className="checkbox"
-          />
-          Stream Mode
-        </label>
-      </div>
     </div>
   );
 }

@@ -7,6 +7,11 @@ import { PerformanceControls } from "./control-sections/PerformanceControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useState } from "react";
 
+interface InitColorConfig {
+  colorMode: "random" | "custom";
+  customColor: string;
+}
+
 interface SystemControlsProps {
   renderer: Canvas2DRenderer | null;
   spatialGrid: SpatialGrid | null;
@@ -17,7 +22,8 @@ interface SystemControlsProps {
     spacing: number,
     particleSize: number,
     dragThreshold: number,
-    radius?: number
+    radius?: number,
+    colorConfig?: InitColorConfig
   ) => void;
   onGetSpawnConfig?: () => {
     numParticles: number;
@@ -26,6 +32,7 @@ interface SystemControlsProps {
     particleSize: number;
     dragThreshold: number;
     radius?: number;
+    colorConfig?: InitColorConfig;
   };
   onSpawnConfigChange?: (config: SpawnConfig) => void;
 }
@@ -39,9 +46,17 @@ export function SystemControls({
   onSpawnConfigChange,
 }: SystemControlsProps) {
   const [particleSize, setParticleSize] = useState(10);
+  const [initColorConfig, setInitColorConfig] = useState<InitColorConfig>({
+    colorMode: "random",
+    customColor: "#F8F8F8",
+  });
 
   const handleParticleSizeChange = (size: number) => {
     setParticleSize(size);
+  };
+
+  const handleColorConfigChange = (colorConfig: InitColorConfig) => {
+    setInitColorConfig(colorConfig);
   };
   return (
     <div className="controls-panel">
@@ -54,13 +69,18 @@ export function SystemControls({
           onSpawnParticles={onSpawnParticles}
           onGetSpawnConfig={onGetSpawnConfig}
           onParticleSizeChange={handleParticleSizeChange}
+          onColorConfigChange={handleColorConfigChange}
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Spawn">
+      <CollapsibleSection 
+        title="Spawn"
+        tooltip="Click to spawn particles"
+      >
         <ParticleSpawnControls
           onSpawnConfigChange={onSpawnConfigChange}
           initialSize={particleSize}
+          initialColorConfig={initColorConfig}
         />
       </CollapsibleSection>
 

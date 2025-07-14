@@ -7,6 +7,11 @@ const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
 const DEFAULT_DRAG_THRESHOLD = 5;
 const DEFAULT_SPAWN_RADIUS = 100;
 
+interface InitColorConfig {
+  colorMode: "random" | "custom";
+  customColor: string;
+}
+
 interface SpawnControlsProps {
   onSpawnParticles?: (
     numParticles: number,
@@ -14,7 +19,8 @@ interface SpawnControlsProps {
     spacing: number,
     particleSize: number,
     dragThreshold: number,
-    radius?: number
+    radius?: number,
+    colorConfig?: InitColorConfig
   ) => void;
   onGetSpawnConfig?: () => {
     numParticles: number;
@@ -23,14 +29,17 @@ interface SpawnControlsProps {
     particleSize: number;
     dragThreshold: number;
     radius?: number;
+    colorConfig?: InitColorConfig;
   };
   onParticleSizeChange?: (size: number) => void;
+  onColorConfigChange?: (colorConfig: InitColorConfig) => void;
 }
 
 export function SpawnControls({
   onSpawnParticles,
   onGetSpawnConfig,
   onParticleSizeChange,
+  onColorConfigChange,
 }: SpawnControlsProps) {
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
   const [spawnShape, setSpawnShape] = useState<"grid" | "random" | "circle">(
@@ -40,6 +49,10 @@ export function SpawnControls({
   const [particleSize, setParticleSize] = useState(DEFAULT_SPAWN_PARTICLE_SIZE);
   const [dragThreshold, setDragThreshold] = useState(DEFAULT_DRAG_THRESHOLD);
   const [radius, setRadius] = useState(DEFAULT_SPAWN_RADIUS);
+  const [colorConfig, setColorConfig] = useState<InitColorConfig>({
+    colorMode: "random",
+    customColor: "#F8F8F8",
+  });
 
   useEffect(() => {
     if (onSpawnParticles) {
@@ -49,7 +62,8 @@ export function SpawnControls({
         spacing,
         particleSize,
         dragThreshold,
-        radius
+        radius,
+        colorConfig
       );
     }
   }, [
@@ -60,6 +74,7 @@ export function SpawnControls({
     particleSize,
     dragThreshold,
     radius,
+    colorConfig,
   ]);
 
   useEffect(() => {
@@ -71,6 +86,7 @@ export function SpawnControls({
         particleSize,
         dragThreshold,
         radius,
+        colorConfig,
       });
       (window as any).__getSpawnConfig = getConfig;
     }
@@ -82,6 +98,7 @@ export function SpawnControls({
     particleSize,
     dragThreshold,
     radius,
+    colorConfig,
   ]);
 
   const handleSpawnChange = (
@@ -107,7 +124,7 @@ export function SpawnControls({
     if (newRadius !== undefined) setRadius(newRadius);
 
     if (onSpawnParticles) {
-      onSpawnParticles(particles, shape, space, size, threshold, rad);
+      onSpawnParticles(particles, shape, space, size, threshold, rad, colorConfig);
     }
   };
 
@@ -218,6 +235,48 @@ export function SpawnControls({
                 )
               }
               className="slider"
+            />
+          </label>
+        </div>
+      )}
+
+      <div className="control-group">
+        <label>
+          Color Mode
+          <select
+            value={colorConfig.colorMode}
+            onChange={(e) => {
+              const newColorConfig = {
+                ...colorConfig,
+                colorMode: e.target.value as "random" | "custom"
+              };
+              setColorConfig(newColorConfig);
+              onColorConfigChange?.(newColorConfig);
+            }}
+            className="form-select"
+          >
+            <option value="random">Random</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+      </div>
+
+      {colorConfig.colorMode === "custom" && (
+        <div className="control-group">
+          <label>
+            Custom Color
+            <input
+              type="color"
+              value={colorConfig.customColor}
+              onChange={(e) => {
+                const newColorConfig = {
+                  ...colorConfig,
+                  customColor: e.target.value
+                };
+                setColorConfig(newColorConfig);
+                onColorConfigChange?.(newColorConfig);
+              }}
+              className="color-picker"
             />
           </label>
         </div>
