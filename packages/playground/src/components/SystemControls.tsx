@@ -47,7 +47,10 @@ export function SystemControls({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Interaction">
+      <CollapsibleSection
+        title="Interaction"
+        tooltip="Right click to interact with particles"
+      >
         <InteractionControls interaction={interaction} />
       </CollapsibleSection>
 

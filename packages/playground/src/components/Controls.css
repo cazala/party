@@ -269,6 +269,12 @@
   background: linear-gradient(135deg, #2a2a38 0%, #272732 100%);
 }
 
+.collapsible-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .collapsible-header h4 {
   margin: 0;
   color: #e8e8f0;

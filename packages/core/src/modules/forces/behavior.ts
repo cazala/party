@@ -166,7 +166,7 @@ export class Behavior implements Force {
       }
     }
 
-    return avoidForce.limit(1000000);
+    return avoidForce.limit(900000);
   }
 
   setEnabled(enabled: boolean): void {
@@ -191,14 +191,17 @@ export class Behavior implements Force {
     });
   }
 
-  filterByNarrowFieldOfView(particle: Particle, neighbors: Particle[]): Particle[] {
+  filterByNarrowFieldOfView(
+    particle: Particle,
+    neighbors: Particle[]
+  ): Particle[] {
     // If particle has no velocity, it can see in all directions
     if (particle.velocity.magnitude() === 0) {
       return neighbors;
     }
 
     const normalizedVelocity = particle.velocity.clone().normalize();
-    const cosQuarterViewAngle = Math.cos(this.viewAngle / 4);
+    const cosQuarterViewAngle = Math.cos(this.viewAngle / 8);
 
     return neighbors.filter((neighbor) => {
       const toNeighbor = neighbor.position.clone().subtract(particle.position);
@@ -280,7 +283,10 @@ export class Behavior implements Force {
     }
 
     if (this.chaseWeight > 0) {
-      const chaseNeighbors = this.filterByNarrowFieldOfView(particle, filteredNeighbors);
+      const chaseNeighbors = this.filterByNarrowFieldOfView(
+        particle,
+        filteredNeighbors
+      );
       const chase = this.chase(particle, chaseNeighbors);
       chase.multiply(this.chaseWeight);
       particle.applyForce(chase);
