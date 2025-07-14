@@ -5,7 +5,6 @@ import {
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
   DEFAULT_WOBBLE_FACTOR,
-  DEFAULT_FLUID_ENABLED,
 } from "@party/core/modules/forces/fluid";
 
 interface FluidControlsProps {

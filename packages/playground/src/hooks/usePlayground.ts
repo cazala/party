@@ -230,7 +230,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     const bounds = new Bounds();
     boundsRef.current = bounds;
 
-    const behavior = new Behavior({ enabled: false }); // Playground default: off
+    const behavior = new Behavior({ enabled: true }); // Playground default: on
     behaviorRef.current = behavior;
 
     const collisions = new Collisions();

@@ -33,7 +33,8 @@ export interface Config {
     chaseWeight: number;
     avoidWeight: number;
     separationRange: number;
-    neighborRadius: number;
+    viewRadius: number;
+    viewAngle: number;
   };
   fluid?: {
     enabled: boolean;
@@ -233,7 +234,8 @@ export class ParticleSystem {
           chaseWeight: force.chaseWeight,
           avoidWeight: force.avoidWeight,
           separationRange: force.separationRange,
-          neighborRadius: force.neighborRadius,
+          viewRadius: force.viewRadius,
+          viewAngle: force.viewAngle,
         };
       } else if (force instanceof Fluid) {
         config.fluid = {
@@ -272,7 +274,8 @@ export class ParticleSystem {
         force.chaseWeight = config.behavior.chaseWeight;
         force.avoidWeight = config.behavior.avoidWeight;
         force.separationRange = config.behavior.separationRange;
-        force.neighborRadius = config.behavior.neighborRadius;
+        force.viewRadius = config.behavior.viewRadius;
+        force.viewAngle = config.behavior.viewAngle;
       } else if (force instanceof Fluid && config.fluid) {
         force.setEnabled(config.fluid.enabled);
         force.influenceRadius = config.fluid.influenceRadius;

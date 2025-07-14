@@ -12,7 +12,8 @@ export const DEFAULT_BEHAVIOR_SEPARATION_WEIGHT = 0;
 export const DEFAULT_BEHAVIOR_CHASE_WEIGHT = 0;
 export const DEFAULT_BEHAVIOR_AVOID_WEIGHT = 0;
 export const DEFAULT_BEHAVIOR_SEPARATION_RANGE = 30;
-export const DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS = 100;
+export const DEFAULT_BEHAVIOR_VIEW_RADIUS = 100;
+export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 2 * Math.PI;
 
 export class Behavior implements Force {
   public enabled: boolean;
@@ -23,7 +24,8 @@ export class Behavior implements Force {
   chaseWeight: number;
   avoidWeight: number;
   separationRange: number;
-  neighborRadius: number;
+  viewRadius: number;
+  viewAngle: number;
   wanderMap: Record<number, Vector2D> = {};
 
   constructor(
@@ -36,7 +38,8 @@ export class Behavior implements Force {
       chaseWeight?: number;
       avoidWeight?: number;
       separationRange?: number;
-      neighborRadius?: number;
+      viewRadius?: number;
+      viewAngle?: number;
     } = {}
   ) {
     this.enabled = options.enabled ?? DEFAULT_BEHAVIOR_ENABLED;
@@ -51,8 +54,8 @@ export class Behavior implements Force {
     this.avoidWeight = options.avoidWeight ?? DEFAULT_BEHAVIOR_AVOID_WEIGHT;
     this.separationRange =
       options.separationRange ?? DEFAULT_BEHAVIOR_SEPARATION_RANGE;
-    this.neighborRadius =
-      options.neighborRadius ?? DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS;
+    this.viewRadius = options.viewRadius ?? DEFAULT_BEHAVIOR_VIEW_RADIUS;
+    this.viewAngle = options.viewAngle ?? DEFAULT_BEHAVIOR_VIEW_ANGLE;
   }
 
   separate(particle: Particle, neighbors: Particle[], range: number): Vector2D {
@@ -146,7 +149,7 @@ export class Behavior implements Force {
         // Create repulsion force away from heavier particle
         const repulsion = particle.position.clone().subtract(neighbor.position);
         const distance = repulsion.magnitude();
-        if (distance > this.neighborRadius / 2) {
+        if (distance > this.viewRadius / 2) {
           continue;
         }
 
@@ -163,11 +166,47 @@ export class Behavior implements Force {
       }
     }
 
-    return avoidForce;
+    return avoidForce.limit(1000000);
   }
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+  }
+
+  filterByFieldOfView(particle: Particle, neighbors: Particle[]): Particle[] {
+    // If particle has no velocity, it can see in all directions
+    if (particle.velocity.magnitude() === 0) {
+      return neighbors;
+    }
+
+    const normalizedVelocity = particle.velocity.clone().normalize();
+    const cosHalfViewAngle = Math.cos(this.viewAngle / 2);
+
+    return neighbors.filter((neighbor) => {
+      const toNeighbor = neighbor.position.clone().subtract(particle.position);
+      const normalizedDirection = toNeighbor.normalize();
+
+      const dot = normalizedVelocity.dot(normalizedDirection);
+      return dot >= cosHalfViewAngle;
+    });
+  }
+
+  filterByNarrowFieldOfView(particle: Particle, neighbors: Particle[]): Particle[] {
+    // If particle has no velocity, it can see in all directions
+    if (particle.velocity.magnitude() === 0) {
+      return neighbors;
+    }
+
+    const normalizedVelocity = particle.velocity.clone().normalize();
+    const cosQuarterViewAngle = Math.cos(this.viewAngle / 4);
+
+    return neighbors.filter((neighbor) => {
+      const toNeighbor = neighbor.position.clone().subtract(particle.position);
+      const normalizedDirection = toNeighbor.normalize();
+
+      const dot = normalizedVelocity.dot(normalizedDirection);
+      return dot >= cosQuarterViewAngle;
+    });
   }
 
   wander(particle: Particle): Vector2D {
@@ -205,8 +244,11 @@ export class Behavior implements Force {
     // Use spatial grid for efficient neighbor lookup - only when needed
     const neighbors = spatialGrid.getParticles(
       particle.position,
-      this.neighborRadius
+      this.viewRadius
     );
+
+    // Apply field of view filtering to all neighbors (except wander which doesn't use neighbors)
+    const filteredNeighbors = this.filterByFieldOfView(particle, neighbors);
 
     // Only compute forces that have non-zero weights
     if (this.wanderWeight > 0) {
@@ -216,31 +258,36 @@ export class Behavior implements Force {
     }
 
     if (this.separationWeight > 0) {
-      const separate = this.separate(particle, neighbors, this.separationRange);
+      const separate = this.separate(
+        particle,
+        filteredNeighbors,
+        this.separationRange
+      );
       separate.multiply(this.separationWeight);
       particle.applyForce(separate);
     }
 
     if (this.alignmentWeight > 0) {
-      const align = this.align(particle, neighbors);
+      const align = this.align(particle, filteredNeighbors);
       align.multiply(this.alignmentWeight);
       particle.applyForce(align);
     }
 
     if (this.cohesionWeight > 0) {
-      const cohesion = this.cohesion(particle, neighbors);
+      const cohesion = this.cohesion(particle, filteredNeighbors);
       cohesion.multiply(this.cohesionWeight);
       particle.applyForce(cohesion);
     }
 
     if (this.chaseWeight > 0) {
-      const chase = this.chase(particle, neighbors);
+      const chaseNeighbors = this.filterByNarrowFieldOfView(particle, filteredNeighbors);
+      const chase = this.chase(particle, chaseNeighbors);
       chase.multiply(this.chaseWeight);
       particle.applyForce(chase);
     }
 
     if (this.avoidWeight > 0) {
-      const avoid = this.avoid(particle, neighbors);
+      const avoid = this.avoid(particle, filteredNeighbors);
       avoid.multiply(this.avoidWeight);
       particle.applyForce(avoid);
     }

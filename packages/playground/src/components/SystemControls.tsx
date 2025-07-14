@@ -11,17 +11,19 @@ interface SystemControlsProps {
   interaction: Interaction | null;
   onSpawnParticles?: (
     numParticles: number,
-    shape: "grid" | "random",
+    shape: "grid" | "random" | "circle",
     spacing: number,
     particleSize: number,
-    dragThreshold: number
+    dragThreshold: number,
+    radius?: number
   ) => void;
   onGetSpawnConfig?: () => {
     numParticles: number;
-    shape: "grid" | "random";
+    shape: "grid" | "random" | "circle";
     spacing: number;
     particleSize: number;
     dragThreshold: number;
+    radius?: number;
   };
 }
 
@@ -50,7 +52,7 @@ export function SystemControls({
       </CollapsibleSection>
 
       <CollapsibleSection title="Render">
-        <RenderControls renderer={renderer} flock={null} fluid={null} />
+        <RenderControls renderer={renderer} fluid={null} />
       </CollapsibleSection>
 
       <CollapsibleSection title="Performance">

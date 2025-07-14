@@ -17,7 +17,8 @@ import {
   DEFAULT_BEHAVIOR_CHASE_WEIGHT,
   DEFAULT_BEHAVIOR_AVOID_WEIGHT,
   DEFAULT_BEHAVIOR_SEPARATION_RANGE,
-  DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS,
+  DEFAULT_BEHAVIOR_VIEW_RADIUS,
+  DEFAULT_BEHAVIOR_VIEW_ANGLE,
   DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_FRICTION,
   DEFAULT_COLLISIONS_ENABLED,
@@ -72,7 +73,7 @@ export function ForcesControls({
 
     // Reset behavior
     if (behavior) {
-      behavior.enabled = false; // Playground default: off
+      behavior.enabled = true; // Playground default: on
       behavior.wanderWeight = DEFAULT_BEHAVIOR_WANDER_WEIGHT;
       behavior.cohesionWeight = DEFAULT_BEHAVIOR_COHESION_WEIGHT;
       behavior.alignmentWeight = DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT;
@@ -80,7 +81,8 @@ export function ForcesControls({
       behavior.chaseWeight = DEFAULT_BEHAVIOR_CHASE_WEIGHT;
       behavior.avoidWeight = DEFAULT_BEHAVIOR_AVOID_WEIGHT;
       behavior.separationRange = DEFAULT_BEHAVIOR_SEPARATION_RANGE;
-      behavior.neighborRadius = DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS;
+      behavior.viewRadius = DEFAULT_BEHAVIOR_VIEW_RADIUS;
+      behavior.viewAngle = DEFAULT_BEHAVIOR_VIEW_ANGLE;
     }
 
     // Reset fluid

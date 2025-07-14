@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Canvas2DRenderer, Flock, Fluid } from "@party/core";
+import { Canvas2DRenderer, Fluid } from "@party/core";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
@@ -7,7 +7,6 @@ import {
 
 interface RenderControlsProps {
   renderer: Canvas2DRenderer | null;
-  flock: Flock | null;
   fluid: Fluid | null;
 }
 

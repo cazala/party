@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Behavior } from "@party/core";
 import {
-  DEFAULT_BEHAVIOR_ENABLED,
   DEFAULT_BEHAVIOR_WANDER_WEIGHT,
   DEFAULT_BEHAVIOR_COHESION_WEIGHT,
   DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT,
@@ -9,7 +8,8 @@ import {
   DEFAULT_BEHAVIOR_CHASE_WEIGHT,
   DEFAULT_BEHAVIOR_AVOID_WEIGHT,
   DEFAULT_BEHAVIOR_SEPARATION_RANGE,
-  DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS,
+  DEFAULT_BEHAVIOR_VIEW_RADIUS,
+  DEFAULT_BEHAVIOR_VIEW_ANGLE,
 } from "@party/core/modules/forces/behavior";
 
 interface BehaviorControlsProps {
@@ -17,7 +17,7 @@ interface BehaviorControlsProps {
 }
 
 export function BehaviorControls({ behavior }: BehaviorControlsProps) {
-  const [behaviorEnabled, setBehaviorEnabled] = useState(false); // Playground default: off
+  const [behaviorEnabled, setBehaviorEnabled] = useState(true); // Playground default: on
   const [wanderWeight, setWanderWeight] = useState(
     DEFAULT_BEHAVIOR_WANDER_WEIGHT
   );
@@ -35,9 +35,10 @@ export function BehaviorControls({ behavior }: BehaviorControlsProps) {
   const [separationRange, setSeparationRange] = useState(
     DEFAULT_BEHAVIOR_SEPARATION_RANGE
   );
-  const [neighborRadius, setNeighborRadius] = useState(
-    DEFAULT_BEHAVIOR_NEIGHBOR_RADIUS
+  const [viewRadius, setViewRadius] = useState(
+    DEFAULT_BEHAVIOR_VIEW_RADIUS
   );
+  const [viewAngle, setViewAngle] = useState(DEFAULT_BEHAVIOR_VIEW_ANGLE);
 
   useEffect(() => {
     if (behavior) {
@@ -49,7 +50,8 @@ export function BehaviorControls({ behavior }: BehaviorControlsProps) {
       setChaseWeight(behavior.chaseWeight);
       setAvoidWeight(behavior.avoidWeight);
       setSeparationRange(behavior.separationRange);
-      setNeighborRadius(behavior.neighborRadius);
+      setViewRadius(behavior.viewRadius);
+      setViewAngle(behavior.viewAngle);
     }
   }, [behavior]);
 
@@ -92,9 +94,13 @@ export function BehaviorControls({ behavior }: BehaviorControlsProps) {
         setSeparationRange(value as number);
         behavior.separationRange = value as number;
         break;
-      case "neighborRadius":
-        setNeighborRadius(value as number);
-        behavior.neighborRadius = value as number;
+      case "viewRadius":
+        setViewRadius(value as number);
+        behavior.viewRadius = value as number;
+        break;
+      case "viewAngle":
+        setViewAngle(value as number);
+        behavior.viewAngle = value as number;
         break;
     }
   };
@@ -250,16 +256,34 @@ export function BehaviorControls({ behavior }: BehaviorControlsProps) {
 
       <div className="control-group">
         <label>
-          Vision: {neighborRadius.toFixed(0)}
+          View Radius: {viewRadius.toFixed(0)}
           <input
             type="range"
             min="0"
             max="500"
             step="1"
-            value={neighborRadius}
+            value={viewRadius}
             disabled={!behaviorEnabled}
             onChange={(e) =>
-              handleBehaviorChange("neighborRadius", parseFloat(e.target.value))
+              handleBehaviorChange("viewRadius", parseFloat(e.target.value))
+            }
+            className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          View Angle: {Math.round((viewAngle * 180) / Math.PI)}°
+          <input
+            type="range"
+            min="0"
+            max={2 * Math.PI}
+            step="0.017"
+            value={viewAngle}
+            disabled={!behaviorEnabled}
+            onChange={(e) =>
+              handleBehaviorChange("viewAngle", parseFloat(e.target.value))
             }
             className={`slider ${!behaviorEnabled ? "disabled" : ""}`}
           />
