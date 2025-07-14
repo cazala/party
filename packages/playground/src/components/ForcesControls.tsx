@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { RotateCcw, Download, Upload } from "lucide-react";
 import {
   Gravity,
@@ -39,6 +39,7 @@ interface ForcesControlsProps {
   bounds: Bounds | null;
   collisions: Collisions | null;
   fluid: Fluid | null;
+  sessionLoadTrigger?: number;
 }
 
 export function ForcesControls({
@@ -48,9 +49,17 @@ export function ForcesControls({
   bounds,
   collisions,
   fluid,
+  sessionLoadTrigger = 0,
 }: ForcesControlsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Trigger UI refresh when a session is loaded
+  useEffect(() => {
+    if (sessionLoadTrigger > 0) {
+      setRefreshKey((prev) => prev + 1);
+    }
+  }, [sessionLoadTrigger]);
 
   const resetToDefaults = () => {
     // Reset gravity

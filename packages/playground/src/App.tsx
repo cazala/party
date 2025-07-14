@@ -21,6 +21,7 @@ function App() {
   const [isHotkeysModalOpen, setIsHotkeysModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+  const [sessionLoadTrigger, setSessionLoadTrigger] = useState(0);
   
   const {
     system,
@@ -112,6 +113,7 @@ function App() {
             bounds={bounds}
             collisions={collisions}
             fluid={fluid}
+            sessionLoadTrigger={sessionLoadTrigger}
           />
         </div>
       </div>
@@ -136,6 +138,8 @@ function App() {
         system={system}
         onLoadSuccess={(sessionName) => {
           console.log(`Session "${sessionName}" loaded successfully`);
+          // Trigger UI refresh to update controls with loaded configuration
+          setSessionLoadTrigger((prev) => prev + 1);
         }}
       />
     </div>
