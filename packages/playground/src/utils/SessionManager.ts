@@ -7,7 +7,8 @@ const VERSION = "1.0.0";
 export class SessionManager {
   static saveSession(
     system: ParticleSystem,
-    name: string
+    name: string,
+    overwrite: boolean = false
   ): { success: boolean; error?: string } {
     try {
       // Get system config
@@ -38,14 +39,21 @@ export class SessionManager {
 
       // Get existing sessions
       const existingSessions = this.getAllSessions();
+      const existingIndex = existingSessions.findIndex((s) => s.name === name);
 
-      // Check for name collision
-      if (existingSessions.some((s) => s.name === name)) {
-        return { success: false, error: "Session name already exists" };
+      let updatedSessions: SavedSession[];
+
+      if (existingIndex !== -1) {
+        if (!overwrite) {
+          return { success: false, error: "Session name already exists" };
+        }
+        // Replace existing session
+        updatedSessions = [...existingSessions];
+        updatedSessions[existingIndex] = session;
+      } else {
+        // Add new session
+        updatedSessions = [...existingSessions, session];
       }
-
-      // Add new session
-      const updatedSessions = [...existingSessions, session];
 
       // Save to localStorage
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
@@ -137,6 +145,34 @@ export class SessionManager {
       return { success: true };
     } catch (error) {
       console.error("Failed to delete session:", error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      };
+    }
+  }
+
+  static renameSession(oldName: string, newName: string): { success: boolean; error?: string } {
+    try {
+      const sessions = this.getAllSessions();
+      const sessionIndex = sessions.findIndex((s) => s.name === oldName);
+
+      if (sessionIndex === -1) {
+        return { success: false, error: "Session not found" };
+      }
+
+      // Check if new name already exists (unless it's the same as old name)
+      if (oldName !== newName && sessions.some((s) => s.name === newName)) {
+        return { success: false, error: "Session name already exists" };
+      }
+
+      // Update the session name
+      sessions[sessionIndex].name = newName;
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to rename session:", error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : "Unknown error" 
