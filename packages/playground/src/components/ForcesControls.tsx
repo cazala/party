@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { RotateCcw, Download, Upload } from "lucide-react";
 import {
   Gravity,
-  Flock,
+  Boids,
   Bounds,
   Collisions,
   Fluid,
@@ -10,12 +10,14 @@ import {
   Config,
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
-  DEFAULT_FLOCK_WANDER_WEIGHT,
-  DEFAULT_FLOCK_COHESION_WEIGHT,
-  DEFAULT_FLOCK_ALIGNMENT_WEIGHT,
-  DEFAULT_FLOCK_SEPARATION_WEIGHT,
-  DEFAULT_FLOCK_SEPARATION_RANGE,
-  DEFAULT_FLOCK_NEIGHBOR_RADIUS,
+  DEFAULT_BOIDS_WANDER_WEIGHT,
+  DEFAULT_BOIDS_COHESION_WEIGHT,
+  DEFAULT_BOIDS_ALIGNMENT_WEIGHT,
+  DEFAULT_BOIDS_SEPARATION_WEIGHT,
+  DEFAULT_BOIDS_CHASE_WEIGHT,
+  DEFAULT_BOIDS_AVOID_WEIGHT,
+  DEFAULT_BOIDS_SEPARATION_RANGE,
+  DEFAULT_BOIDS_NEIGHBOR_RADIUS,
   DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_FRICTION,
   DEFAULT_COLLISIONS_ENABLED,
@@ -23,10 +25,9 @@ import {
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
   DEFAULT_WOBBLE_FACTOR,
-  DEFAULT_FLUID_ENABLED,
 } from "@party/core";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
-import { BehaviorControls } from "./control-sections/BehaviorControls";
+import { BoidsControls } from "./control-sections/BoidsControls";
 import { FluidControls } from "./control-sections/FluidControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import "./ForcesControls.css";
@@ -34,7 +35,7 @@ import "./ForcesControls.css";
 interface ForcesControlsProps {
   system: ParticleSystem | null;
   gravity: Gravity | null;
-  flock: Flock | null;
+  boids: Boids | null;
   bounds: Bounds | null;
   collisions: Collisions | null;
   fluid: Fluid | null;
@@ -43,7 +44,7 @@ interface ForcesControlsProps {
 export function ForcesControls({
   system,
   gravity,
-  flock,
+  boids,
   bounds,
   collisions,
   fluid,
@@ -69,19 +70,22 @@ export function ForcesControls({
       collisions.setEnabled(DEFAULT_COLLISIONS_ENABLED);
     }
 
-    // Reset flock
-    if (flock) {
-      flock.wanderWeight = DEFAULT_FLOCK_WANDER_WEIGHT;
-      flock.cohesionWeight = DEFAULT_FLOCK_COHESION_WEIGHT;
-      flock.alignmentWeight = DEFAULT_FLOCK_ALIGNMENT_WEIGHT;
-      flock.separationWeight = DEFAULT_FLOCK_SEPARATION_WEIGHT;
-      flock.separationRange = DEFAULT_FLOCK_SEPARATION_RANGE;
-      flock.neighborRadius = DEFAULT_FLOCK_NEIGHBOR_RADIUS;
+    // Reset boids
+    if (boids) {
+      boids.enabled = false; // Playground default: off
+      boids.wanderWeight = DEFAULT_BOIDS_WANDER_WEIGHT;
+      boids.cohesionWeight = DEFAULT_BOIDS_COHESION_WEIGHT;
+      boids.alignmentWeight = DEFAULT_BOIDS_ALIGNMENT_WEIGHT;
+      boids.separationWeight = DEFAULT_BOIDS_SEPARATION_WEIGHT;
+      boids.chaseWeight = DEFAULT_BOIDS_CHASE_WEIGHT;
+      boids.avoidWeight = DEFAULT_BOIDS_AVOID_WEIGHT;
+      boids.separationRange = DEFAULT_BOIDS_SEPARATION_RANGE;
+      boids.neighborRadius = DEFAULT_BOIDS_NEIGHBOR_RADIUS;
     }
 
     // Reset fluid
     if (fluid) {
-      fluid.setEnabled(DEFAULT_FLUID_ENABLED);
+      fluid.setEnabled(false); // Playground default: off
       fluid.influenceRadius = DEFAULT_INFLUENCE_RADIUS;
       fluid.targetDensity = DEFAULT_TARGET_DENSITY;
       fluid.pressureMultiplier = DEFAULT_PRESSURE_MULTIPLIER;
@@ -190,8 +194,8 @@ export function ForcesControls({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Behavior">
-        <BehaviorControls key={`behavior-${refreshKey}`} flock={flock} />
+      <CollapsibleSection title="Boids">
+        <BoidsControls key={`boids-${refreshKey}`} boids={boids} />
       </CollapsibleSection>
 
       <CollapsibleSection title="Fluids">

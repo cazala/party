@@ -14,7 +14,7 @@ interface FluidControlsProps {
 
 export function FluidControls({ fluid }: FluidControlsProps) {
   // Fluid state
-  const [fluidEnabled, setFluidEnabled] = useState(DEFAULT_FLUID_ENABLED);
+  const [fluidEnabled, setFluidEnabled] = useState(false); // Playground default: off
   const [influenceRadius, setInfluenceRadius] = useState(
     DEFAULT_INFLUENCE_RADIUS
   );
@@ -66,7 +66,6 @@ export function FluidControls({ fluid }: FluidControlsProps) {
 
   return (
     <div className="control-section">
-
       <div className="control-group">
         <label>
           <input
@@ -75,7 +74,7 @@ export function FluidControls({ fluid }: FluidControlsProps) {
             onChange={(e) => handleFluidChange("enabled", e.target.checked)}
             className="checkbox"
           />
-          Enable Fluids
+          Enable
         </label>
       </div>
 

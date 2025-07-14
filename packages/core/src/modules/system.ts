@@ -3,7 +3,7 @@ import { SpatialGrid } from "./spatial-grid";
 import { Gravity } from "./forces/gravity";
 import { Bounds } from "./forces/bounds";
 import { Collisions } from "./forces/collisions";
-import { Flock } from "./forces/flock";
+import { Boids } from "./forces/boids";
 import { Fluid } from "./forces/fluid";
 import { Vector2D } from "./vector";
 
@@ -24,10 +24,14 @@ export interface Config {
   collisions?: {
     enabled: boolean;
   };
-  flock?: {
+  boids?: {
+    enabled: boolean;
+    wanderWeight: number;
     cohesionWeight: number;
     alignmentWeight: number;
     separationWeight: number;
+    chaseWeight: number;
+    avoidWeight: number;
     separationRange: number;
     neighborRadius: number;
   };
@@ -219,11 +223,15 @@ export class ParticleSystem {
         config.collisions = {
           enabled: force.enabled,
         };
-      } else if (force instanceof Flock) {
-        config.flock = {
+      } else if (force instanceof Boids) {
+        config.boids = {
+          enabled: force.enabled,
+          wanderWeight: force.wanderWeight,
           cohesionWeight: force.cohesionWeight,
           alignmentWeight: force.alignmentWeight,
           separationWeight: force.separationWeight,
+          chaseWeight: force.chaseWeight,
+          avoidWeight: force.avoidWeight,
           separationRange: force.separationRange,
           neighborRadius: force.neighborRadius,
         };
@@ -255,12 +263,16 @@ export class ParticleSystem {
         force.setFriction(config.bounds.friction);
       } else if (force instanceof Collisions && config.collisions) {
         force.setEnabled(config.collisions.enabled);
-      } else if (force instanceof Flock && config.flock) {
-        force.cohesionWeight = config.flock.cohesionWeight;
-        force.alignmentWeight = config.flock.alignmentWeight;
-        force.separationWeight = config.flock.separationWeight;
-        force.separationRange = config.flock.separationRange;
-        force.neighborRadius = config.flock.neighborRadius;
+      } else if (force instanceof Boids && config.boids) {
+        force.setEnabled(config.boids.enabled);
+        force.wanderWeight = config.boids.wanderWeight;
+        force.cohesionWeight = config.boids.cohesionWeight;
+        force.alignmentWeight = config.boids.alignmentWeight;
+        force.separationWeight = config.boids.separationWeight;
+        force.chaseWeight = config.boids.chaseWeight;
+        force.avoidWeight = config.boids.avoidWeight;
+        force.separationRange = config.boids.separationRange;
+        force.neighborRadius = config.boids.neighborRadius;
       } else if (force instanceof Fluid && config.fluid) {
         force.setEnabled(config.fluid.enabled);
         force.influenceRadius = config.fluid.influenceRadius;

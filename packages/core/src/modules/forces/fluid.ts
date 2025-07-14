@@ -8,7 +8,7 @@ export const DEFAULT_INFLUENCE_RADIUS = 100;
 export const DEFAULT_TARGET_DENSITY = 0.5;
 export const DEFAULT_PRESSURE_MULTIPLIER = 2.5;
 export const DEFAULT_WOBBLE_FACTOR = 5;
-export const DEFAULT_FLUID_ENABLED = false;
+export const DEFAULT_FLUID_ENABLED = true;
 
 /**
  * Calculates the smoothing kernel function used for particle interactions.
