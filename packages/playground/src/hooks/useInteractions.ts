@@ -144,14 +144,15 @@ export function useInteractions({
       mouseState.streamPosition = { x, y };
       mouseState.streamSize = size;
 
-      // Get spawn config for color
+      // Get spawn config for color and fresh size (in case stream mode needs current values)
       const spawnConfig = getSpawnConfig();
       const color = spawnConfig.colorMode === "custom" ? spawnConfig.customColor : undefined;
+      const currentSize = spawnConfig.defaultSize; // Use current size from config
 
       // Spawn the first particle immediately at the exact position
       const system = getSystem();
       if (system) {
-        const firstParticle = createParticle(x, y, size, color);
+        const firstParticle = createParticle(x, y, currentSize, color);
         system.addParticle(firstParticle);
         trackParticleId(firstParticle.id);
       }
@@ -163,12 +164,12 @@ export function useInteractions({
       mouseState.streamInterval = window.setInterval(() => {
         const system = getSystem();
         if (system) {
-          const currentSpawnConfig = getSpawnConfig(); // Get fresh config for color updates
+          const currentSpawnConfig = getSpawnConfig(); // Get fresh config for size, mass, and color updates
           const color = currentSpawnConfig.colorMode === "custom" ? currentSpawnConfig.customColor : undefined;
           const particle = createParticle(
             mouseState.streamPosition.x,
             mouseState.streamPosition.y,
-            mouseState.streamSize,
+            currentSpawnConfig.defaultSize, // Use current size from config instead of frozen value
             color
           );
           system.addParticle(particle);
@@ -540,11 +541,14 @@ export function useInteractions({
       // Start streaming if shift is pressed OR if stream mode is enabled in spawn config
       if (mouseState.shiftPressed || spawnConfig.streamMode) {
         let streamSize;
-        if (mouseState.activeStreamSize > 0) {
-          // Use the preserved size from previous drag-to-size
+        if (spawnConfig.streamMode) {
+          // In stream mode, always use current size from spawn config
+          streamSize = spawnConfig.defaultSize;
+        } else if (mouseState.activeStreamSize > 0) {
+          // Use the preserved size from previous drag-to-size (shift+click behavior)
           streamSize = mouseState.activeStreamSize;
         } else {
-          // Use default size from spawn config for first shift+click or stream mode
+          // Use default size from spawn config for first shift+click
           streamSize = spawnConfig.defaultSize;
           mouseState.activeStreamSize = streamSize; // Store for subsequent clicks
         }
@@ -673,7 +677,12 @@ export function useInteractions({
       const distance = getDistance(mouseState.startPos, worldPos);
 
       // Check if we should enter drag mode
-      if (distance >= mouseState.dragThreshold) {
+      // Adjust threshold based on zoom level - when zoomed out, use smaller threshold
+      const currentRenderer = getRenderer();
+      const zoomScale = currentRenderer ? currentRenderer.getZoom() : 1;
+      const adjustedThreshold = mouseState.dragThreshold / zoomScale;
+      
+      if (distance >= adjustedThreshold) {
         mouseState.isDragging = true;
       }
 
