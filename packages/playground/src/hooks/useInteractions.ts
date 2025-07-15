@@ -14,6 +14,7 @@ import {
 } from "../utils/particle";
 import { calculateVelocity } from "../utils/velocity";
 import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
+import { ToolMode } from "./useToolMode";
 
 /**
  * Custom React hook that handles all mouse and keyboard interactions for the particle playground.
@@ -72,6 +73,10 @@ interface MouseState {
   spawnedParticleIds: number[];
   // Store the last calculated size for mode switching
   lastCalculatedSize: number;
+  // Removal mode state
+  removalRadius: number;
+  removalPreviewActive: boolean;
+  isRemoving: boolean;
 }
 
 interface UseSpawnerProps {
@@ -81,6 +86,7 @@ interface UseSpawnerProps {
   getInteraction: () => Interaction | null;
   getSpawnConfig: () => SpawnConfig;
   onZoom?: (deltaY: number, centerX: number, centerY: number) => void;
+  toolMode: ToolMode;
 }
 
 export function useInteractions({
@@ -90,6 +96,7 @@ export function useInteractions({
   getInteraction,
   getSpawnConfig,
   onZoom,
+  toolMode,
 }: UseSpawnerProps) {
   const mouseStateRef = useRef<MouseState>({
     isDown: false,
@@ -114,6 +121,9 @@ export function useInteractions({
     rightClickMode: "attract",
     spawnedParticleIds: [],
     lastCalculatedSize: 10,
+    removalRadius: 25, // Screen-space radius in pixels (25px = 50px diameter)
+    removalPreviewActive: false,
+    isRemoving: false,
   });
 
   /**
@@ -467,6 +477,67 @@ export function useInteractions({
     e.preventDefault(); // Always prevent context menu on canvas
   }, []);
 
+  // Removal mode functions
+  const removeParticlesAtPosition = useCallback((worldPos: { x: number; y: number }) => {
+    const system = getSystem();
+    const renderer = getRenderer();
+    if (!system || !renderer) return;
+
+    const mouseState = mouseStateRef.current;
+    
+    // Convert screen-space removal radius to world space for collision detection
+    const zoom = renderer.getZoom();
+    const worldRadius = mouseState.removalRadius / zoom;
+    
+    // Find particles within removal radius (including partial overlap)
+    const particlesToRemove = system.particles.filter(particle => {
+      // Skip already marked particles
+      if (particle.mass <= 0) return false;
+      
+      const dx = particle.position.x - worldPos.x;
+      const dy = particle.position.y - worldPos.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Check if particle overlaps with removal circle
+      // (distance between centers < removal radius + particle radius)
+      return distance < worldRadius + particle.size;
+    });
+    
+    // Mark particles for removal using mass = 0 pattern
+    particlesToRemove.forEach(particle => {
+      particle.mass = 0;
+      particle.size = 0; // Immediate visual feedback
+    });
+  }, [getSystem, getRenderer]);
+
+  const handleRemovalClick = useCallback((e: MouseEvent) => {
+    const mouseState = mouseStateRef.current;
+    const worldPos = getWorldPosition(e);
+    
+    // Start removal mode
+    mouseState.isRemoving = true;
+    
+    // Remove particles at click position
+    removeParticlesAtPosition(worldPos);
+  }, [getWorldPosition, removeParticlesAtPosition]);
+
+  const updateRemovalPreview = useCallback(() => {
+    const mouseState = mouseStateRef.current;
+    const renderer = getRenderer();
+    if (!renderer || toolMode !== "remove") return;
+
+    if (mouseState.removalPreviewActive) {
+      // Pass world position and constant screen radius
+      renderer.setRemovalPreview({
+        position: new Vector2D(mouseState.currentPos.x, mouseState.currentPos.y),
+        radius: mouseState.removalRadius // This is in screen pixels, renderer will handle conversion
+      });
+    } else {
+      // Clear removal preview
+      renderer.setRemovalPreview(null);
+    }
+  }, [getRenderer, toolMode]);
+
   // Mouse event handlers
   const onMouseDown = useCallback(
     (e: MouseEvent) => {
@@ -479,6 +550,12 @@ export function useInteractions({
       const canvas = getCanvas();
       const renderer = getRenderer();
       if (!canvas || !renderer) return;
+
+      // Handle removal mode
+      if (toolMode === "remove") {
+        handleRemovalClick(e);
+        return;
+      }
 
       const mouseState = mouseStateRef.current;
       const pos = getWorldPosition(e);
@@ -598,6 +675,21 @@ export function useInteractions({
       }
 
       const mouseState = mouseStateRef.current;
+      
+      // Handle removal mode preview and continuous removal
+      if (toolMode === "remove") {
+        mouseState.currentPos = worldPos;
+        mouseState.removalPreviewActive = true;
+        updateRemovalPreview();
+        
+        // If mouse is down and we're in removal mode, continuously remove particles
+        if (mouseState.isRemoving) {
+          removeParticlesAtPosition(worldPos);
+        }
+        
+        return;
+      }
+
       if (!mouseState.isDown) return;
 
       mouseState.currentPos = worldPos;
@@ -704,6 +796,9 @@ export function useInteractions({
       updateVelocityPreview,
       updateSizePreview,
       onRightMouseMove,
+      toolMode,
+      updateRemovalPreview,
+      removeParticlesAtPosition,
     ]
   );
 
@@ -715,11 +810,18 @@ export function useInteractions({
         return;
       }
 
+      const mouseState = mouseStateRef.current;
+      
+      // Handle removal mode mouse up
+      if (toolMode === "remove" && mouseState.isRemoving) {
+        mouseState.isRemoving = false;
+        return;
+      }
+
       const system = getSystem();
       const renderer = getRenderer();
       if (!system || !renderer) return;
 
-      const mouseState = mouseStateRef.current;
       if (!mouseState.isDown) return;
 
       // Update shift state from mouse event
@@ -812,7 +914,7 @@ export function useInteractions({
       mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
       mouseState.velocityModeSize = 0; // Reset velocity mode size
     },
-    [getSystem, getRenderer, stopStreaming, onRightMouseUp, trackParticleId]
+    [getSystem, getRenderer, stopStreaming, onRightMouseUp, trackParticleId, toolMode, handleRemovalClick]
   );
 
   const onMouseLeave = useCallback(() => {
@@ -836,6 +938,10 @@ export function useInteractions({
     if (renderer.setCursorPosition) {
       renderer.setCursorPosition(null);
     }
+    // Clear removal preview and stop removal
+    mouseState.removalPreviewActive = false;
+    mouseState.isRemoving = false;
+    updateRemovalPreview();
     mouseState.isDown = false;
     mouseState.isDragging = false;
     mouseState.previewColor = "";
@@ -843,7 +949,7 @@ export function useInteractions({
     mouseState.isDragToVelocity = false; // Reset velocity mode
     mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
     mouseState.velocityModeSize = 0; // Reset velocity mode size
-  }, [getRenderer, stopStreaming, getInteraction]);
+  }, [getRenderer, stopStreaming, getInteraction, updateRemovalPreview]);
 
   const cleanup = useCallback(() => {
     const mouseState = mouseStateRef.current;

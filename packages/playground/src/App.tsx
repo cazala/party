@@ -1,5 +1,6 @@
 import { usePlayground } from "./hooks/usePlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
+import { useToolMode } from "./hooks/useToolMode";
 import { useEffect, useRef, useState } from "react";
 import { SystemControls } from "./components/SystemControls";
 import { ForcesControls } from "./components/ForcesControls";
@@ -22,6 +23,7 @@ function App() {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [sessionLoadTrigger, setSessionLoadTrigger] = useState(0);
+  const { toolMode, setToolMode } = useToolMode();
   
   const {
     system,
@@ -39,7 +41,7 @@ function App() {
     resetParticles,
     spawnParticles,
     setSpawnConfig,
-  } = usePlayground(canvasRef);
+  } = usePlayground(canvasRef, toolMode);
   const size = useWindowSize();
 
   useEffect(() => {
@@ -79,6 +81,8 @@ function App() {
         onShowHotkeys={() => setIsHotkeysModalOpen(true)}
         onSave={() => setIsSaveModalOpen(true)}
         onLoad={() => setIsLoadModalOpen(true)}
+        toolMode={toolMode}
+        onToolModeChange={setToolMode}
       />
       <div className="app-content">
         <div className="left-sidebar">

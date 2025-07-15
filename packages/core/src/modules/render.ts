@@ -112,6 +112,7 @@ export class Canvas2DRenderer extends Renderer {
   private previewParticle: Particle | null = null;
   private isDragMode: boolean = false;
   private previewVelocity: Vector2D | null = null;
+  private removalPreview: { position: Vector2D; radius: number } | null = null;
   
   // Camera/Zoom properties
   private zoom: number = 1;
@@ -128,6 +129,10 @@ export class Canvas2DRenderer extends Renderer {
 
   setPreviewVelocity(velocity: Vector2D | null): void {
     this.previewVelocity = velocity;
+  }
+
+  setRemovalPreview(preview: { position: Vector2D; radius: number } | null): void {
+    this.removalPreview = preview;
   }
 
   setShowDensityAtCursor(show: boolean): void {
@@ -207,6 +212,11 @@ export class Canvas2DRenderer extends Renderer {
       if (this.previewVelocity) {
         this.renderPreviewVelocity(this.previewParticle, this.previewVelocity);
       }
+    }
+
+    // Render removal preview circle if it exists
+    if (this.removalPreview) {
+      this.renderRemovalPreview(this.removalPreview);
     }
 
     // Render density circle and arrow in world coordinates
@@ -689,6 +699,28 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.fillStyle = color;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.restore();
+  }
+
+  private renderRemovalPreview(preview: { position: Vector2D; radius: number }): void {
+    // The removal preview is rendered within the world coordinate system
+    // (after camera transforms are applied), so we use world coordinates
+    // but scale the radius to maintain constant screen size
+    
+    this.ctx.strokeStyle = "white";
+    this.ctx.fillStyle = "transparent";
+    this.ctx.globalAlpha = 0.8;
+    
+    // Scale line width and dash pattern to maintain constant screen appearance
+    this.ctx.lineWidth = 2 / this.zoom;
+    const dashSize = 6 / this.zoom;
+    this.ctx.setLineDash([dashSize, dashSize]);
+    
+    // Convert screen-space radius to world-space radius for rendering
+    const worldRadius = preview.radius / this.zoom;
+    
+    this.ctx.beginPath();
+    this.ctx.arc(preview.position.x, preview.position.y, worldRadius, 0, 2 * Math.PI);
+    this.ctx.stroke();
   }
 }
 

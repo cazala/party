@@ -16,6 +16,7 @@ import {
 } from "@party/core";
 import { useInteractions } from "./useInteractions";
 import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
+import { ToolMode } from "./useToolMode";
 
 /**
  * Custom React hook that wires together the core particle *engine* with the
@@ -33,7 +34,10 @@ import { SpawnConfig } from "../components/control-sections/ParticleSpawnControl
  * the returned fields – these are updated through mutable refs so re-renders
  * aren't triggered for every internal mutation.
  */
-export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
+export function usePlayground(
+  canvasRef: React.RefObject<HTMLCanvasElement>,
+  toolMode: ToolMode = "spawn"
+) {
   const systemRef = useRef<ParticleSystem | null>(null);
   // Individual force/utility refs – kept outside of React state because the
   // physics engine mutates them on every tick.
@@ -184,6 +188,7 @@ export function usePlayground(canvasRef: React.RefObject<HTMLCanvasElement>) {
     getInteraction: () => interactionRef.current,
     getSpawnConfig: () => spawnConfig,
     onZoom: handleZoom,
+    toolMode,
   });
 
   // Attach / detach low-level DOM listeners once – they call back into the

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, Save, FolderOpen } from "lucide-react";
 import { ParticleSystem } from "@party/core";
+import { ToolMode } from "../hooks/useToolMode";
 
 interface TopBarProps {
   system: ParticleSystem | null;
@@ -11,6 +12,8 @@ interface TopBarProps {
   onShowHotkeys?: () => void;
   onSave?: () => void;
   onLoad?: () => void;
+  toolMode?: ToolMode;
+  onToolModeChange?: (mode: ToolMode) => void;
 }
 
 export function TopBar({
@@ -22,6 +25,8 @@ export function TopBar({
   onShowHotkeys,
   onSave,
   onLoad,
+  toolMode = "spawn",
+  onToolModeChange,
 }: TopBarProps) {
   const [isPlaying, setIsPlaying] = useState(true);
 
@@ -106,6 +111,34 @@ export function TopBar({
             </button>
           )}
         </div>
+        {onToolModeChange && (
+          <div className="tool-group">
+            <div className="tool-mode-selector">
+              <button
+                onClick={() => onToolModeChange("spawn")}
+                className={`tool-mode-button tool-mode-left ${
+                  toolMode === "spawn" ? "tool-mode-active" : ""
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                  <circle cx="6" cy="6" r="3" />
+                </svg>
+                <span>Spawn</span>
+              </button>
+              <button
+                onClick={() => onToolModeChange("remove")}
+                className={`tool-mode-button tool-mode-right ${
+                  toolMode === "remove" ? "tool-mode-active" : ""
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                  <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1" strokeDasharray="2,2" fill="none" />
+                </svg>
+                <span>Remove</span>
+              </button>
+            </div>
+          </div>
+        )}
         <div className="topbar-right">
           {onShowHotkeys && (
             <button

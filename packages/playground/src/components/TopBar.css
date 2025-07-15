@@ -30,6 +30,47 @@
   justify-content: center;
 }
 
+.tool-group {
+  display: flex;
+  align-items: center;
+  margin-left: 24px;
+}
+
+.tool-mode-selector {
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tool-mode-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  position: relative;
+}
+
+.tool-mode-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.tool-mode-button.tool-mode-active {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--color-accent-white);
+}
+
+.tool-mode-left {
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .topbar-right {
   flex: 1;
   display: flex;
@@ -119,7 +160,8 @@
   .clear-button span,
   .reset-spawn-button span,
   .topbar-save-button span,
-  .topbar-load-button span {
+  .topbar-load-button span,
+  .tool-mode-button span {
     display: none;
   }
 
@@ -131,6 +173,16 @@
     padding: 8px 10px;
     min-width: 40px;
     justify-content: center;
+  }
+
+  .tool-mode-button {
+    padding: 8px 10px;
+    min-width: 32px;
+    justify-content: center;
+  }
+
+  .tool-group {
+    margin-left: 12px;
   }
 
   .topbar-right .hotkeys-button {
