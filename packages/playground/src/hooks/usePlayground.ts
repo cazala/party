@@ -13,10 +13,12 @@ import {
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
   DEFAULT_GRAVITY_STRENGTH,
+  getIdCounter,
 } from "@party/core";
 import { useInteractions } from "./useInteractions";
 import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
 import { ToolMode } from "./useToolMode";
+import { useUndoRedo } from "./useUndoRedo";
 
 /**
  * Custom React hook that wires together the core particle *engine* with the
@@ -177,6 +179,11 @@ export function usePlayground(
   );
 
   // ---------------------------------------------------------------------------
+  // Undo/Redo system
+  // ---------------------------------------------------------------------------
+  const undoRedo = useUndoRedo(() => systemRef.current);
+
+  // ---------------------------------------------------------------------------
   // Interaction handling (mouse + keyboard)
   // ---------------------------------------------------------------------------
   // All pointer/key logic lives in `useInteractions`.  We simply provide lazy
@@ -189,6 +196,7 @@ export function usePlayground(
     getSpawnConfig: () => spawnConfig,
     onZoom: handleZoom,
     toolMode,
+    undoRedo,
   });
 
   // Attach / detach low-level DOM listeners once – they call back into the
@@ -318,9 +326,13 @@ export function usePlayground(
 
   const clear = useCallback(() => {
     if (systemRef.current) {
+      // Record particles before clearing for undo
+      if (systemRef.current.particles.length > 0) {
+        undoRedo.recordSystemClear([...systemRef.current.particles], getIdCounter());
+      }
       systemRef.current.clear();
     }
-  }, []);
+  }, [undoRedo]);
 
   // ---------------------------------------------------------------------------
   // Programmatic particle spawning helpers

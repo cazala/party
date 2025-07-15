@@ -4,6 +4,7 @@ import {
   Canvas2DRenderer,
   Vector2D,
   Interaction,
+  getIdCounter,
 } from "@party/core";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
@@ -15,6 +16,7 @@ import {
 import { calculateVelocity } from "../utils/velocity";
 import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
 import { ToolMode } from "./useToolMode";
+import { UseUndoRedoReturn } from "./useUndoRedo";
 
 /**
  * Custom React hook that handles all mouse and keyboard interactions for the particle playground.
@@ -69,14 +71,16 @@ interface MouseState {
   // Right-click interaction state
   isRightClicking: boolean;
   rightClickMode: "attract" | "repel";
-  // Particle tracking for delete functionality
-  spawnedParticleIds: number[];
   // Store the last calculated size for mode switching
   lastCalculatedSize: number;
   // Removal mode state
   removalRadius: number;
   removalPreviewActive: boolean;
   isRemoving: boolean;
+  // Streaming tracking for undo
+  streamedParticles: any[];
+  // Removal tracking for undo
+  removedParticles: any[];
 }
 
 interface UseSpawnerProps {
@@ -87,6 +91,7 @@ interface UseSpawnerProps {
   getSpawnConfig: () => SpawnConfig;
   onZoom?: (deltaY: number, centerX: number, centerY: number) => void;
   toolMode: ToolMode;
+  undoRedo: UseUndoRedoReturn;
 }
 
 export function useInteractions({
@@ -97,6 +102,7 @@ export function useInteractions({
   getSpawnConfig,
   onZoom,
   toolMode,
+  undoRedo,
 }: UseSpawnerProps) {
   const mouseStateRef = useRef<MouseState>({
     isDown: false,
@@ -119,28 +125,14 @@ export function useInteractions({
     activeVelocitySize: 0,
     isRightClicking: false,
     rightClickMode: "attract",
-    spawnedParticleIds: [],
     lastCalculatedSize: 10,
     removalRadius: 25, // Screen-space radius in pixels (25px = 50px diameter)
     removalPreviewActive: false,
     isRemoving: false,
+    streamedParticles: [],
+    removedParticles: [],
   });
 
-  /**
-   * Tracks a spawned particle ID for potential deletion via Delete/Backspace.
-   * Maintains a FIFO queue of up to 50 particle IDs.
-   * 
-   * @param particleId - The unique ID of the spawned particle
-   */
-  const trackParticleId = useCallback((particleId: number) => {
-    const mouseState = mouseStateRef.current;
-    mouseState.spawnedParticleIds.push(particleId);
-
-    // Keep only the most recent 50 particles
-    if (mouseState.spawnedParticleIds.length > 50) {
-      mouseState.spawnedParticleIds.shift();
-    }
-  }, []);
 
   // Streaming functions
   const startStreaming = useCallback(
@@ -153,6 +145,7 @@ export function useInteractions({
       mouseState.isStreaming = true;
       mouseState.streamPosition = { x, y };
       mouseState.streamSize = size;
+      mouseState.streamedParticles = []; // Reset streamed particles for new session
 
       // Get spawn config for color and fresh size (in case stream mode needs current values)
       const spawnConfig = getSpawnConfig();
@@ -164,7 +157,7 @@ export function useInteractions({
       if (system) {
         const firstParticle = createParticle(x, y, currentSize, color);
         system.addParticle(firstParticle);
-        trackParticleId(firstParticle.id);
+        mouseState.streamedParticles.push(firstParticle);
       }
 
       // Then start the interval for subsequent particles
@@ -183,11 +176,11 @@ export function useInteractions({
             color
           );
           system.addParticle(particle);
-          trackParticleId(particle.id);
+          mouseState.streamedParticles.push(particle);
         }
       }, streamInterval);
     },
-    [getSystem, getSpawnConfig, trackParticleId]
+    [getSystem, getSpawnConfig]
   );
 
   const stopStreaming = useCallback(() => {
@@ -197,7 +190,13 @@ export function useInteractions({
       mouseState.streamInterval = null;
     }
     mouseState.isStreaming = false;
-  }, []);
+    
+    // Record streamed particles for undo
+    if (mouseState.streamedParticles.length > 0) {
+      undoRedo.recordSpawnBatch(mouseState.streamedParticles, getIdCounter());
+      mouseState.streamedParticles = [];
+    }
+  }, [undoRedo]);
 
   // Helper function to get world position from mouse event
   const getWorldPosition = useCallback((e: MouseEvent) => {
@@ -312,23 +311,12 @@ export function useInteractions({
     (e: KeyboardEvent) => {
       const mouseState = mouseStateRef.current;
 
-      // Handle delete/backspace to remove last spawned particle
-      if (e.key === "Delete" || e.key === "Backspace") {
-        if (mouseState.spawnedParticleIds.length > 0) {
-          const system = getSystem();
-          if (system) {
-            // Get the most recently spawned particle ID
-            const lastParticleId = mouseState.spawnedParticleIds.pop();
-            if (lastParticleId !== undefined) {
-              // Find and remove the particle from the system
-              const particle = system.getParticle(lastParticleId);
-              if (particle) {
-                system.removeParticle(particle);
-              }
-            }
-          }
-        }
-        return; // Don't process other key events when delete/backspace is pressed
+      // Handle Ctrl+Z / Cmd+Z for undo functionality
+      if (e.key === "z" && (e.ctrlKey || e.metaKey)) {
+        console.log("Undo triggered, canUndo:", undoRedo.canUndo);
+        e.preventDefault(); // Prevent browser undo
+        undoRedo.undo();
+        return;
       }
 
       if (e.key === "Shift") {
@@ -370,7 +358,7 @@ export function useInteractions({
         }
       }
     },
-    [getSystem, startStreaming, updateVelocityPreview]
+    [getSystem, startStreaming, updateVelocityPreview, undoRedo]
   );
 
   const handleKeyUp = useCallback(
@@ -503,8 +491,12 @@ export function useInteractions({
       return distance < worldRadius + particle.size;
     });
     
-    // Mark particles for removal using mass = 0 pattern
+    // Track particles before removal and mark for removal using mass = 0 pattern
     particlesToRemove.forEach(particle => {
+      // Store original particle state for undo (clone to preserve original state)
+      mouseState.removedParticles.push(particle.clone());
+      
+      // Mark particle for removal
       particle.mass = 0;
       particle.size = 0; // Immediate visual feedback
     });
@@ -514,8 +506,9 @@ export function useInteractions({
     const mouseState = mouseStateRef.current;
     const worldPos = getWorldPosition(e);
     
-    // Start removal mode
+    // Start removal mode and reset removed particles tracking
     mouseState.isRemoving = true;
+    mouseState.removedParticles = [];
     
     // Remove particles at click position
     removeParticlesAtPosition(worldPos);
@@ -815,6 +808,16 @@ export function useInteractions({
       // Handle removal mode mouse up
       if (toolMode === "remove" && mouseState.isRemoving) {
         mouseState.isRemoving = false;
+        
+        // Record removed particles for undo
+        if (mouseState.removedParticles.length > 0) {
+          if (mouseState.removedParticles.length === 1) {
+            undoRedo.recordRemoveSingle(mouseState.removedParticles[0], getIdCounter());
+          } else {
+            undoRedo.recordRemoveBatch(mouseState.removedParticles, getIdCounter());
+          }
+          mouseState.removedParticles = [];
+        }
         return;
       }
 
@@ -898,8 +901,9 @@ export function useInteractions({
 
       system.addParticle(finalParticle);
 
-      // Track the spawned particle ID for delete functionality
-      trackParticleId(finalParticle.id);
+      // Record single particle spawn for undo functionality
+      console.log("Recording spawn single:", finalParticle.id);
+      undoRedo.recordSpawnSingle(finalParticle, getIdCounter());
 
       // Clear preview particle and velocity
       renderer.setPreviewParticle(null, false);
@@ -914,7 +918,7 @@ export function useInteractions({
       mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
       mouseState.velocityModeSize = 0; // Reset velocity mode size
     },
-    [getSystem, getRenderer, stopStreaming, onRightMouseUp, trackParticleId, toolMode, handleRemovalClick]
+    [getSystem, getRenderer, stopStreaming, onRightMouseUp, undoRedo, toolMode, handleRemovalClick]
   );
 
   const onMouseLeave = useCallback(() => {

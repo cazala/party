@@ -7,6 +7,7 @@ export interface ParticleOptions {
   mass?: number;
   size?: number;
   color?: string;
+  id?: number; // Optional ID for restoring particles
 }
 
 let idCounter = 0;
@@ -22,7 +23,7 @@ export class Particle {
   public density?: number;
 
   constructor(options: ParticleOptions = {}) {
-    this.id = idCounter++;
+    this.id = options.id !== undefined ? options.id : idCounter++;
     this.position = options.position || new Vector2D();
     this.velocity = options.velocity || new Vector2D();
     this.acceleration = options.acceleration || new Vector2D();
@@ -71,4 +72,13 @@ export class Particle {
       color: this.color,
     });
   }
+}
+
+// ID counter management for undo/redo functionality
+export function getIdCounter(): number {
+  return idCounter;
+}
+
+export function setIdCounter(value: number): void {
+  idCounter = value;
 }

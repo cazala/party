@@ -95,9 +95,9 @@ export function HotkeysModal({ isOpen, onClose }: HotkeysModalProps) {
             <h3>Keyboard Shortcuts</h3>
             <div className="hotkeys-list">
               <div className="hotkey-item">
-                <div className="hotkey-action">Delete / Backspace</div>
+                <div className="hotkey-action">Ctrl+Z / ⌘+Z</div>
                 <div className="hotkey-description">
-                  Remove the last spawned particle
+                  Undo last action (spawn/remove particles, clear)
                 </div>
               </div>
               <div className="hotkey-item">
@@ -122,10 +122,9 @@ export function HotkeysModal({ isOpen, onClose }: HotkeysModalProps) {
                 </div>
               </div>
               <div className="hotkey-item">
-                <div className="hotkey-action">Particle History</div>
+                <div className="hotkey-action">Undo History</div>
                 <div className="hotkey-description">
-                  Up to 50 most recent particles can be deleted with
-                  Delete/Backspace
+                  Up to 50 operations can be undone with Ctrl+Z/⌘+Z
                 </div>
               </div>
             </div>
