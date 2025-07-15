@@ -132,7 +132,7 @@ export class Fluid implements Force {
     this.enabled = enabled;
   }
 
-  warmup(particles: Particle[], deltaTime: number) {
+  warmup(particles: Particle[]) {
     if (!this.enabled) {
       return;
     }
@@ -141,7 +141,7 @@ export class Fluid implements Force {
     for (const particle of particles) {
       const predictedPosition = particle.position
         .clone()
-        .add(particle.velocity.clone().multiply(deltaTime));
+        .add(particle.velocity.clone().multiply(1 / 120));
       this.densities.set(
         particle.id,
         calculateDensity(predictedPosition, this.influenceRadius, particles)
