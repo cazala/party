@@ -66,7 +66,7 @@ export class ParticleSystem {
 
   private lastTime: number = 0;
   private animationId: number | null = null;
-  
+
   // FPS tracking
   private fpsFrameTimes: number[] = [];
   private fpsMaxSamples: number = 60; // Track last 60 frames
@@ -142,23 +142,18 @@ export class ParticleSystem {
     }
 
     // Remove eaten particles (marked with mass = 0)
-    this.particles = this.particles.filter(particle => particle.mass > 0);
+    this.particles = this.particles.filter((particle) => particle.mass > 0);
   }
 
   play(): void {
     if (this.isPlaying) return;
 
     this.isPlaying = true;
-    this.lastTime = performance.now();
     this.animate();
   }
 
   pause(): void {
     this.isPlaying = false;
-    if (this.animationId !== null) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
-    }
   }
 
   toggle(): void {
@@ -195,8 +190,6 @@ export class ParticleSystem {
   }
 
   private animate = (): void => {
-    if (!this.isPlaying) return;
-
     const currentTime = performance.now();
     const deltaTime = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
@@ -204,7 +197,9 @@ export class ParticleSystem {
     // Update FPS calculation
     this.updateFPS(currentTime);
 
-    this.update(deltaTime);
+    if (this.isPlaying) {
+      this.update(deltaTime);
+    }
 
     this.animationId = requestAnimationFrame(this.animate);
 
@@ -216,15 +211,17 @@ export class ParticleSystem {
   private updateFPS(currentTime: number): void {
     // Add current frame time
     this.fpsFrameTimes.push(currentTime);
-    
+
     // Remove old frames (keep only last N frames)
     if (this.fpsFrameTimes.length > this.fpsMaxSamples) {
       this.fpsFrameTimes.shift();
     }
-    
+
     // Calculate FPS from recent frames
     if (this.fpsFrameTimes.length >= 2) {
-      const timeSpan = this.fpsFrameTimes[this.fpsFrameTimes.length - 1] - this.fpsFrameTimes[0];
+      const timeSpan =
+        this.fpsFrameTimes[this.fpsFrameTimes.length - 1] -
+        this.fpsFrameTimes[0];
       const frames = this.fpsFrameTimes.length - 1;
       this.currentFPS = frames / (timeSpan / 1000);
     }
