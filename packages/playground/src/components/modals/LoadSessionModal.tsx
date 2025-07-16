@@ -23,6 +23,7 @@ export function LoadSessionModal({
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [wasPlayingBeforeModal, setWasPlayingBeforeModal] = useState(false);
 
   // Load sessions when modal opens
   useEffect(() => {
@@ -32,8 +33,19 @@ export function LoadSessionModal({
       setDeleteConfirm(null);
       setEditingSession(null);
       setEditName("");
+      
+      // Pause system when modal opens
+      if (system) {
+        setWasPlayingBeforeModal(system.isPlaying);
+        system.pause();
+      }
+    } else if (system) {
+      // Resume system when modal closes if it was playing before
+      if (wasPlayingBeforeModal) {
+        system.play();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, system]);
 
   // Close modal on Escape key
   useEffect(() => {

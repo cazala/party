@@ -21,6 +21,7 @@ export function SaveSessionModal({
   const [isLoading, setIsLoading] = useState(false);
   const [showOverwriteWarning, setShowOverwriteWarning] = useState(false);
   const [existingSession, setExistingSession] = useState<any>(null);
+  const [wasPlayingBeforeModal, setWasPlayingBeforeModal] = useState(false);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -30,8 +31,19 @@ export function SaveSessionModal({
       setIsLoading(false);
       setShowOverwriteWarning(false);
       setExistingSession(null);
+      
+      // Pause system when modal opens
+      if (system) {
+        setWasPlayingBeforeModal(system.isPlaying);
+        system.pause();
+      }
+    } else if (system) {
+      // Resume system when modal closes if it was playing before
+      if (wasPlayingBeforeModal) {
+        system.play();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, system]);
 
   // Close modal on Escape key
   useEffect(() => {

@@ -33,6 +33,13 @@ export function TopBar({
   useEffect(() => {
     if (system) {
       setIsPlaying(system.isPlaying);
+      
+      // Poll the system's playing state to keep the button in sync
+      const interval = setInterval(() => {
+        setIsPlaying(system.isPlaying);
+      }, 100); // Check every 100ms
+      
+      return () => clearInterval(interval);
     }
   }, [system]);
 
