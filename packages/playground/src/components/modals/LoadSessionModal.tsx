@@ -309,7 +309,6 @@ export function LoadSessionModal({
                         <div className="session-name">{session.name}</div>
                         <div className="session-meta">
                           {session.particleCount} particles •{" "}
-                          {session.camera.zoom.toFixed(2)}x zoom •{" "}
                           {formatDate(session.timestamp)}
                         </div>
                       </>

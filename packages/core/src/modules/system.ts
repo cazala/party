@@ -150,6 +150,10 @@ export class System {
     if (this.isPlaying) return;
 
     this.isPlaying = true;
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
     this.animate();
   }
 
