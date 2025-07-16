@@ -1,6 +1,33 @@
 import { useState, useCallback, useMemo } from "react";
 import { ParticleSystem, Particle, Vector2D, setIdCounter } from "@party/core";
 
+/**
+ * Undo/Redo System for Particle Operations
+ * 
+ * This hook provides comprehensive undo/redo functionality for all particle operations
+ * in the playground. It tracks operations at a surgical level - only affecting the
+ * specific particles that were added or removed, preserving physics simulation state
+ * for all other particles.
+ * 
+ * Supported Operations:
+ * - SPAWN_SINGLE: Single particle spawn (click)
+ * - SPAWN_BATCH: Multiple particle spawn (streaming/shift+click)
+ * - REMOVE_SINGLE: Single particle removal (click in remove mode)
+ * - REMOVE_BATCH: Multiple particle removal (drag in remove mode)
+ * - SYSTEM_CLEAR: Clear all particles
+ * 
+ * Key Features:
+ * - Surgical operations: Only affects specific particles, preserves physics state
+ * - Dual-stack architecture: Separate undo and redo histories
+ * - History limit: Maintains up to 50 operations
+ * - ID preservation: Maintains particle IDs across operations
+ * - Automatic redo clearing: New actions clear redo history
+ */
+
+/**
+ * Serialized representation of a particle for undo/redo operations
+ * Contains all necessary data to recreate a particle with identical state
+ */
 export interface SerializedParticle {
   id: number;
   position: { x: number; y: number };
@@ -11,33 +38,48 @@ export interface SerializedParticle {
   color: string;
 }
 
+/**
+ * Represents a single undoable/redoable action in the particle system
+ */
 export interface UndoAction {
   type: 'SPAWN_SINGLE' | 'SPAWN_BATCH' | 'REMOVE_SINGLE' | 'REMOVE_BATCH' | 'SYSTEM_CLEAR';
   timestamp: number;
   particles: SerializedParticle[]; // For remove/clear: particles to restore. For spawn: particles that were spawned
-  systemStateBefore?: SerializedParticle[]; // Complete system state before the action (for spawn operations)
-  idCounter?: number;
+  systemStateBefore?: SerializedParticle[]; // Legacy field, no longer used but kept for compatibility
+  idCounter?: number; // ID counter state at the time of the action
 }
 
+/**
+ * Return interface for the useUndoRedo hook
+ */
 export interface UseUndoRedoReturn {
-  canUndo: boolean;
-  canRedo: boolean;
-  undo: () => void;
-  redo: () => void;
-  recordSpawnSingle: (particle: Particle, idCounter: number) => void;
-  recordSpawnBatch: (particles: Particle[], idCounter: number) => void;
-  recordRemoveSingle: (particle: Particle, idCounter: number) => void;
-  recordRemoveBatch: (particles: Particle[], idCounter: number) => void;
-  recordSystemClear: (particles: Particle[], idCounter: number) => void;
-  clearHistory: () => void;
+  canUndo: boolean; // Whether there are actions available to undo
+  canRedo: boolean; // Whether there are actions available to redo
+  undo: () => void; // Undo the last action
+  redo: () => void; // Redo the last undone action
+  recordSpawnSingle: (particle: Particle, idCounter: number) => void; // Record a single particle spawn
+  recordSpawnBatch: (particles: Particle[], idCounter: number) => void; // Record multiple particle spawns
+  recordRemoveSingle: (particle: Particle, idCounter: number) => void; // Record a single particle removal
+  recordRemoveBatch: (particles: Particle[], idCounter: number) => void; // Record multiple particle removals
+  recordSystemClear: (particles: Particle[], idCounter: number) => void; // Record a system clear operation
+  clearHistory: () => void; // Clear all undo/redo history
 }
 
 const MAX_HISTORY_SIZE = 50;
 
+/**
+ * Hook that provides undo/redo functionality for particle operations
+ * 
+ * @param getSystem Function that returns the current particle system instance
+ * @returns Object containing undo/redo state and control functions
+ */
 export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedoReturn {
   const [actionHistory, setActionHistory] = useState<UndoAction[]>([]);
   const [redoHistory, setRedoHistory] = useState<UndoAction[]>([]);
 
+  /**
+   * Converts a Particle instance to a serializable format for storage
+   */
   const serializeParticle = useCallback((particle: Particle): SerializedParticle => {
     return {
       id: particle.id,
@@ -50,6 +92,10 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     };
   }, []);
 
+  /**
+   * Converts a serialized particle back to a Particle instance
+   * Preserves the original ID to maintain consistency across undo/redo operations
+   */
   const deserializeParticle = useCallback((serialized: SerializedParticle): Particle => {
     const particle = new Particle({
       id: serialized.id, // Use the original ID
@@ -64,8 +110,11 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     return particle;
   }, []);
 
+  /**
+   * Adds an action to the undo history and clears redo history
+   * Maintains the maximum history size by removing oldest actions
+   */
   const addToHistory = useCallback((action: UndoAction) => {
-    console.log("Adding action to history:", action.type, "particles:", action.particles.length);
     setActionHistory(prev => {
       const newHistory = [...prev, action];
       
@@ -74,7 +123,6 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
         newHistory.shift();
       }
       
-      console.log("History now has", newHistory.length, "actions");
       return newHistory;
     });
     
@@ -82,6 +130,9 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     setRedoHistory([]);
   }, []);
 
+  /**
+   * Records a single particle spawn operation
+   */
   const recordSpawnSingle = useCallback((particle: Particle, idCounter: number) => {
     const action: UndoAction = {
       type: 'SPAWN_SINGLE',
@@ -92,6 +143,9 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     addToHistory(action);
   }, [serializeParticle, addToHistory]);
 
+  /**
+   * Records a batch particle spawn operation (streaming mode)
+   */
   const recordSpawnBatch = useCallback((particles: Particle[], idCounter: number) => {
     if (particles.length === 0) return;
     
@@ -104,6 +158,9 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     addToHistory(action);
   }, [serializeParticle, addToHistory]);
 
+  /**
+   * Records a single particle removal operation
+   */
   const recordRemoveSingle = useCallback((particle: Particle, idCounter: number) => {
     const action: UndoAction = {
       type: 'REMOVE_SINGLE',
@@ -114,6 +171,9 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     addToHistory(action);
   }, [serializeParticle, addToHistory]);
 
+  /**
+   * Records a batch particle removal operation (drag removal)
+   */
   const recordRemoveBatch = useCallback((particles: Particle[], idCounter: number) => {
     if (particles.length === 0) return;
     
@@ -126,6 +186,9 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     addToHistory(action);
   }, [serializeParticle, addToHistory]);
 
+  /**
+   * Records a system clear operation (all particles removed)
+   */
   const recordSystemClear = useCallback((particles: Particle[], idCounter: number) => {
     if (particles.length === 0) return;
     
@@ -138,19 +201,20 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     addToHistory(action);
   }, [serializeParticle, addToHistory]);
 
+  /**
+   * Undoes the last action in the history
+   * For spawn operations: Removes the spawned particles
+   * For remove/clear operations: Restores the removed particles
+   * Preserves physics state for non-affected particles
+   */
   const undo = useCallback(() => {
     setActionHistory(currentHistory => {
-      console.log("Undo called, history length:", currentHistory.length);
       if (currentHistory.length === 0) return currentHistory;
       
       const system = getSystem();
-      if (!system) {
-        console.log("No system available");
-        return currentHistory;
-      }
+      if (!system) return currentHistory;
 
       const lastAction = currentHistory[currentHistory.length - 1];
-      console.log("Undoing action:", lastAction.type, "particles:", lastAction.particles.length);
       
       // Add the action to redo history before undoing
       setRedoHistory(prev => [...prev, lastAction]);
@@ -188,19 +252,19 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     });
   }, [getSystem, deserializeParticle]);
 
+  /**
+   * Redoes the last undone action
+   * For spawn operations: Re-adds the spawned particles
+   * For remove/clear operations: Re-removes the particles
+   */
   const redo = useCallback(() => {
     setRedoHistory(currentRedoHistory => {
-      console.log("Redo called, redo history length:", currentRedoHistory.length);
       if (currentRedoHistory.length === 0) return currentRedoHistory;
       
       const system = getSystem();
-      if (!system) {
-        console.log("No system available");
-        return currentRedoHistory;
-      }
+      if (!system) return currentRedoHistory;
 
       const actionToRedo = currentRedoHistory[currentRedoHistory.length - 1];
-      console.log("Redoing action:", actionToRedo.type, "particles:", actionToRedo.particles.length);
       
       // Add the action back to history
       setActionHistory(prev => [...prev, actionToRedo]);
@@ -241,7 +305,6 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
           actionToRedo.particles.forEach(serializedParticle => {
             const particle = system.getParticle(serializedParticle.id);
             if (particle) {
-              console.log(`Re-removing particle ${serializedParticle.id}`);
               system.removeParticle(particle);
             }
           });
@@ -253,11 +316,15 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
     });
   }, [getSystem, deserializeParticle]);
 
+  /**
+   * Clears all undo and redo history
+   */
   const clearHistory = useCallback(() => {
     setActionHistory([]);
     setRedoHistory([]);
   }, []);
 
+  // Return memoized object to prevent unnecessary re-renders
   return useMemo(() => ({
     canUndo: actionHistory.length > 0,
     canRedo: redoHistory.length > 0,
