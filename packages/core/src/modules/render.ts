@@ -592,40 +592,45 @@ export class Canvas2DRenderer extends Renderer {
       (force) => force instanceof Fluid
     ) as Fluid;
 
-    // Get particles near cursor
+    // Define constant screen-space radius (in pixels) for density visualization
+    const screenRadius = 60; // 60 pixels constant radius
+    const worldRadius = screenRadius / this.zoom; // Convert to world space for calculations
+
+    // Get particles near cursor using the zoom-adjusted radius
     const particles = system.spatialGrid.getParticles(
       this.cursorPosition,
-      fluid.influenceRadius
+      worldRadius
     );
 
-    // Calculate density at cursor position
+    // Calculate density at cursor position using the zoom-adjusted radius
     const density = calculateDensity(
       this.cursorPosition,
-      fluid.influenceRadius,
+      worldRadius,
       particles
     );
 
     const vector = fluid.calculatePressureForce(this.cursorPosition, particles);
     const force =
       density > 0
-        ? vector.clone().normalize().multiply(fluid.influenceRadius)
+        ? vector.clone().normalize().multiply(worldRadius)
         : Vector2D.zero();
     // not devided by density
 
     // Use same color palette as spatial grid
     const baseColor = "#dee7f0";
 
-    // Draw circle at cursor with influence radius
+    // Draw circle at cursor with constant screen radius
     this.ctx.strokeStyle = baseColor;
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = 2 / this.zoom; // Scale line width to maintain constant screen thickness
     this.ctx.globalAlpha = 0.6;
-    this.ctx.setLineDash([5, 5]);
+    const dashSize = 5 / this.zoom; // Scale dash pattern with zoom
+    this.ctx.setLineDash([dashSize, dashSize]);
 
     this.ctx.beginPath();
     this.ctx.arc(
       this.cursorPosition.x,
       this.cursorPosition.y,
-      fluid.influenceRadius,
+      worldRadius, // Use world radius for drawing
       0,
       Math.PI * 2
     );
@@ -634,7 +639,7 @@ export class Canvas2DRenderer extends Renderer {
 
     // draw arrow from cursor position to force vector
     this.ctx.strokeStyle = baseColor;
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = 2 / this.zoom; // Scale line width to maintain constant screen thickness
     this.ctx.beginPath();
     this.ctx.moveTo(this.cursorPosition.x, this.cursorPosition.y);
     this.ctx.lineTo(
@@ -655,16 +660,20 @@ export class Canvas2DRenderer extends Renderer {
       (force) => force instanceof Fluid
     ) as Fluid;
 
-    // Get particles near cursor
+    // Use the same constant screen-space radius as the circle visualization
+    const screenRadius = 60; // 60 pixels constant radius
+    const worldRadius = screenRadius / this.zoom; // Convert to world space for calculations
+
+    // Get particles near cursor using the zoom-adjusted radius
     const particles = system.spatialGrid.getParticles(
       this.cursorPosition,
-      fluid.influenceRadius
+      worldRadius
     );
 
-    // Calculate density at cursor position
+    // Calculate density at cursor position using the zoom-adjusted radius
     const density = calculateDensity(
       this.cursorPosition,
-      fluid.influenceRadius,
+      worldRadius,
       particles
     );
 
