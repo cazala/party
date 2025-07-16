@@ -475,8 +475,14 @@ export class Canvas2DRenderer extends Renderer {
 
     // Scale the arrow length proportional to velocity magnitude
     // Use a scaling factor to make arrows visible but not too long
-    const scaleFactor = 0.1; // Adjust this to control arrow length
-    const arrowLength = Math.min(velocityMagnitude * scaleFactor, 20); // Cap at 50px
+    const scaleFactor = 0.1;
+    const baseArrowLength = velocityMagnitude * scaleFactor;
+    
+    // Scale arrow length based on zoom - bigger when zoomed out, but never larger than particle
+    const zoomScaledLength = baseArrowLength / this.zoom;
+    const maxArrowLength = particle.size * 0.8; // Never bigger than 80% of particle size
+    const minArrowLength = Math.max(particle.size * 0.3, 8 / this.zoom); // Minimum length to stay outside particle
+    const arrowLength = Math.max(minArrowLength, Math.min(zoomScaledLength, maxArrowLength, 50)); // Ensure minimum length
 
     // Start point: at the edge of the particle, not the center
     const startX = particle.position.x + direction.x * particle.size;
@@ -491,7 +497,8 @@ export class Canvas2DRenderer extends Renderer {
 
     this.ctx.strokeStyle = arrowColor;
     this.ctx.globalAlpha = 0.8;
-    this.ctx.lineWidth = 2;
+    // Scale line width based on zoom - thicker when zoomed out
+    this.ctx.lineWidth = Math.max(1, 2 / this.zoom);
     this.ctx.lineCap = "round";
 
     // Draw arrow line
@@ -500,8 +507,8 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.lineTo(endX, endY);
     this.ctx.stroke();
 
-    // Draw arrowhead
-    const arrowHeadLength = 8;
+    // Draw arrowhead - scale size based on zoom
+    const arrowHeadLength = Math.max(4, 8 / this.zoom);
     const arrowHeadAngle = Math.PI / 6; // 30 degrees
 
     // Calculate arrowhead points
