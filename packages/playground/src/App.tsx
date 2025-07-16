@@ -35,6 +35,8 @@ function App() {
     interaction,
     renderer,
     spatialGrid,
+    zoomStateRef,
+    undoRedo,
     play,
     pause,
     clear,
@@ -119,8 +121,24 @@ function App() {
               shape: "grid" as const,
               spacing: 50,
               particleSize: 10,
+              camera: renderer
+                ? {
+                    x: renderer.getCamera().x,
+                    y: renderer.getCamera().y,
+                    zoom: renderer.getZoom(),
+                  }
+                : undefined,
             })}
             onSpawnConfigChange={setSpawnConfig}
+            getCurrentCamera={
+              renderer
+                ? () => ({
+                    x: renderer.getCamera().x,
+                    y: renderer.getCamera().y,
+                    zoom: renderer.getZoom(),
+                  })
+                : undefined
+            }
           />
         </div>
         <div className="canvas-container">
@@ -153,6 +171,7 @@ function App() {
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}
         system={system}
+        renderer={renderer}
         onSaveSuccess={(sessionName) => {
           console.log(`Session "${sessionName}" saved successfully`);
         }}
@@ -162,6 +181,11 @@ function App() {
         isOpen={isLoadModalOpen}
         onClose={() => setIsLoadModalOpen(false)}
         system={system}
+        renderer={renderer!}
+        bounds={bounds!}
+        spatialGrid={spatialGrid!}
+        zoomStateRef={zoomStateRef}
+        undoRedo={undoRedo}
         onLoadSuccess={(sessionName) => {
           console.log(`Session "${sessionName}" loaded successfully`);
           // Trigger UI refresh to update controls with loaded configuration

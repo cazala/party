@@ -166,13 +166,24 @@ export class System {
 
   reset(): void {
     this.pause();
+    // Ensure animation frame is properly cancelled
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
     this.particles = [];
     this.lastTime = 0;
+    // Clear FPS tracking data
+    this.fpsFrameTimes = [];
+    this.currentFPS = 0;
   }
 
   clear(): void {
     this.particles = [];
     this.spatialGrid.clear();
+    // Clear FPS tracking data to prevent memory accumulation
+    this.fpsFrameTimes = [];
+    this.currentFPS = 0;
   }
 
   getParticleCount(): number {

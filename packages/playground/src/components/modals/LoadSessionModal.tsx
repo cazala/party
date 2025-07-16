@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { System } from "@party/core";
+import { SpatialGrid, Bounds, Canvas2DRenderer, System } from "@party/core";
 import { SessionManager } from "../../utils/SessionManager";
 import { SessionMetadata } from "../../types/session";
+import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
 import "./Modal.css";
 
 interface LoadSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
   system: System | null;
+  renderer?: Canvas2DRenderer;
+  bounds?: Bounds;
+  spatialGrid?: SpatialGrid;
+  zoomStateRef?: any;
+  undoRedo?: UseUndoRedoReturn;
   onLoadSuccess?: (sessionName: string) => void;
 }
 
@@ -15,6 +21,11 @@ export function LoadSessionModal({
   isOpen,
   onClose,
   system,
+  renderer,
+  bounds,
+  spatialGrid,
+  zoomStateRef,
+  undoRedo,
   onLoadSuccess,
 }: LoadSessionModalProps) {
   const [sessions, setSessions] = useState<SessionMetadata[]>([]);
@@ -33,7 +44,7 @@ export function LoadSessionModal({
       setDeleteConfirm(null);
       setEditingSession(null);
       setEditName("");
-      
+
       // Pause system when modal opens
       if (system) {
         setWasPlayingBeforeModal(system.isPlaying);
@@ -98,7 +109,15 @@ export function LoadSessionModal({
     setError("");
 
     try {
-      const result = SessionManager.loadSession(system, sessionName);
+      const result = SessionManager.loadSession(
+        system,
+        sessionName,
+        renderer,
+        bounds,
+        spatialGrid,
+        zoomStateRef,
+        undoRedo
+      );
 
       if (result.success) {
         onLoadSuccess?.(sessionName);
@@ -290,6 +309,7 @@ export function LoadSessionModal({
                         <div className="session-name">{session.name}</div>
                         <div className="session-meta">
                           {session.particleCount} particles •{" "}
+                          {session.camera.zoom.toFixed(2)}x zoom •{" "}
                           {formatDate(session.timestamp)}
                         </div>
                       </>

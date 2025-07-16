@@ -298,4 +298,11 @@ export class Behavior implements Force {
       particle.applyForce(avoid);
     }
   }
+
+  /**
+   * Clears the wander map to free up memory from old particle references
+   */
+  clearWanderMap(): void {
+    this.wanderMap = {};
+  }
 }

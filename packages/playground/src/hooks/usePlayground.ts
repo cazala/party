@@ -651,6 +651,8 @@ export function usePlayground(
     interaction: interactionRef.current,
     renderer: rendererRef.current,
     spatialGrid: spatialGridRef.current,
+    zoomStateRef, // Expose zoom state for session loading
+    undoRedo, // Expose undo/redo for session loading
     // Control functions
     play,
     pause,

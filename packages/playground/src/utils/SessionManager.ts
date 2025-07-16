@@ -1,9 +1,12 @@
-import { System, Particle, Vector2D } from "@party/core";
+import { System, Particle, Vector2D, Canvas2DRenderer, Behavior } from "@party/core";
 import {
   SavedSession,
   SerializedParticle,
   SessionMetadata,
 } from "../types/session";
+import { Bounds } from "@party/core";
+import { SpatialGrid } from "@party/core";
+import { UseUndoRedoReturn } from "../hooks/useUndoRedo";
 
 const STORAGE_KEY = "playground-sessions";
 const VERSION = "1.0.0";
@@ -12,7 +15,8 @@ export class SessionManager {
   static saveSession(
     system: System,
     name: string,
-    overwrite: boolean = false
+    overwrite: boolean = false,
+    renderer?: any
   ): { success: boolean; error?: string } {
     try {
       // Get system config
@@ -34,12 +38,26 @@ export class SessionManager {
         })
       );
 
+      // Get camera and zoom data from renderer
+      const camera = renderer
+        ? {
+            x: renderer.getCamera().x,
+            y: renderer.getCamera().y,
+            zoom: renderer.getZoom(),
+          }
+        : {
+            x: 0,
+            y: 0,
+            zoom: 1,
+          };
+
       // Create session object
       const session: SavedSession = {
         name,
         timestamp: Date.now(),
         config,
         particles,
+        camera,
         metadata: {
           particleCount: particles.length,
           version: VERSION,
@@ -79,7 +97,12 @@ export class SessionManager {
 
   static loadSession(
     system: System,
-    name: string
+    name: string,
+    renderer?: Canvas2DRenderer,
+    bounds?: Bounds,
+    spatialGrid?: SpatialGrid,
+    zoomStateRef?: any,
+    undoRedo?: UseUndoRedoReturn
   ): { success: boolean; error?: string } {
     try {
       const sessions = this.getAllSessions();
@@ -91,6 +114,18 @@ export class SessionManager {
 
       // Clear current particles
       system.clear();
+
+      // Clear undo/redo history to prevent memory leaks
+      if (undoRedo) {
+        undoRedo.clearHistory();
+      }
+
+      // Clear behavior wander map to free up old particle references
+      for (const force of system.forces) {
+        if (force instanceof Behavior) {
+          force.clearWanderMap();
+        }
+      }
 
       // Load particles
       const loadedParticles = session.particles.map((serialized) => {
@@ -115,6 +150,33 @@ export class SessionManager {
 
       // Import system config
       system.import(session.config);
+
+      // Restore camera and zoom data if renderer is provided
+      if (renderer) {
+        const camera = session.camera || { x: 0, y: 0, zoom: 1 }; // Backward compatibility
+        renderer.setCamera(camera.x, camera.y);
+        renderer.setZoom(camera.zoom);
+
+        // Also update bounds and spatial grid if provided
+        if (bounds) {
+          bounds.setCamera(camera.x, camera.y, camera.zoom);
+        }
+        if (spatialGrid) {
+          spatialGrid.setCamera(camera.x, camera.y, camera.zoom);
+        }
+
+        // Update zoom state to match loaded camera position
+        if (zoomStateRef && zoomStateRef.current) {
+          zoomStateRef.current.targetZoom = camera.zoom;
+          zoomStateRef.current.targetCameraX = camera.x;
+          zoomStateRef.current.targetCameraY = camera.y;
+          zoomStateRef.current.isAnimating = false;
+          if (zoomStateRef.current.animationId) {
+            cancelAnimationFrame(zoomStateRef.current.animationId);
+            zoomStateRef.current.animationId = null;
+          }
+        }
+      }
 
       return { success: true };
     } catch (error) {
@@ -141,6 +203,7 @@ export class SessionManager {
       name: session.name,
       timestamp: session.timestamp,
       particleCount: session.metadata.particleCount,
+      camera: session.camera || { x: 0, y: 0, zoom: 1 }, // Backward compatibility
     }));
   }
 
