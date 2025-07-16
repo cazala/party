@@ -64,6 +64,7 @@ export class Particle {
 
   clone(): Particle {
     return new Particle({
+      id: this.id, // Preserve the original ID
       position: this.position.clone(),
       velocity: this.velocity.clone(),
       acceleration: this.acceleration.clone(),

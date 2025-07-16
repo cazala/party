@@ -1,4 +1,5 @@
 import { useRef, useCallback } from "react";
+import type React from "react";
 import {
   ParticleSystem,
   Canvas2DRenderer,
@@ -91,7 +92,7 @@ interface UseSpawnerProps {
   getSpawnConfig: () => SpawnConfig;
   onZoom?: (deltaY: number, centerX: number, centerY: number) => void;
   toolMode: ToolMode;
-  undoRedo: UseUndoRedoReturn;
+  undoRedo: React.RefObject<UseUndoRedoReturn>;
 }
 
 export function useInteractions({
@@ -193,10 +194,10 @@ export function useInteractions({
     
     // Record streamed particles for undo
     if (mouseState.streamedParticles.length > 0) {
-      undoRedo.recordSpawnBatch(mouseState.streamedParticles, getIdCounter());
+      undoRedo.current?.recordSpawnBatch(mouseState.streamedParticles, getIdCounter());
       mouseState.streamedParticles = [];
     }
-  }, [undoRedo]);
+  }, []);
 
   // Helper function to get world position from mouse event
   const getWorldPosition = useCallback((e: MouseEvent) => {
@@ -312,10 +313,32 @@ export function useInteractions({
       const mouseState = mouseStateRef.current;
 
       // Handle Ctrl+Z / Cmd+Z for undo functionality
-      if (e.key === "z" && (e.ctrlKey || e.metaKey)) {
-        console.log("Undo triggered, canUndo:", undoRedo.canUndo);
-        e.preventDefault(); // Prevent browser undo
-        undoRedo.undo();
+      if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        const currentUndoRedo = undoRedo.current;
+        if (currentUndoRedo) {
+          console.log("Undo triggered, canUndo:", currentUndoRedo.canUndo, "undoRedo object:", currentUndoRedo);
+          e.preventDefault(); // Prevent browser undo
+          if (currentUndoRedo.canUndo) {
+            currentUndoRedo.undo();
+          } else {
+            console.log("Cannot undo - no actions in history");
+          }
+        }
+        return;
+      }
+
+      // Handle Ctrl+Shift+Z / Cmd+Shift+Z for redo functionality
+      if (e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        const currentUndoRedo = undoRedo.current;
+        if (currentUndoRedo) {
+          console.log("Redo triggered, canRedo:", currentUndoRedo.canRedo);
+          e.preventDefault(); // Prevent browser redo
+          if (currentUndoRedo.canRedo) {
+            currentUndoRedo.redo();
+          } else {
+            console.log("Cannot redo - no actions in redo history");
+          }
+        }
         return;
       }
 
@@ -358,7 +381,7 @@ export function useInteractions({
         }
       }
     },
-    [getSystem, startStreaming, updateVelocityPreview, undoRedo]
+    [getSystem, startStreaming, updateVelocityPreview]
   );
 
   const handleKeyUp = useCallback(
@@ -812,9 +835,9 @@ export function useInteractions({
         // Record removed particles for undo
         if (mouseState.removedParticles.length > 0) {
           if (mouseState.removedParticles.length === 1) {
-            undoRedo.recordRemoveSingle(mouseState.removedParticles[0], getIdCounter());
+            undoRedo.current?.recordRemoveSingle(mouseState.removedParticles[0], getIdCounter());
           } else {
-            undoRedo.recordRemoveBatch(mouseState.removedParticles, getIdCounter());
+            undoRedo.current?.recordRemoveBatch(mouseState.removedParticles, getIdCounter());
           }
           mouseState.removedParticles = [];
         }
@@ -903,7 +926,7 @@ export function useInteractions({
 
       // Record single particle spawn for undo functionality
       console.log("Recording spawn single:", finalParticle.id);
-      undoRedo.recordSpawnSingle(finalParticle, getIdCounter());
+      undoRedo.current?.recordSpawnSingle(finalParticle, getIdCounter());
 
       // Clear preview particle and velocity
       renderer.setPreviewParticle(null, false);
@@ -918,7 +941,7 @@ export function useInteractions({
       mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
       mouseState.velocityModeSize = 0; // Reset velocity mode size
     },
-    [getSystem, getRenderer, stopStreaming, onRightMouseUp, undoRedo, toolMode, handleRemovalClick]
+    [getSystem, getRenderer, stopStreaming, onRightMouseUp, toolMode, handleRemovalClick]
   );
 
   const onMouseLeave = useCallback(() => {

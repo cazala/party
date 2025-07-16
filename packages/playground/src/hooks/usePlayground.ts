@@ -182,6 +182,8 @@ export function usePlayground(
   // Undo/Redo system
   // ---------------------------------------------------------------------------
   const undoRedo = useUndoRedo(() => systemRef.current);
+  const undoRedoRef = useRef(undoRedo);
+  undoRedoRef.current = undoRedo;
 
   // ---------------------------------------------------------------------------
   // Interaction handling (mouse + keyboard)
@@ -196,7 +198,7 @@ export function usePlayground(
     getSpawnConfig: () => spawnConfig,
     onZoom: handleZoom,
     toolMode,
-    undoRedo,
+    undoRedo: undoRedoRef,
   });
 
   // Attach / detach low-level DOM listeners once – they call back into the

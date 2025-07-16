@@ -101,6 +101,12 @@ export function HotkeysModal({ isOpen, onClose }: HotkeysModalProps) {
                 </div>
               </div>
               <div className="hotkey-item">
+                <div className="hotkey-action">Ctrl+Shift+Z / ⌘+Shift+Z</div>
+                <div className="hotkey-description">
+                  Redo last undone action
+                </div>
+              </div>
+              <div className="hotkey-item">
                 <div className="hotkey-action">?</div>
                 <div className="hotkey-description">Open this help modal</div>
               </div>
