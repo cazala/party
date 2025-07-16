@@ -7,6 +7,7 @@ interface SaveSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
   system: System | null;
+  renderer?: any;
   onSaveSuccess?: (sessionName: string) => void;
 }
 
@@ -14,6 +15,7 @@ export function SaveSessionModal({
   isOpen,
   onClose,
   system,
+  renderer,
   onSaveSuccess,
 }: SaveSessionModalProps) {
   const [sessionName, setSessionName] = useState("");
@@ -31,7 +33,7 @@ export function SaveSessionModal({
       setIsLoading(false);
       setShowOverwriteWarning(false);
       setExistingSession(null);
-      
+
       // Pause system when modal opens
       if (system) {
         setWasPlayingBeforeModal(system.isPlaying);
@@ -118,7 +120,8 @@ export function SaveSessionModal({
       const result = SessionManager.saveSession(
         system,
         trimmedName,
-        showOverwriteWarning
+        showOverwriteWarning,
+        renderer
       );
 
       if (result.success) {
@@ -209,8 +212,7 @@ export function SaveSessionModal({
               {error && <div className="modal-error">{error}</div>}
 
               <div className="modal-info">
-                This will save {particleCount} particles and all current
-                settings
+                This will save {particleCount} particles, all current settings.
               </div>
             </div>
           </div>

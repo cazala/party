@@ -27,9 +27,11 @@ interface InitControlsProps {
     particleSize: number;
     radius?: number;
     colorConfig?: InitColorConfig;
+    camera?: { x: number; y: number; zoom: number };
   };
   onParticleSizeChange?: (size: number) => void;
   onColorConfigChange?: (colorConfig: InitColorConfig) => void;
+  getCurrentCamera?: () => { x: number; y: number; zoom: number };
 }
 
 export function InitControls({
@@ -37,6 +39,7 @@ export function InitControls({
   onGetInitConfig,
   onParticleSizeChange,
   onColorConfigChange,
+  getCurrentCamera,
 }: InitControlsProps) {
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
   const [spawnShape, setSpawnShape] = useState<"grid" | "random" | "circle">(
@@ -80,6 +83,7 @@ export function InitControls({
         particleSize,
         radius,
         colorConfig,
+        camera: getCurrentCamera ? getCurrentCamera() : undefined,
       });
       (window as any).__getInitConfig = getConfig;
     }
@@ -91,6 +95,7 @@ export function InitControls({
     particleSize,
     radius,
     colorConfig,
+    getCurrentCamera,
   ]);
 
   const handleSpawnChange = (

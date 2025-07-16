@@ -40,8 +40,10 @@ interface SystemControlsProps {
     particleSize: number;
     radius?: number;
     colorConfig?: InitColorConfig;
+    camera?: { x: number; y: number; zoom: number };
   };
   onSpawnConfigChange?: (config: SpawnConfig) => void;
+  getCurrentCamera?: () => { x: number; y: number; zoom: number };
 }
 
 export function SystemControls({
@@ -52,6 +54,7 @@ export function SystemControls({
   onInitParticles,
   onGetInitConfig,
   onSpawnConfigChange,
+  getCurrentCamera,
 }: SystemControlsProps) {
   const [particleSize, setParticleSize] = useState(10);
   const [initColorConfig, setInitColorConfig] = useState<InitColorConfig>({
@@ -78,6 +81,7 @@ export function SystemControls({
           onGetInitConfig={onGetInitConfig}
           onParticleSizeChange={handleParticleSizeChange}
           onColorConfigChange={handleColorConfigChange}
+          getCurrentCamera={getCurrentCamera}
         />
       </CollapsibleSection>
 

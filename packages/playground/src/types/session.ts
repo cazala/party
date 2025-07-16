@@ -15,6 +15,11 @@ export interface SavedSession {
   timestamp: number;
   config: Config;
   particles: SerializedParticle[];
+  camera: {
+    x: number;
+    y: number;
+    zoom: number;
+  };
   metadata: {
     particleCount: number;
     version: string;
@@ -25,4 +30,9 @@ export interface SessionMetadata {
   name: string;
   timestamp: number;
   particleCount: number;
+  camera: {
+    x: number;
+    y: number;
+    zoom: number;
+  };
 }
