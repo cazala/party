@@ -154,10 +154,6 @@ export class System {
 
   pause(): void {
     this.isPlaying = false;
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
-    }
   }
 
   toggle(): void {
