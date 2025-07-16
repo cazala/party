@@ -6,7 +6,7 @@ import {
   Bounds,
   Collisions,
   Fluid,
-  ParticleSystem,
+  System,
   Config,
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
@@ -34,7 +34,7 @@ import { CollapsibleSection } from "./CollapsibleSection";
 import "./ForcesControls.css";
 
 interface ForcesControlsProps {
-  system: ParticleSystem | null;
+  system: System | null;
   gravity: Gravity | null;
   behavior: Behavior | null;
   bounds: Bounds | null;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ParticleSystem } from "@party/core";
+import { System } from "@party/core";
 import { SessionManager } from "../../utils/SessionManager";
 import { SessionMetadata } from "../../types/session";
 import "./Modal.css";
@@ -7,7 +7,7 @@ import "./Modal.css";
 interface LoadSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  system: ParticleSystem | null;
+  system: System | null;
   onLoadSuccess?: (sessionName: string) => void;
 }
 
@@ -228,7 +228,6 @@ export function LoadSessionModal({
         </div>
 
         <div className="modal-body">
-
           {sessions.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">💾</div>
@@ -355,8 +354,14 @@ export function LoadSessionModal({
             {error ? (
               <div className="modal-error">{error}</div>
             ) : (
-              <div className={`modal-storage-info ${storageInfo.isNearLimit ? "warning" : ""}`}>
-                {storageInfo.sessionCount} session{storageInfo.sessionCount !== 1 ? "s" : ""} • {storageInfo.estimatedSize} used
+              <div
+                className={`modal-storage-info ${
+                  storageInfo.isNearLimit ? "warning" : ""
+                }`}
+              >
+                {storageInfo.sessionCount} session
+                {storageInfo.sessionCount !== 1 ? "s" : ""} •{" "}
+                {storageInfo.estimatedSize} used
                 {storageInfo.isNearLimit && " • Storage space running low"}
               </div>
             )}

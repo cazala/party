@@ -1,7 +1,7 @@
 import { useRef, useCallback } from "react";
 import type React from "react";
 import {
-  ParticleSystem,
+  System,
   Canvas2DRenderer,
   Vector2D,
   Interaction,
@@ -85,7 +85,7 @@ interface MouseState {
 }
 
 interface UseSpawnerProps {
-  getSystem: () => ParticleSystem | null;
+  getSystem: () => System | null;
   getRenderer: () => Canvas2DRenderer | null;
   getCanvas: () => HTMLCanvasElement | null;
   getInteraction: () => Interaction | null;
@@ -326,7 +326,7 @@ export function useInteractions({
   const cancelDragOperation = useCallback(() => {
     const mouseState = mouseStateRef.current;
     const renderer = getRenderer();
-    
+
     if (!renderer) return;
 
     // Clear preview particle and velocity
@@ -431,7 +431,13 @@ export function useInteractions({
         }
       }
     },
-    [getSystem, startStreaming, updateVelocityPreview, getSpawnConfig, cancelDragOperation]
+    [
+      getSystem,
+      startStreaming,
+      updateVelocityPreview,
+      getSpawnConfig,
+      cancelDragOperation,
+    ]
   );
 
   const handleKeyUp = useCallback(

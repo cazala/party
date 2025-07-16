@@ -3,7 +3,7 @@ import {
   Canvas2DRenderer,
   Gravity,
   Particle,
-  ParticleSystem,
+  System,
   Vector2D,
   Bounds,
   Behavior,
@@ -40,7 +40,7 @@ export function usePlayground(
   canvasRef: React.RefObject<HTMLCanvasElement>,
   toolMode: ToolMode = "spawn"
 ) {
-  const systemRef = useRef<ParticleSystem | null>(null);
+  const systemRef = useRef<System | null>(null);
   // Individual force/utility refs – kept outside of React state because the
   // physics engine mutates them on every tick.
   const gravityRef = useRef<Gravity | null>(null);
@@ -269,7 +269,7 @@ export function usePlayground(
     const interaction = new Interaction();
     interactionRef.current = interaction;
 
-    const system = new ParticleSystem({
+    const system = new System({
       width: canvasRef.current?.width || 1200,
       height: canvasRef.current?.height || 800,
       cellSize: DEFAULT_SPATIAL_GRID_CELL_SIZE,

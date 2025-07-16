@@ -1,12 +1,16 @@
-import { ParticleSystem, Particle, Vector2D } from "@party/core";
-import { SavedSession, SerializedParticle, SessionMetadata } from "../types/session";
+import { System, Particle, Vector2D } from "@party/core";
+import {
+  SavedSession,
+  SerializedParticle,
+  SessionMetadata,
+} from "../types/session";
 
 const STORAGE_KEY = "playground-sessions";
 const VERSION = "1.0.0";
 
 export class SessionManager {
   static saveSession(
-    system: ParticleSystem,
+    system: System,
     name: string,
     overwrite: boolean = false
   ): { success: boolean; error?: string } {
@@ -15,15 +19,20 @@ export class SessionManager {
       const config = system.export();
 
       // Serialize particles
-      const particles: SerializedParticle[] = system.particles.map((particle) => ({
-        id: particle.id,
-        position: { x: particle.position.x, y: particle.position.y },
-        velocity: { x: particle.velocity.x, y: particle.velocity.y },
-        acceleration: { x: particle.acceleration.x, y: particle.acceleration.y },
-        mass: particle.mass,
-        size: particle.size,
-        color: particle.color,
-      }));
+      const particles: SerializedParticle[] = system.particles.map(
+        (particle) => ({
+          id: particle.id,
+          position: { x: particle.position.x, y: particle.position.y },
+          velocity: { x: particle.velocity.x, y: particle.velocity.y },
+          acceleration: {
+            x: particle.acceleration.x,
+            y: particle.acceleration.y,
+          },
+          mass: particle.mass,
+          size: particle.size,
+          color: particle.color,
+        })
+      );
 
       // Create session object
       const session: SavedSession = {
@@ -61,15 +70,15 @@ export class SessionManager {
       return { success: true };
     } catch (error) {
       console.error("Failed to save session:", error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
 
   static loadSession(
-    system: ParticleSystem,
+    system: System,
     name: string
   ): { success: boolean; error?: string } {
     try {
@@ -88,12 +97,15 @@ export class SessionManager {
         const particle = new Particle({
           position: new Vector2D(serialized.position.x, serialized.position.y),
           velocity: new Vector2D(serialized.velocity.x, serialized.velocity.y),
-          acceleration: new Vector2D(serialized.acceleration.x, serialized.acceleration.y),
+          acceleration: new Vector2D(
+            serialized.acceleration.x,
+            serialized.acceleration.y
+          ),
           mass: serialized.mass,
           size: serialized.size,
           color: serialized.color,
         });
-        
+
         // Preserve original ID if needed for consistency
         return particle;
       });
@@ -107,9 +119,9 @@ export class SessionManager {
       return { success: true };
     } catch (error) {
       console.error("Failed to load session:", error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -145,14 +157,17 @@ export class SessionManager {
       return { success: true };
     } catch (error) {
       console.error("Failed to delete session:", error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
 
-  static renameSession(oldName: string, newName: string): { success: boolean; error?: string } {
+  static renameSession(
+    oldName: string,
+    newName: string
+  ): { success: boolean; error?: string } {
     try {
       const sessions = this.getAllSessions();
       const sessionIndex = sessions.findIndex((s) => s.name === oldName);
@@ -173,9 +188,9 @@ export class SessionManager {
       return { success: true };
     } catch (error) {
       console.error("Failed to rename session:", error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -184,22 +199,25 @@ export class SessionManager {
     return this.getAllSessions().some((s) => s.name === name);
   }
 
-  static getStorageInfo(): { 
-    sessionCount: number; 
-    estimatedSize: string; 
-    isNearLimit: boolean 
+  static getStorageInfo(): {
+    sessionCount: number;
+    estimatedSize: string;
+    isNearLimit: boolean;
   } {
     const sessions = this.getAllSessions();
     const data = localStorage.getItem(STORAGE_KEY) || "";
     const sizeInBytes = new Blob([data]).size;
     const sizeInKB = Math.round(sizeInBytes / 1024);
-    
+
     // Estimate if we're approaching localStorage limits (usually ~5-10MB)
     const isNearLimit = sizeInBytes > 2 * 1024 * 1024; // 2MB threshold
 
     return {
       sessionCount: sessions.length,
-      estimatedSize: sizeInKB > 1024 ? `${(sizeInKB / 1024).toFixed(1)} MB` : `${sizeInKB} KB`,
+      estimatedSize:
+        sizeInKB > 1024
+          ? `${(sizeInKB / 1024).toFixed(1)} MB`
+          : `${sizeInKB} KB`,
       isNearLimit,
     };
   }

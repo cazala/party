@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { ParticleSystem } from "@party/core";
+import { System } from "@party/core";
 import { SessionManager } from "../../utils/SessionManager";
 import "./Modal.css";
 
 interface SaveSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  system: ParticleSystem | null;
+  system: System | null;
   onSaveSuccess?: (sessionName: string) => void;
 }
 
@@ -80,7 +80,9 @@ export function SaveSessionModal({
 
     // Check for invalid characters
     if (!/^[a-zA-Z0-9\s\-_]+$/.test(trimmedName)) {
-      setError("Session name can only contain letters, numbers, spaces, hyphens, and underscores");
+      setError(
+        "Session name can only contain letters, numbers, spaces, hyphens, and underscores"
+      );
       return;
     }
 
@@ -88,7 +90,7 @@ export function SaveSessionModal({
       if (!showOverwriteWarning) {
         // Show overwrite warning instead of error
         const sessions = SessionManager.getSessionMetadata();
-        const existing = sessions.find(s => s.name === trimmedName);
+        const existing = sessions.find((s) => s.name === trimmedName);
         setExistingSession(existing);
         setShowOverwriteWarning(true);
         setError("");
@@ -101,7 +103,11 @@ export function SaveSessionModal({
     setError("");
 
     try {
-      const result = SessionManager.saveSession(system, trimmedName, showOverwriteWarning);
+      const result = SessionManager.saveSession(
+        system,
+        trimmedName,
+        showOverwriteWarning
+      );
 
       if (result.success) {
         onSaveSuccess?.(trimmedName);
@@ -110,7 +116,9 @@ export function SaveSessionModal({
         setError(result.error || "Failed to save session");
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Unknown error occurred");
+      setError(
+        error instanceof Error ? error.message : "Unknown error occurred"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -134,13 +142,14 @@ export function SaveSessionModal({
 
   const handleConfirmOverwrite = () => {
     setShowOverwriteWarning(false);
-    handleSubmit(new Event('submit') as any);
+    handleSubmit(new Event("submit") as any);
   };
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffInHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const diffInHours =
+      Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
     if (diffInHours < 1) {
       const minutes = Math.floor(diffInHours * 60);
@@ -148,7 +157,8 @@ export function SaveSessionModal({
     } else if (diffInHours < 24) {
       const hours = Math.floor(diffInHours);
       return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
-    } else if (diffInHours < 168) { // 7 days
+    } else if (diffInHours < 168) {
+      // 7 days
       const days = Math.floor(diffInHours / 24);
       return `${days} day${days !== 1 ? "s" : ""} ago`;
     } else {
@@ -185,9 +195,10 @@ export function SaveSessionModal({
                 maxLength={50}
               />
               {error && <div className="modal-error">{error}</div>}
-              
+
               <div className="modal-info">
-                This will save {particleCount} particles and all current settings
+                This will save {particleCount} particles and all current
+                settings
               </div>
             </div>
           </div>
@@ -200,7 +211,9 @@ export function SaveSessionModal({
                     ⚠️ Session Already Exists
                   </div>
                   <div className="modal-warning-content">
-                    A session named "{existingSession.name}" already exists ({existingSession.particleCount} particles, {formatDate(existingSession.timestamp)}).
+                    A session named "{existingSession.name}" already exists (
+                    {existingSession.particleCount} particles,{" "}
+                    {formatDate(existingSession.timestamp)}).
                   </div>
                 </div>
                 <div className="modal-warning-actions">

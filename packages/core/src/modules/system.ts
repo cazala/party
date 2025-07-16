@@ -56,7 +56,7 @@ export interface SystemOptions {
   cellSize?: number;
 }
 
-export class ParticleSystem {
+export class System {
   public particles: Particle[] = [];
   public forces: Force[] = [];
   public spatialGrid: SpatialGrid;
@@ -72,7 +72,7 @@ export class ParticleSystem {
   private fpsMaxSamples: number = 60; // Track last 60 frames
   private currentFPS: number = 0;
 
-  private renderCallback?: (system: ParticleSystem) => void;
+  private renderCallback?: (system: System) => void;
 
   constructor(options: SystemOptions) {
     this.width = options.width;
@@ -231,7 +231,7 @@ export class ParticleSystem {
     }
   }
 
-  setRenderCallback(callback: (system: ParticleSystem) => void): void {
+  setRenderCallback(callback: (system: System) => void): void {
     this.renderCallback = callback;
   }
 

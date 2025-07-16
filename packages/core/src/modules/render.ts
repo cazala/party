@@ -1,5 +1,5 @@
 import { Particle } from "./particle";
-import { ParticleSystem } from "./system";
+import { System } from "./system";
 import { SpatialGrid } from "./spatial-grid";
 import { Vector2D } from "./vector";
 import { calculateDensity, Fluid } from "./forces/fluid";
@@ -53,7 +53,7 @@ export abstract class Renderer {
     this.ctx = ctx;
   }
 
-  abstract render(system: ParticleSystem): void;
+  abstract render(system: System): void;
 
   protected clear(): void {
     this.ctx.save();
@@ -178,7 +178,7 @@ export class Canvas2DRenderer extends Renderer {
     };
   }
 
-  render(system: ParticleSystem): void {
+  render(system: System): void {
     this.clear();
 
     this.ctx.save();
@@ -576,7 +576,7 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.restore();
   }
 
-  private renderDensityCircleAndArrow(system: ParticleSystem): void {
+  private renderDensityCircleAndArrow(system: System): void {
     if (!this.cursorPosition) return;
 
     this.ctx.save();
@@ -639,7 +639,7 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.restore();
   }
 
-  private renderDensityInfoBox(system: ParticleSystem): void {
+  private renderDensityInfoBox(system: System): void {
     if (!this.cursorPosition) return;
 
     this.ctx.save();

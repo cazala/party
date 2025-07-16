@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, Save, FolderOpen } from "lucide-react";
-import { ParticleSystem } from "@party/core";
+import { System } from "@party/core";
 import { ToolMode } from "../hooks/useToolMode";
 
 interface TopBarProps {
-  system: ParticleSystem | null;
+  system: System | null;
   onPlay: () => void;
   onPause: () => void;
   onClear: () => void;
@@ -120,7 +120,12 @@ export function TopBar({
                   toolMode === "spawn" ? "tool-mode-active" : ""
                 }`}
               >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                >
                   <circle cx="6" cy="6" r="3" />
                 </svg>
                 <span>Spawn</span>
@@ -131,8 +136,21 @@ export function TopBar({
                   toolMode === "remove" ? "tool-mode-active" : ""
                 }`}
               >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                  <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1" strokeDasharray="2,2" fill="none" />
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                >
+                  <circle
+                    cx="6"
+                    cy="6"
+                    r="5"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeDasharray="2,2"
+                    fill="none"
+                  />
                 </svg>
                 <span>Remove</span>
               </button>

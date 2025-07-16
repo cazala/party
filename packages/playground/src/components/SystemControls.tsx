@@ -2,7 +2,7 @@ import {
   Canvas2DRenderer,
   SpatialGrid,
   Interaction,
-  ParticleSystem,
+  System,
 } from "@party/core";
 import { InitControls } from "./control-sections/InitControls";
 import {
@@ -21,7 +21,7 @@ interface InitColorConfig {
 }
 
 interface SystemControlsProps {
-  system: ParticleSystem | null;
+  system: System | null;
   renderer: Canvas2DRenderer | null;
   spatialGrid: SpatialGrid | null;
   interaction: Interaction | null;

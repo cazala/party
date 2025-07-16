@@ -1,7 +1,12 @@
 export { Vector2D } from "./modules/vector";
-export { Particle, type ParticleOptions, getIdCounter, setIdCounter } from "./modules/particle";
 export {
-  ParticleSystem,
+  Particle,
+  type ParticleOptions,
+  getIdCounter,
+  setIdCounter,
+} from "./modules/particle";
+export {
+  System,
   type Force as ForceFunction,
   type SystemOptions,
   type Config,

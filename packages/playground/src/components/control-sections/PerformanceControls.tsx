@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import {
   SpatialGrid,
   Canvas2DRenderer,
-  ParticleSystem,
+  System,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
 } from "@party/core";
 
 interface PerformanceControlsProps {
-  system: ParticleSystem | null;
+  system: System | null;
   spatialGrid: SpatialGrid | null;
   renderer: Canvas2DRenderer | null;
 }
@@ -68,18 +68,16 @@ export function PerformanceControls({
     <div className="control-section">
       {/* Performance Metrics - Top Priority */}
       <div className="control-group">
-        <div
-          style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}
-        >
+        <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
           Particles: {particleCount}
         </div>
       </div>
 
       <div className="control-group">
         <div
-          style={{ 
-            fontSize: "12px", 
-            color: fps < 30 ? "#ff9f43" : "var(--color-text-secondary)" 
+          style={{
+            fontSize: "12px",
+            color: fps < 30 ? "#ff9f43" : "var(--color-text-secondary)",
           }}
         >
           FPS: {fps.toFixed(1)}
