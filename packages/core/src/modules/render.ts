@@ -113,7 +113,7 @@ export class Canvas2DRenderer extends Renderer {
   private isDragMode: boolean = false;
   private previewVelocity: Vector2D | null = null;
   private removalPreview: { position: Vector2D; radius: number } | null = null;
-  
+
   // Camera/Zoom properties
   private zoom: number = 1;
   private cameraX: number = 0;
@@ -131,7 +131,9 @@ export class Canvas2DRenderer extends Renderer {
     this.previewVelocity = velocity;
   }
 
-  setRemovalPreview(preview: { position: Vector2D; radius: number } | null): void {
+  setRemovalPreview(
+    preview: { position: Vector2D; radius: number } | null
+  ): void {
     this.removalPreview = preview;
   }
 
@@ -164,7 +166,7 @@ export class Canvas2DRenderer extends Renderer {
   screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
     return {
       x: (screenX - this.cameraX) / this.zoom,
-      y: (screenY - this.cameraY) / this.zoom
+      y: (screenY - this.cameraY) / this.zoom,
     };
   }
 
@@ -172,7 +174,7 @@ export class Canvas2DRenderer extends Renderer {
   worldToScreen(worldX: number, worldY: number): { x: number; y: number } {
     return {
       x: worldX * this.zoom + this.cameraX,
-      y: worldY * this.zoom + this.cameraY
+      y: worldY * this.zoom + this.cameraY,
     };
   }
 
@@ -562,7 +564,7 @@ export class Canvas2DRenderer extends Renderer {
 
           this.ctx.fillStyle = baseColor;
           this.ctx.globalAlpha = alpha;
-          
+
           // Draw cell using world coordinates
           const cellX = minX + col * cellSize;
           const cellY = minY + row * cellSize;
@@ -701,25 +703,34 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.restore();
   }
 
-  private renderRemovalPreview(preview: { position: Vector2D; radius: number }): void {
+  private renderRemovalPreview(preview: {
+    position: Vector2D;
+    radius: number;
+  }): void {
     // The removal preview is rendered within the world coordinate system
     // (after camera transforms are applied), so we use world coordinates
     // but scale the radius to maintain constant screen size
-    
+
     this.ctx.strokeStyle = "white";
     this.ctx.fillStyle = "transparent";
     this.ctx.globalAlpha = 0.8;
-    
+
     // Scale line width and dash pattern to maintain constant screen appearance
     this.ctx.lineWidth = 2 / this.zoom;
     const dashSize = 6 / this.zoom;
     this.ctx.setLineDash([dashSize, dashSize]);
-    
+
     // Convert screen-space radius to world-space radius for rendering
     const worldRadius = preview.radius / this.zoom;
-    
+
     this.ctx.beginPath();
-    this.ctx.arc(preview.position.x, preview.position.y, worldRadius, 0, 2 * Math.PI);
+    this.ctx.arc(
+      preview.position.x,
+      preview.position.y,
+      worldRadius,
+      0,
+      2 * Math.PI
+    );
     this.ctx.stroke();
   }
 }

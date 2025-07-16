@@ -1,4 +1,5 @@
 import { Particle, Vector2D } from "@party/core";
+import { SpawnConfig } from "src/components/control-sections/ParticleSpawnControls";
 
 export const getRandomColor = () => {
   const colors = [
@@ -19,10 +20,10 @@ export const calculateParticleSize = (
   distance: number,
   isDragging: boolean,
   dragThreshold: number,
-  zoomScale: number = 1
+  zoomScale: number = 1,
+  spawnConfig: SpawnConfig
 ) => {
-  const spawnConfig = (window as any).__getSpawnConfig?.();
-  const baseSize = spawnConfig?.particleSize || 10;
+  const baseSize = spawnConfig.defaultSize;
 
   // If user hasn't entered drag mode yet, use default size for small movements
   if (!isDragging && distance < dragThreshold) {

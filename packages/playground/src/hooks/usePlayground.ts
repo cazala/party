@@ -330,7 +330,10 @@ export function usePlayground(
     if (systemRef.current) {
       // Record particles before clearing for undo
       if (systemRef.current.particles.length > 0) {
-        undoRedo.recordSystemClear([...systemRef.current.particles], getIdCounter());
+        undoRedo.recordSystemClear(
+          [...systemRef.current.particles],
+          getIdCounter()
+        );
       }
       systemRef.current.clear();
     }
@@ -442,15 +445,23 @@ export function usePlayground(
         } else {
           // Calculate optimal number of rings to fill the entire radius
           const minSpacing = particleSize * 1.5; // Minimum spacing between particles
-          
+
           // Estimate number of rings needed to distribute particles evenly
-          const estimatedRings = Math.max(1, Math.ceil(Math.sqrt(numParticles / Math.PI)));
-          
+          const estimatedRings = Math.max(
+            1,
+            Math.ceil(Math.sqrt(numParticles / Math.PI))
+          );
+
           let particlesPlaced = 0;
-          
-          for (let ring = 0; ring < estimatedRings && particlesPlaced < numParticles; ring++) {
-            const ringRadius = ring === 0 ? 0 : (radius * (ring + 1)) / estimatedRings;
-            
+
+          for (
+            let ring = 0;
+            ring < estimatedRings && particlesPlaced < numParticles;
+            ring++
+          ) {
+            const ringRadius =
+              ring === 0 ? 0 : (radius * (ring + 1)) / estimatedRings;
+
             // Calculate particles for this ring
             let particlesInRing;
             if (ring === 0) {
@@ -459,19 +470,28 @@ export function usePlayground(
             } else {
               // Calculate based on circumference and remaining particles
               const circumference = 2 * Math.PI * ringRadius;
-              const maxParticlesInRing = Math.max(1, Math.floor(circumference / minSpacing));
-              
+              const maxParticlesInRing = Math.max(
+                1,
+                Math.floor(circumference / minSpacing)
+              );
+
               // Distribute remaining particles among remaining rings
               const remainingRings = estimatedRings - ring;
               const remainingParticles = numParticles - particlesPlaced;
-              const averagePerRing = Math.ceil(remainingParticles / remainingRings);
-              
-              particlesInRing = Math.min(maxParticlesInRing, averagePerRing, remainingParticles);
+              const averagePerRing = Math.ceil(
+                remainingParticles / remainingRings
+              );
+
+              particlesInRing = Math.min(
+                maxParticlesInRing,
+                averagePerRing,
+                remainingParticles
+              );
             }
-            
+
             for (let p = 0; p < particlesInRing; p++) {
               const angle = (2 * Math.PI * p) / particlesInRing;
-              
+
               // Calculate position relative to center
               const x = centerX + ringRadius * Math.cos(angle);
               const y = centerY + ringRadius * Math.sin(angle);
@@ -492,7 +512,7 @@ export function usePlayground(
 
               systemRef.current.addParticle(particle);
               particlesPlaced++;
-              
+
               if (particlesPlaced >= numParticles) break;
             }
           }
@@ -541,15 +561,15 @@ export function usePlayground(
   // exposed globally by the Controls sidebar.
   const resetParticles = useCallback(() => {
     // This will be called with current spawn config from Controls
-    const spawnConfig = (window as any).__getSpawnConfig?.();
-    if (spawnConfig) {
+    const initConfig = (window as any).__getInitConfig?.();
+    if (initConfig) {
       spawnParticles(
-        spawnConfig.numParticles,
-        spawnConfig.shape,
-        spawnConfig.spacing,
-        spawnConfig.particleSize,
-        spawnConfig.dragThreshold,
-        spawnConfig.radius
+        initConfig.numParticles,
+        initConfig.shape,
+        initConfig.spacing,
+        initConfig.particleSize,
+        initConfig.dragThreshold,
+        initConfig.radius
       );
     } else {
       // Fallback to default

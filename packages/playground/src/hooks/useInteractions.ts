@@ -21,26 +21,26 @@ import { UseUndoRedoReturn } from "./useUndoRedo";
 
 /**
  * Custom React hook that handles all mouse and keyboard interactions for the particle playground.
- * 
+ *
  * ## Features:
- * 
+ *
  * ### Mouse Controls:
  * - **Click**: Spawn a single particle at cursor position
  * - **Click & Drag**: Set particle size based on drag distance
  * - **Right Click**: Attract particles to cursor position
  * - **Ctrl/⌘ + Right Click**: Repel particles from cursor position
- * 
+ *
  * ### Keyboard Modifiers:
  * - **Hold Shift + Click**: Stream particles continuously at cursor
  * - **Hold Ctrl/⌘ + Click & Drag**: Set particle direction and speed (velocity mode)
  * - **Delete/Backspace**: Remove the last spawned particle (up to 50 particles tracked)
- * 
+ *
  * ### Advanced Features:
  * - **Mode Switching**: Press Ctrl/⌘ while dragging to switch from size mode to velocity mode
  * - **Particle History**: Tracks up to 50 most recently spawned particles for deletion
  * - **Size Preservation**: Maintains particle size when switching between modes
  * - **Streaming**: Continuous particle spawning with adjustable rate
- * 
+ *
  * @param props - Configuration object containing system accessors
  * @returns Object with mouse event handlers and utility functions
  */
@@ -134,7 +134,6 @@ export function useInteractions({
     removedParticles: [],
   });
 
-
   // Streaming functions
   const startStreaming = useCallback(
     (x: number, y: number, size: number) => {
@@ -150,13 +149,15 @@ export function useInteractions({
 
       // Get spawn config for color and fresh size (in case stream mode needs current values)
       const spawnConfig = getSpawnConfig();
-      const color = spawnConfig.colorMode === "custom" ? spawnConfig.customColor : undefined;
-      const currentSize = spawnConfig.defaultSize; // Use current size from config
+      const color =
+        spawnConfig.colorMode === "custom"
+          ? spawnConfig.customColor
+          : undefined;
 
       // Spawn the first particle immediately at the exact position
       const system = getSystem();
       if (system) {
-        const firstParticle = createParticle(x, y, currentSize, color);
+        const firstParticle = createParticle(x, y, size, color);
         system.addParticle(firstParticle);
         mouseState.streamedParticles.push(firstParticle);
       }
@@ -164,16 +165,19 @@ export function useInteractions({
       // Then start the interval for subsequent particles
       const streamRate = spawnConfig.streamRate || DEFAULT_STREAM_SPAWN_RATE;
       const streamInterval = 1000 / streamRate; // milliseconds between spawns
-      
+
       mouseState.streamInterval = window.setInterval(() => {
         const system = getSystem();
         if (system) {
           const currentSpawnConfig = getSpawnConfig(); // Get fresh config for size, mass, and color updates
-          const color = currentSpawnConfig.colorMode === "custom" ? currentSpawnConfig.customColor : undefined;
+          const color =
+            currentSpawnConfig.colorMode === "custom"
+              ? currentSpawnConfig.customColor
+              : undefined;
           const particle = createParticle(
             mouseState.streamPosition.x,
             mouseState.streamPosition.y,
-            currentSpawnConfig.defaultSize, // Use current size from config instead of frozen value
+            size, // Use the size parameter passed to startStreaming
             color
           );
           system.addParticle(particle);
@@ -191,23 +195,29 @@ export function useInteractions({
       mouseState.streamInterval = null;
     }
     mouseState.isStreaming = false;
-    
+
     // Record streamed particles for undo
     if (mouseState.streamedParticles.length > 0) {
-      undoRedo.current?.recordSpawnBatch(mouseState.streamedParticles, getIdCounter());
+      undoRedo.current?.recordSpawnBatch(
+        mouseState.streamedParticles,
+        getIdCounter()
+      );
       mouseState.streamedParticles = [];
     }
   }, []);
 
   // Helper function to get world position from mouse event
-  const getWorldPosition = useCallback((e: MouseEvent) => {
-    const canvas = getCanvas();
-    const renderer = getRenderer();
-    if (!canvas || !renderer) return { x: 0, y: 0 };
+  const getWorldPosition = useCallback(
+    (e: MouseEvent) => {
+      const canvas = getCanvas();
+      const renderer = getRenderer();
+      if (!canvas || !renderer) return { x: 0, y: 0 };
 
-    const screenPos = getMousePosition(e, canvas);
-    return renderer.screenToWorld(screenPos.x, screenPos.y);
-  }, [getCanvas, getRenderer]);
+      const screenPos = getMousePosition(e, canvas);
+      return renderer.screenToWorld(screenPos.x, screenPos.y);
+    },
+    [getCanvas, getRenderer]
+  );
 
   // Helper function to get preview color based on spawn config and renderer color mode
   const getPreviewColor = useCallback(
@@ -294,7 +304,8 @@ export function useInteractions({
       distance,
       mouseState.isDragging,
       mouseState.dragThreshold,
-      renderer.getZoom()
+      renderer.getZoom(),
+      getSpawnConfig()
     );
     // Store the calculated size for potential mode switching
     mouseState.lastCalculatedSize = size;
@@ -305,7 +316,7 @@ export function useInteractions({
       mouseState.previewColor
     );
     renderer.setPreviewParticle(previewParticle, mouseState.isDragging);
-  }, [getRenderer]);
+  }, [getRenderer, getSpawnConfig]);
 
   // Keyboard event handlers
   const handleKeyDown = useCallback(
@@ -316,12 +327,10 @@ export function useInteractions({
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
         const currentUndoRedo = undoRedo.current;
         if (currentUndoRedo) {
-          console.log("Undo triggered, canUndo:", currentUndoRedo.canUndo, "undoRedo object:", currentUndoRedo);
           e.preventDefault(); // Prevent browser undo
           if (currentUndoRedo.canUndo) {
             currentUndoRedo.undo();
           } else {
-            console.log("Cannot undo - no actions in history");
           }
         }
         return;
@@ -331,12 +340,10 @@ export function useInteractions({
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) {
         const currentUndoRedo = undoRedo.current;
         if (currentUndoRedo) {
-          console.log("Redo triggered, canRedo:", currentUndoRedo.canRedo);
           e.preventDefault(); // Prevent browser redo
           if (currentUndoRedo.canRedo) {
             currentUndoRedo.redo();
           } else {
-            console.log("Cannot redo - no actions in redo history");
           }
         }
         return;
@@ -355,9 +362,18 @@ export function useInteractions({
             distance,
             mouseState.isDragging,
             mouseState.dragThreshold,
-            getRenderer()?.getZoom() || 1
+            getRenderer()?.getZoom() || 1,
+            getSpawnConfig()
           );
           startStreaming(mouseState.startPos.x, mouseState.startPos.y, size);
+          // Store the size for subsequent clicks while SHIFT is held
+          mouseState.activeStreamSize = size;
+          // Clear preview particles when streaming starts
+          const renderer = getRenderer();
+          if (renderer) {
+            renderer.setPreviewParticle(null, false);
+            renderer.setPreviewVelocity(null);
+          }
         }
       }
 
@@ -381,7 +397,7 @@ export function useInteractions({
         }
       }
     },
-    [getSystem, startStreaming, updateVelocityPreview]
+    [getSystem, startStreaming, updateVelocityPreview, getSpawnConfig]
   );
 
   const handleKeyUp = useCallback(
@@ -489,53 +505,59 @@ export function useInteractions({
   }, []);
 
   // Removal mode functions
-  const removeParticlesAtPosition = useCallback((worldPos: { x: number; y: number }) => {
-    const system = getSystem();
-    const renderer = getRenderer();
-    if (!system || !renderer) return;
+  const removeParticlesAtPosition = useCallback(
+    (worldPos: { x: number; y: number }) => {
+      const system = getSystem();
+      const renderer = getRenderer();
+      if (!system || !renderer) return;
 
-    const mouseState = mouseStateRef.current;
-    
-    // Convert screen-space removal radius to world space for collision detection
-    const zoom = renderer.getZoom();
-    const worldRadius = mouseState.removalRadius / zoom;
-    
-    // Find particles within removal radius (including partial overlap)
-    const particlesToRemove = system.particles.filter(particle => {
-      // Skip already marked particles
-      if (particle.mass <= 0) return false;
-      
-      const dx = particle.position.x - worldPos.x;
-      const dy = particle.position.y - worldPos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      // Check if particle overlaps with removal circle
-      // (distance between centers < removal radius + particle radius)
-      return distance < worldRadius + particle.size;
-    });
-    
-    // Track particles before removal and mark for removal using mass = 0 pattern
-    particlesToRemove.forEach(particle => {
-      // Store original particle state for undo (clone to preserve original state)
-      mouseState.removedParticles.push(particle.clone());
-      
-      // Mark particle for removal
-      particle.mass = 0;
-      particle.size = 0; // Immediate visual feedback
-    });
-  }, [getSystem, getRenderer]);
+      const mouseState = mouseStateRef.current;
 
-  const handleRemovalClick = useCallback((e: MouseEvent) => {
-    const mouseState = mouseStateRef.current;
-    const worldPos = getWorldPosition(e);
-    
-    // Start removal mode and reset removed particles tracking
-    mouseState.isRemoving = true;
-    mouseState.removedParticles = [];
-    
-    // Remove particles at click position
-    removeParticlesAtPosition(worldPos);
-  }, [getWorldPosition, removeParticlesAtPosition]);
+      // Convert screen-space removal radius to world space for collision detection
+      const zoom = renderer.getZoom();
+      const worldRadius = mouseState.removalRadius / zoom;
+
+      // Find particles within removal radius (including partial overlap)
+      const particlesToRemove = system.particles.filter((particle) => {
+        // Skip already marked particles
+        if (particle.mass <= 0) return false;
+
+        const dx = particle.position.x - worldPos.x;
+        const dy = particle.position.y - worldPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Check if particle overlaps with removal circle
+        // (distance between centers < removal radius + particle radius)
+        return distance < worldRadius + particle.size;
+      });
+
+      // Track particles before removal and mark for removal using mass = 0 pattern
+      particlesToRemove.forEach((particle) => {
+        // Store original particle state for undo (clone to preserve original state)
+        mouseState.removedParticles.push(particle.clone());
+
+        // Mark particle for removal
+        particle.mass = 0;
+        particle.size = 0; // Immediate visual feedback
+      });
+    },
+    [getSystem, getRenderer]
+  );
+
+  const handleRemovalClick = useCallback(
+    (e: MouseEvent) => {
+      const mouseState = mouseStateRef.current;
+      const worldPos = getWorldPosition(e);
+
+      // Start removal mode and reset removed particles tracking
+      mouseState.isRemoving = true;
+      mouseState.removedParticles = [];
+
+      // Remove particles at click position
+      removeParticlesAtPosition(worldPos);
+    },
+    [getWorldPosition, removeParticlesAtPosition]
+  );
 
   const updateRemovalPreview = useCallback(() => {
     const mouseState = mouseStateRef.current;
@@ -545,8 +567,11 @@ export function useInteractions({
     if (mouseState.removalPreviewActive) {
       // Pass world position and constant screen radius
       renderer.setRemovalPreview({
-        position: new Vector2D(mouseState.currentPos.x, mouseState.currentPos.y),
-        radius: mouseState.removalRadius // This is in screen pixels, renderer will handle conversion
+        position: new Vector2D(
+          mouseState.currentPos.x,
+          mouseState.currentPos.y
+        ),
+        radius: mouseState.removalRadius, // This is in screen pixels, renderer will handle conversion
       });
     } else {
       // Clear removal preview
@@ -592,7 +617,7 @@ export function useInteractions({
 
       // Get spawn config early for use throughout the function
       const spawnConfig = getSpawnConfig();
-      
+
       // Set the size for velocity mode
       if (mouseState.isDragToVelocity) {
         let velocitySize;
@@ -617,11 +642,11 @@ export function useInteractions({
         mouseState.activeVelocitySize = 0;
       }
 
-      // Update threshold from current spawn config
-      const legacySpawnConfig = (window as any).__getSpawnConfig?.();
-      if (legacySpawnConfig?.dragThreshold !== undefined) {
-        mouseState.dragThreshold = legacySpawnConfig.dragThreshold;
-      }
+      // // Update threshold from current spawn config
+      // const legacySpawnConfig = (window as any).__getInitConfig?.();
+      // if (legacySpawnConfig?.dragThreshold !== undefined) {
+      //   mouseState.dragThreshold = legacySpawnConfig.dragThreshold;
+      // }
 
       mouseState.isDown = true;
       mouseState.startPos = pos;
@@ -643,7 +668,6 @@ export function useInteractions({
         } else {
           // Use default size from spawn config for first shift+click
           streamSize = spawnConfig.defaultSize;
-          mouseState.activeStreamSize = streamSize; // Store for subsequent clicks
         }
         startStreaming(pos.x, pos.y, streamSize);
         mouseState.wasStreaming = true; // Mark that we were streaming
@@ -691,18 +715,18 @@ export function useInteractions({
       }
 
       const mouseState = mouseStateRef.current;
-      
+
       // Handle removal mode preview and continuous removal
       if (toolMode === "remove") {
         mouseState.currentPos = worldPos;
         mouseState.removalPreviewActive = true;
         updateRemovalPreview();
-        
+
         // If mouse is down and we're in removal mode, continuously remove particles
         if (mouseState.isRemoving) {
           removeParticlesAtPosition(worldPos);
         }
-        
+
         return;
       }
 
@@ -727,6 +751,11 @@ export function useInteractions({
         // Don't show preview again - user already placed particles via streaming
       }
 
+      // If shift was just released, reset the active stream size
+      if (wasShiftPressed && !mouseState.shiftPressed) {
+        mouseState.activeStreamSize = 0;
+      }
+
       // If shift was just pressed during mouse move, start streaming (ignore CMD in streaming mode)
       if (
         !wasShiftPressed &&
@@ -741,7 +770,8 @@ export function useInteractions({
           distance,
           mouseState.isDragging,
           mouseState.dragThreshold,
-          renderer.getZoom()
+          renderer.getZoom(),
+          getSpawnConfig()
         );
         mouseState.activeStreamSize = size; // Store this size for subsequent clicks
         startStreaming(mouseState.startPos.x, mouseState.startPos.y, size);
@@ -789,8 +819,9 @@ export function useInteractions({
       const currentRenderer = getRenderer();
       const zoomScale = currentRenderer ? currentRenderer.getZoom() : 1;
       const adjustedThreshold = mouseState.dragThreshold / zoomScale;
-      
+
       if (distance >= adjustedThreshold) {
+        // debugger;
         mouseState.isDragging = true;
       }
 
@@ -815,6 +846,7 @@ export function useInteractions({
       toolMode,
       updateRemovalPreview,
       removeParticlesAtPosition,
+      getSpawnConfig,
     ]
   );
 
@@ -827,17 +859,23 @@ export function useInteractions({
       }
 
       const mouseState = mouseStateRef.current;
-      
+
       // Handle removal mode mouse up
       if (toolMode === "remove" && mouseState.isRemoving) {
         mouseState.isRemoving = false;
-        
+
         // Record removed particles for undo
         if (mouseState.removedParticles.length > 0) {
           if (mouseState.removedParticles.length === 1) {
-            undoRedo.current?.recordRemoveSingle(mouseState.removedParticles[0], getIdCounter());
+            undoRedo.current?.recordRemoveSingle(
+              mouseState.removedParticles[0],
+              getIdCounter()
+            );
           } else {
-            undoRedo.current?.recordRemoveBatch(mouseState.removedParticles, getIdCounter());
+            undoRedo.current?.recordRemoveBatch(
+              mouseState.removedParticles,
+              getIdCounter()
+            );
           }
           mouseState.removedParticles = [];
         }
@@ -886,7 +924,7 @@ export function useInteractions({
         if (!mouseState.isDragging) {
           finalSize = spawnConfig.defaultSize;
         }
-        
+
         finalParticle = createParticle(
           mouseState.startPos.x,
           mouseState.startPos.y,
@@ -907,13 +945,14 @@ export function useInteractions({
             distance,
             mouseState.isDragging,
             mouseState.dragThreshold,
-            renderer.getZoom()
+            renderer.getZoom(),
+            getSpawnConfig()
           );
         } else {
           // Use spawn config defaults for click without drag
           finalSize = spawnConfig.defaultSize;
         }
-        
+
         finalParticle = createParticle(
           mouseState.startPos.x,
           mouseState.startPos.y,
@@ -925,7 +964,6 @@ export function useInteractions({
       system.addParticle(finalParticle);
 
       // Record single particle spawn for undo functionality
-      console.log("Recording spawn single:", finalParticle.id);
       undoRedo.current?.recordSpawnSingle(finalParticle, getIdCounter());
 
       // Clear preview particle and velocity
@@ -941,7 +979,15 @@ export function useInteractions({
       mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
       mouseState.velocityModeSize = 0; // Reset velocity mode size
     },
-    [getSystem, getRenderer, stopStreaming, onRightMouseUp, toolMode, handleRemovalClick]
+    [
+      getSystem,
+      getRenderer,
+      stopStreaming,
+      onRightMouseUp,
+      toolMode,
+      handleRemovalClick,
+      getSpawnConfig,
+    ]
   );
 
   const onMouseLeave = useCallback(() => {
@@ -985,7 +1031,7 @@ export function useInteractions({
     }
     // // Remove global keyboard listeners
     document.removeEventListener("keydown", (e) => handleKeyDown(e));
-    document.removeEventListener("keyup", handleKeyUp);
+    document.removeEventListener("keyup", (e) => handleKeyUp(e));
   }, [getCanvas, handleKeyDown, handleKeyUp]);
 
   const setupKeyboardListeners = useCallback(() => {
@@ -997,14 +1043,14 @@ export function useInteractions({
     canvas.style.outline = "none"; // Remove focus outline
 
     // Add global keyboard listeners - these should always work
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("keyup", handleKeyUp);
+    document.addEventListener("keydown", (e) => handleKeyDown(e));
+    document.addEventListener("keyup", (e) => handleKeyUp(e));
   }, [getCanvas, handleKeyDown, handleKeyUp]);
 
   const onWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault(); // Prevent page scroll
-      
+
       const canvas = getCanvas();
       if (!canvas || !onZoom) return;
 

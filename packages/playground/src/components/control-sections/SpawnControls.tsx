@@ -88,7 +88,7 @@ export function SpawnControls({
         radius,
         colorConfig,
       });
-      (window as any).__getSpawnConfig = getConfig;
+      (window as any).__getInitConfig = getConfig;
     }
   }, [
     onGetSpawnConfig,
@@ -124,7 +124,15 @@ export function SpawnControls({
     if (newRadius !== undefined) setRadius(newRadius);
 
     if (onSpawnParticles) {
-      onSpawnParticles(particles, shape, space, size, threshold, rad, colorConfig);
+      onSpawnParticles(
+        particles,
+        shape,
+        space,
+        size,
+        threshold,
+        rad,
+        colorConfig
+      );
     }
   };
 
@@ -249,7 +257,7 @@ export function SpawnControls({
               onChange={(e) => {
                 const newColorConfig = {
                   ...colorConfig,
-                  colorMode: e.target.value as "random" | "custom"
+                  colorMode: e.target.value as "random" | "custom",
                 };
                 setColorConfig(newColorConfig);
                 onColorConfigChange?.(newColorConfig);
@@ -266,7 +274,7 @@ export function SpawnControls({
                 onChange={(e) => {
                   const newColorConfig = {
                     ...colorConfig,
-                    customColor: e.target.value
+                    customColor: e.target.value,
                   };
                   setColorConfig(newColorConfig);
                   onColorConfigChange?.(newColorConfig);
