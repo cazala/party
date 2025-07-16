@@ -93,14 +93,18 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
             <h3>Keyboard Shortcuts</h3>
             <div className="help-list">
               <div className="help-item">
-                <div className="help-action">Ctrl+Z / ⌘+Z</div>
+                <div className="help-action">Ctrl/⌘ + Z</div>
                 <div className="help-description">
                   Undo last action (spawn/remove particles, clear)
                 </div>
               </div>
               <div className="help-item">
-                <div className="help-action">Ctrl+Shift+Z / ⌘+Shift+Z</div>
+                <div className="help-action">Ctrl/⌘ + Shift + Z</div>
                 <div className="help-description">Redo last undone action</div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Shift + Space</div>
+                <div className="help-description">Toggle play/pause</div>
               </div>
               <div className="help-item">
                 <div className="help-action">Escape</div>

@@ -346,6 +346,13 @@ export function useInteractions({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const mouseState = mouseStateRef.current;
+      if (e.key === " " && e.shiftKey) {
+        const system = getSystem();
+        if (system) {
+          system.toggle();
+        }
+        return;
+      }
 
       // Handle Ctrl+Z / Cmd+Z for undo functionality
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
