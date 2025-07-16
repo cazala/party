@@ -322,6 +322,26 @@ export function useInteractions({
     renderer.setPreviewParticle(previewParticle, mouseState.isDragging);
   }, [getRenderer, getSpawnConfig]);
 
+  // Cancel drag operation (ESC key)
+  const cancelDragOperation = useCallback(() => {
+    const mouseState = mouseStateRef.current;
+    const renderer = getRenderer();
+    
+    if (!renderer) return;
+
+    // Clear preview particle and velocity
+    renderer.setPreviewParticle(null, false);
+    renderer.setPreviewVelocity(null);
+
+    // Reset mouse state
+    mouseState.isDown = false;
+    mouseState.isDragging = false;
+    mouseState.isDragToVelocity = false;
+    mouseState.previewColor = "";
+    mouseState.initialVelocity = { x: 0, y: 0 };
+    mouseState.velocityModeSize = 0;
+  }, [getRenderer]);
+
   // Keyboard event handlers
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -349,6 +369,16 @@ export function useInteractions({
             currentUndoRedo.redo();
           } else {
           }
+        }
+        return;
+      }
+
+      // Handle ESC key to cancel drag operations
+      if (e.key === "Escape") {
+        // Only cancel if user is currently dragging
+        if (mouseState.isDown && mouseState.isDragging) {
+          e.preventDefault(); // Prevent any browser ESC behavior
+          cancelDragOperation();
         }
         return;
       }
@@ -401,7 +431,7 @@ export function useInteractions({
         }
       }
     },
-    [getSystem, startStreaming, updateVelocityPreview, getSpawnConfig]
+    [getSystem, startStreaming, updateVelocityPreview, getSpawnConfig, cancelDragOperation]
   );
 
   const handleKeyUp = useCallback(
