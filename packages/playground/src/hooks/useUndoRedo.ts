@@ -83,46 +83,26 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
   }, []);
 
   const recordSpawnSingle = useCallback((particle: Particle, idCounter: number) => {
-    console.log("Recording spawn single in undo system:", particle.id);
-    const system = getSystem();
-    if (!system) return;
-    
-    // Capture system state before the spawn (exclude the particle that was just added)
-    const systemStateBefore = system.particles
-      .filter(p => p.id !== particle.id)
-      .map(serializeParticle);
-    
     const action: UndoAction = {
       type: 'SPAWN_SINGLE',
       timestamp: Date.now(),
       particles: [serializeParticle(particle)],
-      systemStateBefore,
       idCounter,
     };
     addToHistory(action);
-  }, [serializeParticle, addToHistory, getSystem]);
+  }, [serializeParticle, addToHistory]);
 
   const recordSpawnBatch = useCallback((particles: Particle[], idCounter: number) => {
     if (particles.length === 0) return;
-    
-    const system = getSystem();
-    if (!system) return;
-    
-    // Capture system state before the spawn (exclude the particles that were just added)
-    const spawnedIds = new Set(particles.map(p => p.id));
-    const systemStateBefore = system.particles
-      .filter(p => !spawnedIds.has(p.id))
-      .map(serializeParticle);
     
     const action: UndoAction = {
       type: 'SPAWN_BATCH',
       timestamp: Date.now(),
       particles: particles.map(serializeParticle),
-      systemStateBefore,
       idCounter,
     };
     addToHistory(action);
-  }, [serializeParticle, addToHistory, getSystem]);
+  }, [serializeParticle, addToHistory]);
 
   const recordRemoveSingle = useCallback((particle: Particle, idCounter: number) => {
     const action: UndoAction = {
@@ -183,23 +163,13 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
       switch (lastAction.type) {
         case 'SPAWN_SINGLE':
         case 'SPAWN_BATCH':
-          // Restore the complete system state from before the spawn
-          if (lastAction.systemStateBefore) {
-            console.log(`Restoring system state to before spawn (${lastAction.systemStateBefore.length} particles)`);
-            system.particles = lastAction.systemStateBefore.map(deserializeParticle);
-          } else {
-            // Fallback: try to remove the spawned particles individually
-            lastAction.particles.forEach(serializedParticle => {
-              const particle = system.getParticle(serializedParticle.id);
-              console.log(`Trying to remove particle ${serializedParticle.id}:`, particle ? 'found' : 'not found');
-              if (particle) {
-                console.log(`Removing particle ${serializedParticle.id} with mass ${particle.mass}`);
-                system.removeParticle(particle);
-              } else {
-                console.log(`Particle ${serializedParticle.id} not found in system (may have been auto-removed due to mass=0)`);
-              }
-            });
-          }
+          // Remove only the specific particles that were spawned
+          lastAction.particles.forEach(serializedParticle => {
+            const particle = system.getParticle(serializedParticle.id);
+            if (particle) {
+              system.removeParticle(particle);
+            }
+          });
           break;
 
         case 'REMOVE_SINGLE':
@@ -208,7 +178,6 @@ export function useUndoRedo(getSystem: () => ParticleSystem | null): UseUndoRedo
           // Restore the removed particles
           lastAction.particles.forEach(serializedParticle => {
             const particle = deserializeParticle(serializedParticle);
-            console.log(`Restoring particle ${serializedParticle.id} with mass ${particle.mass}`);
             system.addParticle(particle);
           });
           break;
