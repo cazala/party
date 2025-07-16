@@ -110,7 +110,7 @@ export function useInteractions({
     startPos: { x: 0, y: 0 },
     currentPos: { x: 0, y: 0 },
     isDragging: false,
-    dragThreshold: 5,
+    dragThreshold: 10,
     previewColor: "",
     isStreaming: false,
     streamInterval: null,
@@ -300,10 +300,14 @@ export function useInteractions({
     if (!mouseState.isDown || mouseState.isStreaming || !renderer) return;
 
     const distance = getDistance(mouseState.startPos, mouseState.currentPos);
+
+    const zoomScale = renderer.getZoom();
+    const adjustedThreshold = mouseState.dragThreshold / zoomScale;
+
     const size = calculateParticleSize(
       distance,
       mouseState.isDragging,
-      mouseState.dragThreshold,
+      adjustedThreshold,
       renderer.getZoom(),
       getSpawnConfig()
     );
@@ -641,12 +645,6 @@ export function useInteractions({
       if (wasCmdPressedBefore && !mouseState.cmdPressed) {
         mouseState.activeVelocitySize = 0;
       }
-
-      // // Update threshold from current spawn config
-      // const legacySpawnConfig = (window as any).__getInitConfig?.();
-      // if (legacySpawnConfig?.dragThreshold !== undefined) {
-      //   mouseState.dragThreshold = legacySpawnConfig.dragThreshold;
-      // }
 
       mouseState.isDown = true;
       mouseState.startPos = pos;

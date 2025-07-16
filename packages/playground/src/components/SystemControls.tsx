@@ -1,6 +1,14 @@
-import { Canvas2DRenderer, SpatialGrid, Interaction, ParticleSystem } from "@party/core";
-import { SpawnControls } from "./control-sections/SpawnControls";
-import { ParticleSpawnControls, SpawnConfig } from "./control-sections/ParticleSpawnControls";
+import {
+  Canvas2DRenderer,
+  SpatialGrid,
+  Interaction,
+  ParticleSystem,
+} from "@party/core";
+import { InitControls } from "./control-sections/InitControls";
+import {
+  ParticleSpawnControls,
+  SpawnConfig,
+} from "./control-sections/ParticleSpawnControls";
 import { InteractionControls } from "./control-sections/InteractionControls";
 import { RenderControls } from "./control-sections/RenderControls";
 import { PerformanceControls } from "./control-sections/PerformanceControls";
@@ -17,21 +25,19 @@ interface SystemControlsProps {
   renderer: Canvas2DRenderer | null;
   spatialGrid: SpatialGrid | null;
   interaction: Interaction | null;
-  onSpawnParticles?: (
+  onInitParticles?: (
     numParticles: number,
     shape: "grid" | "random" | "circle",
     spacing: number,
     particleSize: number,
-    dragThreshold: number,
     radius?: number,
     colorConfig?: InitColorConfig
   ) => void;
-  onGetSpawnConfig?: () => {
+  onGetInitConfig?: () => {
     numParticles: number;
     shape: "grid" | "random" | "circle";
     spacing: number;
     particleSize: number;
-    dragThreshold: number;
     radius?: number;
     colorConfig?: InitColorConfig;
   };
@@ -43,8 +49,8 @@ export function SystemControls({
   renderer,
   spatialGrid,
   interaction,
-  onSpawnParticles,
-  onGetSpawnConfig,
+  onInitParticles,
+  onGetInitConfig,
   onSpawnConfigChange,
 }: SystemControlsProps) {
   const [particleSize, setParticleSize] = useState(10);
@@ -67,18 +73,15 @@ export function SystemControls({
       </div>
 
       <CollapsibleSection title="Init">
-        <SpawnControls
-          onSpawnParticles={onSpawnParticles}
-          onGetSpawnConfig={onGetSpawnConfig}
+        <InitControls
+          onInitParticles={onInitParticles}
+          onGetInitConfig={onGetInitConfig}
           onParticleSizeChange={handleParticleSizeChange}
           onColorConfigChange={handleColorConfigChange}
         />
       </CollapsibleSection>
 
-      <CollapsibleSection 
-        title="Spawn"
-        tooltip="Click to spawn particles"
-      >
+      <CollapsibleSection title="Spawn" tooltip="Click to spawn particles">
         <ParticleSpawnControls
           onSpawnConfigChange={onSpawnConfigChange}
           initialSize={particleSize}
@@ -98,7 +101,11 @@ export function SystemControls({
       </CollapsibleSection>
 
       <CollapsibleSection title="Performance">
-        <PerformanceControls system={system} spatialGrid={spatialGrid} renderer={renderer} />
+        <PerformanceControls
+          system={system}
+          spatialGrid={spatialGrid}
+          renderer={renderer}
+        />
       </CollapsibleSection>
     </div>
   );

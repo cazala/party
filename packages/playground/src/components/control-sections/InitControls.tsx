@@ -4,7 +4,6 @@ const DEFAULT_SPAWN_NUM_PARTICLES = 100;
 const DEFAULT_SPAWN_SHAPE = "grid";
 const DEFAULT_SPAWN_SPACING = 25;
 const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
-const DEFAULT_DRAG_THRESHOLD = 5;
 const DEFAULT_SPAWN_RADIUS = 100;
 
 interface InitColorConfig {
@@ -12,22 +11,20 @@ interface InitColorConfig {
   customColor: string;
 }
 
-interface SpawnControlsProps {
-  onSpawnParticles?: (
+interface InitControlsProps {
+  onInitParticles?: (
     numParticles: number,
     shape: "grid" | "random" | "circle",
     spacing: number,
     particleSize: number,
-    dragThreshold: number,
     radius?: number,
     colorConfig?: InitColorConfig
   ) => void;
-  onGetSpawnConfig?: () => {
+  onGetInitConfig?: () => {
     numParticles: number;
     shape: "grid" | "random" | "circle";
     spacing: number;
     particleSize: number;
-    dragThreshold: number;
     radius?: number;
     colorConfig?: InitColorConfig;
   };
@@ -35,19 +32,18 @@ interface SpawnControlsProps {
   onColorConfigChange?: (colorConfig: InitColorConfig) => void;
 }
 
-export function SpawnControls({
-  onSpawnParticles,
-  onGetSpawnConfig,
+export function InitControls({
+  onInitParticles,
+  onGetInitConfig,
   onParticleSizeChange,
   onColorConfigChange,
-}: SpawnControlsProps) {
+}: InitControlsProps) {
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
   const [spawnShape, setSpawnShape] = useState<"grid" | "random" | "circle">(
     DEFAULT_SPAWN_SHAPE
   );
   const [spacing, setSpacing] = useState(DEFAULT_SPAWN_SPACING);
   const [particleSize, setParticleSize] = useState(DEFAULT_SPAWN_PARTICLE_SIZE);
-  const [dragThreshold, setDragThreshold] = useState(DEFAULT_DRAG_THRESHOLD);
   const [radius, setRadius] = useState(DEFAULT_SPAWN_RADIUS);
   const [colorConfig, setColorConfig] = useState<InitColorConfig>({
     colorMode: "random",
@@ -55,48 +51,44 @@ export function SpawnControls({
   });
 
   useEffect(() => {
-    if (onSpawnParticles) {
-      onSpawnParticles(
+    if (onInitParticles) {
+      onInitParticles(
         numParticles,
         spawnShape,
         spacing,
         particleSize,
-        dragThreshold,
         radius,
         colorConfig
       );
     }
   }, [
-    onSpawnParticles,
+    onInitParticles,
     numParticles,
     spawnShape,
     spacing,
     particleSize,
-    dragThreshold,
     radius,
     colorConfig,
   ]);
 
   useEffect(() => {
-    if (onGetSpawnConfig) {
+    if (onGetInitConfig) {
       const getConfig = () => ({
         numParticles,
         shape: spawnShape,
         spacing,
         particleSize,
-        dragThreshold,
         radius,
         colorConfig,
       });
       (window as any).__getInitConfig = getConfig;
     }
   }, [
-    onGetSpawnConfig,
+    onGetInitConfig,
     numParticles,
     spawnShape,
     spacing,
     particleSize,
-    dragThreshold,
     radius,
     colorConfig,
   ]);
@@ -106,13 +98,11 @@ export function SpawnControls({
     newShape?: "grid" | "random" | "circle",
     newSpacing?: number,
     newParticleSize?: number,
-    newDragThreshold?: number,
     newRadius?: number
   ) => {
     const particles = newNumParticles ?? numParticles;
     const shape = newShape ?? spawnShape;
     const size = newParticleSize ?? particleSize;
-    const threshold = newDragThreshold ?? dragThreshold;
     const space = Math.max(newSpacing ?? spacing, size * 2);
     const rad = newRadius ?? radius;
 
@@ -120,19 +110,10 @@ export function SpawnControls({
     if (newShape !== undefined) setSpawnShape(newShape);
     if (newSpacing !== undefined) setSpacing(space);
     if (newParticleSize !== undefined) setParticleSize(newParticleSize);
-    if (newDragThreshold !== undefined) setDragThreshold(newDragThreshold);
     if (newRadius !== undefined) setRadius(newRadius);
 
-    if (onSpawnParticles) {
-      onSpawnParticles(
-        particles,
-        shape,
-        space,
-        size,
-        threshold,
-        rad,
-        colorConfig
-      );
+    if (onInitParticles) {
+      onInitParticles(particles, shape, space, size, rad, colorConfig);
     }
   };
 
@@ -234,7 +215,6 @@ export function SpawnControls({
               value={radius}
               onChange={(e) =>
                 handleSpawnChange(
-                  undefined,
                   undefined,
                   undefined,
                   undefined,

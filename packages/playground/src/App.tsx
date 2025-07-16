@@ -24,7 +24,7 @@ function App() {
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [sessionLoadTrigger, setSessionLoadTrigger] = useState(0);
   const { toolMode, setToolMode } = useToolMode();
-  
+
   const {
     system,
     gravity,
@@ -45,10 +45,32 @@ function App() {
   const size = useWindowSize();
 
   useEffect(() => {
-    if (!system || !gravity || !bounds || !behavior || !collisions || !fluid || !interaction || !renderer)
+    if (
+      !system ||
+      !gravity ||
+      !bounds ||
+      !behavior ||
+      !collisions ||
+      !fluid ||
+      !interaction ||
+      !renderer
+    )
       return;
-    system.setSize(size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH, size.height - TOPBAR_HEIGHT);
-  }, [system, gravity, bounds, behavior, collisions, fluid, interaction, renderer, size]);
+    system.setSize(
+      size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH,
+      size.height - TOPBAR_HEIGHT
+    );
+  }, [
+    system,
+    gravity,
+    bounds,
+    behavior,
+    collisions,
+    fluid,
+    interaction,
+    renderer,
+    size,
+  ]);
 
   useEffect(() => {
     if (system) {
@@ -60,14 +82,14 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Open hotkeys modal with '?' key
-      if (e.key === '?' && !isHotkeysModalOpen) {
+      if (e.key === "?" && !isHotkeysModalOpen) {
         e.preventDefault();
         setIsHotkeysModalOpen(true);
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isHotkeysModalOpen]);
 
   return (
@@ -91,13 +113,12 @@ function App() {
             renderer={renderer}
             spatialGrid={spatialGrid}
             interaction={interaction}
-            onSpawnParticles={spawnParticles}
-            onGetSpawnConfig={() => ({
+            onInitParticles={spawnParticles}
+            onGetInitConfig={() => ({
               numParticles: 100,
               shape: "grid" as const,
               spacing: 50,
               particleSize: 10,
-              dragThreshold: 5,
             })}
             onSpawnConfigChange={setSpawnConfig}
           />
@@ -122,12 +143,12 @@ function App() {
           />
         </div>
       </div>
-      
-      <HotkeysModal 
-        isOpen={isHotkeysModalOpen} 
-        onClose={() => setIsHotkeysModalOpen(false)} 
+
+      <HotkeysModal
+        isOpen={isHotkeysModalOpen}
+        onClose={() => setIsHotkeysModalOpen(false)}
       />
-      
+
       <SaveSessionModal
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}

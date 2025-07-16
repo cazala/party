@@ -348,7 +348,6 @@ export function usePlayground(
       shape: "grid" | "random" | "circle",
       spacing: number,
       particleSize: number = 10,
-      _dragThreshold: number = 5,
       radius: number = 100,
       colorConfig?: { colorMode: "random" | "custom"; customColor: string }
     ) => {
@@ -568,12 +567,11 @@ export function usePlayground(
         initConfig.shape,
         initConfig.spacing,
         initConfig.particleSize,
-        initConfig.dragThreshold,
         initConfig.radius
       );
     } else {
       // Fallback to default
-      spawnParticles(100, "grid", 50, 10, 5, 100);
+      spawnParticles(100, "grid", 50, 10, 100);
     }
   }, [spawnParticles]);
 
