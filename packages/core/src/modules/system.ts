@@ -10,6 +10,7 @@ import { Vector2D } from "./vector";
 export interface Force {
   warmup?(particles: Particle[], deltaTime: number): void;
   apply(particle: Particle, spatialGrid: SpatialGrid): void;
+  clear?(): void;
 }
 
 export interface Config {
@@ -176,6 +177,10 @@ export class System {
     // Clear FPS tracking data
     this.fpsFrameTimes = [];
     this.currentFPS = 0;
+    // Clear force-specific caches to prevent memory leaks
+    for (const force of this.forces) {
+      force.clear?.();
+    }
   }
 
   clear(): void {
@@ -184,6 +189,10 @@ export class System {
     // Clear FPS tracking data to prevent memory accumulation
     this.fpsFrameTimes = [];
     this.currentFPS = 0;
+    // Clear force-specific caches to prevent memory leaks
+    for (const force of this.forces) {
+      force.clear?.();
+    }
   }
 
   getParticleCount(): number {

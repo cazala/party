@@ -305,4 +305,11 @@ export class Behavior implements Force {
   clearWanderMap(): void {
     this.wanderMap = {};
   }
+
+  /**
+   * Implements the Force interface clear method
+   */
+  clear(): void {
+    this.clearWanderMap();
+  }
 }

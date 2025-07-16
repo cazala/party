@@ -1,4 +1,4 @@
-import { System, Particle, Vector2D, Canvas2DRenderer, Behavior } from "@party/core";
+import { System, Particle, Vector2D, Canvas2DRenderer } from "@party/core";
 import {
   SavedSession,
   SerializedParticle,
@@ -120,11 +120,9 @@ export class SessionManager {
         undoRedo.clearHistory();
       }
 
-      // Clear behavior wander map to free up old particle references
+      // Clear force-specific caches to free up old particle references
       for (const force of system.forces) {
-        if (force instanceof Behavior) {
-          force.clearWanderMap();
-        }
+        force.clear?.();
       }
 
       // Load particles

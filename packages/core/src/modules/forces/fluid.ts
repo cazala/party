@@ -132,6 +132,17 @@ export class Fluid implements Force {
     this.enabled = enabled;
   }
 
+  clearDensities(): void {
+    this.densities.clear();
+  }
+
+  /**
+   * Implements the Force interface clear method
+   */
+  clear(): void {
+    this.clearDensities();
+  }
+
   warmup(particles: Particle[]) {
     if (!this.enabled) {
       return;
