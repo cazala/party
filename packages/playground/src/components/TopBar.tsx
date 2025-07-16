@@ -143,9 +143,9 @@ export function TopBar({
           {onShowHotkeys && (
             <button
               onClick={onShowHotkeys}
-              className="hotkeys-button"
-              title="Show keyboard shortcuts (Press ? for help)"
-              aria-label="Show keyboard shortcuts"
+              className="help-button"
+              title="Show help and controls (Press ? for help)"
+              aria-label="Show help and controls"
             >
               <svg
                 width="16"

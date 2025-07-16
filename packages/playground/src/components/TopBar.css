@@ -98,7 +98,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.topbar-right .hotkeys-button {
+.topbar-right .help-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,7 +123,7 @@
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-.topbar-right .hotkeys-button:hover {
+.topbar-right .help-button:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
   color: var(--color-text-primary);
@@ -185,12 +185,12 @@
     margin-left: 12px;
   }
 
-  .topbar-right .hotkeys-button {
+  .topbar-right .help-button {
     width: 32px;
     height: 32px;
   }
 
-  .topbar-right .hotkeys-button svg {
+  .topbar-right .help-button svg {
     width: 14px;
     height: 14px;
   }

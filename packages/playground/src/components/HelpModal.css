@@ -1,4 +1,4 @@
-.hotkeys-modal-backdrop {
+.help-modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
@@ -12,7 +12,7 @@
   backdrop-filter: blur(4px);
 }
 
-.hotkeys-modal {
+.help-modal {
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: 12px;
@@ -23,7 +23,7 @@
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
-.hotkeys-modal-header {
+.help-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -32,14 +32,14 @@
   background: #222;
 }
 
-.hotkeys-modal-header h2 {
+.help-modal-header h2 {
   margin: 0;
   color: #fff;
   font-size: 20px;
   font-weight: 600;
 }
 
-.hotkeys-modal-close {
+.help-modal-close {
   background: none;
   border: none;
   color: #aaa;
@@ -50,26 +50,26 @@
   transition: all 0.2s ease;
 }
 
-.hotkeys-modal-close:hover {
+.help-modal-close:hover {
   background: #333;
   color: #fff;
 }
 
-.hotkeys-modal-content {
+.help-modal-content {
   padding: 24px;
   max-height: calc(80vh - 80px);
   overflow-y: auto;
 }
 
-.hotkeys-section {
+.help-section {
   margin-bottom: 28px;
 }
 
-.hotkeys-section:last-child {
+.help-section:last-child {
   margin-bottom: 0;
 }
 
-.hotkeys-section h3 {
+.help-section h3 {
   color: #fff;
   font-size: 16px;
   font-weight: 600;
@@ -78,19 +78,19 @@
   border-bottom: 1px solid #333;
 }
 
-.hotkeys-list {
+.help-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.hotkey-item {
+.help-item {
   display: flex;
   align-items: flex-start;
   gap: 16px;
 }
 
-.hotkey-action {
+.help-action {
   min-width: 160px;
   padding: 8px 12px;
   background: #2a2a2a;
@@ -104,7 +104,7 @@
   flex-shrink: 0;
 }
 
-.hotkey-description {
+.help-description {
   color: #ccc;
   font-size: 14px;
   line-height: 1.5;
@@ -113,48 +113,48 @@
 
 /* Responsive design */
 @media (max-width: 640px) {
-  .hotkeys-modal {
+  .help-modal {
     width: 95%;
     max-height: 90vh;
   }
   
-  .hotkeys-modal-header {
+  .help-modal-header {
     padding: 16px 20px;
   }
   
-  .hotkeys-modal-content {
+  .help-modal-content {
     padding: 20px;
   }
   
-  .hotkey-item {
+  .help-item {
     flex-direction: column;
     gap: 8px;
   }
   
-  .hotkey-action {
+  .help-action {
     min-width: auto;
     width: 100%;
   }
   
-  .hotkey-description {
+  .help-description {
     padding-top: 0;
   }
 }
 
 /* Scrollbar styling */
-.hotkeys-modal-content::-webkit-scrollbar {
+.help-modal-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.hotkeys-modal-content::-webkit-scrollbar-track {
+.help-modal-content::-webkit-scrollbar-track {
   background: #1a1a1a;
 }
 
-.hotkeys-modal-content::-webkit-scrollbar-thumb {
+.help-modal-content::-webkit-scrollbar-thumb {
   background: #444;
   border-radius: 3px;
 }
 
-.hotkeys-modal-content::-webkit-scrollbar-thumb:hover {
+.help-modal-content::-webkit-scrollbar-thumb:hover {
   background: #555;
 }

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { SystemControls } from "./components/SystemControls";
 import { ForcesControls } from "./components/ForcesControls";
 import { TopBar } from "./components/TopBar";
-import { HotkeysModal } from "./components/HotkeysModal";
+import { HelpModal } from "./components/HelpModal";
 import { SaveSessionModal } from "./components/modals/SaveSessionModal";
 import { LoadSessionModal } from "./components/modals/LoadSessionModal";
 import "./styles/index.css";
@@ -19,7 +19,7 @@ const TOPBAR_HEIGHT = 60;
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isHotkeysModalOpen, setIsHotkeysModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [sessionLoadTrigger, setSessionLoadTrigger] = useState(0);
@@ -81,16 +81,16 @@ function App() {
   // Global keyboard shortcut to open hotkeys modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Open hotkeys modal with '?' key
-      if (e.key === "?" && !isHotkeysModalOpen) {
+      // Open help modal with '?' key
+      if (e.key === "?" && !isHelpModalOpen) {
         e.preventDefault();
-        setIsHotkeysModalOpen(true);
+        setIsHelpModalOpen(true);
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isHotkeysModalOpen]);
+  }, [isHelpModalOpen]);
 
   return (
     <div className="app">
@@ -100,7 +100,7 @@ function App() {
         onPause={pause}
         onClear={clear}
         onReset={resetParticles}
-        onShowHotkeys={() => setIsHotkeysModalOpen(true)}
+        onShowHotkeys={() => setIsHelpModalOpen(true)}
         onSave={() => setIsSaveModalOpen(true)}
         onLoad={() => setIsLoadModalOpen(true)}
         toolMode={toolMode}
@@ -144,9 +144,9 @@ function App() {
         </div>
       </div>
 
-      <HotkeysModal
-        isOpen={isHotkeysModalOpen}
-        onClose={() => setIsHotkeysModalOpen(false)}
+      <HelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
       />
 
       <SaveSessionModal
