@@ -23,80 +23,152 @@ import { UseUndoRedoReturn } from "./useUndoRedo";
 
 /**
  * Custom React hook that handles all mouse and keyboard interactions for the particle playground.
+ * 
+ * This hook provides a comprehensive interaction system with support for multiple input modes,
+ * streaming, mass configuration, and advanced features like mode switching and state preservation.
  *
- * ## Features:
+ * ## Core Features:
  *
  * ### Mouse Controls:
- * - **Click**: Spawn a single particle at cursor position
- * - **Click & Drag**: Set particle size based on drag distance
+ * - **Click**: Spawn a single particle at cursor position using configured size and mass
+ * - **Click & Drag**: Set particle size based on drag distance (drag-to-size)
+ * - **Ctrl/⌘ + Click & Drag**: Set particle direction and speed (drag-to-velocity)
  * - **Right Click**: Attract particles to cursor position
  * - **Ctrl/⌘ + Right Click**: Repel particles from cursor position
+ * - **Mouse Wheel/Trackpad Scroll**: Zoom in/out on the simulation
  *
  * ### Keyboard Modifiers:
  * - **Hold Shift + Click**: Stream particles continuously at cursor
- * - **Hold Ctrl/⌘ + Click & Drag**: Set particle direction and speed (velocity mode)
- * - **Delete/Backspace**: Remove the last spawned particle (up to 50 particles tracked)
+ * - **Hold Shift + Click & Drag**: Stream particles with drag-to-size behavior
+ * - **Escape**: Cancel current drag operation
  *
  * ### Advanced Features:
  * - **Mode Switching**: Press Ctrl/⌘ while dragging to switch from size mode to velocity mode
- * - **Particle History**: Tracks up to 50 most recently spawned particles for deletion
- * - **Size Preservation**: Maintains particle size when switching between modes
- * - **Streaming**: Continuous particle spawning with adjustable rate
+ * - **Mass Configuration**: Respects spawn config mass or calculates from size based on interaction type
+ * - **Active Size/Mass Preservation**: Maintains size and mass across multiple stream operations
+ * - **Original Drag Intent Tracking**: Distinguishes between different drag operation types
+ * - **Streaming**: Continuous particle spawning with configurable rate and preserved properties
+ * - **Undo/Redo Integration**: All operations are tracked for undo/redo functionality
  *
- * @param props - Configuration object containing system accessors
- * @returns Object with mouse event handlers and utility functions
+ * ### Mass Calculation Logic:
+ * - **Regular Click**: Uses `spawnConfig.defaultMass`
+ * - **Drag-to-Size**: Uses `calculateMassFromSize(dragSize)`
+ * - **Ctrl+Click+Drag**: Uses `spawnConfig.defaultMass`
+ * - **Click+Drag+Ctrl**: Uses `calculateMassFromSize(dragSize)`
+ * - **Streaming**: Uses preserved mass or falls back to configured mass
+ *
+ * @param props - Configuration object containing system accessors and callbacks
+ * @param props.getSystem - Function to get the current particle system
+ * @param props.getRenderer - Function to get the current renderer
+ * @param props.getCanvas - Function to get the canvas element
+ * @param props.getInteraction - Function to get the interaction system
+ * @param props.getSpawnConfig - Function to get the current spawn configuration
+ * @param props.onZoom - Optional callback for zoom events
+ * @param props.toolMode - Current tool mode
+ * @param props.undoRedo - Reference to undo/redo system
+ * @returns Object with mouse and keyboard event handlers for canvas integration
  */
 
 // Default streaming configuration (used as fallback)
 const DEFAULT_STREAM_SPAWN_RATE = 10; // particles per second
 
+/**
+ * Comprehensive state object that tracks all mouse and keyboard interaction state
+ * for the particle playground. This includes basic mouse tracking, streaming state,
+ * mode switching, and undo/redo tracking.
+ */
 interface MouseState {
+  // === Basic Mouse Interaction State ===
+  /** Whether the mouse button is currently pressed */
   isDown: boolean;
+  /** Position where the mouse button was pressed */
   startPos: { x: number; y: number };
+  /** Current mouse position */
   currentPos: { x: number; y: number };
+  /** Whether the mouse has moved beyond the drag threshold */
   isDragging: boolean;
+  /** Minimum distance required to enter drag mode */
   dragThreshold: number;
+  /** Color used for preview particles */
   previewColor: string;
-  // Streaming state
+
+  // === Streaming State ===
+  /** Whether particles are currently being streamed */
   isStreaming: boolean;
+  /** Interval ID for streaming timer */
   streamInterval: number | null;
+  /** Size of particles being streamed */
   streamSize: number;
+  /** Position where streaming is occurring */
   streamPosition: { x: number; y: number };
+  /** Whether shift key is currently pressed */
   shiftPressed: boolean;
+  /** Whether streaming occurred during this mouse session */
   wasStreaming: boolean;
+  /** Preserved size from drag-to-size operations for subsequent streams */
   activeStreamSize: number;
+  /** Preserved mass from drag-to-size operations for subsequent streams */
   activeStreamMass: number;
-  // Velocity mode state
+
+  // === Velocity Mode State ===
+  /** Whether ctrl/cmd key is currently pressed */
   cmdPressed: boolean;
+  /** Whether currently in drag-to-velocity mode */
   isDragToVelocity: boolean;
+  /** Initial velocity vector for velocity mode */
   initialVelocity: { x: number; y: number };
+  /** Size to use in velocity mode */
   velocityModeSize: number;
+  /** Preserved size for velocity mode operations */
   activeVelocitySize: number;
-  // Track the original intent of the drag operation
+
+  // === Mode Switching State ===
+  /** Tracks the original intent of the drag operation for proper mass calculation */
   originalDragIntent: "size" | "velocity" | null;
-  // Right-click interaction state
-  isRightClicking: boolean;
-  rightClickMode: "attract" | "repel";
-  // Store the last calculated size for mode switching
+  /** Last calculated size for mode switching preservation */
   lastCalculatedSize: number;
-  // Removal mode state
+
+  // === Right-click Interaction State ===
+  /** Whether right mouse button is currently pressed */
+  isRightClicking: boolean;
+  /** Mode for right-click interactions */
+  rightClickMode: "attract" | "repel";
+
+  // === Removal Mode State ===
+  /** Radius for particle removal tool */
   removalRadius: number;
+  /** Whether removal preview is active */
   removalPreviewActive: boolean;
+  /** Whether currently removing particles */
   isRemoving: boolean;
-  // Streaming tracking for undo
+
+  // === Undo/Redo Tracking ===
+  /** Particles created during streaming sessions for undo */
   streamedParticles: any[];
-  // Removal tracking for undo
+  /** Particles removed during removal operations for undo */
   removedParticles: any[];
 }
 
+/**
+ * Props interface for the useInteractions hook, containing all necessary
+ * system accessors and configuration for particle interaction handling.
+ */
 interface UseSpawnerProps {
+  /** Function to get the current particle system instance */
   getSystem: () => System | null;
+  /** Function to get the current renderer instance */
   getRenderer: () => Canvas2DRenderer | null;
+  /** Function to get the canvas element */
   getCanvas: () => HTMLCanvasElement | null;
+  /** Function to get the interaction system instance */
   getInteraction: () => Interaction | null;
+  /** Function to get the current spawn configuration */
   getSpawnConfig: () => SpawnConfig;
+  /** Optional callback for zoom events */
   onZoom?: (deltaY: number, centerX: number, centerY: number) => void;
+  /** Current tool mode */
   toolMode: ToolMode;
+  /** Reference to the undo/redo system */
   undoRedo: React.RefObject<UseUndoRedoReturn>;
 }
 
@@ -141,7 +213,17 @@ export function useInteractions({
     removedParticles: [],
   });
 
-  // Streaming functions
+  // === Streaming System ===
+  
+  /**
+   * Initiates continuous particle streaming at a specified position with given size and mass.
+   * Handles both initial particle spawning and setting up interval-based streaming.
+   * 
+   * @param x - World X coordinate for streaming
+   * @param y - World Y coordinate for streaming
+   * @param size - Size of particles to stream
+   * @param mass - Optional mass for particles (uses configured mass if not provided)
+   */
   const startStreaming = useCallback(
     (x: number, y: number, size: number, mass?: number) => {
       const mouseState = mouseStateRef.current;
@@ -197,6 +279,10 @@ export function useInteractions({
     [getSystem, getSpawnConfig]
   );
 
+  /**
+   * Stops the current streaming session and records all streamed particles for undo.
+   * Clears the streaming interval and resets streaming state.
+   */
   const stopStreaming = useCallback(() => {
     const mouseState = mouseStateRef.current;
     if (mouseState.streamInterval) {
@@ -995,6 +1081,13 @@ export function useInteractions({
 
       let finalParticle;
       const spawnConfig = getSpawnConfig();
+
+      // === Mass Calculation Logic ===
+      // The mass calculation depends on the interaction type and original drag intent:
+      // 1. Regular Click: Uses spawnConfig.defaultMass
+      // 2. Drag-to-Size: Uses calculateMassFromSize(dragSize)
+      // 3. Ctrl+Click+Drag: Uses spawnConfig.defaultMass
+      // 4. Click+Drag+Ctrl: Uses calculateMassFromSize(dragSize)
 
       if (mouseState.isDragToVelocity) {
         // Velocity mode: create particle with the stored size and initial velocity
