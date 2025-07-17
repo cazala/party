@@ -72,6 +72,8 @@ interface MouseState {
   initialVelocity: { x: number; y: number };
   velocityModeSize: number;
   activeVelocitySize: number;
+  // Track the original intent of the drag operation
+  originalDragIntent: "size" | "velocity" | null;
   // Right-click interaction state
   isRightClicking: boolean;
   rightClickMode: "attract" | "repel";
@@ -128,6 +130,7 @@ export function useInteractions({
     initialVelocity: { x: 0, y: 0 },
     velocityModeSize: 0,
     activeVelocitySize: 0,
+    originalDragIntent: null,
     isRightClicking: false,
     rightClickMode: "attract",
     lastCalculatedSize: 10,
@@ -346,6 +349,7 @@ export function useInteractions({
     mouseState.previewColor = "";
     mouseState.initialVelocity = { x: 0, y: 0 };
     mouseState.velocityModeSize = 0;
+    mouseState.originalDragIntent = null;
   }, [getRenderer]);
 
   // Keyboard event handlers
@@ -709,6 +713,8 @@ export function useInteractions({
       mouseState.startPos = pos;
       mouseState.currentPos = pos;
       mouseState.isDragging = false;
+      // Set the original drag intent based on the initial mode
+      mouseState.originalDragIntent = mouseState.isDragToVelocity ? "velocity" : "size";
 
       // Pick appropriate color based on renderer color mode
       mouseState.previewColor = getPreviewColor();
@@ -871,6 +877,7 @@ export function useInteractions({
           // Use the last calculated size from the size preview to preserve the current size
           mouseState.velocityModeSize = mouseState.lastCalculatedSize;
           mouseState.activeVelocitySize = mouseState.lastCalculatedSize; // Store for subsequent clicks
+          // Keep originalDragIntent as "size" since this was a drag-to-size operation that switched to velocity mode
           updateVelocityPreview();
           return;
         } else if (wasCmdPressed && !mouseState.cmdPressed) {
@@ -969,6 +976,7 @@ export function useInteractions({
         mouseState.isDragging = false;
         mouseState.previewColor = "";
         mouseState.wasStreaming = false; // Reset for next interaction
+        mouseState.originalDragIntent = null; // Reset drag intent
         return;
       }
 
@@ -981,6 +989,7 @@ export function useInteractions({
         mouseState.isDragging = false;
         mouseState.previewColor = "";
         mouseState.wasStreaming = false; // Reset for next interaction
+        mouseState.originalDragIntent = null; // Reset drag intent
         return;
       }
 
@@ -989,13 +998,18 @@ export function useInteractions({
 
       if (mouseState.isDragToVelocity) {
         // Velocity mode: create particle with the stored size and initial velocity
-        // Use drag-to-size when dragging, otherwise use spawn config defaults
         let finalSize = mouseState.velocityModeSize;
         let finalMass;
         if (!mouseState.isDragging) {
+          // Simple click in velocity mode - use spawn config defaults
           finalSize = spawnConfig.defaultSize;
           finalMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
+        } else if (mouseState.originalDragIntent === "velocity") {
+          // Drag-to-velocity from a simple click (e.g., cmd+click then drag)
+          // Use spawn config mass even though isDragging is true
+          finalMass = spawnConfig.defaultMass;
         } else {
+          // Drag-to-velocity from a drag-to-size operation (e.g., drag then cmd)
           // Calculate mass from the stored size in velocity mode
           finalMass = calculateMassFromSize(finalSize);
         }
@@ -1065,6 +1079,7 @@ export function useInteractions({
       mouseState.isDragToVelocity = false; // Reset velocity mode
       mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
       mouseState.velocityModeSize = 0; // Reset velocity mode size
+      mouseState.originalDragIntent = null; // Reset drag intent
     },
     [
       getSystem,
@@ -1109,6 +1124,7 @@ export function useInteractions({
     mouseState.isDragToVelocity = false; // Reset velocity mode
     mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
     mouseState.velocityModeSize = 0; // Reset velocity mode size
+    mouseState.originalDragIntent = null; // Reset drag intent
   }, [getRenderer, stopStreaming, getInteraction, updateRemovalPreview]);
 
   const cleanup = useCallback(() => {
