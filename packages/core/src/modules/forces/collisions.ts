@@ -37,10 +37,6 @@ export class Collisions implements Force {
   }
 
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
-    if (!this.enabled) {
-      return;
-    }
-
     // Get nearby particles using spatial grid (check larger radius for collision detection)
     const neighbors = spatialGrid.getParticles(
       particle.position,
@@ -64,6 +60,10 @@ export class Collisions implements Force {
     }
 
     this.events.emit("collision", { particle1, particle2 });
+
+    if (!this.enabled) {
+      return;
+    }
 
     // Calculate collision vector (from particle2 to particle1)
     const collisionVector = particle1.position
