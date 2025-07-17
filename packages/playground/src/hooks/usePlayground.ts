@@ -560,7 +560,8 @@ export function usePlayground(
         initConfig.shape,
         initConfig.spacing,
         initConfig.particleSize,
-        initConfig.radius
+        initConfig.radius,
+        initConfig.colorConfig
       );
     } else {
       // Fallback to default
