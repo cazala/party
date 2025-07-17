@@ -9,7 +9,7 @@ export const DEFAULT_COLLISIONS_ENABLED = true;
 export const DEFAULT_COLLISIONS_EAT = false;
 
 export type CollisionsEvents = {
-  collision: { particle1: Particle; particle2: Particle };
+  collision: { particle1: Particle; particle2: Particle; enabled: boolean };
 };
 
 export interface CollisionsOptions {
@@ -59,7 +59,11 @@ export class Collisions implements Force {
       return;
     }
 
-    this.events.emit("collision", { particle1, particle2 });
+    this.events.emit("collision", {
+      particle1,
+      particle2,
+      enabled: this.enabled,
+    });
 
     if (!this.enabled) {
       return;
