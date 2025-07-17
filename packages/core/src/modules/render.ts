@@ -36,6 +36,9 @@ export abstract class Renderer {
   public densityFieldColor: string;
   public cursorPosition: Vector2D | null;
   protected sensors: Sensors | null;
+  
+  // Trail system properties
+  protected trailImageData: ImageData | null = null;
 
   constructor(options: RenderOptions) {
     this.canvas = options.canvas;
@@ -51,6 +54,7 @@ export abstract class Renderer {
     this.densityFieldColor = "#ffffff";
     this.cursorPosition = null;
     this.sensors = options.sensors ?? null;
+    this.trailImageData = null;
 
     const ctx = this.canvas.getContext("2d");
     if (!ctx) {
@@ -64,23 +68,85 @@ export abstract class Renderer {
   protected clear(): void {
     this.ctx.save();
     
-    // Determine clear alpha based on trail settings
-    let effectiveClearAlpha = this.clearAlpha;
-    
     if (this.sensors && this.sensors.enableTrail) {
-      // Use trail decay as alpha for trail effect
-      effectiveClearAlpha = this.sensors.trailDecay;
+      // Use proper trail decay with color interpolation
+      this.clearWithTrailDecay();
+    } else {
+      // Normal clearing when trail is disabled
+      this.ctx.globalAlpha = this.clearAlpha;
+      this.ctx.fillStyle = this.clearColor;
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
     
-    this.ctx.globalAlpha = effectiveClearAlpha;
-    this.ctx.fillStyle = this.clearColor;
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.restore();
     
     // Apply blur filter if trail diffusion is enabled
     if (this.sensors && this.sensors.enableTrail && this.sensors.trailDiffuse > 0) {
       this.applyBlurFilter(this.sensors.trailDiffuse);
     }
+  }
+  
+  private clearWithTrailDecay(): void {
+    if (!this.sensors) return;
+    
+    const decay = this.sensors.trailDecay;
+    
+    if (decay >= 0.99) {
+      // Near full decay - do normal clear
+      this.ctx.globalAlpha = 1;
+      this.ctx.fillStyle = this.clearColor;
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      return;
+    }
+    
+    // Use pixel-level color interpolation for proper trail decay
+    this.applyTrailDecayToPixels(decay);
+  }
+  
+  private applyTrailDecayToPixels(decay: number): void {
+    try {
+      // Get current canvas image data
+      const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+      const data = imageData.data;
+      
+      // Parse background color (assuming it's in hex format like "#0D0D12")
+      const bgColor = this.parseHexColor(this.clearColor);
+      
+      // Apply trail decay by interpolating each pixel toward background color
+      for (let i = 0; i < data.length; i += 4) {
+        // Get current pixel RGB
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        // Alpha stays the same
+        
+        // Interpolate toward background color
+        data[i] = Math.round(r + (bgColor.r - r) * decay);
+        data[i + 1] = Math.round(g + (bgColor.g - g) * decay);
+        data[i + 2] = Math.round(b + (bgColor.b - b) * decay);
+        // data[i + 3] = alpha, keep unchanged
+      }
+      
+      // Put the modified image data back
+      this.ctx.putImageData(imageData, 0, 0);
+    } catch (error) {
+      // Fallback to alpha blending if pixel manipulation fails
+      this.ctx.globalAlpha = decay;
+      this.ctx.fillStyle = this.clearColor;
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+  }
+  
+  private parseHexColor(hex: string): { r: number; g: number; b: number } {
+    // Remove # if present
+    hex = hex.replace('#', '');
+    
+    // Parse hex to RGB
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    return { r, g, b };
   }
 
   setSize(width: number, height: number): void {
@@ -136,11 +202,27 @@ export abstract class Renderer {
   }
   
   protected applyBlurFilter(diffuse: number): void {
-    // Apply horizontal blur pass
+    // Apply blur filter
     this.ctx.save();
     this.ctx.filter = `blur(${diffuse}px)`;
-    this.ctx.globalCompositeOperation = 'copy';
-    this.ctx.drawImage(this.canvas, 0, 0);
+    this.ctx.globalCompositeOperation = 'source-over';
+    this.ctx.globalAlpha = 1;
+    
+    // Create a temporary canvas to apply blur without affecting original
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = this.canvas.width;
+    tempCanvas.height = this.canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    if (tempCtx) {
+      // Copy current canvas to temp canvas
+      tempCtx.drawImage(this.canvas, 0, 0);
+      
+      // Clear current canvas and draw blurred version
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.drawImage(tempCanvas, 0, 0);
+    }
+    
     this.ctx.restore();
   }
 }

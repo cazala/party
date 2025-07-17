@@ -35,7 +35,7 @@ export class Sensors implements Force {
   }
 
   setTrailDiffuse(trailDiffuse: number): void {
-    this.trailDiffuse = Math.max(0, Math.min(3, Math.round(trailDiffuse)));
+    this.trailDiffuse = Math.max(0, Math.min(10, Math.round(trailDiffuse)));
   }
 
   apply(_particle: Particle, _spatialGrid: SpatialGrid): void {
