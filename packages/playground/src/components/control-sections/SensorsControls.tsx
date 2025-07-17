@@ -86,7 +86,7 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
           <input
             type="range"
             min="0"
-            max="10"
+            max="3"
             step="1"
             value={trailDiffuse}
             disabled={!trailEnabled}

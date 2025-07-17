@@ -4,7 +4,7 @@ import { SpatialGrid } from "../spatial-grid";
 
 // Default constants for Trail
 export const DEFAULT_TRAIL_ENABLED = false;
-export const DEFAULT_TRAIL_DECAY = 0.5;
+export const DEFAULT_TRAIL_DECAY = 0.1;
 export const DEFAULT_TRAIL_DIFFUSE = 1;
 
 export interface SensorsOptions {
@@ -35,7 +35,7 @@ export class Sensors implements Force {
   }
 
   setTrailDiffuse(trailDiffuse: number): void {
-    this.trailDiffuse = Math.max(0, Math.min(10, Math.round(trailDiffuse)));
+    this.trailDiffuse = Math.max(0, Math.min(3, Math.round(trailDiffuse)));
   }
 
   apply(_particle: Particle, _spatialGrid: SpatialGrid): void {

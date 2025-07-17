@@ -36,7 +36,7 @@ export abstract class Renderer {
   public densityFieldColor: string;
   public cursorPosition: Vector2D | null;
   protected sensors: Sensors | null;
-  
+
   // Trail system properties
   protected trailImageData: ImageData | null = null;
 
@@ -67,7 +67,7 @@ export abstract class Renderer {
 
   protected clear(): void {
     this.ctx.save();
-    
+
     if (this.sensors && this.sensors.enableTrail) {
       // Use proper trail decay with color interpolation
       this.clearWithTrailDecay();
@@ -77,41 +77,54 @@ export abstract class Renderer {
       this.ctx.fillStyle = this.clearColor;
       this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
-    
+
     this.ctx.restore();
-    
+
     // Apply blur filter if trail diffusion is enabled
-    if (this.sensors && this.sensors.enableTrail && this.sensors.trailDiffuse > 0) {
+    if (
+      this.sensors &&
+      this.sensors.enableTrail &&
+      this.sensors.trailDiffuse > 0
+    ) {
       this.applyBlurFilter(this.sensors.trailDiffuse);
     }
   }
-  
+
   private clearWithTrailDecay(): void {
     if (!this.sensors) return;
-    
+
     const decay = this.sensors.trailDecay;
-    
-    if (decay >= 0.99) {
+
+    if (decay >= 0.49) {
       // Near full decay - do normal clear
       this.ctx.globalAlpha = 1;
       this.ctx.fillStyle = this.clearColor;
       this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       return;
     }
-    
+
     // Use pixel-level color interpolation for proper trail decay
     this.applyTrailDecayToPixels(decay);
   }
-  
+
   private applyTrailDecayToPixels(decay: number): void {
     try {
       // Get current canvas image data
-      const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+      const imageData = this.ctx.getImageData(
+        0,
+        0,
+        this.canvas.width,
+        this.canvas.height
+      );
       const data = imageData.data;
-      
+
       // Parse background color (assuming it's in hex format like "#0D0D12")
       const bgColor = this.parseHexColor(this.clearColor);
-      
+
+      // For very small decay values, ensure minimum decay step to prevent permanent trails
+      const minDecayStep = 0.01; // Minimum 1% decay per frame
+      const effectiveDecay = Math.max(decay, minDecayStep);
+
       // Apply trail decay by interpolating each pixel toward background color
       for (let i = 0; i < data.length; i += 4) {
         // Get current pixel RGB
@@ -119,33 +132,57 @@ export abstract class Renderer {
         const g = data[i + 1];
         const b = data[i + 2];
         // Alpha stays the same
-        
-        // Interpolate toward background color
-        data[i] = Math.round(r + (bgColor.r - r) * decay);
-        data[i + 1] = Math.round(g + (bgColor.g - g) * decay);
-        data[i + 2] = Math.round(b + (bgColor.b - b) * decay);
-        // data[i + 3] = alpha, keep unchanged
+
+        // Calculate color differences
+        const rDiff = bgColor.r - r;
+        const gDiff = bgColor.g - g;
+        const bDiff = bgColor.b - b;
+
+        // Check if pixel is close to background color
+        const colorDistance =
+          Math.abs(rDiff) + Math.abs(gDiff) + Math.abs(bDiff);
+
+        if (colorDistance < 3) {
+          // If very close to background, snap to background
+          data[i] = bgColor.r;
+          data[i + 1] = bgColor.g;
+          data[i + 2] = bgColor.b;
+        } else {
+          // Interpolate toward background color with enhanced decay for small values
+          let actualDecay = effectiveDecay;
+
+          // For very small user decay values, use a progressive decay system
+          if (decay < 0.1) {
+            // Add a base decay that's proportional to color distance
+            const distanceDecay = Math.min(colorDistance / 255, 0.05);
+            actualDecay = Math.max(decay, distanceDecay);
+          }
+
+          data[i] = Math.round(r + rDiff * actualDecay);
+          data[i + 1] = Math.round(g + gDiff * actualDecay);
+          data[i + 2] = Math.round(b + bDiff * actualDecay);
+        }
       }
-      
+
       // Put the modified image data back
       this.ctx.putImageData(imageData, 0, 0);
     } catch (error) {
       // Fallback to alpha blending if pixel manipulation fails
-      this.ctx.globalAlpha = decay;
+      this.ctx.globalAlpha = Math.max(decay, 0.01);
       this.ctx.fillStyle = this.clearColor;
       this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
   }
-  
+
   private parseHexColor(hex: string): { r: number; g: number; b: number } {
     // Remove # if present
-    hex = hex.replace('#', '');
-    
+    hex = hex.replace("#", "");
+
     // Parse hex to RGB
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
-    
+
     return { r, g, b };
   }
 
@@ -196,33 +233,33 @@ export abstract class Renderer {
   setCursorPosition(position: Vector2D | null): void {
     this.cursorPosition = position;
   }
-  
+
   setSensors(sensors: Sensors | null): void {
     this.sensors = sensors;
   }
-  
+
   protected applyBlurFilter(diffuse: number): void {
     // Apply blur filter
     this.ctx.save();
     this.ctx.filter = `blur(${diffuse}px)`;
-    this.ctx.globalCompositeOperation = 'source-over';
+    this.ctx.globalCompositeOperation = "source-over";
     this.ctx.globalAlpha = 1;
-    
+
     // Create a temporary canvas to apply blur without affecting original
-    const tempCanvas = document.createElement('canvas');
+    const tempCanvas = document.createElement("canvas");
     tempCanvas.width = this.canvas.width;
     tempCanvas.height = this.canvas.height;
-    const tempCtx = tempCanvas.getContext('2d');
-    
+    const tempCtx = tempCanvas.getContext("2d");
+
     if (tempCtx) {
       // Copy current canvas to temp canvas
       tempCtx.drawImage(this.canvas, 0, 0);
-      
+
       // Clear current canvas and draw blurred version
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       this.ctx.drawImage(tempCanvas, 0, 0);
     }
-    
+
     this.ctx.restore();
   }
 }
@@ -415,11 +452,16 @@ export class Canvas2DRenderer extends Renderer {
 
     const renderColor = this.getParticleColor(particle);
 
-    // Add glow effect
-    this.ctx.shadowColor = renderColor;
-    this.ctx.shadowBlur = particle.size * 2;
-    this.ctx.shadowOffsetX = 0;
-    this.ctx.shadowOffsetY = 0;
+    // Only add glow effect if trails are disabled
+    const trailsEnabled = this.sensors && this.sensors.enableTrail;
+
+    if (!trailsEnabled) {
+      // Add glow effect
+      this.ctx.shadowColor = renderColor;
+      this.ctx.shadowBlur = particle.size * 2;
+      this.ctx.shadowOffsetX = 0;
+      this.ctx.shadowOffsetY = 0;
+    }
 
     this.ctx.fillStyle = renderColor;
     this.ctx.beginPath();
@@ -432,11 +474,13 @@ export class Canvas2DRenderer extends Renderer {
     );
     this.ctx.fill();
 
-    // Add inner bright core for more glow effect
-    this.ctx.shadowBlur = 0;
-    this.ctx.fillStyle = renderColor;
-    this.ctx.globalAlpha = 0.8;
-    this.ctx.fill();
+    if (!trailsEnabled) {
+      // Add inner bright core for more glow effect
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = renderColor;
+      this.ctx.globalAlpha = 0.8;
+      this.ctx.fill();
+    }
 
     this.ctx.restore();
   }
@@ -481,11 +525,16 @@ export class Canvas2DRenderer extends Renderer {
       // Normal click mode: render like a regular particle but slightly transparent
       this.ctx.globalAlpha = 0.8;
 
-      // Add subtle glow effect like normal particles
-      this.ctx.shadowColor = particle.color;
-      this.ctx.shadowBlur = particle.size * 1.5;
-      this.ctx.shadowOffsetX = 0;
-      this.ctx.shadowOffsetY = 0;
+      // Only add glow effect if trails are disabled
+      const trailsEnabled = this.sensors && this.sensors.enableTrail;
+
+      if (!trailsEnabled) {
+        // Add subtle glow effect like normal particles
+        this.ctx.shadowColor = particle.color;
+        this.ctx.shadowBlur = particle.size * 1.5;
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
+      }
 
       this.ctx.fillStyle = particle.color;
       this.ctx.beginPath();
@@ -498,10 +547,12 @@ export class Canvas2DRenderer extends Renderer {
       );
       this.ctx.fill();
 
-      // Add inner bright core
-      this.ctx.shadowBlur = 0;
-      this.ctx.globalAlpha = 0.7;
-      this.ctx.fill();
+      if (!trailsEnabled) {
+        // Add inner bright core
+        this.ctx.shadowBlur = 0;
+        this.ctx.globalAlpha = 0.7;
+        this.ctx.fill();
+      }
     }
 
     this.ctx.restore();
