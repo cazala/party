@@ -5,10 +5,19 @@ const DEFAULT_SPAWN_SHAPE = "grid";
 const DEFAULT_SPAWN_SPACING = 25;
 const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
 const DEFAULT_SPAWN_RADIUS = 100;
+const DEFAULT_VELOCITY_SPEED = 0;
+const DEFAULT_VELOCITY_DIRECTION = "random";
+const DEFAULT_VELOCITY_ANGLE = 0;
 
 interface InitColorConfig {
   colorMode: "random" | "custom";
   customColor: string;
+}
+
+interface InitVelocityConfig {
+  speed: number;
+  direction: "random" | "in" | "out" | "custom";
+  angle: number;
 }
 
 interface InitControlsProps {
@@ -18,7 +27,8 @@ interface InitControlsProps {
     spacing: number,
     particleSize: number,
     radius?: number,
-    colorConfig?: InitColorConfig
+    colorConfig?: InitColorConfig,
+    velocityConfig?: InitVelocityConfig
   ) => void;
   onGetInitConfig?: () => {
     numParticles: number;
@@ -27,6 +37,7 @@ interface InitControlsProps {
     particleSize: number;
     radius?: number;
     colorConfig?: InitColorConfig;
+    velocityConfig?: InitVelocityConfig;
     camera?: { x: number; y: number; zoom: number };
   };
   onParticleSizeChange?: (size: number) => void;
@@ -52,6 +63,11 @@ export function InitControls({
     colorMode: "random",
     customColor: "#F8F8F8",
   });
+  const [velocityConfig, setVelocityConfig] = useState<InitVelocityConfig>({
+    speed: DEFAULT_VELOCITY_SPEED,
+    direction: DEFAULT_VELOCITY_DIRECTION,
+    angle: DEFAULT_VELOCITY_ANGLE,
+  });
 
   useEffect(() => {
     if (onInitParticles) {
@@ -61,7 +77,8 @@ export function InitControls({
         spacing,
         particleSize,
         radius,
-        colorConfig
+        colorConfig,
+        velocityConfig
       );
     }
   }, [
@@ -72,6 +89,7 @@ export function InitControls({
     particleSize,
     radius,
     colorConfig,
+    velocityConfig,
   ]);
 
   useEffect(() => {
@@ -83,6 +101,7 @@ export function InitControls({
         particleSize,
         radius,
         colorConfig,
+        velocityConfig,
         camera: getCurrentCamera ? getCurrentCamera() : undefined,
       });
       (window as any).__getInitConfig = getConfig;
@@ -95,6 +114,7 @@ export function InitControls({
     particleSize,
     radius,
     colorConfig,
+    velocityConfig,
     getCurrentCamera,
   ]);
 
@@ -118,7 +138,7 @@ export function InitControls({
     if (newRadius !== undefined) setRadius(newRadius);
 
     if (onInitParticles) {
-      onInitParticles(particles, shape, space, size, rad, colorConfig);
+      onInitParticles(particles, shape, space, size, rad, colorConfig, velocityConfig);
     }
   };
 
@@ -270,6 +290,72 @@ export function InitControls({
           </div>
         </label>
       </div>
+
+      <div className="control-group">
+        <label>
+          Velocity Speed: {velocityConfig.speed}
+          <input
+            type="range"
+            min="0"
+            max="500"
+            step="10"
+            value={velocityConfig.speed}
+            onChange={(e) => {
+              const newVelocityConfig = {
+                ...velocityConfig,
+                speed: parseInt(e.target.value),
+              };
+              setVelocityConfig(newVelocityConfig);
+            }}
+            className="slider"
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Velocity Direction
+          <select
+            value={velocityConfig.direction}
+            onChange={(e) => {
+              const newVelocityConfig = {
+                ...velocityConfig,
+                direction: e.target.value as "random" | "in" | "out" | "custom",
+              };
+              setVelocityConfig(newVelocityConfig);
+            }}
+            className="form-select"
+          >
+            <option value="random">Random</option>
+            <option value="in">In (towards center)</option>
+            <option value="out">Out (from center)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+      </div>
+
+      {velocityConfig.direction === "custom" && (
+        <div className="control-group">
+          <label>
+            Angle: {velocityConfig.angle}°
+            <input
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              value={velocityConfig.angle}
+              onChange={(e) => {
+                const newVelocityConfig = {
+                  ...velocityConfig,
+                  angle: parseInt(e.target.value),
+                };
+                setVelocityConfig(newVelocityConfig);
+              }}
+              className="slider"
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }

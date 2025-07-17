@@ -21,6 +21,12 @@ interface InitColorConfig {
   customColor: string;
 }
 
+interface InitVelocityConfig {
+  speed: number;
+  direction: "random" | "in" | "out" | "custom";
+  angle: number;
+}
+
 interface SystemControlsProps {
   system: System | null;
   renderer: Canvas2DRenderer | null;
@@ -32,7 +38,8 @@ interface SystemControlsProps {
     spacing: number,
     particleSize: number,
     radius?: number,
-    colorConfig?: InitColorConfig
+    colorConfig?: InitColorConfig,
+    velocityConfig?: InitVelocityConfig
   ) => void;
   onGetInitConfig?: () => {
     numParticles: number;
@@ -41,6 +48,7 @@ interface SystemControlsProps {
     particleSize: number;
     radius?: number;
     colorConfig?: InitColorConfig;
+    velocityConfig?: InitVelocityConfig;
     camera?: { x: number; y: number; zoom: number };
   };
   onSpawnConfigChange?: (config: SpawnConfig) => void;

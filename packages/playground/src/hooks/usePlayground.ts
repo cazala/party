@@ -350,7 +350,8 @@ export function usePlayground(
       spacing: number,
       particleSize: number = 10,
       radius: number = 100,
-      colorConfig?: { colorMode: "random" | "custom"; customColor: string }
+      colorConfig?: { colorMode: "random" | "custom"; customColor: string },
+      velocityConfig?: { speed: number; direction: "random" | "in" | "out" | "custom"; angle: number }
     ) => {
       if (!systemRef.current) return;
 
@@ -392,6 +393,43 @@ export function usePlayground(
       const centerX = (-camera.x + canvasWidth / 2) / zoom;
       const centerY = (-camera.y + canvasHeight / 2) / zoom;
 
+      // Helper function to calculate velocity based on configuration
+      const calculateVelocity = (particleX: number, particleY: number) => {
+        if (!velocityConfig || velocityConfig.speed === 0) {
+          return new Vector2D(0, 0);
+        }
+
+        const speed = velocityConfig.speed;
+        let angle = 0;
+
+        switch (velocityConfig.direction) {
+          case "random":
+            angle = Math.random() * 2 * Math.PI;
+            break;
+          case "in":
+            // Point towards center
+            const dx = centerX - particleX;
+            const dy = centerY - particleY;
+            angle = Math.atan2(dy, dx);
+            break;
+          case "out":
+            // Point away from center
+            const dxOut = particleX - centerX;
+            const dyOut = particleY - centerY;
+            angle = Math.atan2(dyOut, dxOut);
+            break;
+          case "custom":
+            // Convert degrees to radians
+            angle = (velocityConfig.angle * Math.PI) / 180;
+            break;
+        }
+
+        return new Vector2D(
+          speed * Math.cos(angle),
+          speed * Math.sin(angle)
+        );
+      };
+
       if (shape === "grid") {
         const particlesPerRow = Math.ceil(Math.sqrt(numParticles));
         const particlesPerCol = Math.ceil(numParticles / particlesPerRow);
@@ -413,7 +451,7 @@ export function usePlayground(
 
           const particle = new Particle({
             position: new Vector2D(x, y),
-            velocity: new Vector2D(0, 0),
+            velocity: calculateVelocity(x, y),
             acceleration: new Vector2D(0, 0),
             mass: mass, // Mass proportional to area
             size: particleSize,
@@ -430,7 +468,7 @@ export function usePlayground(
 
           const particle = new Particle({
             position: new Vector2D(centerX, centerY),
-            velocity: new Vector2D(0, 0),
+            velocity: calculateVelocity(centerX, centerY),
             acceleration: new Vector2D(0, 0),
             mass: mass,
             size: particleSize,
@@ -497,7 +535,7 @@ export function usePlayground(
 
               const particle = new Particle({
                 position: new Vector2D(x, y),
-                velocity: new Vector2D(0, 0),
+                velocity: calculateVelocity(x, y),
                 acceleration: new Vector2D(0, 0),
                 mass: mass, // Mass proportional to area
                 size: particleSize,
@@ -535,7 +573,7 @@ export function usePlayground(
 
           const particle = new Particle({
             position: new Vector2D(x, y),
-            velocity: new Vector2D(0, 0),
+            velocity: calculateVelocity(x, y),
             acceleration: new Vector2D(0, 0),
             mass: mass, // Mass proportional to area
             size: particleSize,
@@ -561,7 +599,8 @@ export function usePlayground(
         initConfig.spacing,
         initConfig.particleSize,
         initConfig.radius,
-        initConfig.colorConfig
+        initConfig.colorConfig,
+        initConfig.velocityConfig
       );
     } else {
       // Fallback to default
