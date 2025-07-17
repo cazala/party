@@ -407,10 +407,8 @@ export function usePlayground(
             (Math.floor(i / particlesPerRow) - particlesPerCol / 2 + 0.5) *
               safeSpacing;
 
-          // Calculate mass based on area like createParticle function
-          const radius = particleSize;
-          const area = Math.PI * radius * radius;
-          const mass = area / 100;
+          // Use configured mass from spawn controls
+          const mass = spawnConfig.defaultMass;
 
           const particle = new Particle({
             position: new Vector2D(x, y),
@@ -427,9 +425,7 @@ export function usePlayground(
         // Circle placement with uniform distribution in concentric rings
         if (numParticles === 1) {
           // Special case: single particle at center
-          const particleRadius = particleSize;
-          const area = Math.PI * particleRadius * particleRadius;
-          const mass = area / 100;
+          const mass = spawnConfig.defaultMass;
 
           const particle = new Particle({
             position: new Vector2D(centerX, centerY),
@@ -495,10 +491,8 @@ export function usePlayground(
               const x = centerX + ringRadius * Math.cos(angle);
               const y = centerY + ringRadius * Math.sin(angle);
 
-              // Calculate mass based on area like createParticle function
-              const particleRadius = particleSize;
-              const area = Math.PI * particleRadius * particleRadius;
-              const mass = area / 100;
+              // Use configured mass from spawn controls
+              const mass = spawnConfig.defaultMass;
 
               const particle = new Particle({
                 position: new Vector2D(x, y),
@@ -535,10 +529,8 @@ export function usePlayground(
             particleSize +
             Math.random() * (worldBottom - worldTop - particleSize * 2);
 
-          // Calculate mass based on area like createParticle function
-          const radius = particleSize;
-          const area = Math.PI * radius * radius;
-          const mass = area / 100;
+          // Use configured mass from spawn controls
+          const mass = spawnConfig.defaultMass;
 
           const particle = new Particle({
             position: new Vector2D(x, y),

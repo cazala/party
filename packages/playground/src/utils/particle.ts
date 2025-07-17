@@ -38,24 +38,47 @@ export const calculateParticleSize = (
   return calculatedSize;
 };
 
+export const calculateParticleMass = (
+  distance: number,
+  isDragging: boolean,
+  dragThreshold: number,
+  zoomScale: number = 1,
+  spawnConfig: SpawnConfig
+) => {
+  // Calculate size first using the existing function
+  const size = calculateParticleSize(distance, isDragging, dragThreshold, zoomScale, spawnConfig);
+  
+  // Convert size to mass using the same formula as createParticle
+  const radius = size;
+  const area = Math.PI * radius * radius;
+  const mass = area / 100; // Use same scale factor as createParticle
+  
+  return mass;
+};
+
 export const createParticle = (
   x: number,
   y: number,
   size: number,
   color?: string,
-  velocity?: { x: number; y: number }
+  velocity?: { x: number; y: number },
+  mass?: number
 ) => {
-  // Make mass proportional to area: mass = π * (radius)² / scale_factor
-  // radius = size (since size IS the radius), scale_factor keeps default reasonable
-  const radius = size;
-  const area = Math.PI * radius * radius;
-  const mass = area / 100; // Use same scale factor as spawnParticles to ensure consistent collision behavior
+  // Use provided mass or calculate from size
+  let finalMass = mass;
+  if (finalMass === undefined) {
+    // Make mass proportional to area: mass = π * (radius)² / scale_factor
+    // radius = size (since size IS the radius), scale_factor keeps default reasonable
+    const radius = size;
+    const area = Math.PI * radius * radius;
+    finalMass = area / 100; // Use same scale factor as spawnParticles to ensure consistent collision behavior
+  }
 
   return new Particle({
     position: new Vector2D(x, y),
     velocity: new Vector2D(velocity?.x || 0, velocity?.y || 0),
     acceleration: new Vector2D(0, 0),
-    mass,
+    mass: finalMass,
     size,
     color: color || getRandomColor(),
   });

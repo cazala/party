@@ -12,6 +12,7 @@ import { getDistance } from "../utils/distance";
 import {
   createParticle,
   calculateParticleSize,
+  calculateParticleMass,
   getRandomColor,
 } from "../utils/particle";
 import { calculateVelocity } from "../utils/velocity";
@@ -63,6 +64,7 @@ interface MouseState {
   shiftPressed: boolean;
   wasStreaming: boolean;
   activeStreamSize: number;
+  activeStreamMass: number;
   // Velocity mode state
   cmdPressed: boolean;
   isDragToVelocity: boolean;
@@ -119,6 +121,7 @@ export function useInteractions({
     shiftPressed: false,
     wasStreaming: false,
     activeStreamSize: 0,
+    activeStreamMass: 0,
     cmdPressed: false,
     isDragToVelocity: false,
     initialVelocity: { x: 0, y: 0 },
@@ -136,7 +139,7 @@ export function useInteractions({
 
   // Streaming functions
   const startStreaming = useCallback(
-    (x: number, y: number, size: number) => {
+    (x: number, y: number, size: number, mass?: number) => {
       const mouseState = mouseStateRef.current;
       if (mouseState.isStreaming) {
         stopStreaming();
@@ -157,7 +160,7 @@ export function useInteractions({
       // Spawn the first particle immediately at the exact position
       const system = getSystem();
       if (system) {
-        const firstParticle = createParticle(x, y, size, color);
+        const firstParticle = createParticle(x, y, size, color, undefined, mass);
         system.addParticle(firstParticle);
         mouseState.streamedParticles.push(firstParticle);
       }
@@ -178,7 +181,9 @@ export function useInteractions({
             mouseState.streamPosition.x,
             mouseState.streamPosition.y,
             size, // Use the size parameter passed to startStreaming
-            color
+            color,
+            undefined, // velocity
+            mass // Use the mass parameter passed to startStreaming
           );
           system.addParticle(particle);
           mouseState.streamedParticles.push(particle);
@@ -406,9 +411,17 @@ export function useInteractions({
             getRenderer()?.getZoom() || 1,
             getSpawnConfig()
           );
-          startStreaming(mouseState.startPos.x, mouseState.startPos.y, size);
-          // Store the size for subsequent clicks while SHIFT is held
+          const mass = calculateParticleMass(
+            distance,
+            mouseState.isDragging,
+            mouseState.dragThreshold,
+            getRenderer()?.getZoom() || 1,
+            getSpawnConfig()
+          );
+          startStreaming(mouseState.startPos.x, mouseState.startPos.y, size, mass);
+          // Store the size and mass for subsequent clicks while SHIFT is held
           mouseState.activeStreamSize = size;
+          mouseState.activeStreamMass = mass;
           // Clear preview particles when streaming starts
           const renderer = getRenderer();
           if (renderer) {
@@ -454,6 +467,7 @@ export function useInteractions({
       if (e.key === "Shift") {
         mouseState.shiftPressed = false;
         mouseState.activeStreamSize = 0; // Reset stream size when shift is released
+        mouseState.activeStreamMass = 0; // Reset stream mass when shift is released
         if (mouseState.isStreaming) {
           stopStreaming();
           mouseState.wasStreaming = true;
@@ -679,9 +693,10 @@ export function useInteractions({
         mouseState.velocityModeSize = velocitySize;
       }
 
-      // If shift was released between interactions, reset the active stream size
+      // If shift was released between interactions, reset the active stream size and mass
       if (wasShiftPressedBefore && !mouseState.shiftPressed) {
         mouseState.activeStreamSize = 0;
+        mouseState.activeStreamMass = 0;
       }
 
       // If cmd was released between interactions, reset the active velocity size
@@ -700,17 +715,21 @@ export function useInteractions({
       // Start streaming if shift is pressed OR if stream mode is enabled in spawn config
       if (mouseState.shiftPressed || spawnConfig.streamMode) {
         let streamSize;
+        let streamMass;
         if (spawnConfig.streamMode) {
           // In stream mode, always use current size from spawn config
           streamSize = spawnConfig.defaultSize;
-        } else if (mouseState.activeStreamSize > 0) {
-          // Use the preserved size from previous drag-to-size (shift+click behavior)
+          streamMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
+        } else if (mouseState.activeStreamSize > 0 && mouseState.activeStreamMass > 0) {
+          // Use the preserved size and mass from previous drag-to-size (shift+click behavior)
           streamSize = mouseState.activeStreamSize;
+          streamMass = mouseState.activeStreamMass;
         } else {
           // Use default size from spawn config for first shift+click
           streamSize = spawnConfig.defaultSize;
+          streamMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
         }
-        startStreaming(pos.x, pos.y, streamSize);
+        startStreaming(pos.x, pos.y, streamSize, streamMass);
         mouseState.wasStreaming = true; // Mark that we were streaming
         return; // Don't show preview when streaming
       }
@@ -792,9 +811,10 @@ export function useInteractions({
         // Don't show preview again - user already placed particles via streaming
       }
 
-      // If shift was just released, reset the active stream size
+      // If shift was just released, reset the active stream size and mass
       if (wasShiftPressed && !mouseState.shiftPressed) {
         mouseState.activeStreamSize = 0;
+        mouseState.activeStreamMass = 0;
       }
 
       // If shift was just pressed during mouse move, start streaming (ignore CMD in streaming mode)
@@ -814,8 +834,16 @@ export function useInteractions({
           renderer.getZoom(),
           getSpawnConfig()
         );
+        const mass = calculateParticleMass(
+          distance,
+          mouseState.isDragging,
+          mouseState.dragThreshold,
+          renderer.getZoom(),
+          getSpawnConfig()
+        );
         mouseState.activeStreamSize = size; // Store this size for subsequent clicks
-        startStreaming(mouseState.startPos.x, mouseState.startPos.y, size);
+        mouseState.activeStreamMass = mass; // Store this mass for subsequent clicks
+        startStreaming(mouseState.startPos.x, mouseState.startPos.y, size, mass);
         mouseState.wasStreaming = true; // Mark that we were streaming
         // Hide the preview particle when streaming starts
         renderer.setPreviewParticle(null, false);
@@ -962,8 +990,15 @@ export function useInteractions({
         // Velocity mode: create particle with the stored size and initial velocity
         // Use drag-to-size when dragging, otherwise use spawn config defaults
         let finalSize = mouseState.velocityModeSize;
+        let finalMass;
         if (!mouseState.isDragging) {
           finalSize = spawnConfig.defaultSize;
+          finalMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
+        } else {
+          // Calculate mass from the stored size in velocity mode
+          const radius = finalSize;
+          const area = Math.PI * radius * radius;
+          finalMass = area / 100; // Same calculation as in createParticle
         }
 
         finalParticle = createParticle(
@@ -971,11 +1006,13 @@ export function useInteractions({
           mouseState.startPos.y,
           finalSize,
           mouseState.previewColor, // Use the same color as preview
-          mouseState.initialVelocity
+          mouseState.initialVelocity,
+          finalMass
         );
       } else {
         // Size mode: create particle with drag-to-size or spawn config defaults
         let finalSize;
+        let finalMass;
         if (mouseState.isDragging) {
           // Use drag-to-size when dragging
           const distance = getDistance(
@@ -989,16 +1026,26 @@ export function useInteractions({
             renderer.getZoom(),
             getSpawnConfig()
           );
+          finalMass = calculateParticleMass(
+            distance,
+            mouseState.isDragging,
+            mouseState.dragThreshold,
+            renderer.getZoom(),
+            getSpawnConfig()
+          );
         } else {
           // Use spawn config defaults for click without drag
           finalSize = spawnConfig.defaultSize;
+          finalMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
         }
 
         finalParticle = createParticle(
           mouseState.startPos.x,
           mouseState.startPos.y,
           finalSize,
-          mouseState.previewColor // Use the same color as preview
+          mouseState.previewColor, // Use the same color as preview
+          undefined, // velocity
+          finalMass
         );
       }
 
