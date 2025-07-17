@@ -2,10 +2,15 @@ import { Particle } from "../particle";
 import { Force } from "../system";
 import { Vector2D } from "../vector";
 import { SpatialGrid } from "../spatial-grid";
+import mitt, { Emitter } from "mitt";
 
 // Default constants for Collisions
 export const DEFAULT_COLLISIONS_ENABLED = true;
 export const DEFAULT_COLLISIONS_EAT = false;
+
+export type CollisionsEvents = {
+  collision: { particle1: Particle; particle2: Particle };
+};
 
 export interface CollisionsOptions {
   enabled?: boolean;
@@ -15,10 +20,12 @@ export interface CollisionsOptions {
 export class Collisions implements Force {
   public enabled: boolean;
   public eat: boolean;
+  public events: Emitter<CollisionsEvents>; // For emitting collision events
 
   constructor(options: CollisionsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_COLLISIONS_ENABLED;
     this.eat = options.eat ?? DEFAULT_COLLISIONS_EAT;
+    this.events = mitt<CollisionsEvents>();
   }
 
   setEnabled(enabled: boolean): void {
@@ -55,6 +62,8 @@ export class Collisions implements Force {
     if (distance >= combinedRadius) {
       return;
     }
+
+    this.events.emit("collision", { particle1, particle2 });
 
     // Calculate collision vector (from particle2 to particle1)
     const collisionVector = particle1.position
