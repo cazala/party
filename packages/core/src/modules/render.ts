@@ -29,8 +29,9 @@ export abstract class Renderer {
   public customColor: string;
   public maxSpeed: number;
   public showSpatialGrid: boolean;
-  public showDensityAtCursor: boolean;
+  public showDensity: boolean;
   public showVelocity: boolean;
+  public densityFieldColor: string;
   public cursorPosition: Vector2D | null;
 
   constructor(options: RenderOptions) {
@@ -42,8 +43,9 @@ export abstract class Renderer {
     this.customColor = options.customColor ?? DEFAULT_RENDER_CUSTOM_COLOR;
     this.maxSpeed = options.maxSpeed ?? DEFAULT_RENDER_MAX_SPEED;
     this.showSpatialGrid = false;
-    this.showDensityAtCursor = false;
+    this.showDensity = false;
     this.showVelocity = false;
+    this.densityFieldColor = "#ffffff";
     this.cursorPosition = null;
 
     const ctx = this.canvas.getContext("2d");
@@ -95,12 +97,16 @@ export abstract class Renderer {
     this.showSpatialGrid = show;
   }
 
-  setShowDensityAtCursor(show: boolean): void {
-    this.showDensityAtCursor = show;
+  setShowDensity(show: boolean): void {
+    this.showDensity = show;
   }
 
   setShowVelocity(show: boolean): void {
     this.showVelocity = show;
+  }
+
+  setDensityFieldColor(color: string): void {
+    this.densityFieldColor = color;
   }
 
   setCursorPosition(position: Vector2D | null): void {
@@ -113,6 +119,7 @@ export class Canvas2DRenderer extends Renderer {
   private isDragMode: boolean = false;
   private previewVelocity: Vector2D | null = null;
   private removalPreview: { position: Vector2D; radius: number } | null = null;
+  private densityFieldFrameCount: number = 0;
 
   // Camera/Zoom properties
   private zoom: number = 1;
@@ -137,8 +144,8 @@ export class Canvas2DRenderer extends Renderer {
     this.removalPreview = preview;
   }
 
-  setShowDensityAtCursor(show: boolean): void {
-    this.showDensityAtCursor = show;
+  setShowDensity(show: boolean): void {
+    this.showDensity = show;
   }
 
   setCursorPosition(position: Vector2D | null): void {
@@ -181,6 +188,9 @@ export class Canvas2DRenderer extends Renderer {
   render(system: System): void {
     this.clear();
 
+    // Render density field first (as background overlay)
+    this.renderDensityField(system);
+
     this.ctx.save();
     this.ctx.globalAlpha = this.globalAlpha;
 
@@ -222,14 +232,14 @@ export class Canvas2DRenderer extends Renderer {
     }
 
     // Render density circle and arrow in world coordinates
-    if (this.showDensityAtCursor && this.cursorPosition) {
+    if (this.showDensity && this.cursorPosition) {
       this.renderDensityCircleAndArrow(system);
     }
 
     this.ctx.restore();
 
     // Render density info box in screen coordinates (fixed position)
-    if (this.showDensityAtCursor && this.cursorPosition) {
+    if (this.showDensity && this.cursorPosition) {
       this.renderDensityInfoBox(system);
     }
   }
@@ -286,6 +296,8 @@ export class Canvas2DRenderer extends Renderer {
   }
 
   private renderParticle(particle: Particle): void {
+    if (this.showDensity) return;
+
     this.ctx.save();
 
     const renderColor = this.getParticleColor(particle);
@@ -477,12 +489,15 @@ export class Canvas2DRenderer extends Renderer {
     // Use a scaling factor to make arrows visible but not too long
     const scaleFactor = 0.1;
     const baseArrowLength = velocityMagnitude * scaleFactor;
-    
+
     // Scale arrow length based on zoom - bigger when zoomed out, but never larger than particle
     const zoomScaledLength = baseArrowLength / this.zoom;
     const maxArrowLength = particle.size * 0.8; // Never bigger than 80% of particle size
     const minArrowLength = Math.max(particle.size * 0.3, 8 / this.zoom); // Minimum length to stay outside particle
-    const arrowLength = Math.max(minArrowLength, Math.min(zoomScaledLength, maxArrowLength, 50)); // Ensure minimum length
+    const arrowLength = Math.max(
+      minArrowLength,
+      Math.min(zoomScaledLength, maxArrowLength, 50)
+    ); // Ensure minimum length
 
     // Start point: at the edge of the particle, not the center
     const startX = particle.position.x + direction.x * particle.size;
@@ -748,6 +763,126 @@ export class Canvas2DRenderer extends Renderer {
       2 * Math.PI
     );
     this.ctx.stroke();
+  }
+
+  private renderDensityField(system: System): void {
+    if (!this.showDensity) return;
+
+    const fluid = system.forces.find(
+      (force) => force instanceof Fluid
+    ) as Fluid;
+    if (!fluid || !fluid.enabled) return;
+
+    // Performance optimization: Update density field every 3 frames
+    this.densityFieldFrameCount++;
+
+    this.ctx.save();
+
+    // Reset transform to work in screen coordinates for ImageData
+    this.ctx.resetTransform();
+
+    // Adaptive sampling resolution based on zoom level
+    const sampleResolution = Math.max(4, Math.floor(this.zoom / 8));
+    const influenceRadius = fluid.influenceRadius;
+
+    // Create ImageData for efficient pixel manipulation
+    const imageData = this.ctx.createImageData(
+      this.canvas.width,
+      this.canvas.height
+    );
+    const data = imageData.data;
+
+    // Parse hex color to RGB
+    const hexColor = this.densityFieldColor;
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+
+    // Find maximum density for normalization
+    let maxDensity = 0;
+    const densityValues: number[][] = [];
+
+    // Pre-calculate density values and find maximum
+    for (
+      let screenX = 0;
+      screenX < this.canvas.width;
+      screenX += sampleResolution
+    ) {
+      densityValues[screenX] = [];
+      for (
+        let screenY = 0;
+        screenY < this.canvas.height;
+        screenY += sampleResolution
+      ) {
+        const worldPos = this.screenToWorld(screenX, screenY);
+        const worldPoint = new Vector2D(worldPos.x, worldPos.y);
+
+        // Get nearby particles using spatial grid
+        const nearbyParticles = system.spatialGrid.getParticles(
+          worldPoint,
+          influenceRadius
+        );
+
+        // Calculate density at this point
+        const density = calculateDensity(
+          worldPoint,
+          influenceRadius,
+          nearbyParticles
+        );
+        densityValues[screenX][screenY] = density;
+        maxDensity = Math.max(maxDensity, density);
+      }
+    }
+
+    // Render density field using ImageData
+    for (
+      let screenX = 0;
+      screenX < this.canvas.width;
+      screenX += sampleResolution
+    ) {
+      for (
+        let screenY = 0;
+        screenY < this.canvas.height;
+        screenY += sampleResolution
+      ) {
+        const density = densityValues[screenX][screenY];
+
+        if (density > 0) {
+          // Normalize density to [0, 1] range
+          const normalizedDensity = Math.min(density / (maxDensity * 0.5), 1);
+          const alpha = Math.floor(normalizedDensity * 255);
+
+          // Fill a block of pixels for the sample resolution
+          for (
+            let dx = 0;
+            dx < sampleResolution && screenX + dx < this.canvas.width;
+            dx++
+          ) {
+            for (
+              let dy = 0;
+              dy < sampleResolution && screenY + dy < this.canvas.height;
+              dy++
+            ) {
+              const pixelX = screenX + dx;
+              const pixelY = screenY + dy;
+              const index = (pixelY * this.canvas.width + pixelX) * 4;
+
+              if (index < data.length) {
+                data[index] = r; // Red
+                data[index + 1] = g; // Green
+                data[index + 2] = b; // Blue
+                data[index + 3] = alpha; // Alpha
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Apply the density field to the canvas
+    this.ctx.putImageData(imageData, 0, 0);
+
+    this.ctx.restore();
   }
 }
 

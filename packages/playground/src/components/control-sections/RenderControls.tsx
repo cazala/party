@@ -15,13 +15,15 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
   const [showDensity, setShowDensity] = useState(true);
   const [showVelocity, setShowVelocity] = useState(true);
+  const [densityFieldColor, setDensityFieldColor] = useState("#FF6B35");
 
   useEffect(() => {
     if (renderer) {
       setColorMode(renderer.colorMode);
       setCustomColor(renderer.customColor);
-      setShowDensity(renderer.showDensityAtCursor);
+      setShowDensity(renderer.showDensity);
       setShowVelocity(renderer.showVelocity);
+      setDensityFieldColor(renderer.densityFieldColor);
     }
   }, [renderer, fluid]);
 
@@ -42,7 +44,7 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
   const handleShowDensityChange = (show: boolean) => {
     setShowDensity(show);
     if (renderer) {
-      renderer.setShowDensityAtCursor(show);
+      renderer.setShowDensity(show);
     }
   };
 
@@ -50,6 +52,13 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
     setShowVelocity(show);
     if (renderer) {
       renderer.setShowVelocity(show);
+    }
+  };
+
+  const handleDensityFieldColorChange = (color: string) => {
+    setDensityFieldColor(color);
+    if (renderer) {
+      renderer.setDensityFieldColor(color);
     }
   };
 
@@ -84,6 +93,18 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
         <label>
           <input
             type="checkbox"
+            checked={showVelocity}
+            onChange={(e) => handleShowVelocityChange(e.target.checked)}
+            className="checkbox"
+          />
+          Show Velocity
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
             checked={showDensity}
             onChange={(e) => handleShowDensityChange(e.target.checked)}
             className="checkbox"
@@ -92,17 +113,19 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
         </label>
       </div>
 
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={showVelocity}
-            onChange={(e) => handleShowVelocityChange(e.target.checked)}
-            className="checkbox"
-          />
-          Show Velocity
-        </label>
-      </div>
+      {showDensity && (
+        <div className="control-group">
+          <label>
+            Density Field Color
+            <input
+              type="color"
+              value={densityFieldColor}
+              onChange={(e) => handleDensityFieldColorChange(e.target.value)}
+              className="color-picker"
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }

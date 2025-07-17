@@ -3,6 +3,7 @@ import {
   SpatialGrid,
   Interaction,
   System,
+  Fluid,
 } from "@party/core";
 import { InitControls } from "./control-sections/InitControls";
 import {
@@ -101,7 +102,10 @@ export function SystemControls({
       </CollapsibleSection>
 
       <CollapsibleSection title="Render">
-        <RenderControls renderer={renderer} fluid={null} />
+        <RenderControls 
+          renderer={renderer} 
+          fluid={system?.forces.find(force => force instanceof Fluid) as Fluid || null} 
+        />
       </CollapsibleSection>
 
       <CollapsibleSection title="Performance">
