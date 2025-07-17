@@ -16,6 +16,12 @@ export const getRandomColor = () => {
   return colors[(Math.random() * colors.length) | 0];
 };
 
+export const calculateMassFromSize = (size: number): number => {
+  const radius = size;
+  const area = Math.PI * radius * radius;
+  return area / 100; // Scale factor keeps default reasonable
+};
+
 export const calculateParticleSize = (
   distance: number,
   isDragging: boolean,
@@ -48,10 +54,8 @@ export const calculateParticleMass = (
   // Calculate size first using the existing function
   const size = calculateParticleSize(distance, isDragging, dragThreshold, zoomScale, spawnConfig);
   
-  // Convert size to mass using the same formula as createParticle
-  const radius = size;
-  const area = Math.PI * radius * radius;
-  const mass = area / 100; // Use same scale factor as createParticle
+  // Convert size to mass using the utility function
+  const mass = calculateMassFromSize(size);
   
   return mass;
 };
@@ -67,11 +71,7 @@ export const createParticle = (
   // Use provided mass or calculate from size
   let finalMass = mass;
   if (finalMass === undefined) {
-    // Make mass proportional to area: mass = π * (radius)² / scale_factor
-    // radius = size (since size IS the radius), scale_factor keeps default reasonable
-    const radius = size;
-    const area = Math.PI * radius * radius;
-    finalMass = area / 100; // Use same scale factor as spawnParticles to ensure consistent collision behavior
+    finalMass = calculateMassFromSize(size);
   }
 
   return new Particle({

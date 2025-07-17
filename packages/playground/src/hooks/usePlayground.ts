@@ -19,6 +19,7 @@ import { useInteractions } from "./useInteractions";
 import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
 import { ToolMode } from "./useToolMode";
 import { useUndoRedo } from "./useUndoRedo";
+import { calculateMassFromSize } from "../utils/particle";
 
 /**
  * Custom React hook that wires together the core particle *engine* with the
@@ -55,7 +56,7 @@ export function usePlayground(
   // Spawn configuration state
   const [spawnConfig, setSpawnConfig] = useState<SpawnConfig>({
     defaultSize: 10,
-    defaultMass: (Math.PI * 10 * 10) / 100,
+    defaultMass: calculateMassFromSize(10),
     colorMode: "random",
     customColor: "#F8F8F8",
     streamMode: false,

@@ -13,6 +13,7 @@ import {
   createParticle,
   calculateParticleSize,
   calculateParticleMass,
+  calculateMassFromSize,
   getRandomColor,
 } from "../utils/particle";
 import { calculateVelocity } from "../utils/velocity";
@@ -996,9 +997,7 @@ export function useInteractions({
           finalMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
         } else {
           // Calculate mass from the stored size in velocity mode
-          const radius = finalSize;
-          const area = Math.PI * radius * radius;
-          finalMass = area / 100; // Same calculation as in createParticle
+          finalMass = calculateMassFromSize(finalSize);
         }
 
         finalParticle = createParticle(

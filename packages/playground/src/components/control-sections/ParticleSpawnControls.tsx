@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { calculateMassFromSize } from "../../utils/particle";
 
 // Default spawn configuration
 export const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
-export const DEFAULT_SPAWN_PARTICLE_MASS = (Math.PI * DEFAULT_SPAWN_PARTICLE_SIZE * DEFAULT_SPAWN_PARTICLE_SIZE) / 100;
+export const DEFAULT_SPAWN_PARTICLE_MASS = calculateMassFromSize(DEFAULT_SPAWN_PARTICLE_SIZE);
 export const DEFAULT_SPAWN_COLOR_MODE = "random";
 export const DEFAULT_SPAWN_CUSTOM_COLOR = "#F8F8F8";
 export const DEFAULT_SPAWN_STREAM_MODE = false;
@@ -28,11 +29,6 @@ interface ParticleSpawnControlsProps {
   initialColorConfig?: InitColorConfig; // For synchronization with Init section
 }
 
-const calculateMassFromSize = (size: number): number => {
-  const radius = size;
-  const area = Math.PI * radius * radius;
-  return area / 100; // Same formula used throughout the app
-};
 
 export function ParticleSpawnControls({ 
   onSpawnConfigChange,
