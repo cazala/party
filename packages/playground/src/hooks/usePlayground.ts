@@ -10,6 +10,7 @@ import {
   Collisions,
   Fluid,
   Interaction,
+  Sensors,
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
   DEFAULT_GRAVITY_STRENGTH,
@@ -50,6 +51,7 @@ export function usePlayground(
   const collisionsRef = useRef<Collisions | null>(null);
   const fluidRef = useRef<Fluid | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
+  const sensorsRef = useRef<Sensors | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
   const spatialGridRef = useRef<SpatialGrid | null>(null);
 
@@ -270,6 +272,9 @@ export function usePlayground(
     const interaction = new Interaction();
     interactionRef.current = interaction;
 
+    const sensors = new Sensors({ enableTrail: false }); // Playground default: off
+    sensorsRef.current = sensors;
+
     const system = new System({
       width: canvasRef.current?.width || 1200,
       height: canvasRef.current?.height || 800,
@@ -280,6 +285,7 @@ export function usePlayground(
     const renderer = new Canvas2DRenderer({
       canvas: canvasRef.current!,
       clearColor: "#0D0D12",
+      sensors: sensors,
     });
     rendererRef.current = renderer;
 
@@ -289,6 +295,7 @@ export function usePlayground(
     system.addForce(collisions);
     system.addForce(fluid);
     system.addForce(interaction);
+    system.addForce(sensors);
 
     system.setRenderCallback((system) => {
       renderer.render(system);
@@ -682,6 +689,7 @@ export function usePlayground(
     collisions: collisionsRef.current,
     fluid: fluidRef.current,
     interaction: interactionRef.current,
+    sensors: sensorsRef.current,
     renderer: rendererRef.current,
     spatialGrid: spatialGridRef.current,
     zoomStateRef, // Expose zoom state for session loading

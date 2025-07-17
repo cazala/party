@@ -33,6 +33,7 @@ function App() {
     collisions,
     fluid,
     interaction,
+    sensors,
     renderer,
     spatialGrid,
     zoomStateRef,
@@ -55,6 +56,7 @@ function App() {
       !collisions ||
       !fluid ||
       !interaction ||
+      !sensors ||
       !renderer
     )
       return;
@@ -70,6 +72,7 @@ function App() {
     collisions,
     fluid,
     interaction,
+    sensors,
     renderer,
     size,
   ]);
@@ -157,6 +160,7 @@ function App() {
             bounds={bounds}
             collisions={collisions}
             fluid={fluid}
+            sensors={sensors}
             sessionLoadTrigger={sessionLoadTrigger}
           />
         </div>

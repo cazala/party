@@ -3,6 +3,7 @@ import { System } from "./system";
 import { SpatialGrid } from "./spatial-grid";
 import { Vector2D } from "./vector";
 import { calculateDensity, Fluid } from "./forces/fluid";
+import { Sensors } from "./forces/sensors";
 
 // Default constants for Render options
 export const DEFAULT_RENDER_COLOR_MODE = "particle";
@@ -17,6 +18,7 @@ export interface RenderOptions {
   colorMode?: "particle" | "custom" | "velocity";
   customColor?: string;
   maxSpeed?: number;
+  sensors?: Sensors | null;
 }
 
 export abstract class Renderer {
@@ -33,6 +35,7 @@ export abstract class Renderer {
   public showVelocity: boolean;
   public densityFieldColor: string;
   public cursorPosition: Vector2D | null;
+  protected sensors: Sensors | null;
 
   constructor(options: RenderOptions) {
     this.canvas = options.canvas;
@@ -47,6 +50,7 @@ export abstract class Renderer {
     this.showVelocity = false;
     this.densityFieldColor = "#ffffff";
     this.cursorPosition = null;
+    this.sensors = options.sensors ?? null;
 
     const ctx = this.canvas.getContext("2d");
     if (!ctx) {
@@ -59,10 +63,24 @@ export abstract class Renderer {
 
   protected clear(): void {
     this.ctx.save();
-    this.ctx.globalAlpha = this.clearAlpha;
+    
+    // Determine clear alpha based on trail settings
+    let effectiveClearAlpha = this.clearAlpha;
+    
+    if (this.sensors && this.sensors.enableTrail) {
+      // Use trail decay as alpha for trail effect
+      effectiveClearAlpha = this.sensors.trailDecay;
+    }
+    
+    this.ctx.globalAlpha = effectiveClearAlpha;
     this.ctx.fillStyle = this.clearColor;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.restore();
+    
+    // Apply blur filter if trail diffusion is enabled
+    if (this.sensors && this.sensors.enableTrail && this.sensors.trailDiffuse > 0) {
+      this.applyBlurFilter(this.sensors.trailDiffuse);
+    }
   }
 
   setSize(width: number, height: number): void {
@@ -111,6 +129,19 @@ export abstract class Renderer {
 
   setCursorPosition(position: Vector2D | null): void {
     this.cursorPosition = position;
+  }
+  
+  setSensors(sensors: Sensors | null): void {
+    this.sensors = sensors;
+  }
+  
+  protected applyBlurFilter(diffuse: number): void {
+    // Apply horizontal blur pass
+    this.ctx.save();
+    this.ctx.filter = `blur(${diffuse}px)`;
+    this.ctx.globalCompositeOperation = 'copy';
+    this.ctx.drawImage(this.canvas, 0, 0);
+    this.ctx.restore();
   }
 }
 

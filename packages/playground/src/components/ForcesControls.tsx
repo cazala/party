@@ -6,6 +6,7 @@ import {
   Bounds,
   Collisions,
   Fluid,
+  Sensors,
   System,
   Config,
   DEFAULT_GRAVITY_STRENGTH,
@@ -27,9 +28,13 @@ import {
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
   DEFAULT_WOBBLE_FACTOR,
+  DEFAULT_TRAIL_ENABLED,
+  DEFAULT_TRAIL_DECAY,
+  DEFAULT_TRAIL_DIFFUSE,
 } from "@party/core";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
+import { SensorsControls } from "./control-sections/SensorsControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import "./ForcesControls.css";
 
@@ -40,6 +45,7 @@ interface ForcesControlsProps {
   bounds: Bounds | null;
   collisions: Collisions | null;
   fluid: Fluid | null;
+  sensors: Sensors | null;
   sessionLoadTrigger?: number;
 }
 
@@ -50,6 +56,7 @@ export function ForcesControls({
   bounds,
   collisions,
   fluid,
+  sensors,
   sessionLoadTrigger = 0,
 }: ForcesControlsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +109,13 @@ export function ForcesControls({
       fluid.targetDensity = DEFAULT_TARGET_DENSITY;
       fluid.pressureMultiplier = DEFAULT_PRESSURE_MULTIPLIER;
       fluid.wobbleFactor = DEFAULT_WOBBLE_FACTOR;
+    }
+
+    // Reset sensors
+    if (sensors) {
+      sensors.setEnableTrail(DEFAULT_TRAIL_ENABLED);
+      sensors.setTrailDecay(DEFAULT_TRAIL_DECAY);
+      sensors.setTrailDiffuse(DEFAULT_TRAIL_DIFFUSE);
     }
 
     // Force UI re-render
@@ -209,6 +223,10 @@ export function ForcesControls({
 
       <CollapsibleSection title="Behavior">
         <BehaviorControls key={`behavior-${refreshKey}`} behavior={behavior} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Sensors">
+        <SensorsControls key={`sensors-${refreshKey}`} sensors={sensors} />
       </CollapsibleSection>
     </div>
   );

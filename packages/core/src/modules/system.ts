@@ -5,6 +5,7 @@ import { Bounds } from "./forces/bounds";
 import { Collisions } from "./forces/collisions";
 import { Behavior } from "./forces/behavior";
 import { Fluid } from "./forces/fluid";
+import { Sensors } from "./forces/sensors";
 import { Vector2D } from "./vector";
 
 export interface Force {
@@ -45,6 +46,11 @@ export interface Config {
     pressureMultiplier: number;
     wobbleFactor: number;
     resistance: number;
+  };
+  sensors?: {
+    enableTrail: boolean;
+    trailDecay: number;
+    trailDiffuse: number;
   };
 }
 
@@ -301,6 +307,12 @@ export class System {
           wobbleFactor: force.wobbleFactor,
           resistance: force.resistance,
         };
+      } else if (force instanceof Sensors) {
+        config.sensors = {
+          enableTrail: force.enableTrail,
+          trailDecay: force.trailDecay,
+          trailDiffuse: force.trailDiffuse,
+        };
       }
     }
 
@@ -339,6 +351,10 @@ export class System {
         force.pressureMultiplier = config.fluid.pressureMultiplier;
         force.wobbleFactor = config.fluid.wobbleFactor;
         force.resistance = config.fluid.resistance;
+      } else if (force instanceof Sensors && config.sensors) {
+        force.setEnableTrail(config.sensors.enableTrail);
+        force.setTrailDecay(config.sensors.trailDecay);
+        force.setTrailDiffuse(config.sensors.trailDiffuse);
       }
     }
   }
