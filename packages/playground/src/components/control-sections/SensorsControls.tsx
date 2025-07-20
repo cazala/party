@@ -216,7 +216,7 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
 
       <div className="control-group">
         <label>
-          Trail Decay: {trailDecay.toFixed(2)}
+          Trail Decay: {trailDecay.toFixed(3)}
           <input
             type="range"
             min="0"

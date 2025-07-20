@@ -284,11 +284,11 @@ export function usePlayground(
     spatialGridRef.current = system.spatialGrid;
     const renderer = new Canvas2DRenderer({
       canvas: canvasRef.current!,
-      clearColor: "#0D0D12",
+      clearColor: "#000000",
       sensors: sensors,
     });
     rendererRef.current = renderer;
-    
+
     // Connect renderer to sensors for pixel reading
     sensors.setRenderer(renderer);
 
@@ -347,7 +347,7 @@ export function usePlayground(
         );
       }
       systemRef.current.clear();
-      
+
       // Clear the canvas completely (full background repaint with 100% alpha)
       if (rendererRef.current) {
         rendererRef.current.clearCanvas();
@@ -366,7 +366,11 @@ export function usePlayground(
       particleSize: number = 10,
       radius: number = 100,
       colorConfig?: { colorMode: "random" | "custom"; customColor: string },
-      velocityConfig?: { speed: number; direction: "random" | "in" | "out" | "custom"; angle: number }
+      velocityConfig?: {
+        speed: number;
+        direction: "random" | "in" | "out" | "custom";
+        angle: number;
+      }
     ) => {
       if (!systemRef.current) return;
 
@@ -439,10 +443,7 @@ export function usePlayground(
             break;
         }
 
-        return new Vector2D(
-          speed * Math.cos(angle),
-          speed * Math.sin(angle)
-        );
+        return new Vector2D(speed * Math.cos(angle), speed * Math.sin(angle));
       };
 
       if (shape === "grid") {
@@ -609,7 +610,7 @@ export function usePlayground(
     if (rendererRef.current) {
       rendererRef.current.clearCanvas();
     }
-    
+
     // This will be called with current spawn config from Controls
     const initConfig = (window as any).__getInitConfig?.();
     if (initConfig) {
