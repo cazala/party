@@ -122,7 +122,7 @@ export abstract class Renderer {
       const bgColor = this.parseHexColor(this.clearColor);
 
       // For very small decay values, ensure minimum decay step to prevent permanent trails
-      const minDecayStep = 0.01; // Minimum 1% decay per frame
+      const minDecayStep = 0.001; // Minimum 1% decay per frame
       const effectiveDecay = Math.max(decay, minDecayStep);
 
       // Apply trail decay by interpolating each pixel toward background color
@@ -238,6 +238,14 @@ export abstract class Renderer {
     this.sensors = sensors;
   }
 
+  public clearCanvas(): void {
+    this.ctx.save();
+    this.ctx.globalAlpha = 1;
+    this.ctx.fillStyle = this.clearColor;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.restore();
+  }
+
   protected applyBlurFilter(diffuse: number): void {
     // Apply blur filter
     this.ctx.save();
@@ -261,6 +269,91 @@ export abstract class Renderer {
     }
 
     this.ctx.restore();
+  }
+
+  public readPixelIntensity(x: number, y: number, radius: number): number {
+    try {
+      // For base Renderer class, assume coordinates are already in screen space
+      const screenX = Math.round(x);
+      const screenY = Math.round(y);
+
+      // Check bounds
+      if (
+        screenX < 0 ||
+        screenY < 0 ||
+        screenX >= this.canvas.width ||
+        screenY >= this.canvas.height
+      ) {
+        return 0;
+      }
+
+      // For radius of 1, just sample single pixel
+      if (radius <= 1) {
+        const imageData = this.ctx.getImageData(screenX, screenY, 1, 1);
+        const data = imageData.data;
+
+        // Calculate luminance (perceived brightness)
+        const r = data[0];
+        const g = data[1];
+        const b = data[2];
+        const alpha = data[3] / 255;
+
+        // Use standard luminance formula, weighted by alpha
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance * alpha;
+      }
+
+      // For larger radius, sample circular area
+      const sampleRadius = Math.max(1, Math.round(radius));
+
+      // Clamp sample area to canvas bounds
+      const startX = Math.max(0, screenX - sampleRadius);
+      const startY = Math.max(0, screenY - sampleRadius);
+      const endX = Math.min(this.canvas.width - 1, screenX + sampleRadius);
+      const endY = Math.min(this.canvas.height - 1, screenY + sampleRadius);
+
+      const width = endX - startX + 1;
+      const height = endY - startY + 1;
+
+      if (width <= 0 || height <= 0) return 0;
+
+      const imageData = this.ctx.getImageData(startX, startY, width, height);
+      const data = imageData.data;
+
+      let totalIntensity = 0;
+      let sampleCount = 0;
+
+      // Sample pixels in circular pattern
+      for (let dy = 0; dy < height; dy++) {
+        for (let dx = 0; dx < width; dx++) {
+          const pixelX = startX + dx;
+          const pixelY = startY + dy;
+
+          // Check if pixel is within circular radius
+          const distanceFromCenter = Math.sqrt(
+            Math.pow(pixelX - screenX, 2) + Math.pow(pixelY - screenY, 2)
+          );
+
+          if (distanceFromCenter <= sampleRadius) {
+            const pixelIndex = (dy * width + dx) * 4;
+            const r = data[pixelIndex];
+            const g = data[pixelIndex + 1];
+            const b = data[pixelIndex + 2];
+            const alpha = data[pixelIndex + 3] / 255;
+
+            // Calculate luminance weighted by alpha
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            totalIntensity += luminance * alpha;
+            sampleCount++;
+          }
+        }
+      }
+
+      return sampleCount > 0 ? totalIntensity / sampleCount : 0;
+    } catch (error) {
+      // Return 0 if reading fails
+      return 0;
+    }
   }
 }
 
@@ -1047,6 +1140,17 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.putImageData(imageData, 0, 0);
 
     this.ctx.restore();
+  }
+
+  // Override to handle world-to-screen coordinate transformation
+  public readPixelIntensity(
+    worldX: number,
+    worldY: number,
+    radius: number
+  ): number {
+    // Convert world coordinates to screen coordinates
+    const screenCoords = this.worldToScreen(worldX, worldY);
+    return super.readPixelIntensity(screenCoords.x, screenCoords.y, radius);
   }
 }
 

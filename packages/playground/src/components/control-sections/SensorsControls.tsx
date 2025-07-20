@@ -4,6 +4,12 @@ import {
   DEFAULT_TRAIL_ENABLED,
   DEFAULT_TRAIL_DECAY,
   DEFAULT_TRAIL_DIFFUSE,
+  DEFAULT_SENSORS_ENABLED,
+  DEFAULT_SENSOR_DISTANCE,
+  DEFAULT_SENSOR_ANGLE,
+  DEFAULT_SENSOR_RADIUS,
+  DEFAULT_SENSOR_THRESHOLD,
+  DEFAULT_SENSOR_STRENGTH,
 } from "@party/core/modules/forces/sensors";
 
 interface SensorsControlsProps {
@@ -16,11 +22,27 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
   const [trailDecay, setTrailDecay] = useState(DEFAULT_TRAIL_DECAY);
   const [trailDiffuse, setTrailDiffuse] = useState(DEFAULT_TRAIL_DIFFUSE);
 
+  // Sensor state
+  const [sensorsEnabled, setSensorsEnabled] = useState(DEFAULT_SENSORS_ENABLED);
+  const [sensorDistance, setSensorDistance] = useState(DEFAULT_SENSOR_DISTANCE);
+  const [sensorAngle, setSensorAngle] = useState(DEFAULT_SENSOR_ANGLE);
+  const [sensorRadius, setSensorRadius] = useState(DEFAULT_SENSOR_RADIUS);
+  const [sensorThreshold, setSensorThreshold] = useState(
+    DEFAULT_SENSOR_THRESHOLD
+  );
+  const [sensorStrength, setSensorStrength] = useState(DEFAULT_SENSOR_STRENGTH);
+
   useEffect(() => {
     if (sensors) {
       setTrailEnabled(sensors.enableTrail);
       setTrailDecay(sensors.trailDecay);
       setTrailDiffuse(sensors.trailDiffuse);
+      setSensorsEnabled(sensors.enableSensors);
+      setSensorDistance(sensors.sensorDistance);
+      setSensorAngle(sensors.sensorAngle);
+      setSensorRadius(sensors.sensorRadius);
+      setSensorThreshold(sensors.sensorThreshold);
+      setSensorStrength(sensors.sensorStrength);
     }
   }, [sensors]);
 
@@ -43,11 +65,141 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
         setTrailDiffuse(value as number);
         sensors.setTrailDiffuse(value as number);
         break;
+      case "enableSensors":
+        setSensorsEnabled(value as boolean);
+        sensors.setEnableSensors(value as boolean);
+        break;
+      case "sensorDistance":
+        setSensorDistance(value as number);
+        sensors.setSensorDistance(value as number);
+        break;
+      case "sensorAngle":
+        setSensorAngle(value as number);
+        sensors.setSensorAngle(value as number);
+        break;
+      case "sensorRadius":
+        setSensorRadius(value as number);
+        sensors.setSensorRadius(value as number);
+        break;
+      case "sensorThreshold":
+        setSensorThreshold(value as number);
+        sensors.setSensorThreshold(value as number);
+        break;
+      case "sensorStrength":
+        setSensorStrength(value as number);
+        sensors.setSensorStrength(value as number);
+        break;
     }
   };
 
   return (
     <div className="control-section">
+      {/* Sensors Section */}
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange("enableSensors", e.target.checked)
+            }
+            className="checkbox"
+          />
+          Enable Sensors
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Sensor Distance: {sensorDistance}
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={sensorDistance}
+            disabled={!sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange("sensorDistance", parseFloat(e.target.value))
+            }
+            className={`slider ${!sensorsEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Sensor Angle: {sensorAngle}°
+          <input
+            type="range"
+            min="0"
+            max="90"
+            step="1"
+            value={sensorAngle}
+            disabled={!sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange("sensorAngle", parseFloat(e.target.value))
+            }
+            className={`slider ${!sensorsEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Sensor Radius: {sensorRadius}px
+          <input
+            type="range"
+            min="1"
+            max="10"
+            step="1"
+            value={sensorRadius}
+            disabled={!sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange("sensorRadius", parseFloat(e.target.value))
+            }
+            className={`slider ${!sensorsEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Sensor Threshold: {sensorThreshold.toFixed(2)}
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={sensorThreshold}
+            disabled={!sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange("sensorThreshold", parseFloat(e.target.value))
+            }
+            className={`slider ${!sensorsEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Sensor Strength: {sensorStrength}
+          <input
+            type="range"
+            min="0"
+            max="2000"
+            step="0.1"
+            value={sensorStrength}
+            disabled={!sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange("sensorStrength", parseFloat(e.target.value))
+            }
+            className={`slider ${!sensorsEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+
+      {/* Trail Section */}
       <div className="control-group">
         <label>
           <input
@@ -69,7 +221,7 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
             type="range"
             min="0"
             max="1"
-            step="0.01"
+            step="0.001"
             value={trailDecay}
             disabled={!trailEnabled}
             onChange={(e) =>

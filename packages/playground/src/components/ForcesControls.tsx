@@ -31,6 +31,12 @@ import {
   DEFAULT_TRAIL_ENABLED,
   DEFAULT_TRAIL_DECAY,
   DEFAULT_TRAIL_DIFFUSE,
+  DEFAULT_SENSORS_ENABLED,
+  DEFAULT_SENSOR_DISTANCE,
+  DEFAULT_SENSOR_ANGLE,
+  DEFAULT_SENSOR_RADIUS,
+  DEFAULT_SENSOR_THRESHOLD,
+  DEFAULT_SENSOR_STRENGTH,
 } from "@party/core";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
@@ -116,6 +122,12 @@ export function ForcesControls({
       sensors.setEnableTrail(DEFAULT_TRAIL_ENABLED);
       sensors.setTrailDecay(DEFAULT_TRAIL_DECAY);
       sensors.setTrailDiffuse(DEFAULT_TRAIL_DIFFUSE);
+      sensors.setEnableSensors(DEFAULT_SENSORS_ENABLED);
+      sensors.setSensorDistance(DEFAULT_SENSOR_DISTANCE);
+      sensors.setSensorAngle(DEFAULT_SENSOR_ANGLE);
+      sensors.setSensorRadius(DEFAULT_SENSOR_RADIUS);
+      sensors.setSensorThreshold(DEFAULT_SENSOR_THRESHOLD);
+      sensors.setSensorStrength(DEFAULT_SENSOR_STRENGTH);
     }
 
     // Force UI re-render

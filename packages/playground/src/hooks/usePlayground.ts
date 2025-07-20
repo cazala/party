@@ -288,6 +288,9 @@ export function usePlayground(
       sensors: sensors,
     });
     rendererRef.current = renderer;
+    
+    // Connect renderer to sensors for pixel reading
+    sensors.setRenderer(renderer);
 
     system.addForce(gravity);
     system.addForce(bounds);
@@ -344,6 +347,11 @@ export function usePlayground(
         );
       }
       systemRef.current.clear();
+      
+      // Clear the canvas completely (full background repaint with 100% alpha)
+      if (rendererRef.current) {
+        rendererRef.current.clearCanvas();
+      }
     }
   }, [undoRedo]);
 
@@ -597,6 +605,11 @@ export function usePlayground(
   // Replace the entire particle array based on the current spawn configuration
   // exposed globally by the Controls sidebar.
   const resetParticles = useCallback(() => {
+    // Clear the canvas completely (full background repaint with 100% alpha)
+    if (rendererRef.current) {
+      rendererRef.current.clearCanvas();
+    }
+    
     // This will be called with current spawn config from Controls
     const initConfig = (window as any).__getInitConfig?.();
     if (initConfig) {

@@ -115,6 +115,11 @@ export class SessionManager {
       // Clear current particles
       system.clear();
 
+      // Clear the canvas completely (full background repaint with 100% alpha)
+      if (renderer) {
+        renderer.clearCanvas();
+      }
+
       // Clear undo/redo history to prevent memory leaks
       if (undoRedo) {
         undoRedo.clearHistory();
