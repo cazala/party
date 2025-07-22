@@ -219,8 +219,8 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
           Trail Decay: {trailDecay.toFixed(3)}
           <input
             type="range"
-            min="0"
-            max="1"
+            min="0.05"
+            max="2"
             step="0.001"
             value={trailDecay}
             disabled={!trailEnabled}

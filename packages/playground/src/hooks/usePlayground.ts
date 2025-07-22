@@ -377,6 +377,11 @@ export function usePlayground(
       // dragThreshold is handled via spawn config in mouse events
       // Clear existing particles
       systemRef.current.particles = [];
+      
+      // Clear the canvas completely (full background repaint with 100% alpha)
+      if (rendererRef.current) {
+        rendererRef.current.clearCanvas();
+      }
 
       const colors = [
         "#F8F8F8", // Bright White

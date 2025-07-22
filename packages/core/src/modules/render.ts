@@ -93,7 +93,7 @@ export abstract class Renderer {
   private clearWithTrailDecay(): void {
     if (!this.sensors) return;
 
-    const decay = this.sensors.trailDecay;
+    const decay = this.sensors.trailDecay / 10;
 
     if (decay >= 0.49) {
       // Near full decay - do normal clear
@@ -142,7 +142,7 @@ export abstract class Renderer {
         const colorDistance =
           Math.abs(rDiff) + Math.abs(gDiff) + Math.abs(bDiff);
 
-        if (colorDistance < 3) {
+        if (colorDistance <= 6) {
           // If very close to background, snap to background
           data[i] = bgColor.r;
           data[i + 1] = bgColor.g;
@@ -152,15 +152,27 @@ export abstract class Renderer {
           let actualDecay = effectiveDecay;
 
           // For very small user decay values, use a progressive decay system
-          if (decay < 0.1) {
-            // Add a base decay that's proportional to color distance
-            const distanceDecay = Math.min(colorDistance / 255, 0.05);
-            actualDecay = Math.max(decay, distanceDecay);
+          // if (decay < 0.1) {
+          //   // Add a base decay that's proportional to color distance
+          //   const distanceDecay = Math.min(colorDistance / 255, 0.05);
+          //   actualDecay = Math.max(decay, distanceDecay);
+          // }
+          const prevR = data[i];
+          data[i] = r + rDiff * actualDecay;
+          if (data[i] === prevR) {
+            debugger;
+            data[i] = bgColor.r;
           }
-
-          data[i] = Math.round(r + rDiff * actualDecay);
-          data[i + 1] = Math.round(g + gDiff * actualDecay);
-          data[i + 2] = Math.round(b + bDiff * actualDecay);
+          const prevG = data[i + 1];
+          data[i + 1] = g + gDiff * actualDecay;
+          if (data[i + 1] === prevG) {
+            data[i + 1] = bgColor.g;
+          }
+          const prevB = data[i + 2];
+          data[i + 2] = b + bDiff * actualDecay;
+          if (data[i + 2] === prevB) {
+            data[i + 2] = bgColor.b;
+          }
         }
       }
 
