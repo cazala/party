@@ -51,6 +51,12 @@ export interface Config {
     enableTrail: boolean;
     trailDecay: number;
     trailDiffuse: number;
+    enableSensors: boolean;
+    sensorDistance: number;
+    sensorAngle: number;
+    sensorRadius: number;
+    sensorThreshold: number;
+    sensorStrength: number;
   };
 }
 
@@ -312,6 +318,12 @@ export class System {
           enableTrail: force.enableTrail,
           trailDecay: force.trailDecay,
           trailDiffuse: force.trailDiffuse,
+          enableSensors: force.enableSensors,
+          sensorDistance: force.sensorDistance,
+          sensorAngle: force.sensorAngle,
+          sensorRadius: force.sensorRadius,
+          sensorThreshold: force.sensorThreshold,
+          sensorStrength: force.sensorStrength,
         };
       }
     }
@@ -355,6 +367,12 @@ export class System {
         force.setEnableTrail(config.sensors.enableTrail);
         force.setTrailDecay(config.sensors.trailDecay);
         force.setTrailDiffuse(config.sensors.trailDiffuse);
+        force.setEnableSensors(config.sensors.enableSensors);
+        force.setSensorDistance(config.sensors.sensorDistance);
+        force.setSensorAngle(config.sensors.sensorAngle);
+        force.setSensorRadius(config.sensors.sensorRadius);
+        force.setSensorThreshold(config.sensors.sensorThreshold);
+        force.setSensorStrength(config.sensors.sensorStrength);
       }
     }
   }
