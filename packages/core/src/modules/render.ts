@@ -79,15 +79,6 @@ export abstract class Renderer {
     }
 
     this.ctx.restore();
-
-    // Apply blur filter if trail diffusion is enabled
-    if (
-      this.sensors &&
-      this.sensors.enableTrail &&
-      this.sensors.trailDiffuse > 0
-    ) {
-      this.applyBlurFilter(this.sensors.trailDiffuse);
-    }
   }
 
   private clearWithTrailDecay(): void {
@@ -462,6 +453,23 @@ export class Canvas2DRenderer extends Renderer {
 
     for (const particle of system.particles) {
       this.renderParticle(particle);
+    }
+
+    // Apply blur filter to particles if trail diffusion is enabled
+    if (
+      this.sensors &&
+      this.sensors.enableTrail &&
+      this.sensors.trailDiffuse > 0
+    ) {
+      // Save the current state before applying blur
+      this.ctx.restore();
+      this.applyBlurFilter(this.sensors.trailDiffuse);
+      
+      // Re-establish camera transform for subsequent rendering
+      this.ctx.save();
+      this.ctx.globalAlpha = this.globalAlpha;
+      this.ctx.translate(this.cameraX, this.cameraY);
+      this.ctx.scale(this.zoom, this.zoom);
     }
 
     // Render velocity arrows if enabled
