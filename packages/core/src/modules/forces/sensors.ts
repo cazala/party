@@ -106,14 +106,14 @@ export class Sensors implements Force {
       return;
     }
 
-    // Skip if particle has zero velocity (no direction to sense)
+    // Get velocity magnitude
     const velocityMagnitude = particle.velocity.magnitude();
-    if (velocityMagnitude < 0.1) {
-      return;
-    }
 
     // Calculate the direction the particle is moving
-    const velocityDirection = particle.velocity.clone().normalize();
+    const velocityDirection =
+      velocityMagnitude < 0.01
+        ? Vector2D.random().normalize()
+        : particle.velocity.clone().normalize();
 
     // Convert sensor angle from degrees to radians
     const sensorAngleRad = (this.sensorAngle * Math.PI) / 180;
