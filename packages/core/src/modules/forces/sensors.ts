@@ -14,7 +14,7 @@ export const DEFAULT_SENSOR_DISTANCE = 30;
 export const DEFAULT_SENSOR_ANGLE = 30; // degrees
 export const DEFAULT_SENSOR_RADIUS = 3;
 export const DEFAULT_SENSOR_THRESHOLD = 0.1;
-export const DEFAULT_SENSOR_STRENGTH = 5;
+export const DEFAULT_SENSOR_STRENGTH = 1000;
 
 export interface SensorsOptions {
   enableTrail?: boolean;
@@ -65,11 +65,11 @@ export class Sensors implements Force {
   }
 
   setTrailDecay(trailDecay: number): void {
-    this.trailDecay = Math.max(0, Math.min(1, trailDecay));
+    this.trailDecay = trailDecay;
   }
 
   setTrailDiffuse(trailDiffuse: number): void {
-    this.trailDiffuse = Math.max(0, Math.min(3, Math.round(trailDiffuse)));
+    this.trailDiffuse = trailDiffuse;
   }
 
   setEnableSensors(enableSensors: boolean): void {
@@ -77,23 +77,23 @@ export class Sensors implements Force {
   }
 
   setSensorDistance(sensorDistance: number): void {
-    this.sensorDistance = Math.max(0, Math.min(100, sensorDistance));
+    this.sensorDistance = sensorDistance;
   }
 
   setSensorAngle(sensorAngle: number): void {
-    this.sensorAngle = Math.max(0, Math.min(90, sensorAngle));
+    this.sensorAngle = sensorAngle;
   }
 
   setSensorRadius(sensorRadius: number): void {
-    this.sensorRadius = Math.max(1, Math.min(10, Math.round(sensorRadius)));
+    this.sensorRadius = sensorRadius;
   }
 
   setSensorThreshold(sensorThreshold: number): void {
-    this.sensorThreshold = Math.max(0, Math.min(1, sensorThreshold));
+    this.sensorThreshold = sensorThreshold;
   }
 
   setSensorStrength(sensorStrength: number): void {
-    this.sensorStrength = Math.max(0, Math.min(20, sensorStrength));
+    this.sensorStrength = sensorStrength;
   }
 
   setRenderer(renderer: any): void {
@@ -175,25 +175,22 @@ export class Sensors implements Force {
       (centerActivated && !leftActivated && !rightActivated) ||
       (leftActivated && rightActivated)
     ) {
-      console.log("center");
-      winningDirection = velocityDirection.clone();
-    }
-
-    if (leftActivated) {
-      console.log("left");
+      console.log("center", particle.size);
+      // winningDirection = velocityDirection.clone();
+      winningDirection = null;
+    } else if (leftActivated) {
+      console.log("left", particle.size);
       winningDirection = leftDirection.clone();
-    }
-
-    if (rightActivated) {
-      console.log("right");
+    } else if (rightActivated) {
+      console.log("right", particle.size);
       winningDirection = rightDirection.clone();
     }
 
     // Apply force in the direction of the winning sensor
     if (winningDirection) {
-      const force = winningDirection.normalize().multiply(1000);
-      console.log("force", force.normalize(), force.magnitude()); // MAGNITUDE ALWASY 1
-      particle.applyForce(force);
+      particle.velocity = winningDirection
+        .normalize()
+        .multiply(this.sensorStrength / 5);
     }
   }
 }

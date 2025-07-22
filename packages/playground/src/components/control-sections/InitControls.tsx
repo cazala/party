@@ -138,7 +138,15 @@ export function InitControls({
     if (newRadius !== undefined) setRadius(newRadius);
 
     if (onInitParticles) {
-      onInitParticles(particles, shape, space, size, rad, colorConfig, velocityConfig);
+      onInitParticles(
+        particles,
+        shape,
+        space,
+        size,
+        rad,
+        colorConfig,
+        velocityConfig
+      );
     }
   };
 
@@ -150,7 +158,7 @@ export function InitControls({
           <input
             type="range"
             min="1"
-            max="1500"
+            max="3500"
             step="1"
             value={numParticles}
             onChange={(e) => handleSpawnChange(parseInt(e.target.value))}
