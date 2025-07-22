@@ -361,23 +361,30 @@ export function usePlayground(
   const spawnParticles = useCallback(
     (
       numParticles: number,
-      shape: "grid" | "random" | "circle",
+      shape: "grid" | "random" | "circle" | "donut",
       spacing: number,
       particleSize: number = 10,
       radius: number = 100,
       colorConfig?: { colorMode: "random" | "custom"; customColor: string },
       velocityConfig?: {
         speed: number;
-        direction: "random" | "in" | "out" | "custom";
+        direction:
+          | "random"
+          | "in"
+          | "out"
+          | "custom"
+          | "clockwise"
+          | "counter-clockwise";
         angle: number;
-      }
+      },
+      innerRadius: number = 50
     ) => {
       if (!systemRef.current) return;
 
       // dragThreshold is handled via spawn config in mouse events
       // Clear existing particles
       systemRef.current.particles = [];
-      
+
       // Clear the canvas completely (full background repaint with 100% alpha)
       if (rendererRef.current) {
         rendererRef.current.clearCanvas();
@@ -441,6 +448,20 @@ export function usePlayground(
             const dxOut = particleX - centerX;
             const dyOut = particleY - centerY;
             angle = Math.atan2(dyOut, dxOut);
+            break;
+          case "clockwise":
+            // Calculate perpendicular vector for clockwise rotation around center
+            const dxClock = particleX - centerX;
+            const dyClock = particleY - centerY;
+            // Rotate 90 degrees clockwise: (x, y) -> (y, -x)
+            angle = Math.atan2(-dxClock, dyClock);
+            break;
+          case "counter-clockwise":
+            // Calculate perpendicular vector for counter-clockwise rotation around center
+            const dxCounter = particleX - centerX;
+            const dyCounter = particleY - centerY;
+            // Rotate 90 degrees counter-clockwise: (x, y) -> (-y, x)
+            angle = Math.atan2(dxCounter, -dyCounter);
             break;
           case "custom":
             // Convert degrees to radians
@@ -570,7 +591,80 @@ export function usePlayground(
             }
           }
         }
-      } else {
+      } else if (shape === "donut") {
+        // Donut placement with particles distributed in rings between inner and outer radius
+        const minSpacing = particleSize * 1.5; // Minimum spacing between particles
+        const ringThickness = radius - innerRadius;
+
+        if (ringThickness <= 0) {
+          console.warn(
+            "Invalid donut parameters: outer radius must be greater than inner radius"
+          );
+          return;
+        }
+
+        // Calculate number of rings based on available thickness and spacing
+        const maxRings = Math.max(1, Math.floor(ringThickness / minSpacing));
+        const actualRings = Math.min(
+          maxRings,
+          Math.ceil(Math.sqrt(numParticles / (2 * Math.PI)))
+        );
+
+        let particlesPlaced = 0;
+
+        for (
+          let ring = 0;
+          ring < actualRings && particlesPlaced < numParticles;
+          ring++
+        ) {
+          // Calculate radius for this ring (distributed evenly between inner and outer)
+          const ringRadius =
+            innerRadius + (ringThickness * (ring + 0.5)) / actualRings;
+
+          // Calculate circumference and maximum particles for this ring
+          const circumference = 2 * Math.PI * ringRadius;
+          const maxParticlesInRing = Math.max(
+            1,
+            Math.floor(circumference / minSpacing)
+          );
+
+          // Distribute remaining particles among remaining rings
+          const remainingRings = actualRings - ring;
+          const remainingParticles = numParticles - particlesPlaced;
+          const averagePerRing = Math.ceil(remainingParticles / remainingRings);
+
+          const particlesInRing = Math.min(
+            maxParticlesInRing,
+            averagePerRing,
+            remainingParticles
+          );
+
+          for (let p = 0; p < particlesInRing; p++) {
+            const angle = (2 * Math.PI * p) / particlesInRing;
+
+            // Calculate position relative to center
+            const x = centerX + ringRadius * Math.cos(angle);
+            const y = centerY + ringRadius * Math.sin(angle);
+
+            // Use configured mass from spawn controls
+            const mass = spawnConfig.defaultMass;
+
+            const particle = new Particle({
+              position: new Vector2D(x, y),
+              velocity: calculateVelocity(x, y),
+              acceleration: new Vector2D(0, 0),
+              mass: mass,
+              size: particleSize,
+              color: getParticleColor(),
+            });
+
+            systemRef.current.addParticle(particle);
+            particlesPlaced++;
+
+            if (particlesPlaced >= numParticles) break;
+          }
+        }
+      } else if (shape === "random") {
         // Random placement within visible world area
         for (let i = 0; i < numParticles; i++) {
           // Calculate visible world bounds
@@ -626,7 +720,8 @@ export function usePlayground(
         initConfig.particleSize,
         initConfig.radius,
         initConfig.colorConfig,
-        initConfig.velocityConfig
+        initConfig.velocityConfig,
+        initConfig.innerRadius
       );
     } else {
       // Fallback to default

@@ -23,7 +23,13 @@ interface InitColorConfig {
 
 interface InitVelocityConfig {
   speed: number;
-  direction: "random" | "in" | "out" | "custom";
+  direction:
+    | "random"
+    | "in"
+    | "out"
+    | "custom"
+    | "clockwise"
+    | "counter-clockwise";
   angle: number;
 }
 
@@ -34,22 +40,24 @@ interface SystemControlsProps {
   interaction: Interaction | null;
   onInitParticles?: (
     numParticles: number,
-    shape: "grid" | "random" | "circle",
+    shape: "grid" | "random" | "circle" | "donut",
     spacing: number,
     particleSize: number,
     radius?: number,
     colorConfig?: InitColorConfig,
-    velocityConfig?: InitVelocityConfig
+    velocityConfig?: InitVelocityConfig,
+    innerRadius?: number
   ) => void;
   onGetInitConfig?: () => {
     numParticles: number;
-    shape: "grid" | "random" | "circle";
+    shape: "grid" | "random" | "circle" | "donut";
     spacing: number;
     particleSize: number;
     radius?: number;
     colorConfig?: InitColorConfig;
     velocityConfig?: InitVelocityConfig;
     camera?: { x: number; y: number; zoom: number };
+    innerRadius?: number;
   };
   onSpawnConfigChange?: (config: SpawnConfig) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
@@ -110,9 +118,12 @@ export function SystemControls({
       </CollapsibleSection>
 
       <CollapsibleSection title="Render">
-        <RenderControls 
-          renderer={renderer} 
-          fluid={system?.forces.find(force => force instanceof Fluid) as Fluid || null} 
+        <RenderControls
+          renderer={renderer}
+          fluid={
+            (system?.forces.find((force) => force instanceof Fluid) as Fluid) ||
+            null
+          }
         />
       </CollapsibleSection>
 

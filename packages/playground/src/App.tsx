@@ -124,6 +124,17 @@ function App() {
               shape: "grid" as const,
               spacing: 50,
               particleSize: 10,
+              radius: 100,
+              colorConfig: {
+                colorMode: "random" as const,
+                customColor: "#F8F8F8",
+              },
+              velocityConfig: {
+                speed: 0,
+                direction: "random" as const,
+                angle: 0,
+              },
+              innerRadius: 50,
               camera: renderer
                 ? {
                     x: renderer.getCamera().x,

@@ -5,6 +5,7 @@ const DEFAULT_SPAWN_SHAPE = "grid";
 const DEFAULT_SPAWN_SPACING = 25;
 const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
 const DEFAULT_SPAWN_RADIUS = 100;
+const DEFAULT_INNER_RADIUS = 50;
 const DEFAULT_VELOCITY_SPEED = 0;
 const DEFAULT_VELOCITY_DIRECTION = "random";
 const DEFAULT_VELOCITY_ANGLE = 0;
@@ -16,29 +17,37 @@ interface InitColorConfig {
 
 interface InitVelocityConfig {
   speed: number;
-  direction: "random" | "in" | "out" | "custom";
+  direction:
+    | "random"
+    | "in"
+    | "out"
+    | "custom"
+    | "clockwise"
+    | "counter-clockwise";
   angle: number;
 }
 
 interface InitControlsProps {
   onInitParticles?: (
     numParticles: number,
-    shape: "grid" | "random" | "circle",
+    shape: "grid" | "random" | "circle" | "donut",
     spacing: number,
     particleSize: number,
     radius?: number,
     colorConfig?: InitColorConfig,
-    velocityConfig?: InitVelocityConfig
+    velocityConfig?: InitVelocityConfig,
+    innerRadius?: number
   ) => void;
   onGetInitConfig?: () => {
     numParticles: number;
-    shape: "grid" | "random" | "circle";
+    shape: "grid" | "random" | "circle" | "donut";
     spacing: number;
     particleSize: number;
     radius?: number;
     colorConfig?: InitColorConfig;
     velocityConfig?: InitVelocityConfig;
     camera?: { x: number; y: number; zoom: number };
+    innerRadius?: number;
   };
   onParticleSizeChange?: (size: number) => void;
   onColorConfigChange?: (colorConfig: InitColorConfig) => void;
@@ -53,12 +62,13 @@ export function InitControls({
   getCurrentCamera,
 }: InitControlsProps) {
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
-  const [spawnShape, setSpawnShape] = useState<"grid" | "random" | "circle">(
-    DEFAULT_SPAWN_SHAPE
-  );
+  const [spawnShape, setSpawnShape] = useState<
+    "grid" | "random" | "circle" | "donut"
+  >(DEFAULT_SPAWN_SHAPE);
   const [spacing, setSpacing] = useState(DEFAULT_SPAWN_SPACING);
   const [particleSize, setParticleSize] = useState(DEFAULT_SPAWN_PARTICLE_SIZE);
   const [radius, setRadius] = useState(DEFAULT_SPAWN_RADIUS);
+  const [innerRadius, setInnerRadius] = useState(DEFAULT_INNER_RADIUS);
   const [colorConfig, setColorConfig] = useState<InitColorConfig>({
     colorMode: "random",
     customColor: "#F8F8F8",
@@ -78,7 +88,8 @@ export function InitControls({
         particleSize,
         radius,
         colorConfig,
-        velocityConfig
+        velocityConfig,
+        innerRadius
       );
     }
   }, [
@@ -88,6 +99,7 @@ export function InitControls({
     spacing,
     particleSize,
     radius,
+    innerRadius,
     colorConfig,
     velocityConfig,
   ]);
@@ -103,6 +115,7 @@ export function InitControls({
         colorConfig,
         velocityConfig,
         camera: getCurrentCamera ? getCurrentCamera() : undefined,
+        innerRadius,
       });
       (window as any).__getInitConfig = getConfig;
     }
@@ -113,6 +126,7 @@ export function InitControls({
     spacing,
     particleSize,
     radius,
+    innerRadius,
     colorConfig,
     velocityConfig,
     getCurrentCamera,
@@ -120,22 +134,25 @@ export function InitControls({
 
   const handleSpawnChange = (
     newNumParticles?: number,
-    newShape?: "grid" | "random" | "circle",
+    newShape?: "grid" | "random" | "circle" | "donut",
     newSpacing?: number,
     newParticleSize?: number,
-    newRadius?: number
+    newRadius?: number,
+    newInnerRadius?: number
   ) => {
     const particles = newNumParticles ?? numParticles;
     const shape = newShape ?? spawnShape;
     const size = newParticleSize ?? particleSize;
     const space = Math.max(newSpacing ?? spacing, size * 2);
     const rad = newRadius ?? radius;
+    const innerRad = newInnerRadius ?? innerRadius;
 
     if (newNumParticles !== undefined) setNumParticles(newNumParticles);
     if (newShape !== undefined) setSpawnShape(newShape);
     if (newSpacing !== undefined) setSpacing(space);
     if (newParticleSize !== undefined) setParticleSize(newParticleSize);
     if (newRadius !== undefined) setRadius(newRadius);
+    if (newInnerRadius !== undefined) setInnerRadius(newInnerRadius);
 
     if (onInitParticles) {
       onInitParticles(
@@ -145,7 +162,8 @@ export function InitControls({
         size,
         rad,
         colorConfig,
-        velocityConfig
+        velocityConfig,
+        innerRad
       );
     }
   };
@@ -158,7 +176,7 @@ export function InitControls({
           <input
             type="range"
             min="1"
-            max="3500"
+            max="5000"
             step="1"
             value={numParticles}
             onChange={(e) => handleSpawnChange(parseInt(e.target.value))}
@@ -201,13 +219,14 @@ export function InitControls({
             onChange={(e) =>
               handleSpawnChange(
                 undefined,
-                e.target.value as "grid" | "random" | "circle"
+                e.target.value as "grid" | "random" | "circle" | "donut"
               )
             }
             className="form-select"
           >
             <option value="grid">Grid</option>
             <option value="circle">Circle</option>
+            <option value="donut">Donut</option>
             <option value="random">Random</option>
           </select>
         </label>
@@ -261,6 +280,65 @@ export function InitControls({
         </div>
       )}
 
+      {spawnShape === "donut" && (
+        <>
+          <div className="control-group">
+            <label>
+              Outer Radius: {radius}
+              <input
+                type="range"
+                min="30"
+                max="1000"
+                step="10"
+                value={radius}
+                onChange={(e) => {
+                  const newOuterRadius = parseInt(e.target.value);
+                  // Ensure inner radius is smaller than outer radius
+                  const adjustedInnerRadius = Math.min(
+                    innerRadius,
+                    newOuterRadius - 20
+                  );
+                  handleSpawnChange(
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    newOuterRadius,
+                    adjustedInnerRadius !== innerRadius
+                      ? adjustedInnerRadius
+                      : undefined
+                  );
+                }}
+                className="slider"
+              />
+            </label>
+          </div>
+          <div className="control-group">
+            <label>
+              Inner Radius: {innerRadius}
+              <input
+                type="range"
+                min="10"
+                max={Math.max(10, radius - 20)}
+                step="5"
+                value={innerRadius}
+                onChange={(e) =>
+                  handleSpawnChange(
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    parseInt(e.target.value)
+                  )
+                }
+                className="slider"
+              />
+            </label>
+          </div>
+        </>
+      )}
+
       <div className="control-group">
         <label>
           Color
@@ -306,7 +384,7 @@ export function InitControls({
             type="range"
             min="0"
             max="500"
-            step="10"
+            step="1"
             value={velocityConfig.speed}
             onChange={(e) => {
               const newVelocityConfig = {
@@ -328,7 +406,13 @@ export function InitControls({
             onChange={(e) => {
               const newVelocityConfig = {
                 ...velocityConfig,
-                direction: e.target.value as "random" | "in" | "out" | "custom",
+                direction: e.target.value as
+                  | "random"
+                  | "in"
+                  | "out"
+                  | "custom"
+                  | "clockwise"
+                  | "counter-clockwise",
               };
               setVelocityConfig(newVelocityConfig);
             }}
@@ -337,6 +421,8 @@ export function InitControls({
             <option value="random">Random</option>
             <option value="in">In (towards center)</option>
             <option value="out">Out (from center)</option>
+            <option value="clockwise">Clockwise</option>
+            <option value="counter-clockwise">Counter-Clockwise</option>
             <option value="custom">Custom</option>
           </select>
         </label>
