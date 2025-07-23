@@ -1,11 +1,56 @@
 import { Particle } from "./particle";
 import { SpatialGrid } from "./spatial-grid";
-import { Gravity } from "./forces/gravity";
-import { Bounds } from "./forces/bounds";
-import { Collisions } from "./forces/collisions";
-import { Behavior } from "./forces/behavior";
-import { Fluid } from "./forces/fluid";
-import { Sensors } from "./forces/sensors";
+import {
+  Gravity,
+  DEFAULT_GRAVITY_STRENGTH,
+  DEFAULT_GRAVITY_DIRECTION,
+} from "./forces/gravity";
+import {
+  Bounds,
+  DEFAULT_BOUNDS_BOUNCE,
+  DEFAULT_BOUNDS_FRICTION,
+  DEFAULT_BOUNDS_MODE,
+  DEFAULT_BOUNDS_REPEL_DISTANCE,
+  DEFAULT_BOUNDS_REPEL_STRENGTH,
+} from "./forces/bounds";
+import {
+  Collisions,
+  DEFAULT_COLLISIONS_ENABLED,
+  DEFAULT_COLLISIONS_EAT,
+} from "./forces/collisions";
+import {
+  Behavior,
+  DEFAULT_BEHAVIOR_ENABLED,
+  DEFAULT_BEHAVIOR_WANDER_WEIGHT,
+  DEFAULT_BEHAVIOR_COHESION_WEIGHT,
+  DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT,
+  DEFAULT_BEHAVIOR_SEPARATION_WEIGHT,
+  DEFAULT_BEHAVIOR_CHASE_WEIGHT,
+  DEFAULT_BEHAVIOR_AVOID_WEIGHT,
+  DEFAULT_BEHAVIOR_SEPARATION_RANGE,
+  DEFAULT_BEHAVIOR_VIEW_RADIUS,
+  DEFAULT_BEHAVIOR_VIEW_ANGLE,
+} from "./forces/behavior";
+import {
+  Fluid,
+  DEFAULT_FLUID_ENABLED,
+  DEFAULT_INFLUENCE_RADIUS,
+  DEFAULT_TARGET_DENSITY,
+  DEFAULT_PRESSURE_MULTIPLIER,
+  DEFAULT_WOBBLE_FACTOR,
+} from "./forces/fluid";
+import {
+  Sensors,
+  DEFAULT_TRAIL_ENABLED,
+  DEFAULT_TRAIL_DECAY,
+  DEFAULT_TRAIL_DIFFUSE,
+  DEFAULT_SENSORS_ENABLED,
+  DEFAULT_SENSOR_DISTANCE,
+  DEFAULT_SENSOR_ANGLE,
+  DEFAULT_SENSOR_RADIUS,
+  DEFAULT_SENSOR_THRESHOLD,
+  DEFAULT_SENSOR_STRENGTH,
+} from "./forces/sensors";
 import { Vector2D } from "./vector";
 
 export interface Force {
@@ -16,50 +61,50 @@ export interface Force {
 
 export interface Config {
   gravity?: {
-    strength: number;
-    direction: { x: number; y: number };
+    strength?: number;
+    direction?: { x?: number; y?: number };
   };
   bounds?: {
-    bounce: number;
-    friction: number;
-    mode: "bounce" | "kill" | "warp";
-    repelDistance: number;
-    repelStrength: number;
+    bounce?: number;
+    friction?: number;
+    mode?: "bounce" | "kill" | "warp";
+    repelDistance?: number;
+    repelStrength?: number;
   };
   collisions?: {
-    enabled: boolean;
-    eat: boolean;
+    enabled?: boolean;
+    eat?: boolean;
   };
   behavior?: {
-    enabled: boolean;
-    wanderWeight: number;
-    cohesionWeight: number;
-    alignmentWeight: number;
-    separationWeight: number;
-    chaseWeight: number;
-    avoidWeight: number;
-    separationRange: number;
-    viewRadius: number;
-    viewAngle: number;
+    enabled?: boolean;
+    wanderWeight?: number;
+    cohesionWeight?: number;
+    alignmentWeight?: number;
+    separationWeight?: number;
+    chaseWeight?: number;
+    avoidWeight?: number;
+    separationRange?: number;
+    viewRadius?: number;
+    viewAngle?: number;
   };
   fluid?: {
-    enabled: boolean;
-    influenceRadius: number;
-    targetDensity: number;
-    pressureMultiplier: number;
-    wobbleFactor: number;
-    resistance: number;
+    enabled?: boolean;
+    influenceRadius?: number;
+    targetDensity?: number;
+    pressureMultiplier?: number;
+    wobbleFactor?: number;
+    resistance?: number;
   };
   sensors?: {
-    enableTrail: boolean;
-    trailDecay: number;
-    trailDiffuse: number;
-    enableSensors: boolean;
-    sensorDistance: number;
-    sensorAngle: number;
-    sensorRadius: number;
-    sensorThreshold: number;
-    sensorStrength: number;
+    enableTrail?: boolean;
+    trailDecay?: number;
+    trailDiffuse?: number;
+    enableSensors?: boolean;
+    sensorDistance?: number;
+    sensorAngle?: number;
+    sensorRadius?: number;
+    sensorThreshold?: number;
+    sensorStrength?: number;
   };
 }
 
@@ -341,47 +386,85 @@ export class System {
     // Apply configuration for each force type present in the system
     for (const force of this.forces) {
       if (force instanceof Gravity && config.gravity) {
-        force.setStrength(config.gravity.strength);
+        force.setStrength(config.gravity.strength ?? DEFAULT_GRAVITY_STRENGTH);
         force.setDirection(
-          new Vector2D(config.gravity.direction.x, config.gravity.direction.y)
+          new Vector2D(
+            config.gravity.direction?.x ?? DEFAULT_GRAVITY_DIRECTION.x,
+            config.gravity.direction?.y ?? DEFAULT_GRAVITY_DIRECTION.y
+          )
         );
       } else if (force instanceof Bounds && config.bounds) {
-        force.bounce = config.bounds.bounce;
-        force.setFriction(config.bounds.friction);
-        force.setMode(config.bounds.mode);
-        force.setRepelDistance(config.bounds.repelDistance);
-        force.setRepelStrength(config.bounds.repelStrength);
+        force.bounce = config.bounds.bounce ?? DEFAULT_BOUNDS_BOUNCE;
+        force.setFriction(config.bounds.friction ?? DEFAULT_BOUNDS_FRICTION);
+        force.setMode(config.bounds.mode ?? DEFAULT_BOUNDS_MODE);
+        force.setRepelDistance(
+          config.bounds.repelDistance ?? DEFAULT_BOUNDS_REPEL_DISTANCE
+        );
+        force.setRepelStrength(
+          config.bounds.repelStrength ?? DEFAULT_BOUNDS_REPEL_STRENGTH
+        );
       } else if (force instanceof Collisions && config.collisions) {
-        force.setEnabled(config.collisions.enabled);
-        force.setEat(config.collisions.eat);
+        force.setEnabled(
+          config.collisions.enabled ?? DEFAULT_COLLISIONS_ENABLED
+        );
+        force.setEat(config.collisions.eat ?? DEFAULT_COLLISIONS_EAT);
       } else if (force instanceof Behavior && config.behavior) {
-        force.setEnabled(config.behavior.enabled);
-        force.wanderWeight = config.behavior.wanderWeight;
-        force.cohesionWeight = config.behavior.cohesionWeight;
-        force.alignmentWeight = config.behavior.alignmentWeight;
-        force.separationWeight = config.behavior.separationWeight;
-        force.chaseWeight = config.behavior.chaseWeight;
-        force.avoidWeight = config.behavior.avoidWeight;
-        force.separationRange = config.behavior.separationRange;
-        force.viewRadius = config.behavior.viewRadius;
-        force.viewAngle = config.behavior.viewAngle;
+        force.setEnabled(config.behavior.enabled ?? DEFAULT_BEHAVIOR_ENABLED);
+        force.wanderWeight =
+          config.behavior.wanderWeight ?? DEFAULT_BEHAVIOR_WANDER_WEIGHT;
+        force.cohesionWeight =
+          config.behavior.cohesionWeight ?? DEFAULT_BEHAVIOR_COHESION_WEIGHT;
+        force.alignmentWeight =
+          config.behavior.alignmentWeight ?? DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT;
+        force.separationWeight =
+          config.behavior.separationWeight ??
+          DEFAULT_BEHAVIOR_SEPARATION_WEIGHT;
+        force.chaseWeight =
+          config.behavior.chaseWeight ?? DEFAULT_BEHAVIOR_CHASE_WEIGHT;
+        force.avoidWeight =
+          config.behavior.avoidWeight ?? DEFAULT_BEHAVIOR_AVOID_WEIGHT;
+        force.separationRange =
+          config.behavior.separationRange ?? DEFAULT_BEHAVIOR_SEPARATION_RANGE;
+        force.viewRadius =
+          config.behavior.viewRadius ?? DEFAULT_BEHAVIOR_VIEW_RADIUS;
+        force.viewAngle =
+          config.behavior.viewAngle ?? DEFAULT_BEHAVIOR_VIEW_ANGLE;
       } else if (force instanceof Fluid && config.fluid) {
-        force.setEnabled(config.fluid.enabled);
-        force.influenceRadius = config.fluid.influenceRadius;
-        force.targetDensity = config.fluid.targetDensity;
-        force.pressureMultiplier = config.fluid.pressureMultiplier;
-        force.wobbleFactor = config.fluid.wobbleFactor;
-        force.resistance = config.fluid.resistance;
+        force.setEnabled(config.fluid.enabled ?? DEFAULT_FLUID_ENABLED);
+        force.influenceRadius =
+          config.fluid.influenceRadius ?? DEFAULT_INFLUENCE_RADIUS;
+        force.targetDensity =
+          config.fluid.targetDensity ?? DEFAULT_TARGET_DENSITY;
+        force.pressureMultiplier =
+          config.fluid.pressureMultiplier ?? DEFAULT_PRESSURE_MULTIPLIER;
+        force.wobbleFactor = config.fluid.wobbleFactor ?? DEFAULT_WOBBLE_FACTOR;
+        force.resistance = config.fluid.resistance ?? 1; // Default resistance value
       } else if (force instanceof Sensors && config.sensors) {
-        force.setEnableTrail(config.sensors.enableTrail);
-        force.setTrailDecay(config.sensors.trailDecay);
-        force.setTrailDiffuse(config.sensors.trailDiffuse);
-        force.setEnableSensors(config.sensors.enableSensors);
-        force.setSensorDistance(config.sensors.sensorDistance);
-        force.setSensorAngle(config.sensors.sensorAngle);
-        force.setSensorRadius(config.sensors.sensorRadius);
-        force.setSensorThreshold(config.sensors.sensorThreshold);
-        force.setSensorStrength(config.sensors.sensorStrength);
+        force.setEnableTrail(
+          config.sensors.enableTrail ?? DEFAULT_TRAIL_ENABLED
+        );
+        force.setTrailDecay(config.sensors.trailDecay ?? DEFAULT_TRAIL_DECAY);
+        force.setTrailDiffuse(
+          config.sensors.trailDiffuse ?? DEFAULT_TRAIL_DIFFUSE
+        );
+        force.setEnableSensors(
+          config.sensors.enableSensors ?? DEFAULT_SENSORS_ENABLED
+        );
+        force.setSensorDistance(
+          config.sensors.sensorDistance ?? DEFAULT_SENSOR_DISTANCE
+        );
+        force.setSensorAngle(
+          config.sensors.sensorAngle ?? DEFAULT_SENSOR_ANGLE
+        );
+        force.setSensorRadius(
+          config.sensors.sensorRadius ?? DEFAULT_SENSOR_RADIUS
+        );
+        force.setSensorThreshold(
+          config.sensors.sensorThreshold ?? DEFAULT_SENSOR_THRESHOLD
+        );
+        force.setSensorStrength(
+          config.sensors.sensorStrength ?? DEFAULT_SENSOR_STRENGTH
+        );
       }
     }
   }
