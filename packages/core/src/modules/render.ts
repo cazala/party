@@ -9,16 +9,68 @@ import { Sensors } from "./forces/sensors";
 export const DEFAULT_RENDER_COLOR_MODE = "particle";
 export const DEFAULT_RENDER_CUSTOM_COLOR = "#FFFFFF";
 export const DEFAULT_RENDER_MAX_SPEED = 400;
+export const DEFAULT_RENDER_ROTATION_SPEED = 1; // rotations per second
 
 export interface RenderOptions {
   canvas: HTMLCanvasElement;
   clearColor?: string;
   clearAlpha?: number;
   globalAlpha?: number;
-  colorMode?: "particle" | "custom" | "velocity";
+  colorMode?: "particle" | "custom" | "velocity" | "rotate";
   customColor?: string;
   maxSpeed?: number;
   sensors?: Sensors | null;
+  rotationSpeed?: number;
+}
+
+// Utility function to convert HSB to RGB
+function hsbToRgb(
+  h: number,
+  s: number,
+  b: number
+): { r: number; g: number; b: number } {
+  // Normalize inputs
+  h = h % 360;
+  s = Math.max(0, Math.min(1, s));
+  b = Math.max(0, Math.min(1, b));
+
+  const c = b * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = b - c;
+
+  let r: number, g: number, blue: number;
+
+  if (h >= 0 && h < 60) {
+    r = c;
+    g = x;
+    blue = 0;
+  } else if (h >= 60 && h < 120) {
+    r = x;
+    g = c;
+    blue = 0;
+  } else if (h >= 120 && h < 180) {
+    r = 0;
+    g = c;
+    blue = x;
+  } else if (h >= 180 && h < 240) {
+    r = 0;
+    g = x;
+    blue = c;
+  } else if (h >= 240 && h < 300) {
+    r = x;
+    g = 0;
+    blue = c;
+  } else {
+    r = c;
+    g = 0;
+    blue = x;
+  }
+
+  return {
+    r: Math.round((r + m) * 255),
+    g: Math.round((g + m) * 255),
+    b: Math.round((blue + m) * 255),
+  };
 }
 
 export abstract class Renderer {
@@ -27,7 +79,7 @@ export abstract class Renderer {
   protected clearColor: string;
   protected clearAlpha: number;
   protected globalAlpha: number;
-  public colorMode: "particle" | "custom" | "velocity";
+  public colorMode: "particle" | "custom" | "velocity" | "rotate";
   public customColor: string;
   public maxSpeed: number;
   public showSpatialGrid: boolean;
@@ -36,6 +88,8 @@ export abstract class Renderer {
   public densityFieldColor: string;
   public cursorPosition: Vector2D | null;
   protected sensors: Sensors | null;
+  public rotationSpeed: number;
+  protected rotationStartTime: number;
 
   // Trail system properties
   protected trailImageData: ImageData | null = null;
@@ -55,6 +109,8 @@ export abstract class Renderer {
     this.cursorPosition = null;
     this.sensors = options.sensors ?? null;
     this.trailImageData = null;
+    this.rotationSpeed = options.rotationSpeed ?? DEFAULT_RENDER_ROTATION_SPEED;
+    this.rotationStartTime = Date.now();
 
     const ctx = this.canvas.getContext("2d");
     if (!ctx) {
@@ -201,16 +257,27 @@ export abstract class Renderer {
     };
   }
 
-  setColorMode(mode: "particle" | "custom" | "velocity"): void {
+  setColorMode(mode: "particle" | "custom" | "velocity" | "rotate"): void {
     this.colorMode = mode;
+    if (mode === "rotate") {
+      this.rotationStartTime = Date.now(); // Reset rotation when switching to rotate mode
+    }
   }
 
   setCustomColor(color: string): void {
     this.customColor = color;
   }
 
-  getColorMode(): "particle" | "custom" | "velocity" {
+  getColorMode(): "particle" | "custom" | "velocity" | "rotate" {
     return this.colorMode;
+  }
+
+  setRotationSpeed(speed: number): void {
+    this.rotationSpeed = speed;
+  }
+
+  getRotationSpeed(): number {
+    return this.rotationSpeed;
   }
 
   getCustomColor(): string {
@@ -464,7 +531,7 @@ export class Canvas2DRenderer extends Renderer {
       // Save the current state before applying blur
       this.ctx.restore();
       this.applyBlurFilter(this.sensors.trailDiffuse);
-      
+
       // Re-establish camera transform for subsequent rendering
       this.ctx.save();
       this.ctx.globalAlpha = this.globalAlpha;
@@ -520,12 +587,29 @@ export class Canvas2DRenderer extends Renderer {
     return color;
   }
 
+  private calculateRotateColor(): string {
+    const currentTime = Date.now();
+    const elapsedSeconds = (currentTime - this.rotationStartTime) / 1000;
+
+    // Calculate hue based on rotation speed (360 degrees per rotation)
+    const hue = (((elapsedSeconds * this.rotationSpeed) / 100) * 360) % 360;
+
+    // Use high saturation and brightness for vibrant colors
+    const saturation = 1.0;
+    const brightness = 1.0;
+
+    const rgb = hsbToRgb(hue, saturation, brightness);
+    return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+  }
+
   private getParticleColor(particle: Particle): string {
     switch (this.colorMode) {
       case "custom":
         return this.customColor;
       case "velocity":
         return this.calculateVelocityColor(particle);
+      case "rotate":
+        return this.calculateRotateColor();
       case "particle":
       default:
         return particle.color;
@@ -552,6 +636,8 @@ export class Canvas2DRenderer extends Renderer {
           // Use particle's velocity (for regular arrows)
           return this.calculateVelocityColor(particle);
         }
+      case "rotate":
+        return this.calculateRotateColor();
       case "particle":
       default:
         return particle.color;

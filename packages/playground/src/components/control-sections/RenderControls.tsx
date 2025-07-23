@@ -3,6 +3,7 @@ import { Canvas2DRenderer, Fluid } from "@party/core";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
+  DEFAULT_RENDER_ROTATION_SPEED,
 } from "@party/core/modules/render";
 
 interface RenderControlsProps {
@@ -13,6 +14,9 @@ interface RenderControlsProps {
 export function RenderControls({ renderer, fluid }: RenderControlsProps) {
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
+  const [rotationSpeed, setRotationSpeed] = useState(
+    DEFAULT_RENDER_ROTATION_SPEED
+  );
   const [showDensity, setShowDensity] = useState(true);
   const [showVelocity, setShowVelocity] = useState(true);
   const [densityFieldColor, setDensityFieldColor] = useState("#FF6B35");
@@ -21,6 +25,7 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
     if (renderer) {
       setColorMode(renderer.colorMode);
       setCustomColor(renderer.customColor);
+      setRotationSpeed(renderer.getRotationSpeed());
       setShowDensity(renderer.showDensity);
       setShowVelocity(renderer.showVelocity);
       setDensityFieldColor(renderer.densityFieldColor);
@@ -28,9 +33,11 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
   }, [renderer, fluid]);
 
   const handleColorModeChange = (mode: string) => {
-    setColorMode(mode as "particle" | "custom" | "velocity");
+    setColorMode(mode as "particle" | "custom" | "velocity" | "rotate");
     if (renderer) {
-      renderer.setColorMode(mode as "particle" | "custom" | "velocity");
+      renderer.setColorMode(
+        mode as "particle" | "custom" | "velocity" | "rotate"
+      );
     }
   };
 
@@ -38,6 +45,13 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
     setCustomColor(color);
     if (renderer) {
       renderer.setCustomColor(color);
+    }
+  };
+
+  const handleRotationSpeedChange = (speed: number) => {
+    setRotationSpeed(speed);
+    if (renderer) {
+      renderer.setRotationSpeed(speed);
     }
   };
 
@@ -76,6 +90,7 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
               <option value="particle">Particle</option>
               <option value="custom">Custom</option>
               <option value="velocity">Velocity</option>
+              <option value="rotate">Rotate</option>
             </select>
             {colorMode === "custom" && (
               <input
@@ -88,6 +103,25 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
           </div>
         </label>
       </div>
+
+      {colorMode === "rotate" && (
+        <div className="control-group">
+          <label>
+            Speed: {rotationSpeed.toFixed(1)} rot/sec
+            <input
+              type="range"
+              min="0.1"
+              max="10"
+              step="0.1"
+              value={rotationSpeed}
+              onChange={(e) =>
+                handleRotationSpeedChange(parseFloat(e.target.value))
+              }
+              className="slider"
+            />
+          </label>
+        </div>
+      )}
 
       <div className="control-group">
         <label>
