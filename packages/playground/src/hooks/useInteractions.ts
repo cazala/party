@@ -23,7 +23,7 @@ import { UseUndoRedoReturn } from "./useUndoRedo";
 
 /**
  * Custom React hook that handles all mouse and keyboard interactions for the particle playground.
- * 
+ *
  * This hook provides a comprehensive interaction system with support for multiple input modes,
  * streaming, mass configuration, and advanced features like mode switching and state preservation.
  *
@@ -214,11 +214,11 @@ export function useInteractions({
   });
 
   // === Streaming System ===
-  
+
   /**
    * Initiates continuous particle streaming at a specified position with given size and mass.
    * Handles both initial particle spawning and setting up interval-based streaming.
-   * 
+   *
    * @param x - World X coordinate for streaming
    * @param y - World Y coordinate for streaming
    * @param size - Size of particles to stream
@@ -246,7 +246,14 @@ export function useInteractions({
       // Spawn the first particle immediately at the exact position
       const system = getSystem();
       if (system) {
-        const firstParticle = createParticle(x, y, size, color, undefined, mass);
+        const firstParticle = createParticle(
+          x,
+          y,
+          size,
+          color,
+          undefined,
+          mass
+        );
         system.addParticle(firstParticle);
         mouseState.streamedParticles.push(firstParticle);
       }
@@ -509,7 +516,12 @@ export function useInteractions({
             getRenderer()?.getZoom() || 1,
             getSpawnConfig()
           );
-          startStreaming(mouseState.startPos.x, mouseState.startPos.y, size, mass);
+          startStreaming(
+            mouseState.startPos.x,
+            mouseState.startPos.y,
+            size,
+            mass
+          );
           // Store the size and mass for subsequent clicks while SHIFT is held
           mouseState.activeStreamSize = size;
           mouseState.activeStreamMass = mass;
@@ -800,7 +812,9 @@ export function useInteractions({
       mouseState.currentPos = pos;
       mouseState.isDragging = false;
       // Set the original drag intent based on the initial mode
-      mouseState.originalDragIntent = mouseState.isDragToVelocity ? "velocity" : "size";
+      mouseState.originalDragIntent = mouseState.isDragToVelocity
+        ? "velocity"
+        : "size";
 
       // Pick appropriate color based on renderer color mode
       mouseState.previewColor = getPreviewColor();
@@ -813,7 +827,10 @@ export function useInteractions({
           // In stream mode, always use current size from spawn config
           streamSize = spawnConfig.defaultSize;
           streamMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
-        } else if (mouseState.activeStreamSize > 0 && mouseState.activeStreamMass > 0) {
+        } else if (
+          mouseState.activeStreamSize > 0 &&
+          mouseState.activeStreamMass > 0
+        ) {
           // Use the preserved size and mass from previous drag-to-size (shift+click behavior)
           streamSize = mouseState.activeStreamSize;
           streamMass = mouseState.activeStreamMass;
@@ -936,7 +953,12 @@ export function useInteractions({
         );
         mouseState.activeStreamSize = size; // Store this size for subsequent clicks
         mouseState.activeStreamMass = mass; // Store this mass for subsequent clicks
-        startStreaming(mouseState.startPos.x, mouseState.startPos.y, size, mass);
+        startStreaming(
+          mouseState.startPos.x,
+          mouseState.startPos.y,
+          size,
+          mass
+        );
         mouseState.wasStreaming = true; // Mark that we were streaming
         // Hide the preview particle when streaming starts
         renderer.setPreviewParticle(null, false);
@@ -984,7 +1006,6 @@ export function useInteractions({
       const adjustedThreshold = mouseState.dragThreshold / zoomScale;
 
       if (distance >= adjustedThreshold) {
-        // debugger;
         mouseState.isDragging = true;
       }
 

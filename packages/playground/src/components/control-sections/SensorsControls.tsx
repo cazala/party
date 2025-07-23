@@ -46,6 +46,12 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
     }
   }, [sensors]);
 
+  useEffect(() => {
+    if (!trailEnabled && sensorsEnabled) {
+      handleSensorsChange("enableSensors", false);
+    }
+  }, [trailEnabled, sensorsEnabled]);
+
   const handleSensorsChange = (
     property: keyof Sensors,
     value: number | boolean
@@ -94,12 +100,64 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
 
   return (
     <div className="control-section">
+      {/* Trail Section */}
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={trailEnabled}
+            onChange={(e) =>
+              handleSensorsChange("enableTrail", e.target.checked)
+            }
+            className="checkbox"
+          />
+          Enable Trail
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Trail Decay: {trailDecay.toFixed(3)}
+          <input
+            type="range"
+            min="0.05"
+            max="2"
+            step="0.001"
+            value={trailDecay}
+            disabled={!trailEnabled}
+            onChange={(e) =>
+              handleSensorsChange("trailDecay", parseFloat(e.target.value))
+            }
+            className={`slider ${!trailEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Trail Diffuse: {trailDiffuse}px
+          <input
+            type="range"
+            min="0"
+            max="3"
+            step="1"
+            value={trailDiffuse}
+            disabled={!trailEnabled}
+            onChange={(e) =>
+              handleSensorsChange("trailDiffuse", parseFloat(e.target.value))
+            }
+            className={`slider ${!trailEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+
       {/* Sensors Section */}
       <div className="control-group">
         <label>
           <input
             type="checkbox"
             checked={sensorsEnabled}
+            disabled={!trailEnabled}
             onChange={(e) =>
               handleSensorsChange("enableSensors", e.target.checked)
             }
@@ -195,57 +253,6 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
               handleSensorsChange("sensorStrength", parseFloat(e.target.value))
             }
             className={`slider ${!sensorsEnabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      {/* Trail Section */}
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={trailEnabled}
-            onChange={(e) =>
-              handleSensorsChange("enableTrail", e.target.checked)
-            }
-            className="checkbox"
-          />
-          Enable Trail
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Trail Decay: {trailDecay.toFixed(3)}
-          <input
-            type="range"
-            min="0.05"
-            max="2"
-            step="0.001"
-            value={trailDecay}
-            disabled={!trailEnabled}
-            onChange={(e) =>
-              handleSensorsChange("trailDecay", parseFloat(e.target.value))
-            }
-            className={`slider ${!trailEnabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Trail Diffuse: {trailDiffuse}px
-          <input
-            type="range"
-            min="0"
-            max="3"
-            step="1"
-            value={trailDiffuse}
-            disabled={!trailEnabled}
-            onChange={(e) =>
-              handleSensorsChange("trailDiffuse", parseFloat(e.target.value))
-            }
-            className={`slider ${!trailEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>

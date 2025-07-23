@@ -44,6 +44,7 @@ import {
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
 import { BoundsControls } from "./control-sections/BoundsControls";
+import { FluidsControls } from "./control-sections/FluidsControls";
 import { SensorsControls } from "./control-sections/SensorsControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import "./ForcesControls.css";
@@ -235,7 +236,6 @@ export function ForcesControls({
           key={`physics-${refreshKey}`}
           gravity={gravity}
           collisions={collisions}
-          fluid={fluid}
         />
       </CollapsibleSection>
 
@@ -245,6 +245,10 @@ export function ForcesControls({
 
       <CollapsibleSection title="Behavior">
         <BehaviorControls key={`behavior-${refreshKey}`} behavior={behavior} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Fluids">
+        <FluidsControls key={`fluids-${refreshKey}`} fluid={fluid} />
       </CollapsibleSection>
 
       <CollapsibleSection title="Sensors">

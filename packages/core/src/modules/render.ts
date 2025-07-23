@@ -198,16 +198,9 @@ export abstract class Renderer {
           // Interpolate toward background color with enhanced decay for small values
           let actualDecay = effectiveDecay;
 
-          // For very small user decay values, use a progressive decay system
-          // if (decay < 0.1) {
-          //   // Add a base decay that's proportional to color distance
-          //   const distanceDecay = Math.min(colorDistance / 255, 0.05);
-          //   actualDecay = Math.max(decay, distanceDecay);
-          // }
           const prevR = data[i];
           data[i] = r + rDiff * actualDecay;
           if (data[i] === prevR) {
-            debugger;
             data[i] = bgColor.r;
           }
           const prevG = data[i + 1];
@@ -583,7 +576,6 @@ export class Canvas2DRenderer extends Renderer {
     const green = Math.floor((1 - ratio) * 255);
 
     const color = `rgb(${red}, ${green}, 0)`;
-    console.log(color, this.maxSpeed);
     return color;
   }
 

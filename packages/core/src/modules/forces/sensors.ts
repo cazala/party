@@ -175,14 +175,10 @@ export class Sensors implements Force {
       (centerActivated && !leftActivated && !rightActivated) ||
       (leftActivated && rightActivated)
     ) {
-      console.log("center", particle.size);
-      // winningDirection = velocityDirection.clone();
       winningDirection = null;
     } else if (leftActivated) {
-      console.log("left", particle.size);
       winningDirection = leftDirection.clone();
     } else if (rightActivated) {
-      console.log("right", particle.size);
       winningDirection = rightDirection.clone();
     }
 
