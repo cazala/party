@@ -22,6 +22,9 @@ import {
   DEFAULT_BEHAVIOR_VIEW_ANGLE,
   DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_FRICTION,
+  DEFAULT_BOUNDS_REPEL_DISTANCE,
+  DEFAULT_BOUNDS_REPEL_STRENGTH,
+  DEFAULT_BOUNDS_MODE,
   DEFAULT_COLLISIONS_ENABLED,
   DEFAULT_COLLISIONS_EAT,
   DEFAULT_INFLUENCE_RADIUS,
@@ -40,6 +43,7 @@ import {
 } from "@party/core";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
+import { BoundsControls } from "./control-sections/BoundsControls";
 import { SensorsControls } from "./control-sections/SensorsControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import "./ForcesControls.css";
@@ -86,6 +90,9 @@ export function ForcesControls({
     if (bounds) {
       bounds.bounce = DEFAULT_BOUNDS_BOUNCE;
       bounds.setFriction(DEFAULT_BOUNDS_FRICTION);
+      bounds.setRepelDistance(DEFAULT_BOUNDS_REPEL_DISTANCE);
+      bounds.setRepelStrength(DEFAULT_BOUNDS_REPEL_STRENGTH);
+      bounds.setMode(DEFAULT_BOUNDS_MODE);
     }
 
     // Reset collisions
@@ -227,10 +234,13 @@ export function ForcesControls({
         <PhysicsControls
           key={`physics-${refreshKey}`}
           gravity={gravity}
-          bounds={bounds}
           collisions={collisions}
           fluid={fluid}
         />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Bounds">
+        <BoundsControls key={`bounds-${refreshKey}`} bounds={bounds} />
       </CollapsibleSection>
 
       <CollapsibleSection title="Behavior">

@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
-import { Gravity, Bounds, Collisions, Fluid } from "@party/core";
+import { Gravity, Collisions, Fluid } from "@party/core";
 import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
 } from "@party/core/modules/forces/gravity";
 import {
-  DEFAULT_BOUNDS_BOUNCE,
-  DEFAULT_BOUNDS_FRICTION,
-} from "@party/core/modules/forces/bounds";
-import { DEFAULT_COLLISIONS_ENABLED, DEFAULT_COLLISIONS_EAT } from "@party/core/modules/forces/collisions";
+  DEFAULT_COLLISIONS_ENABLED,
+  DEFAULT_COLLISIONS_EAT,
+} from "@party/core/modules/forces/collisions";
 import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
@@ -18,14 +17,12 @@ import {
 
 interface PhysicsControlsProps {
   gravity: Gravity | null;
-  bounds: Bounds | null;
   collisions: Collisions | null;
   fluid: Fluid | null;
 }
 
 export function PhysicsControls({
   gravity,
-  bounds,
   collisions,
   fluid,
 }: PhysicsControlsProps) {
@@ -33,15 +30,11 @@ export function PhysicsControls({
     DEFAULT_GRAVITY_STRENGTH
   );
   const [gravityAngle, setGravityAngle] = useState(DEFAULT_GRAVITY_ANGLE);
-  const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
-  const [boundsFriction, setBoundsFriction] = useState(DEFAULT_BOUNDS_FRICTION);
   const [collisionsEnabled, setCollisionsEnabled] = useState(
     DEFAULT_COLLISIONS_ENABLED
   );
-  const [collisionsEat, setCollisionsEat] = useState(
-    DEFAULT_COLLISIONS_EAT
-  );
-  
+  const [collisionsEat, setCollisionsEat] = useState(DEFAULT_COLLISIONS_EAT);
+
   // Fluid state
   const [fluidEnabled, setFluidEnabled] = useState(false); // Playground default: off
   const [influenceRadius, setInfluenceRadius] = useState(
@@ -60,10 +53,6 @@ export function PhysicsControls({
         Math.atan2(gravity.direction.y, gravity.direction.x) * (180 / Math.PI);
       setGravityAngle((angle + 360) % 360);
     }
-    if (bounds) {
-      setBounce(bounds.bounce);
-      setBoundsFriction(bounds.friction);
-    }
     if (collisions) {
       setCollisionsEnabled(collisions.enabled);
       setCollisionsEat(collisions.eat);
@@ -75,7 +64,7 @@ export function PhysicsControls({
       setPressureMultiplier(fluid.pressureMultiplier);
       setWobbleFactor(fluid.wobbleFactor);
     }
-  }, [gravity, bounds, collisions, fluid]);
+  }, [gravity, collisions, fluid]);
 
   const handleGravityStrengthChange = (value: number) => {
     setGravityStrength(value);
@@ -88,21 +77,6 @@ export function PhysicsControls({
     setGravityAngle(angle);
     if (gravity) {
       gravity.setDirectionFromAngle(angle * (Math.PI / 180));
-    }
-  };
-
-  const handleBounceChange = (value: number) => {
-    setBounce(value);
-    if (bounds) {
-      bounds.bounce = value;
-    }
-    handleBoundsFrictionChange(DEFAULT_BOUNDS_FRICTION);
-  };
-
-  const handleBoundsFrictionChange = (frictionValue: number) => {
-    setBoundsFriction(frictionValue);
-    if (bounds) {
-      bounds.setFriction(frictionValue);
     }
   };
 
@@ -186,38 +160,6 @@ export function PhysicsControls({
 
       <div className="control-group">
         <label>
-          Bounce: {bounce.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={bounce}
-            onChange={(e) => handleBounceChange(parseFloat(e.target.value))}
-            className="slider"
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Friction: {boundsFriction.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="0.5"
-            step="0.01"
-            value={boundsFriction}
-            onChange={(e) =>
-              handleBoundsFrictionChange(parseFloat(e.target.value))
-            }
-            className="slider"
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
           <input
             type="checkbox"
             checked={collisionsEnabled}
@@ -293,16 +235,16 @@ export function PhysicsControls({
 
       <div className="control-group">
         <label>
-          Wobble: {wobbleFactor.toFixed(1)}
+          Influence: {influenceRadius.toFixed(1)}px
           <input
             type="range"
-            min="0"
-            max="10"
-            step="0.1"
-            value={wobbleFactor}
+            min="10"
+            max="200"
+            step="1"
+            value={influenceRadius}
             disabled={!fluidEnabled}
             onChange={(e) =>
-              handleFluidChange("wobbleFactor", parseFloat(e.target.value))
+              handleFluidChange("influenceRadius", parseFloat(e.target.value))
             }
             className={`slider ${!fluidEnabled ? "disabled" : ""}`}
           />
@@ -311,16 +253,16 @@ export function PhysicsControls({
 
       <div className="control-group">
         <label>
-          Influence: {influenceRadius.toFixed(1)}
+          Wobble: {wobbleFactor.toFixed(2)}
           <input
             type="range"
-            min="5"
-            max="500"
-            step="1"
-            value={influenceRadius}
+            min="0"
+            max="1"
+            step="0.01"
+            value={wobbleFactor}
             disabled={!fluidEnabled}
             onChange={(e) =>
-              handleFluidChange("influenceRadius", parseFloat(e.target.value))
+              handleFluidChange("wobbleFactor", parseFloat(e.target.value))
             }
             className={`slider ${!fluidEnabled ? "disabled" : ""}`}
           />

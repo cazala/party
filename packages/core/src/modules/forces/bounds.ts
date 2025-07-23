@@ -1,23 +1,35 @@
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
+import { Vector2D } from "../vector";
 
 // Default constants for Bounds behavior
 export const DEFAULT_BOUNDS_BOUNCE = 0.6; // Reduced from 0.8 for more energy dissipation
 export const DEFAULT_BOUNDS_FRICTION = 0.1; // Tangential friction along walls
 export const DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY = 50; // Below this speed, bounce is reduced further
+export const DEFAULT_BOUNDS_REPEL_DISTANCE = 0; // No repel distance by default
+export const DEFAULT_BOUNDS_REPEL_STRENGTH = 0; // No repel strength by default
+export const DEFAULT_BOUNDS_MODE = "bounce"; // Default boundary mode
+
+export type BoundsMode = "bounce" | "kill" | "warp";
 
 export interface BoundingBoxOptions {
   bounce?: number;
   friction?: number;
   minBounceVelocity?: number;
-  wrap?: boolean;
-  kill?: boolean;
+  repelDistance?: number;
+  repelStrength?: number;
+  mode?: BoundsMode;
+  wrap?: boolean; // Legacy option, kept for compatibility
+  kill?: boolean; // Legacy option, kept for compatibility
 }
 
 export class Bounds implements Force {
   public bounce: number;
   public friction: number;
+  public repelDistance: number;
+  public repelStrength: number;
+  public mode: BoundsMode;
   private cameraX: number = 0;
   private cameraY: number = 0;
   private zoom: number = 1;
@@ -25,6 +37,16 @@ export class Bounds implements Force {
   constructor(options: BoundingBoxOptions = {}) {
     this.bounce = options.bounce || DEFAULT_BOUNDS_BOUNCE;
     this.friction = options.friction || DEFAULT_BOUNDS_FRICTION;
+    this.repelDistance = options.repelDistance || DEFAULT_BOUNDS_REPEL_DISTANCE;
+    this.repelStrength = options.repelStrength || DEFAULT_BOUNDS_REPEL_STRENGTH;
+    this.mode = options.mode || DEFAULT_BOUNDS_MODE;
+
+    // Handle legacy options
+    if (options.kill) {
+      this.mode = "kill";
+    } else if (options.wrap) {
+      this.mode = "warp";
+    }
   }
 
   setCamera(cameraX: number, cameraY: number, zoom: number): void {
@@ -35,6 +57,18 @@ export class Bounds implements Force {
 
   setFriction(friction: number): void {
     this.friction = friction;
+  }
+
+  setRepelDistance(distance: number): void {
+    this.repelDistance = distance;
+  }
+
+  setRepelStrength(strength: number): void {
+    this.repelStrength = strength;
+  }
+
+  setMode(mode: BoundsMode): void {
+    this.mode = mode;
   }
 
   contains(particle: Particle, spatialGrid: SpatialGrid): boolean {
@@ -55,13 +89,61 @@ export class Bounds implements Force {
     );
   }
 
-  constrain(particle: Particle, spatialGrid: SpatialGrid): void {
-    if (!this.contains(particle, spatialGrid)) {
-      this.bounceParticle(particle, spatialGrid);
+  private applyRepelForce(particle: Particle, spatialGrid: SpatialGrid): void {
+    if (this.repelDistance <= 0 || this.repelStrength <= 0) return;
+
+    const { width, height } = spatialGrid.getSize();
+    const radius = particle.size;
+
+    // Calculate visible world bounds accounting for camera position and zoom
+    const worldLeft = -this.cameraX / this.zoom;
+    const worldTop = -this.cameraY / this.zoom;
+    const worldRight = (width - this.cameraX) / this.zoom;
+    const worldBottom = (height - this.cameraY) / this.zoom;
+
+    // Calculate distances to each wall
+    const distToLeft = particle.position.x - (worldLeft + radius);
+    const distToRight = worldRight - radius - particle.position.x;
+    const distToTop = particle.position.y - (worldTop + radius);
+    const distToBottom = worldBottom - radius - particle.position.y;
+
+    let forceX = 0;
+    let forceY = 0;
+
+    // Apply repel force from left wall
+    if (distToLeft < this.repelDistance && distToLeft > 0) {
+      const forceRatio = (this.repelDistance - distToLeft) / this.repelDistance;
+      forceX += forceRatio * this.repelStrength;
+    }
+
+    // Apply repel force from right wall
+    if (distToRight < this.repelDistance && distToRight > 0) {
+      const forceRatio =
+        (this.repelDistance - distToRight) / this.repelDistance;
+      forceX -= forceRatio * this.repelStrength;
+    }
+
+    // Apply repel force from top wall
+    if (distToTop < this.repelDistance && distToTop > 0) {
+      const forceRatio = (this.repelDistance - distToTop) / this.repelDistance;
+      forceY += forceRatio * this.repelStrength;
+    }
+
+    // Apply repel force from bottom wall
+    if (distToBottom < this.repelDistance && distToBottom > 0) {
+      const forceRatio =
+        (this.repelDistance - distToBottom) / this.repelDistance;
+      forceY -= forceRatio * this.repelStrength;
+    }
+
+    // Apply the combined repel force using particle.applyForce()
+    if (forceX !== 0 || forceY !== 0) {
+      const repelForce = new Vector2D(forceX, forceY);
+      particle.applyForce(repelForce);
     }
   }
 
-  private bounceParticle(particle: Particle, spatialGrid: SpatialGrid): void {
+  private handleBounce(particle: Particle, spatialGrid: SpatialGrid): void {
     const { width, height } = spatialGrid.getSize();
     const radius = particle.size; // particle.size is the radius
 
@@ -104,7 +186,59 @@ export class Bounds implements Force {
     }
   }
 
+  private handleKill(particle: Particle, spatialGrid: SpatialGrid): void {
+    if (!this.contains(particle, spatialGrid)) {
+      // Kill particle by setting mass to 0
+      particle.mass = 0;
+    }
+  }
+
+  private handleWarp(particle: Particle, spatialGrid: SpatialGrid): void {
+    const { width, height } = spatialGrid.getSize();
+    const radius = particle.size;
+
+    // Calculate visible world bounds accounting for camera position and zoom
+    const worldLeft = -this.cameraX / this.zoom;
+    const worldTop = -this.cameraY / this.zoom;
+    const worldRight = (width - this.cameraX) / this.zoom;
+    const worldBottom = (height - this.cameraY) / this.zoom;
+
+    // Left/Right warp
+    if (particle.position.x < worldLeft - radius) {
+      particle.position.x = worldRight + radius;
+    } else if (particle.position.x > worldRight + radius) {
+      particle.position.x = worldLeft - radius;
+    }
+
+    // Top/Bottom warp
+    if (particle.position.y < worldTop - radius) {
+      particle.position.y = worldBottom + radius;
+    } else if (particle.position.y > worldBottom + radius) {
+      particle.position.y = worldTop - radius;
+    }
+  }
+
+  constrain(particle: Particle, spatialGrid: SpatialGrid): void {
+    switch (this.mode) {
+      case "bounce":
+        if (!this.contains(particle, spatialGrid)) {
+          this.handleBounce(particle, spatialGrid);
+        }
+        break;
+      case "kill":
+        this.handleKill(particle, spatialGrid);
+        break;
+      case "warp":
+        this.handleWarp(particle, spatialGrid);
+        break;
+    }
+  }
+
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
+    // Always apply repel force if enabled
+    this.applyRepelForce(particle, spatialGrid);
+
+    // Apply boundary behavior
     this.constrain(particle, spatialGrid);
   }
 }

@@ -22,6 +22,9 @@ export interface Config {
   bounds?: {
     bounce: number;
     friction: number;
+    mode: "bounce" | "kill" | "warp";
+    repelDistance: number;
+    repelStrength: number;
   };
   collisions?: {
     enabled: boolean;
@@ -285,6 +288,9 @@ export class System {
         config.bounds = {
           bounce: force.bounce,
           friction: force.friction,
+          mode: force.mode,
+          repelDistance: force.repelDistance,
+          repelStrength: force.repelStrength,
         };
       } else if (force instanceof Collisions) {
         config.collisions = {
@@ -342,6 +348,9 @@ export class System {
       } else if (force instanceof Bounds && config.bounds) {
         force.bounce = config.bounds.bounce;
         force.setFriction(config.bounds.friction);
+        force.setMode(config.bounds.mode);
+        force.setRepelDistance(config.bounds.repelDistance);
+        force.setRepelStrength(config.bounds.repelStrength);
       } else if (force instanceof Collisions && config.collisions) {
         force.setEnabled(config.collisions.enabled);
         force.setEat(config.collisions.eat);
