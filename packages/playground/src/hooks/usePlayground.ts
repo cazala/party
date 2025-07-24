@@ -15,6 +15,8 @@ import {
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
   DEFAULT_GRAVITY_STRENGTH,
   getIdCounter,
+  Spawner,
+  calculateSquareVelocity,
 } from "@party/core";
 import { useInteractions } from "./useInteractions";
 import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
@@ -361,7 +363,7 @@ export function usePlayground(
   const spawnParticles = useCallback(
     (
       numParticles: number,
-      shape: "grid" | "random" | "circle" | "donut",
+      shape: "grid" | "random" | "circle" | "donut" | "square",
       spacing: number,
       particleSize: number = 10,
       radius: number = 100,
@@ -377,7 +379,9 @@ export function usePlayground(
           | "counter-clockwise";
         angle: number;
       },
-      innerRadius: number = 50
+      innerRadius: number = 50,
+      squareSize: number = 200,
+      cornerRadius: number = 0
     ) => {
       if (!systemRef.current) return;
 
@@ -664,6 +668,50 @@ export function usePlayground(
             if (particlesPlaced >= numParticles) break;
           }
         }
+      } else if (shape === "square") {
+        // Square placement around perimeter with optional rounded corners
+        const spawner = new Spawner();
+        const squareParticles = spawner.spawnSquare({
+          particleOptions: {
+            mass: spawnConfig.defaultMass,
+            size: particleSize,
+            color: getParticleColor(),
+          },
+          center: new Vector2D(centerX, centerY),
+          size: squareSize,
+          cornerRadius: cornerRadius,
+          count: numParticles,
+        });
+
+        // Add all particles and apply velocity if configured
+        for (const particle of squareParticles) {
+          let velocity: Vector2D;
+
+          if (velocityConfig && velocityConfig.speed > 0) {
+            if (
+              velocityConfig.direction === "clockwise" ||
+              velocityConfig.direction === "counter-clockwise"
+            ) {
+              // Use special square velocity calculation for perimeter movement
+              velocity = calculateSquareVelocity(
+                particle,
+                velocityConfig.direction,
+                velocityConfig.speed
+              );
+            } else {
+              // Use regular velocity calculation for other directions
+              velocity = calculateVelocity(
+                particle.position.x,
+                particle.position.y
+              );
+            }
+          } else {
+            velocity = new Vector2D(0, 0);
+          }
+
+          particle.velocity = velocity;
+          systemRef.current.addParticle(particle);
+        }
       } else if (shape === "random") {
         // Random placement within visible world area
         for (let i = 0; i < numParticles; i++) {
@@ -721,7 +769,9 @@ export function usePlayground(
         initConfig.radius,
         initConfig.colorConfig,
         initConfig.velocityConfig,
-        initConfig.innerRadius
+        initConfig.innerRadius,
+        initConfig.squareSize,
+        initConfig.cornerRadius
       );
     } else {
       // Fallback to default

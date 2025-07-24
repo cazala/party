@@ -17,6 +17,10 @@ export {
   Spawner,
   type GridSpawnOptions,
   type RandomSpawnOptions,
+  type CircleSpawnOptions,
+  type SquareSpawnOptions,
+  type ParticleWithSide,
+  calculateSquareVelocity,
 } from "./modules/spawner";
 export {
   Bounds as BoundingBox,

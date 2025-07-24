@@ -40,17 +40,19 @@ interface SystemControlsProps {
   interaction: Interaction | null;
   onInitParticles?: (
     numParticles: number,
-    shape: "grid" | "random" | "circle" | "donut",
+    shape: "grid" | "random" | "circle" | "donut" | "square",
     spacing: number,
     particleSize: number,
     radius?: number,
     colorConfig?: InitColorConfig,
     velocityConfig?: InitVelocityConfig,
-    innerRadius?: number
+    innerRadius?: number,
+    squareSize?: number,
+    cornerRadius?: number
   ) => void;
   onGetInitConfig?: () => {
     numParticles: number;
-    shape: "grid" | "random" | "circle" | "donut";
+    shape: "grid" | "random" | "circle" | "donut" | "square";
     spacing: number;
     particleSize: number;
     radius?: number;
@@ -58,6 +60,8 @@ interface SystemControlsProps {
     velocityConfig?: InitVelocityConfig;
     camera?: { x: number; y: number; zoom: number };
     innerRadius?: number;
+    squareSize?: number;
+    cornerRadius?: number;
   };
   onSpawnConfigChange?: (config: SpawnConfig) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };

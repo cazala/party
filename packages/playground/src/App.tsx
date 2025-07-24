@@ -135,6 +135,8 @@ function App() {
                 angle: 0,
               },
               innerRadius: 50,
+              squareSize: 200,
+              cornerRadius: 0,
               camera: renderer
                 ? {
                     x: renderer.getCamera().x,

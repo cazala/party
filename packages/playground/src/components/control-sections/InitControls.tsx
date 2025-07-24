@@ -6,6 +6,8 @@ const DEFAULT_SPAWN_SPACING = 25;
 const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
 const DEFAULT_SPAWN_RADIUS = 100;
 const DEFAULT_INNER_RADIUS = 50;
+const DEFAULT_SQUARE_SIZE = 200;
+const DEFAULT_CORNER_RADIUS = 0;
 const DEFAULT_VELOCITY_SPEED = 0;
 const DEFAULT_VELOCITY_DIRECTION = "random";
 const DEFAULT_VELOCITY_ANGLE = 0;
@@ -30,17 +32,19 @@ interface InitVelocityConfig {
 interface InitControlsProps {
   onInitParticles?: (
     numParticles: number,
-    shape: "grid" | "random" | "circle" | "donut",
+    shape: "grid" | "random" | "circle" | "donut" | "square",
     spacing: number,
     particleSize: number,
     radius?: number,
     colorConfig?: InitColorConfig,
     velocityConfig?: InitVelocityConfig,
-    innerRadius?: number
+    innerRadius?: number,
+    squareSize?: number,
+    cornerRadius?: number
   ) => void;
   onGetInitConfig?: () => {
     numParticles: number;
-    shape: "grid" | "random" | "circle" | "donut";
+    shape: "grid" | "random" | "circle" | "donut" | "square";
     spacing: number;
     particleSize: number;
     radius?: number;
@@ -48,6 +52,8 @@ interface InitControlsProps {
     velocityConfig?: InitVelocityConfig;
     camera?: { x: number; y: number; zoom: number };
     innerRadius?: number;
+    squareSize?: number;
+    cornerRadius?: number;
   };
   onParticleSizeChange?: (size: number) => void;
   onColorConfigChange?: (colorConfig: InitColorConfig) => void;
@@ -63,12 +69,14 @@ export function InitControls({
 }: InitControlsProps) {
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
   const [spawnShape, setSpawnShape] = useState<
-    "grid" | "random" | "circle" | "donut"
+    "grid" | "random" | "circle" | "donut" | "square"
   >(DEFAULT_SPAWN_SHAPE);
   const [spacing, setSpacing] = useState(DEFAULT_SPAWN_SPACING);
   const [particleSize, setParticleSize] = useState(DEFAULT_SPAWN_PARTICLE_SIZE);
   const [radius, setRadius] = useState(DEFAULT_SPAWN_RADIUS);
   const [innerRadius, setInnerRadius] = useState(DEFAULT_INNER_RADIUS);
+  const [squareSize, setSquareSize] = useState(DEFAULT_SQUARE_SIZE);
+  const [cornerRadius, setCornerRadius] = useState(DEFAULT_CORNER_RADIUS);
   const [colorConfig, setColorConfig] = useState<InitColorConfig>({
     colorMode: "random",
     customColor: "#F8F8F8",
@@ -89,7 +97,9 @@ export function InitControls({
         radius,
         colorConfig,
         velocityConfig,
-        innerRadius
+        innerRadius,
+        squareSize,
+        cornerRadius
       );
     }
   }, [
@@ -100,6 +110,8 @@ export function InitControls({
     particleSize,
     radius,
     innerRadius,
+    squareSize,
+    cornerRadius,
     colorConfig,
     velocityConfig,
   ]);
@@ -116,6 +128,8 @@ export function InitControls({
         velocityConfig,
         camera: getCurrentCamera ? getCurrentCamera() : undefined,
         innerRadius,
+        squareSize,
+        cornerRadius,
       });
       (window as any).__getInitConfig = getConfig;
     }
@@ -127,6 +141,8 @@ export function InitControls({
     particleSize,
     radius,
     innerRadius,
+    squareSize,
+    cornerRadius,
     colorConfig,
     velocityConfig,
     getCurrentCamera,
@@ -134,11 +150,13 @@ export function InitControls({
 
   const handleSpawnChange = (
     newNumParticles?: number,
-    newShape?: "grid" | "random" | "circle" | "donut",
+    newShape?: "grid" | "random" | "circle" | "donut" | "square",
     newSpacing?: number,
     newParticleSize?: number,
     newRadius?: number,
-    newInnerRadius?: number
+    newInnerRadius?: number,
+    newSquareSize?: number,
+    newCornerRadius?: number
   ) => {
     const particles = newNumParticles ?? numParticles;
     const shape = newShape ?? spawnShape;
@@ -146,6 +164,8 @@ export function InitControls({
     const space = Math.max(newSpacing ?? spacing, size * 2);
     const rad = newRadius ?? radius;
     const innerRad = newInnerRadius ?? innerRadius;
+    const sqSize = newSquareSize ?? squareSize;
+    const cornRad = newCornerRadius ?? cornerRadius;
 
     if (newNumParticles !== undefined) setNumParticles(newNumParticles);
     if (newShape !== undefined) setSpawnShape(newShape);
@@ -153,6 +173,8 @@ export function InitControls({
     if (newParticleSize !== undefined) setParticleSize(newParticleSize);
     if (newRadius !== undefined) setRadius(newRadius);
     if (newInnerRadius !== undefined) setInnerRadius(newInnerRadius);
+    if (newSquareSize !== undefined) setSquareSize(newSquareSize);
+    if (newCornerRadius !== undefined) setCornerRadius(newCornerRadius);
 
     if (onInitParticles) {
       onInitParticles(
@@ -163,7 +185,9 @@ export function InitControls({
         rad,
         colorConfig,
         velocityConfig,
-        innerRad
+        innerRad,
+        sqSize,
+        cornRad
       );
     }
   };
@@ -219,7 +243,12 @@ export function InitControls({
             onChange={(e) =>
               handleSpawnChange(
                 undefined,
-                e.target.value as "grid" | "random" | "circle" | "donut"
+                e.target.value as
+                  | "grid"
+                  | "random"
+                  | "circle"
+                  | "donut"
+                  | "square"
               )
             }
             className="form-select"
@@ -227,6 +256,7 @@ export function InitControls({
             <option value="grid">Grid</option>
             <option value="circle">Circle</option>
             <option value="donut">Donut</option>
+            <option value="square">Square</option>
             <option value="random">Random</option>
           </select>
         </label>
@@ -324,6 +354,69 @@ export function InitControls({
                 value={innerRadius}
                 onChange={(e) =>
                   handleSpawnChange(
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    parseInt(e.target.value)
+                  )
+                }
+                className="slider"
+              />
+            </label>
+          </div>
+        </>
+      )}
+
+      {spawnShape === "square" && (
+        <>
+          <div className="control-group">
+            <label>
+              Size: {squareSize}
+              <input
+                type="range"
+                min="50"
+                max="1000"
+                step="10"
+                value={squareSize}
+                onChange={(e) => {
+                  const newSize = parseInt(e.target.value);
+                  // Ensure corner radius doesn't exceed half the size
+                  const adjustedCornerRadius = Math.min(
+                    cornerRadius,
+                    newSize / 2
+                  );
+                  handleSpawnChange(
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    newSize,
+                    adjustedCornerRadius !== cornerRadius
+                      ? adjustedCornerRadius
+                      : undefined
+                  );
+                }}
+                className="slider"
+              />
+            </label>
+          </div>
+          <div className="control-group">
+            <label>
+              Corner Radius: {cornerRadius}
+              <input
+                type="range"
+                min="0"
+                max={Math.max(0, squareSize / 2)}
+                step="5"
+                value={cornerRadius}
+                onChange={(e) =>
+                  handleSpawnChange(
+                    undefined,
+                    undefined,
                     undefined,
                     undefined,
                     undefined,
