@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sensors } from "@party/core";
+import { Sensors, degToRad, radToDeg } from "@party/core";
 import {
   DEFAULT_TRAIL_ENABLED,
   DEFAULT_TRAIL_DECAY,
@@ -25,7 +25,9 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
   // Sensor state
   const [sensorsEnabled, setSensorsEnabled] = useState(DEFAULT_SENSORS_ENABLED);
   const [sensorDistance, setSensorDistance] = useState(DEFAULT_SENSOR_DISTANCE);
-  const [sensorAngle, setSensorAngle] = useState(DEFAULT_SENSOR_ANGLE);
+  const [sensorAngle, setSensorAngle] = useState(
+    radToDeg(DEFAULT_SENSOR_ANGLE)
+  ); // Convert radians to degrees for UI
   const [sensorRadius, setSensorRadius] = useState(DEFAULT_SENSOR_RADIUS);
   const [sensorThreshold, setSensorThreshold] = useState(
     DEFAULT_SENSOR_THRESHOLD
@@ -39,7 +41,7 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
       setTrailDiffuse(sensors.trailDiffuse);
       setSensorsEnabled(sensors.enableSensors);
       setSensorDistance(sensors.sensorDistance);
-      setSensorAngle(sensors.sensorAngle);
+      setSensorAngle(radToDeg(sensors.sensorAngle)); // Convert radians to degrees for UI
       setSensorRadius(sensors.sensorRadius);
       setSensorThreshold(sensors.sensorThreshold);
       setSensorStrength(sensors.sensorStrength);
@@ -80,8 +82,8 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
         sensors.setSensorDistance(value as number);
         break;
       case "sensorAngle":
-        setSensorAngle(value as number);
-        sensors.setSensorAngle(value as number);
+        setSensorAngle(value as number); // Store degrees in UI state
+        sensors.setSensorAngle(degToRad(value as number)); // Convert to radians for core library
         break;
       case "sensorRadius":
         setSensorRadius(value as number);
@@ -187,7 +189,7 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
 
       <div className="control-group">
         <label>
-          Sensor Angle: {sensorAngle}°
+          Sensor Angle: {Math.round(sensorAngle)}°
           <input
             type="range"
             min="0"

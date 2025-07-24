@@ -13,7 +13,7 @@ export const DEFAULT_BEHAVIOR_CHASE_WEIGHT = 0;
 export const DEFAULT_BEHAVIOR_AVOID_WEIGHT = 0;
 export const DEFAULT_BEHAVIOR_SEPARATION_RANGE = 30;
 export const DEFAULT_BEHAVIOR_VIEW_RADIUS = 100;
-export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 2 * Math.PI;
+export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 2 * Math.PI; // Full circle in radians (360°)
 
 export class Behavior implements Force {
   public enabled: boolean;
@@ -25,7 +25,7 @@ export class Behavior implements Force {
   avoidWeight: number;
   separationRange: number;
   viewRadius: number;
-  viewAngle: number;
+  viewAngle: number; // Field of view angle in radians
   wanderMap: Record<number, Vector2D> = {};
 
   constructor(
@@ -39,7 +39,7 @@ export class Behavior implements Force {
       avoidWeight?: number;
       separationRange?: number;
       viewRadius?: number;
-      viewAngle?: number;
+      viewAngle?: number; // Field of view angle in radians
     } = {}
   ) {
     this.enabled = options.enabled ?? DEFAULT_BEHAVIOR_ENABLED;

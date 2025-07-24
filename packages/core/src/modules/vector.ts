@@ -94,10 +94,64 @@ export class Vector2D {
     return new Vector2D(0, 0);
   }
 
+  /**
+   * Create a Vector2D from an angle in radians
+   * @param angle Angle in radians (0 = right, π/2 = down, π = left, 3π/2 = up)
+   * @param magnitude Length of the vector (default: 1)
+   */
   static fromAngle(angle: number, magnitude: number = 1): Vector2D {
     return new Vector2D(
       Math.cos(angle) * magnitude,
       Math.sin(angle) * magnitude
     );
   }
+
+  /**
+   * Create a Vector2D from an angle in degrees
+   * @param angle Angle in degrees (0° = right, 90° = down, 180° = left, 270° = up)
+   * @param magnitude Length of the vector (default: 1)
+   */
+  static fromAngleDegrees(angle: number, magnitude: number = 1): Vector2D {
+    const angleInRadians = (angle * Math.PI) / 180;
+    return new Vector2D(
+      Math.cos(angleInRadians) * magnitude,
+      Math.sin(angleInRadians) * magnitude
+    );
+  }
+
+  /**
+   * Convert degrees to radians
+   * @param degrees Angle in degrees
+   * @returns Angle in radians
+   */
+  static degreesToRadians(degrees: number): number {
+    return (degrees * Math.PI) / 180;
+  }
+
+  /**
+   * Convert radians to degrees
+   * @param radians Angle in radians
+   * @returns Angle in degrees
+   */
+  static radiansToDegrees(radians: number): number {
+    return (radians * 180) / Math.PI;
+  }
+}
+
+/**
+ * Convert degrees to radians
+ * @param degrees Angle in degrees
+ * @returns Angle in radians
+ */
+export function degToRad(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}
+
+/**
+ * Convert radians to degrees  
+ * @param radians Angle in radians
+ * @returns Angle in degrees
+ */
+export function radToDeg(radians: number): number {
+  return (radians * 180) / Math.PI;
 }

@@ -1,4 +1,4 @@
-export { Vector2D } from "./modules/vector";
+export { Vector2D, degToRad, radToDeg } from "./modules/vector";
 export {
   Particle,
   type ParticleOptions,

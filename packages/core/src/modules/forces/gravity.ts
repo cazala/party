@@ -6,11 +6,13 @@ import { SpatialGrid } from "../spatial-grid";
 // Default constants for Gravity
 export const DEFAULT_GRAVITY_STRENGTH = 0;
 export const DEFAULT_GRAVITY_DIRECTION = new Vector2D(0, 1); // Downward
-export const DEFAULT_GRAVITY_ANGLE = 90; // degrees (downward)
+export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downward)
 
 export interface GravityOptions {
   strength?: number;
   direction?: Vector2D;
+  /** Angle in radians (0 = right, π/2 = down, π = left, 3π/2 = up) */
+  angle?: number;
 }
 
 export class Gravity implements Force {
@@ -30,6 +32,10 @@ export class Gravity implements Force {
     this.direction = direction.clone().normalize();
   }
 
+  /**
+   * Set gravity direction from angle in radians
+   * @param angle Angle in radians (0 = right, π/2 = down, π = left, 3π/2 = up)
+   */
   setDirectionFromAngle(angle: number): void {
     this.direction = Vector2D.fromAngle(angle);
   }

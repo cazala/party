@@ -18,6 +18,7 @@ import {
   Spawner,
   type ColorConfig,
   type VelocityConfig,
+  degToRad,
 } from "@party/core";
 import { useInteractions } from "./useInteractions";
 import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
@@ -419,7 +420,7 @@ export function usePlayground(
       const coreVelocityConfig: VelocityConfig | undefined = velocityConfig ? {
         speed: velocityConfig.speed,
         direction: velocityConfig.direction,
-        angle: velocityConfig.angle,
+        angle: degToRad(velocityConfig.angle), // Convert degrees to radians
         center: center,
       } : undefined;
 

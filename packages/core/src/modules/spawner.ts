@@ -10,7 +10,8 @@ export interface VelocityConfig {
     | "custom"
     | "clockwise"
     | "counter-clockwise";
-  angle?: number; // Used when direction is "custom" (in degrees)
+  /** Used when direction is "custom" (in radians) */
+  angle?: number;
   center?: Vector2D; // Center point for directional calculations
 }
 
@@ -135,8 +136,8 @@ export function calculateVelocity(
       angle = Math.atan2(dxCounter, -dyCounter);
       break;
     case "custom":
-      // Convert degrees to radians
-      angle = ((velocityConfig.angle || 0) * Math.PI) / 180;
+      // Angle is already in radians
+      angle = velocityConfig.angle || 0;
       break;
   }
 

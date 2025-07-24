@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Gravity, Collisions } from "@party/core";
+import { Gravity, Collisions, degToRad, radToDeg } from "@party/core";
 import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_ANGLE,
@@ -18,7 +18,7 @@ export function PhysicsControls({ gravity, collisions }: PhysicsControlsProps) {
   const [gravityStrength, setGravityStrength] = useState(
     DEFAULT_GRAVITY_STRENGTH
   );
-  const [gravityAngle, setGravityAngle] = useState(DEFAULT_GRAVITY_ANGLE);
+  const [gravityAngle, setGravityAngle] = useState(radToDeg(DEFAULT_GRAVITY_ANGLE)); // Convert radians to degrees for UI
   const [collisionsEnabled, setCollisionsEnabled] = useState(
     DEFAULT_COLLISIONS_ENABLED
   );
@@ -45,9 +45,9 @@ export function PhysicsControls({ gravity, collisions }: PhysicsControlsProps) {
   };
 
   const handleGravityAngleChange = (angle: number) => {
-    setGravityAngle(angle);
+    setGravityAngle(angle); // Store degrees in UI state
     if (gravity) {
-      gravity.setDirectionFromAngle(angle * (Math.PI / 180));
+      gravity.setDirectionFromAngle(degToRad(angle)); // Convert to radians for core library
     }
   };
 

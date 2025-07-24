@@ -84,7 +84,7 @@ export function ForcesControls({
     // Reset gravity
     if (gravity) {
       gravity.setStrength(DEFAULT_GRAVITY_STRENGTH);
-      gravity.setDirectionFromAngle(DEFAULT_GRAVITY_ANGLE * (Math.PI / 180));
+      gravity.setDirectionFromAngle(DEFAULT_GRAVITY_ANGLE); // DEFAULT_GRAVITY_ANGLE is already in radians
     }
 
     // Reset bounds

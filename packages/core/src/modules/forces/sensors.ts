@@ -11,7 +11,7 @@ export const DEFAULT_TRAIL_DIFFUSE = 1;
 // Default constants for Sensors
 export const DEFAULT_SENSORS_ENABLED = false;
 export const DEFAULT_SENSOR_DISTANCE = 30;
-export const DEFAULT_SENSOR_ANGLE = 30; // degrees
+export const DEFAULT_SENSOR_ANGLE = Math.PI / 6; // 30 degrees in radians
 export const DEFAULT_SENSOR_RADIUS = 3;
 export const DEFAULT_SENSOR_THRESHOLD = 0.1;
 export const DEFAULT_SENSOR_STRENGTH = 1000;
@@ -22,6 +22,7 @@ export interface SensorsOptions {
   trailDiffuse?: number;
   enableSensors?: boolean;
   sensorDistance?: number;
+  /** Sensor angle in radians */
   sensorAngle?: number;
   sensorRadius?: number;
   sensorThreshold?: number;
@@ -37,6 +38,7 @@ export class Sensors implements Force {
   // Sensor configuration
   public enableSensors: boolean;
   public sensorDistance: number;
+  /** Sensor angle in radians */
   public sensorAngle: number;
   public sensorRadius: number;
   public sensorThreshold: number;
@@ -80,6 +82,10 @@ export class Sensors implements Force {
     this.sensorDistance = sensorDistance;
   }
 
+  /**
+   * Set sensor angle in radians
+   * @param sensorAngle Sensor angle in radians
+   */
   setSensorAngle(sensorAngle: number): void {
     this.sensorAngle = sensorAngle;
   }
@@ -115,32 +121,29 @@ export class Sensors implements Force {
         ? Vector2D.random().normalize()
         : particle.velocity.clone().normalize();
 
-    // Convert sensor angle from degrees to radians
-    const sensorAngleRad = (this.sensorAngle * Math.PI) / 180;
-
     // Calculate positions of the 3 sensors
     // Center sensor: straight ahead
     const centerSensorPos = particle.position
       .clone()
       .add(velocityDirection.clone().multiply(this.sensorDistance));
 
-    // Left sensor: rotated by -sensorAngle
+    // Left sensor: rotated by -sensorAngle (sensorAngle is already in radians)
     const leftDirection = new Vector2D(
-      velocityDirection.x * Math.cos(-sensorAngleRad) -
-        velocityDirection.y * Math.sin(-sensorAngleRad),
-      velocityDirection.x * Math.sin(-sensorAngleRad) +
-        velocityDirection.y * Math.cos(-sensorAngleRad)
+      velocityDirection.x * Math.cos(-this.sensorAngle) -
+        velocityDirection.y * Math.sin(-this.sensorAngle),
+      velocityDirection.x * Math.sin(-this.sensorAngle) +
+        velocityDirection.y * Math.cos(-this.sensorAngle)
     );
     const leftSensorPos = particle.position
       .clone()
       .add(leftDirection.multiply(this.sensorDistance));
 
-    // Right sensor: rotated by +sensorAngle
+    // Right sensor: rotated by +sensorAngle (sensorAngle is already in radians)
     const rightDirection = new Vector2D(
-      velocityDirection.x * Math.cos(sensorAngleRad) -
-        velocityDirection.y * Math.sin(sensorAngleRad),
-      velocityDirection.x * Math.sin(sensorAngleRad) +
-        velocityDirection.y * Math.cos(sensorAngleRad)
+      velocityDirection.x * Math.cos(this.sensorAngle) -
+        velocityDirection.y * Math.sin(this.sensorAngle),
+      velocityDirection.x * Math.sin(this.sensorAngle) +
+        velocityDirection.y * Math.cos(this.sensorAngle)
     );
     const rightSensorPos = particle.position
       .clone()
@@ -191,6 +194,10 @@ export class Sensors implements Force {
   }
 }
 
+/**
+ * Create a Sensors force
+ * @param sensorAngle Sensor angle in radians
+ */
 export function createSensorsForce(
   enableTrail: boolean = DEFAULT_TRAIL_ENABLED,
   trailDecay: number = DEFAULT_TRAIL_DECAY,
