@@ -16,7 +16,8 @@ import {
   DEFAULT_GRAVITY_STRENGTH,
   getIdCounter,
   Spawner,
-  calculateSquareVelocity,
+  type ColorConfig,
+  type VelocityConfig,
 } from "@party/core";
 import { useInteractions } from "./useInteractions";
 import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
@@ -385,7 +386,6 @@ export function usePlayground(
     ) => {
       if (!systemRef.current) return;
 
-      // dragThreshold is handled via spawn config in mouse events
       // Clear existing particles
       systemRef.current.particles = [];
 
@@ -393,26 +393,6 @@ export function usePlayground(
       if (rendererRef.current) {
         rendererRef.current.clearCanvas();
       }
-
-      const colors = [
-        "#F8F8F8", // Bright White
-        "#FF3C3C", // Neon Red
-        "#00E0FF", // Cyber Cyan
-        "#C85CFF", // Electric Purple
-        "#AFFF00", // Lime Neon
-        "#FF2D95", // Hot Magenta
-        "#FF6A00", // Sunset Orange
-        "#3B82F6", // Deep Blue Glow
-        "#00FFC6", // Turquoise Mint
-      ];
-
-      // Determine color based on color configuration
-      const getParticleColor = () => {
-        if (colorConfig?.colorMode === "custom") {
-          return colorConfig.customColor;
-        }
-        return colors[Math.floor(Math.random() * colors.length)];
-      };
 
       const canvasWidth = systemRef.current.width;
       const canvasHeight = systemRef.current.height;
@@ -427,327 +407,54 @@ export function usePlayground(
       // Center of visible world area
       const centerX = (-camera.x + canvasWidth / 2) / zoom;
       const centerY = (-camera.y + canvasHeight / 2) / zoom;
+      const center = new Vector2D(centerX, centerY);
 
-      // Helper function to calculate velocity based on configuration
-      const calculateVelocity = (particleX: number, particleY: number) => {
-        if (!velocityConfig || velocityConfig.speed === 0) {
-          return new Vector2D(0, 0);
-        }
+      // Convert playground color config to core ColorConfig
+      const coreColorConfig: ColorConfig | undefined = colorConfig ? {
+        colorMode: colorConfig.colorMode,
+        customColor: colorConfig.customColor,
+      } : undefined;
 
-        const speed = velocityConfig.speed;
-        let angle = 0;
+      // Convert playground velocity config to core VelocityConfig
+      const coreVelocityConfig: VelocityConfig | undefined = velocityConfig ? {
+        speed: velocityConfig.speed,
+        direction: velocityConfig.direction,
+        angle: velocityConfig.angle,
+        center: center,
+      } : undefined;
 
-        switch (velocityConfig.direction) {
-          case "random":
-            angle = Math.random() * 2 * Math.PI;
-            break;
-          case "in":
-            // Point towards center
-            const dx = centerX - particleX;
-            const dy = centerY - particleY;
-            angle = Math.atan2(dy, dx);
-            break;
-          case "out":
-            // Point away from center
-            const dxOut = particleX - centerX;
-            const dyOut = particleY - centerY;
-            angle = Math.atan2(dyOut, dxOut);
-            break;
-          case "clockwise":
-            // Calculate perpendicular vector for clockwise rotation around center
-            const dxClock = particleX - centerX;
-            const dyClock = particleY - centerY;
-            // Rotate 90 degrees clockwise: (x, y) -> (y, -x)
-            angle = Math.atan2(-dxClock, dyClock);
-            break;
-          case "counter-clockwise":
-            // Calculate perpendicular vector for counter-clockwise rotation around center
-            const dxCounter = particleX - centerX;
-            const dyCounter = particleY - centerY;
-            // Rotate 90 degrees counter-clockwise: (x, y) -> (-y, x)
-            angle = Math.atan2(dxCounter, -dyCounter);
-            break;
-          case "custom":
-            // Convert degrees to radians
-            angle = (velocityConfig.angle * Math.PI) / 180;
-            break;
-        }
-
-        return new Vector2D(speed * Math.cos(angle), speed * Math.sin(angle));
+      // Common particle options
+      const particleOptions = {
+        mass: spawnConfig.defaultMass,
+        size: particleSize,
+        acceleration: new Vector2D(0, 0),
       };
 
-      if (shape === "grid") {
-        const particlesPerRow = Math.ceil(Math.sqrt(numParticles));
-        const particlesPerCol = Math.ceil(numParticles / particlesPerRow);
+      const spawner = new Spawner();
+      
+      // Use the initParticles utility for simplified spawning
+      const particles = spawner.initParticles({
+        count: numParticles,
+        shape,
+        center,
+        particleOptions,
+        velocityConfig: coreVelocityConfig,
+        colorConfig: coreColorConfig,
+        spacing,
+        radius,
+        innerRadius,
+        squareSize,
+        cornerRadius,
+        camera: { position: new Vector2D(camera.x, camera.y), zoom },
+        canvasSize: { width: canvasWidth, height: canvasHeight },
+      });
 
-        // Ensure spacing is at least particle diameter to prevent touching
-        const safeSpacing = Math.max(spacing, particleSize * 2);
-
-        for (let i = 0; i < numParticles; i++) {
-          const x =
-            centerX +
-            ((i % particlesPerRow) - particlesPerRow / 2 + 0.5) * safeSpacing;
-          const y =
-            centerY +
-            (Math.floor(i / particlesPerRow) - particlesPerCol / 2 + 0.5) *
-              safeSpacing;
-
-          // Use configured mass from spawn controls
-          const mass = spawnConfig.defaultMass;
-
-          const particle = new Particle({
-            position: new Vector2D(x, y),
-            velocity: calculateVelocity(x, y),
-            acceleration: new Vector2D(0, 0),
-            mass: mass, // Mass proportional to area
-            size: particleSize,
-            color: getParticleColor(),
-          });
-
-          systemRef.current.addParticle(particle);
-        }
-      } else if (shape === "circle") {
-        // Circle placement with uniform distribution in concentric rings
-        if (numParticles === 1) {
-          // Special case: single particle at center
-          const mass = spawnConfig.defaultMass;
-
-          const particle = new Particle({
-            position: new Vector2D(centerX, centerY),
-            velocity: calculateVelocity(centerX, centerY),
-            acceleration: new Vector2D(0, 0),
-            mass: mass,
-            size: particleSize,
-            color: getParticleColor(),
-          });
-
-          systemRef.current.addParticle(particle);
-        } else {
-          // Calculate optimal number of rings to fill the entire radius
-          const minSpacing = particleSize * 1.5; // Minimum spacing between particles
-
-          // Estimate number of rings needed to distribute particles evenly
-          const estimatedRings = Math.max(
-            1,
-            Math.ceil(Math.sqrt(numParticles / Math.PI))
-          );
-
-          let particlesPlaced = 0;
-
-          for (
-            let ring = 0;
-            ring < estimatedRings && particlesPlaced < numParticles;
-            ring++
-          ) {
-            const ringRadius =
-              ring === 0 ? 0 : (radius * (ring + 1)) / estimatedRings;
-
-            // Calculate particles for this ring
-            let particlesInRing;
-            if (ring === 0) {
-              // Center ring gets 1 particle
-              particlesInRing = 1;
-            } else {
-              // Calculate based on circumference and remaining particles
-              const circumference = 2 * Math.PI * ringRadius;
-              const maxParticlesInRing = Math.max(
-                1,
-                Math.floor(circumference / minSpacing)
-              );
-
-              // Distribute remaining particles among remaining rings
-              const remainingRings = estimatedRings - ring;
-              const remainingParticles = numParticles - particlesPlaced;
-              const averagePerRing = Math.ceil(
-                remainingParticles / remainingRings
-              );
-
-              particlesInRing = Math.min(
-                maxParticlesInRing,
-                averagePerRing,
-                remainingParticles
-              );
-            }
-
-            for (let p = 0; p < particlesInRing; p++) {
-              const angle = (2 * Math.PI * p) / particlesInRing;
-
-              // Calculate position relative to center
-              const x = centerX + ringRadius * Math.cos(angle);
-              const y = centerY + ringRadius * Math.sin(angle);
-
-              // Use configured mass from spawn controls
-              const mass = spawnConfig.defaultMass;
-
-              const particle = new Particle({
-                position: new Vector2D(x, y),
-                velocity: calculateVelocity(x, y),
-                acceleration: new Vector2D(0, 0),
-                mass: mass, // Mass proportional to area
-                size: particleSize,
-                color: getParticleColor(),
-              });
-
-              systemRef.current.addParticle(particle);
-              particlesPlaced++;
-
-              if (particlesPlaced >= numParticles) break;
-            }
-          }
-        }
-      } else if (shape === "donut") {
-        // Donut placement with particles distributed in rings between inner and outer radius
-        const minSpacing = particleSize * 1.5; // Minimum spacing between particles
-        const ringThickness = radius - innerRadius;
-
-        if (ringThickness <= 0) {
-          console.warn(
-            "Invalid donut parameters: outer radius must be greater than inner radius"
-          );
-          return;
-        }
-
-        // Calculate number of rings based on available thickness and spacing
-        const maxRings = Math.max(1, Math.floor(ringThickness / minSpacing));
-        const actualRings = Math.min(
-          maxRings,
-          Math.ceil(Math.sqrt(numParticles / (2 * Math.PI)))
-        );
-
-        let particlesPlaced = 0;
-
-        for (
-          let ring = 0;
-          ring < actualRings && particlesPlaced < numParticles;
-          ring++
-        ) {
-          // Calculate radius for this ring (distributed evenly between inner and outer)
-          const ringRadius =
-            innerRadius + (ringThickness * (ring + 0.5)) / actualRings;
-
-          // Calculate circumference and maximum particles for this ring
-          const circumference = 2 * Math.PI * ringRadius;
-          const maxParticlesInRing = Math.max(
-            1,
-            Math.floor(circumference / minSpacing)
-          );
-
-          // Distribute remaining particles among remaining rings
-          const remainingRings = actualRings - ring;
-          const remainingParticles = numParticles - particlesPlaced;
-          const averagePerRing = Math.ceil(remainingParticles / remainingRings);
-
-          const particlesInRing = Math.min(
-            maxParticlesInRing,
-            averagePerRing,
-            remainingParticles
-          );
-
-          for (let p = 0; p < particlesInRing; p++) {
-            const angle = (2 * Math.PI * p) / particlesInRing;
-
-            // Calculate position relative to center
-            const x = centerX + ringRadius * Math.cos(angle);
-            const y = centerY + ringRadius * Math.sin(angle);
-
-            // Use configured mass from spawn controls
-            const mass = spawnConfig.defaultMass;
-
-            const particle = new Particle({
-              position: new Vector2D(x, y),
-              velocity: calculateVelocity(x, y),
-              acceleration: new Vector2D(0, 0),
-              mass: mass,
-              size: particleSize,
-              color: getParticleColor(),
-            });
-
-            systemRef.current.addParticle(particle);
-            particlesPlaced++;
-
-            if (particlesPlaced >= numParticles) break;
-          }
-        }
-      } else if (shape === "square") {
-        // Square placement around perimeter with optional rounded corners
-        const spawner = new Spawner();
-        const squareParticles = spawner.spawnSquare({
-          particleOptions: {
-            mass: spawnConfig.defaultMass,
-            size: particleSize,
-            color: getParticleColor(),
-          },
-          center: new Vector2D(centerX, centerY),
-          size: squareSize,
-          cornerRadius: cornerRadius,
-          count: numParticles,
-        });
-
-        // Add all particles and apply velocity if configured
-        for (const particle of squareParticles) {
-          let velocity: Vector2D;
-
-          if (velocityConfig && velocityConfig.speed > 0) {
-            if (
-              velocityConfig.direction === "clockwise" ||
-              velocityConfig.direction === "counter-clockwise"
-            ) {
-              // Use special square velocity calculation for perimeter movement
-              velocity = calculateSquareVelocity(
-                particle,
-                velocityConfig.direction,
-                velocityConfig.speed
-              );
-            } else {
-              // Use regular velocity calculation for other directions
-              velocity = calculateVelocity(
-                particle.position.x,
-                particle.position.y
-              );
-            }
-          } else {
-            velocity = new Vector2D(0, 0);
-          }
-
-          particle.velocity = velocity;
-          systemRef.current.addParticle(particle);
-        }
-      } else if (shape === "random") {
-        // Random placement within visible world area
-        for (let i = 0; i < numParticles; i++) {
-          // Calculate visible world bounds
-          const worldLeft = -camera.x / zoom;
-          const worldTop = -camera.y / zoom;
-          const worldRight = (canvasWidth - camera.x) / zoom;
-          const worldBottom = (canvasHeight - camera.y) / zoom;
-
-          // Keep particles within bounds considering their size
-          const x =
-            worldLeft +
-            particleSize +
-            Math.random() * (worldRight - worldLeft - particleSize * 2);
-          const y =
-            worldTop +
-            particleSize +
-            Math.random() * (worldBottom - worldTop - particleSize * 2);
-
-          // Use configured mass from spawn controls
-          const mass = spawnConfig.defaultMass;
-
-          const particle = new Particle({
-            position: new Vector2D(x, y),
-            velocity: calculateVelocity(x, y),
-            acceleration: new Vector2D(0, 0),
-            mass: mass, // Mass proportional to area
-            size: particleSize,
-            color: getParticleColor(),
-          });
-
-          systemRef.current.addParticle(particle);
-        }
+      // Add all particles to the system
+      for (const particle of particles) {
+        systemRef.current.addParticle(particle);
       }
     },
-    []
+    [spawnConfig.defaultMass]
   );
 
   // Replace the entire particle array based on the current spawn configuration

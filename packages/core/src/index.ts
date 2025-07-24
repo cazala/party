@@ -19,8 +19,14 @@ export {
   type RandomSpawnOptions,
   type CircleSpawnOptions,
   type SquareSpawnOptions,
+  type DonutSpawnOptions,
+  type InitParticlesOptions,
+  type VelocityConfig,
+  type ColorConfig,
   type ParticleWithSide,
   calculateSquareVelocity,
+  calculateVelocity,
+  getParticleColor,
 } from "./modules/spawner";
 export {
   Bounds as BoundingBox,

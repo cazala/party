@@ -1,12 +1,34 @@
 import { Particle, ParticleOptions } from "./particle";
 import { Vector2D } from "./vector";
 
+export interface VelocityConfig {
+  speed: number;
+  direction:
+    | "random"
+    | "in"
+    | "out"
+    | "custom"
+    | "clockwise"
+    | "counter-clockwise";
+  angle?: number; // Used when direction is "custom" (in degrees)
+  center?: Vector2D; // Center point for directional calculations
+}
+
+export interface ColorConfig {
+  colorMode: "random" | "custom";
+  customColor?: string;
+  palette?: string[]; // Optional custom palette for random mode
+}
+
 export interface GridSpawnOptions {
   particleOptions?: ParticleOptions;
   rows: number;
   cols: number;
   spacing: Vector2D;
   center: Vector2D;
+  velocityConfig?: VelocityConfig;
+  colorConfig?: ColorConfig;
+  safeSpacing?: boolean; // Ensures particles don't touch by using max(spacing, particleSize * 2)
 }
 
 export interface RandomSpawnOptions {
@@ -16,6 +38,10 @@ export interface RandomSpawnOptions {
     max: Vector2D;
   };
   count: number;
+  velocityConfig?: VelocityConfig;
+  colorConfig?: ColorConfig;
+  camera?: { position: Vector2D; zoom: number }; // For camera-aware spawning
+  canvasSize?: { width: number; height: number }; // For viewport calculations
 }
 
 export interface CircleSpawnOptions {
@@ -23,6 +49,18 @@ export interface CircleSpawnOptions {
   center: Vector2D;
   radius: number;
   count: number;
+  velocityConfig?: VelocityConfig;
+  colorConfig?: ColorConfig;
+}
+
+export interface DonutSpawnOptions {
+  particleOptions?: ParticleOptions;
+  center: Vector2D;
+  outerRadius: number;
+  innerRadius: number;
+  count: number;
+  velocityConfig?: VelocityConfig;
+  colorConfig?: ColorConfig;
 }
 
 export interface SquareSpawnOptions {
@@ -31,6 +69,8 @@ export interface SquareSpawnOptions {
   size: number;
   cornerRadius: number;
   count: number;
+  velocityConfig?: VelocityConfig;
+  colorConfig?: ColorConfig;
 }
 
 export interface ParticleWithSide extends Particle {
@@ -39,28 +79,258 @@ export interface ParticleWithSide extends Particle {
   sideProgress?: number; // 0-1 progress along the side/corner
 }
 
+// Default color palette
+const DEFAULT_COLOR_PALETTE = [
+  "#F8F8F8", // Bright White
+  "#FF3C3C", // Neon Red
+  "#00E0FF", // Cyber Cyan
+  "#C85CFF", // Electric Purple
+  "#AFFF00", // Lime Neon
+  "#FF2D95", // Hot Magenta
+  "#FF6A00", // Sunset Orange
+  "#3B82F6", // Deep Blue Glow
+  "#00FFC6", // Turquoise Mint
+];
+
+export function calculateVelocity(
+  particlePosition: Vector2D,
+  velocityConfig: VelocityConfig
+): Vector2D {
+  if (!velocityConfig || velocityConfig.speed === 0) {
+    return new Vector2D(0, 0);
+  }
+
+  const speed = velocityConfig.speed;
+  const center = velocityConfig.center || new Vector2D(0, 0);
+  let angle = 0;
+
+  switch (velocityConfig.direction) {
+    case "random":
+      angle = Math.random() * 2 * Math.PI;
+      break;
+    case "in":
+      // Point towards center
+      const dx = center.x - particlePosition.x;
+      const dy = center.y - particlePosition.y;
+      angle = Math.atan2(dy, dx);
+      break;
+    case "out":
+      // Point away from center
+      const dxOut = particlePosition.x - center.x;
+      const dyOut = particlePosition.y - center.y;
+      angle = Math.atan2(dyOut, dxOut);
+      break;
+    case "clockwise":
+      // Calculate perpendicular vector for clockwise rotation around center
+      const dxClock = particlePosition.x - center.x;
+      const dyClock = particlePosition.y - center.y;
+      // Rotate 90 degrees clockwise: (x, y) -> (y, -x)
+      angle = Math.atan2(-dxClock, dyClock);
+      break;
+    case "counter-clockwise":
+      // Calculate perpendicular vector for counter-clockwise rotation around center
+      const dxCounter = particlePosition.x - center.x;
+      const dyCounter = particlePosition.y - center.y;
+      // Rotate 90 degrees counter-clockwise: (x, y) -> (-y, x)
+      angle = Math.atan2(dxCounter, -dyCounter);
+      break;
+    case "custom":
+      // Convert degrees to radians
+      angle = ((velocityConfig.angle || 0) * Math.PI) / 180;
+      break;
+  }
+
+  return new Vector2D(speed * Math.cos(angle), speed * Math.sin(angle));
+}
+
+export function getParticleColor(colorConfig?: ColorConfig): string {
+  if (!colorConfig) {
+    // Default random color from default palette
+    const palette = DEFAULT_COLOR_PALETTE;
+    return palette[Math.floor(Math.random() * palette.length)];
+  }
+
+  if (colorConfig.colorMode === "custom" && colorConfig.customColor) {
+    return colorConfig.customColor;
+  }
+
+  // Random color from palette
+  const palette = colorConfig.palette || DEFAULT_COLOR_PALETTE;
+  return palette[Math.floor(Math.random() * palette.length)];
+}
+
+export interface InitParticlesOptions {
+  count: number;
+  shape: "grid" | "random" | "circle" | "donut" | "square";
+  center: Vector2D;
+  particleOptions?: ParticleOptions;
+  velocityConfig?: VelocityConfig;
+  colorConfig?: ColorConfig;
+  // Shape-specific options
+  spacing?: number; // For grid spacing (uniform)
+  radius?: number; // For circle/donut outer radius
+  innerRadius?: number; // For donut inner radius
+  squareSize?: number; // For square size
+  cornerRadius?: number; // For square corner radius
+  // Camera awareness for random spawning
+  camera?: { position: Vector2D; zoom: number };
+  canvasSize?: { width: number; height: number };
+}
+
 export class Spawner {
   constructor() {}
 
+  /**
+   * High-level utility to initialize particles with complex configurations.
+   * This consolidates the advanced spawning logic that was previously in the playground.
+   */
+  initParticles(options: InitParticlesOptions): Particle[] {
+    const {
+      count,
+      shape,
+      center,
+      particleOptions,
+      velocityConfig,
+      colorConfig,
+      spacing = 50,
+      radius = 100,
+      innerRadius = 50,
+      squareSize = 200,
+      cornerRadius = 0,
+      camera,
+      canvasSize,
+    } = options;
+
+    switch (shape) {
+      case "grid": {
+        const particlesPerRow = Math.ceil(Math.sqrt(count));
+        const particlesPerCol = Math.ceil(count / particlesPerRow);
+        
+        return this.spawnGrid({
+          particleOptions,
+          rows: particlesPerCol,
+          cols: particlesPerRow,
+          spacing: new Vector2D(spacing, spacing),
+          center,
+          velocityConfig,
+          colorConfig,
+          safeSpacing: true, // Enable collision prevention by default
+        });
+      }
+
+      case "circle":
+        return this.spawnCircle({
+          particleOptions,
+          center,
+          radius,
+          count,
+          velocityConfig,
+          colorConfig,
+        });
+
+      case "donut":
+        return this.spawnDonut({
+          particleOptions,
+          center,
+          outerRadius: radius,
+          innerRadius,
+          count,
+          velocityConfig,
+          colorConfig,
+        });
+
+      case "square":
+        return this.spawnSquare({
+          particleOptions,
+          center,
+          size: squareSize,
+          cornerRadius,
+          count,
+          velocityConfig,
+          colorConfig,
+        });
+
+      case "random": {
+        // Default bounds or camera-aware bounds
+        let bounds;
+        if (camera && canvasSize) {
+          const { position: cameraPos, zoom } = camera;
+          const { width: canvasWidth, height: canvasHeight } = canvasSize;
+          
+          const worldLeft = -cameraPos.x / zoom;
+          const worldTop = -cameraPos.y / zoom;
+          const worldRight = (canvasWidth - cameraPos.x) / zoom;
+          const worldBottom = (canvasHeight - cameraPos.y) / zoom;
+          
+          bounds = {
+            min: new Vector2D(worldLeft, worldTop),
+            max: new Vector2D(worldRight, worldBottom),
+          };
+        } else {
+          // Default bounds around center
+          const defaultRadius = radius;
+          bounds = {
+            min: new Vector2D(center.x - defaultRadius, center.y - defaultRadius),
+            max: new Vector2D(center.x + defaultRadius, center.y + defaultRadius),
+          };
+        }
+
+        return this.spawnRandom({
+          particleOptions,
+          bounds,
+          count,
+          velocityConfig,
+          colorConfig,
+          camera,
+          canvasSize,
+        });
+      }
+
+      default:
+        console.warn(`Unknown particle shape: ${shape}`);
+        return [];
+    }
+  }
+
   spawnGrid(options: GridSpawnOptions): Particle[] {
     const particles: Particle[] = [];
-    const { rows, cols, spacing, center } = options;
+    const { rows, cols, spacing, center, velocityConfig, colorConfig, safeSpacing } = options;
 
-    const totalWidth = (cols - 1) * spacing.x;
-    const totalHeight = (rows - 1) * spacing.y;
+    // Apply safe spacing if enabled
+    let adjustedSpacing = spacing;
+    if (safeSpacing && options.particleOptions?.size) {
+      const particleSize = options.particleOptions.size;
+      adjustedSpacing = new Vector2D(
+        Math.max(spacing.x, particleSize * 2),
+        Math.max(spacing.y, particleSize * 2)
+      );
+    }
+
+    const totalWidth = (cols - 1) * adjustedSpacing.x;
+    const totalHeight = (rows - 1) * adjustedSpacing.y;
     const startX = center.x - totalWidth / 2;
     const startY = center.y - totalHeight / 2;
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const position = new Vector2D(
-          startX + col * spacing.x,
-          startY + row * spacing.y
+          startX + col * adjustedSpacing.x,
+          startY + row * adjustedSpacing.y
         );
+
+        // Calculate velocity if configured
+        const velocity = velocityConfig 
+          ? calculateVelocity(position, { ...velocityConfig, center: velocityConfig.center || center })
+          : new Vector2D(0, 0);
+
+        // Get color
+        const color = getParticleColor(colorConfig);
 
         const particle = new Particle({
           ...options.particleOptions,
           position,
+          velocity,
+          color,
         });
 
         particles.push(particle);
@@ -72,17 +342,54 @@ export class Spawner {
 
   spawnRandom(options: RandomSpawnOptions): Particle[] {
     const particles: Particle[] = [];
-    const { bounds, count } = options;
+    const { bounds, count, velocityConfig, colorConfig, camera, canvasSize } = options;
+
+    // Calculate effective bounds (camera-aware if camera info provided)
+    let effectiveBounds = bounds;
+    if (camera && canvasSize) {
+      const { position: cameraPos, zoom } = camera;
+      const { width: canvasWidth, height: canvasHeight } = canvasSize;
+
+      // Calculate visible world bounds
+      const worldLeft = -cameraPos.x / zoom;
+      const worldTop = -cameraPos.y / zoom;
+      const worldRight = (canvasWidth - cameraPos.x) / zoom;
+      const worldBottom = (canvasHeight - cameraPos.y) / zoom;
+
+      effectiveBounds = {
+        min: new Vector2D(worldLeft, worldTop),
+        max: new Vector2D(worldRight, worldBottom),
+      };
+    }
+
+    const particleSize = options.particleOptions?.size || 10;
 
     for (let i = 0; i < count; i++) {
-      const position = new Vector2D(
-        Math.random() * (bounds.max.x - bounds.min.x) + bounds.min.x,
-        Math.random() * (bounds.max.y - bounds.min.y) + bounds.min.y
+      // Keep particles within bounds considering their size
+      const x = effectiveBounds.min.x + particleSize + 
+        Math.random() * (effectiveBounds.max.x - effectiveBounds.min.x - particleSize * 2);
+      const y = effectiveBounds.min.y + particleSize + 
+        Math.random() * (effectiveBounds.max.y - effectiveBounds.min.y - particleSize * 2);
+
+      const position = new Vector2D(x, y);
+
+      // Calculate velocity if configured
+      const centerForVelocity = velocityConfig?.center || new Vector2D(
+        (effectiveBounds.min.x + effectiveBounds.max.x) / 2,
+        (effectiveBounds.min.y + effectiveBounds.max.y) / 2
       );
+      const velocity = velocityConfig 
+        ? calculateVelocity(position, { ...velocityConfig, center: centerForVelocity })
+        : new Vector2D(0, 0);
+
+      // Get color
+      const color = getParticleColor(colorConfig);
 
       const particle = new Particle({
         ...options.particleOptions,
         position,
+        velocity,
+        color,
       });
 
       particles.push(particle);
@@ -93,13 +400,20 @@ export class Spawner {
 
   spawnCircle(options: CircleSpawnOptions): Particle[] {
     const particles: Particle[] = [];
-    const { center, radius, count } = options;
+    const { center, radius, count, velocityConfig, colorConfig } = options;
 
     if (count === 1) {
       // Special case: single particle at center
+      const velocity = velocityConfig 
+        ? calculateVelocity(center, { ...velocityConfig, center: velocityConfig.center || center })
+        : new Vector2D(0, 0);
+      const color = getParticleColor(colorConfig);
+
       const particle = new Particle({
         ...options.particleOptions,
         position: new Vector2D(center.x, center.y),
+        velocity,
+        color,
       });
       particles.push(particle);
       return particles;
@@ -155,9 +469,105 @@ export class Spawner {
           center.y + ringRadius * Math.sin(angle)
         );
 
+        // Calculate velocity if configured
+        const velocity = velocityConfig 
+          ? calculateVelocity(position, { ...velocityConfig, center: velocityConfig.center || center })
+          : new Vector2D(0, 0);
+
+        // Get color
+        const color = getParticleColor(colorConfig);
+
         const particle = new Particle({
           ...options.particleOptions,
           position,
+          velocity,
+          color,
+        });
+
+        particles.push(particle);
+        particlesPlaced++;
+
+        if (particlesPlaced >= count) break;
+      }
+    }
+
+    return particles;
+  }
+
+  spawnDonut(options: DonutSpawnOptions): Particle[] {
+    const particles: Particle[] = [];
+    const { center, outerRadius, innerRadius, count, velocityConfig, colorConfig } = options;
+
+    if (count === 0) return particles;
+
+    const particleSize = options.particleOptions?.size || 10;
+    const minSpacing = particleSize * 1.5; // Minimum spacing between particles
+    const ringThickness = outerRadius - innerRadius;
+
+    if (ringThickness <= 0) {
+      console.warn(
+        "Invalid donut parameters: outer radius must be greater than inner radius"
+      );
+      return particles;
+    }
+
+    // Calculate number of rings based on available thickness and spacing
+    const maxRings = Math.max(1, Math.floor(ringThickness / minSpacing));
+    const actualRings = Math.min(
+      maxRings,
+      Math.ceil(Math.sqrt(count / (2 * Math.PI)))
+    );
+
+    let particlesPlaced = 0;
+
+    for (
+      let ring = 0;
+      ring < actualRings && particlesPlaced < count;
+      ring++
+    ) {
+      // Calculate radius for this ring (distributed evenly between inner and outer)
+      const ringRadius =
+        innerRadius + (ringThickness * (ring + 0.5)) / actualRings;
+
+      // Calculate circumference and maximum particles for this ring
+      const circumference = 2 * Math.PI * ringRadius;
+      const maxParticlesInRing = Math.max(
+        1,
+        Math.floor(circumference / minSpacing)
+      );
+
+      // Distribute remaining particles among remaining rings
+      const remainingRings = actualRings - ring;
+      const remainingParticles = count - particlesPlaced;
+      const averagePerRing = Math.ceil(remainingParticles / remainingRings);
+
+      const particlesInRing = Math.min(
+        maxParticlesInRing,
+        averagePerRing,
+        remainingParticles
+      );
+
+      for (let p = 0; p < particlesInRing; p++) {
+        const angle = (2 * Math.PI * p) / particlesInRing;
+
+        const position = new Vector2D(
+          center.x + ringRadius * Math.cos(angle),
+          center.y + ringRadius * Math.sin(angle)
+        );
+
+        // Calculate velocity if configured
+        const velocity = velocityConfig 
+          ? calculateVelocity(position, { ...velocityConfig, center: velocityConfig.center || center })
+          : new Vector2D(0, 0);
+
+        // Get color
+        const color = getParticleColor(colorConfig);
+
+        const particle = new Particle({
+          ...options.particleOptions,
+          position,
+          velocity,
+          color,
         });
 
         particles.push(particle);
@@ -172,7 +582,7 @@ export class Spawner {
 
   spawnSquare(options: SquareSpawnOptions): ParticleWithSide[] {
     const particles: ParticleWithSide[] = [];
-    const { center, size, cornerRadius, count } = options;
+    const { center, size, cornerRadius, count, velocityConfig, colorConfig } = options;
 
     if (count === 0) return particles;
 
@@ -201,12 +611,39 @@ export class Spawner {
         cornerArcLength
       );
 
+      // Calculate velocity - special handling for square perimeter movement
+      let velocity: Vector2D;
+      if (velocityConfig && velocityConfig.speed > 0) {
+        if (
+          velocityConfig.direction === "clockwise" ||
+          velocityConfig.direction === "counter-clockwise"
+        ) {
+          // Create a temporary particle with side info for velocity calculation
+          const tempParticle = { side: result.side, cornerPosition: result.cornerPosition, sideProgress: result.sideProgress } as ParticleWithSide;
+          velocity = calculateSquareVelocity(
+            tempParticle,
+            velocityConfig.direction,
+            velocityConfig.speed
+          );
+        } else {
+          // Use regular velocity calculation for other directions
+          velocity = calculateVelocity(result.position, { ...velocityConfig, center: velocityConfig.center || center });
+        }
+      } else {
+        velocity = new Vector2D(0, 0);
+      }
+
+      // Get color
+      const color = getParticleColor(colorConfig);
+
       const particle = new Particle({
         ...options.particleOptions,
         position: result.position,
+        velocity,
+        color,
       }) as ParticleWithSide;
 
-      // Store side information for velocity calculation
+      // Store side information for future velocity calculations
       particle.side = result.side;
       particle.cornerPosition = result.cornerPosition;
       particle.sideProgress = result.sideProgress;
