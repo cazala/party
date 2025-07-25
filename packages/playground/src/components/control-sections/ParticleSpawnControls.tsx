@@ -129,11 +129,11 @@ export function ParticleSpawnControls({
         <label>
           <input
             type="checkbox"
-            checked={streamMode}
-            onChange={(e) => setStreamMode(e.target.checked)}
+            checked={isStatic}
+            onChange={(e) => setIsStatic(e.target.checked)}
             className="checkbox"
           />
-          Stream Mode
+          Static
         </label>
       </div>
 
@@ -141,11 +141,11 @@ export function ParticleSpawnControls({
         <label>
           <input
             type="checkbox"
-            checked={isStatic}
-            onChange={(e) => setIsStatic(e.target.checked)}
+            checked={streamMode}
+            onChange={(e) => setStreamMode(e.target.checked)}
             className="checkbox"
           />
-          Static Particles
+          Stream
         </label>
       </div>
 
