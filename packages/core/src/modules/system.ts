@@ -199,7 +199,12 @@ export class System {
       for (const force of this.forces) {
         force.apply(particle, this.spatialGrid);
       }
-      particle.update(deltaTime);
+      if (!particle.static) {
+        particle.update(deltaTime);
+      } else {
+        particle.velocity.x = 0;
+        particle.velocity.y = 0;
+      }
     }
 
     // Remove eaten particles (marked with mass = 0)

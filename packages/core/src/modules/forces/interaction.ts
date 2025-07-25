@@ -49,7 +49,7 @@ export class Interaction implements Force {
   }
 
   apply(particle: Particle, _spatialGrid: SpatialGrid): void {
-    if (!this.isActive) return;
+    if (!this.isActive || particle.static) return;
 
     // Calculate distance from interaction point to particle
     const dx = this.position.x - particle.position.x;

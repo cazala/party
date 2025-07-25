@@ -35,6 +35,7 @@ export class SessionManager {
           mass: particle.mass,
           size: particle.size,
           color: particle.color,
+          static: particle.static,
         })
       );
 
@@ -142,6 +143,7 @@ export class SessionManager {
           mass: serialized.mass,
           size: serialized.size,
           color: serialized.color,
+          static: serialized.static,
         });
 
         // Preserve original ID if needed for consistency

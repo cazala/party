@@ -8,6 +8,7 @@ export interface ParticleOptions {
   size?: number;
   color?: string;
   id?: number; // Optional ID for restoring particles
+  static?: boolean; // If true, particle is not affected by forces but still affects others
 }
 
 let idCounter = 0;
@@ -21,6 +22,7 @@ export class Particle {
   public size: number;
   public color: string;
   public density?: number;
+  public static?: boolean;
 
   constructor(options: ParticleOptions = {}) {
     this.id = options.id !== undefined ? options.id : idCounter++;
@@ -30,6 +32,7 @@ export class Particle {
     this.mass = options.mass || 1;
     this.size = options.size || 5;
     this.color = options.color || "#ffffff";
+    this.static = options.static || false;
   }
 
   update(deltaTime: number): void {
@@ -60,6 +63,7 @@ export class Particle {
     this.mass = options.mass || 1;
     this.size = options.size || 5;
     this.color = options.color || "#ffffff";
+    this.static = options.static || false;
   }
 
   clone(): Particle {
@@ -71,6 +75,7 @@ export class Particle {
       mass: this.mass,
       size: this.size,
       color: this.color,
+      static: this.static,
     });
   }
 }

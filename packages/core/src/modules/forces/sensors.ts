@@ -108,7 +108,7 @@ export class Sensors implements Force {
 
   apply(particle: Particle, _spatialGrid: SpatialGrid): void {
     // Only apply sensor logic if sensors are enabled
-    if (!this.enableSensors || !this.renderer) {
+    if (!this.enableSensors || !this.renderer || particle.static) {
       return;
     }
 

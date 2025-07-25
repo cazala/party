@@ -253,7 +253,9 @@ export function useInteractions({
           // Use spawn config colors
           const spawnConfig = getSpawnConfig();
           if (spawnConfig.colors.length > 0) {
-            return spawnConfig.colors[Math.floor(Math.random() * spawnConfig.colors.length)];
+            return spawnConfig.colors[
+              Math.floor(Math.random() * spawnConfig.colors.length)
+            ];
           }
           return getRandomColor();
       }
@@ -289,12 +291,14 @@ export function useInteractions({
       // Function to get a random color from the captured colors array
       const getStreamColor = () => {
         if (mouseState.streamColors.length > 0) {
-          return mouseState.streamColors[Math.floor(Math.random() * mouseState.streamColors.length)];
+          return mouseState.streamColors[
+            Math.floor(Math.random() * mouseState.streamColors.length)
+          ];
         }
         // Fallback to preview color or random color
         return mouseState.previewColor || getPreviewColor();
       };
-      
+
       const firstColor = getStreamColor();
 
       // Spawn the first particle immediately at the exact position
@@ -306,7 +310,8 @@ export function useInteractions({
           size,
           firstColor,
           undefined,
-          mass
+          mass,
+          spawnConfig.static
         );
         system.addParticle(firstParticle);
         mouseState.streamedParticles.push(firstParticle);
@@ -327,7 +332,8 @@ export function useInteractions({
             size, // Use the size parameter passed to startStreaming
             particleColor, // Use a random color from the captured array
             undefined, // velocity
-            mass // Use the mass parameter passed to startStreaming
+            mass, // Use the mass parameter passed to startStreaming
+            spawnConfig.static
           );
           system.addParticle(particle);
           mouseState.streamedParticles.push(particle);
@@ -371,7 +377,6 @@ export function useInteractions({
     },
     [getCanvas, getRenderer]
   );
-
 
   // Helper function to update velocity preview
   const updateVelocityPreview = useCallback(() => {
@@ -830,10 +835,13 @@ export function useInteractions({
 
       // Pick appropriate color based on renderer color mode
       mouseState.previewColor = getPreviewColor();
-      
+
       // Capture the colors array from spawn config for consistent streaming
       const currentSpawnConfig = getSpawnConfig();
-      mouseState.streamColors = currentSpawnConfig.colors.length > 0 ? [...currentSpawnConfig.colors] : [];
+      mouseState.streamColors =
+        currentSpawnConfig.colors.length > 0
+          ? [...currentSpawnConfig.colors]
+          : [];
 
       // Start streaming if shift is pressed OR if stream mode is enabled in spawn config
       if (mouseState.shiftPressed || spawnConfig.streamMode) {
@@ -1150,7 +1158,8 @@ export function useInteractions({
           finalSize,
           mouseState.previewColor, // Use the same color as preview
           mouseState.initialVelocity,
-          finalMass
+          finalMass,
+          spawnConfig.static
         );
       } else {
         // Size mode: create particle with drag-to-size or spawn config defaults
@@ -1188,7 +1197,8 @@ export function useInteractions({
           finalSize,
           mouseState.previewColor, // Use the same color as preview
           undefined, // velocity
-          finalMass
+          finalMass,
+          spawnConfig.static
         );
       }
 

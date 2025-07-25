@@ -65,6 +65,7 @@ export function usePlayground(
     colors: [], // Empty array means use default palette
     streamMode: false,
     streamRate: 10,
+    static: false,
   });
 
   // ---------------------------------------------------------------------------
@@ -411,22 +412,28 @@ export function usePlayground(
       // Use colors array directly - no conversion needed
 
       // Convert playground velocity config to core VelocityConfig
-      const coreVelocityConfig: VelocityConfig | undefined = velocityConfig ? {
-        speed: velocityConfig.speed,
-        direction: velocityConfig.direction,
-        angle: degToRad(velocityConfig.angle), // Convert degrees to radians
-        center: center,
-      } : undefined;
+      const coreVelocityConfig: VelocityConfig | undefined = velocityConfig
+        ? {
+            speed: velocityConfig.speed,
+            direction: velocityConfig.direction,
+            angle: degToRad(velocityConfig.angle), // Convert degrees to radians
+            center: center,
+          }
+        : undefined;
+
+      // Get current spawn config when function is called, not as dependency
+      const currentSpawnConfig = spawnConfig;
 
       // Common particle options
       const particleOptions = {
-        mass: spawnConfig.defaultMass,
+        mass: currentSpawnConfig.defaultMass,
         size: particleSize,
         acceleration: new Vector2D(0, 0),
+        static: currentSpawnConfig.static,
       };
 
       const spawner = new Spawner();
-      
+
       // Use the initParticles utility for simplified spawning
       const particles = spawner.initParticles({
         count: numParticles,
@@ -434,7 +441,11 @@ export function usePlayground(
         center,
         particleOptions,
         velocityConfig: coreVelocityConfig,
-        colors: colors || (spawnConfig.colors.length > 0 ? spawnConfig.colors : undefined),
+        colors:
+          colors ||
+          (currentSpawnConfig.colors.length > 0
+            ? currentSpawnConfig.colors
+            : undefined),
         spacing,
         radius,
         innerRadius,
@@ -449,7 +460,7 @@ export function usePlayground(
         systemRef.current.addParticle(particle);
       }
     },
-    [spawnConfig.defaultMass]
+    [] // No dependencies - get current values when called
   );
 
   // Replace the entire particle array based on the current spawn configuration

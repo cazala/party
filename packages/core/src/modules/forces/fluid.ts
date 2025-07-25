@@ -167,7 +167,7 @@ export class Fluid implements Force {
    * @param spatialGrid - Spatial grid for efficient neighbor finding
    */
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
-    if (!this.enabled) {
+    if (!this.enabled || particle.static) {
       return;
     }
 

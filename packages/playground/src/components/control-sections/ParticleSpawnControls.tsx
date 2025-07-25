@@ -4,9 +4,12 @@ import { ColorSelector } from "../ColorSelector";
 
 // Default spawn configuration
 export const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
-export const DEFAULT_SPAWN_PARTICLE_MASS = calculateMassFromSize(DEFAULT_SPAWN_PARTICLE_SIZE);
+export const DEFAULT_SPAWN_PARTICLE_MASS = calculateMassFromSize(
+  DEFAULT_SPAWN_PARTICLE_SIZE
+);
 export const DEFAULT_SPAWN_STREAM_MODE = false;
 export const DEFAULT_SPAWN_STREAM_RATE = 10; // particles per second
+export const DEFAULT_SPAWN_STATIC = false;
 
 export interface SpawnConfig {
   defaultSize: number;
@@ -14,6 +17,7 @@ export interface SpawnConfig {
   colors: string[]; // Array of colors to use for spawning
   streamMode: boolean;
   streamRate: number; // particles per second
+  static: boolean; // Whether to spawn static particles
 }
 
 interface ParticleSpawnControlsProps {
@@ -22,17 +26,19 @@ interface ParticleSpawnControlsProps {
   initialColors?: string[]; // For synchronization with Init section
 }
 
-
-export function ParticleSpawnControls({ 
+export function ParticleSpawnControls({
   onSpawnConfigChange,
   initialSize = DEFAULT_SPAWN_PARTICLE_SIZE,
-  initialColors = []
+  initialColors = [],
 }: ParticleSpawnControlsProps) {
   const [particleSize, setParticleSize] = useState(initialSize);
-  const [particleMass, setParticleMass] = useState(calculateMassFromSize(initialSize));
+  const [particleMass, setParticleMass] = useState(
+    calculateMassFromSize(initialSize)
+  );
   const [colors, setColors] = useState<string[]>(initialColors);
   const [streamMode, setStreamMode] = useState(DEFAULT_SPAWN_STREAM_MODE);
   const [streamRate, setStreamRate] = useState(DEFAULT_SPAWN_STREAM_RATE);
+  const [isStatic, setIsStatic] = useState(DEFAULT_SPAWN_STATIC);
 
   // Update particle size when initialSize prop changes (from Init section)
   useEffect(() => {
@@ -53,9 +59,18 @@ export function ParticleSpawnControls({
       colors,
       streamMode,
       streamRate,
+      static: isStatic,
     };
     onSpawnConfigChange?.(config);
-  }, [particleSize, particleMass, colors, streamMode, streamRate, onSpawnConfigChange]);
+  }, [
+    particleSize,
+    particleMass,
+    colors,
+    streamMode,
+    streamRate,
+    isStatic,
+    onSpawnConfigChange,
+  ]);
 
   const handleSizeChange = (newSize: number) => {
     setParticleSize(newSize);
@@ -122,6 +137,18 @@ export function ParticleSpawnControls({
         </label>
       </div>
 
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={isStatic}
+            onChange={(e) => setIsStatic(e.target.checked)}
+            className="checkbox"
+          />
+          Static Particles
+        </label>
+      </div>
+
       {streamMode && (
         <div className="control-group">
           <label>
@@ -138,7 +165,6 @@ export function ParticleSpawnControls({
           </label>
         </div>
       )}
-
     </div>
   );
 }

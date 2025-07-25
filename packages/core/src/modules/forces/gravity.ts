@@ -41,6 +41,10 @@ export class Gravity implements Force {
   }
 
   apply(particle: Particle, _spatialGrid: SpatialGrid): void {
+    if (particle.static) {
+      return;
+    }
+
     const force = this.direction
       .clone()
       .normalize()

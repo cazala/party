@@ -52,11 +52,17 @@ export const calculateParticleMass = (
   spawnConfig: SpawnConfig
 ) => {
   // Calculate size first using the existing function
-  const size = calculateParticleSize(distance, isDragging, dragThreshold, zoomScale, spawnConfig);
-  
+  const size = calculateParticleSize(
+    distance,
+    isDragging,
+    dragThreshold,
+    zoomScale,
+    spawnConfig
+  );
+
   // Convert size to mass using the utility function
   const mass = calculateMassFromSize(size);
-  
+
   return mass;
 };
 
@@ -66,7 +72,8 @@ export const createParticle = (
   size: number,
   color?: string,
   velocity?: { x: number; y: number },
-  mass?: number
+  mass?: number,
+  isStatic?: boolean
 ) => {
   // Use provided mass or calculate from size
   let finalMass = mass;
@@ -81,5 +88,6 @@ export const createParticle = (
     mass: finalMass,
     size,
     color: color || getRandomColor(),
+    static: isStatic || false,
   });
 };
