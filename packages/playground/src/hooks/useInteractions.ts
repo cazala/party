@@ -109,6 +109,8 @@ interface MouseState {
   activeStreamSize: number;
   /** Preserved mass from drag-to-size operations for subsequent streams */
   activeStreamMass: number;
+  /** Array of colors captured at interaction start for consistent streaming */
+  streamColors: string[];
 
   // === Velocity Mode State ===
   /** Whether ctrl/cmd key is currently pressed */
@@ -197,6 +199,7 @@ export function useInteractions({
     wasStreaming: false,
     activeStreamSize: 0,
     activeStreamMass: 0,
+    streamColors: [],
     cmdPressed: false,
     isDragToVelocity: false,
     initialVelocity: { x: 0, y: 0 },
@@ -213,113 +216,12 @@ export function useInteractions({
     removedParticles: [],
   });
 
-  // === Streaming System ===
+  // === Color Preview System ===
 
   /**
-   * Initiates continuous particle streaming at a specified position with given size and mass.
-   * Handles both initial particle spawning and setting up interval-based streaming.
-   *
-   * @param x - World X coordinate for streaming
-   * @param y - World Y coordinate for streaming
-   * @param size - Size of particles to stream
-   * @param mass - Optional mass for particles (uses configured mass if not provided)
+   * Gets the preview color based on the current renderer color mode.
+   * Ensures consistency between preview and actual particle colors.
    */
-  const startStreaming = useCallback(
-    (x: number, y: number, size: number, mass?: number) => {
-      const mouseState = mouseStateRef.current;
-      if (mouseState.isStreaming) {
-        stopStreaming();
-      }
-
-      mouseState.isStreaming = true;
-      mouseState.streamPosition = { x, y };
-      mouseState.streamSize = size;
-      mouseState.streamedParticles = []; // Reset streamed particles for new session
-
-      // Get spawn config for color and fresh size (in case stream mode needs current values)
-      const spawnConfig = getSpawnConfig();
-      // Use the first color from the colors array, or undefined for default palette
-      const color = spawnConfig.colors.length > 0 ? spawnConfig.colors[0] : undefined;
-
-      // Spawn the first particle immediately at the exact position
-      const system = getSystem();
-      if (system) {
-        const firstParticle = createParticle(
-          x,
-          y,
-          size,
-          color,
-          undefined,
-          mass
-        );
-        system.addParticle(firstParticle);
-        mouseState.streamedParticles.push(firstParticle);
-      }
-
-      // Then start the interval for subsequent particles
-      const streamRate = spawnConfig.streamRate || DEFAULT_STREAM_SPAWN_RATE;
-      const streamInterval = 1000 / streamRate; // milliseconds between spawns
-
-      mouseState.streamInterval = window.setInterval(() => {
-        const system = getSystem();
-        if (system) {
-          const currentSpawnConfig = getSpawnConfig(); // Get fresh config for size, mass, and color updates
-          // Use a random color from the colors array, or undefined for default palette
-          const color = currentSpawnConfig.colors.length > 0 
-            ? currentSpawnConfig.colors[Math.floor(Math.random() * currentSpawnConfig.colors.length)]
-            : undefined;
-          const particle = createParticle(
-            mouseState.streamPosition.x,
-            mouseState.streamPosition.y,
-            size, // Use the size parameter passed to startStreaming
-            color,
-            undefined, // velocity
-            mass // Use the mass parameter passed to startStreaming
-          );
-          system.addParticle(particle);
-          mouseState.streamedParticles.push(particle);
-        }
-      }, streamInterval);
-    },
-    [getSystem, getSpawnConfig]
-  );
-
-  /**
-   * Stops the current streaming session and records all streamed particles for undo.
-   * Clears the streaming interval and resets streaming state.
-   */
-  const stopStreaming = useCallback(() => {
-    const mouseState = mouseStateRef.current;
-    if (mouseState.streamInterval) {
-      clearInterval(mouseState.streamInterval);
-      mouseState.streamInterval = null;
-    }
-    mouseState.isStreaming = false;
-
-    // Record streamed particles for undo
-    if (mouseState.streamedParticles.length > 0) {
-      undoRedo.current?.recordSpawnBatch(
-        mouseState.streamedParticles,
-        getIdCounter()
-      );
-      mouseState.streamedParticles = [];
-    }
-  }, []);
-
-  // Helper function to get world position from mouse event
-  const getWorldPosition = useCallback(
-    (e: MouseEvent) => {
-      const canvas = getCanvas();
-      const renderer = getRenderer();
-      if (!canvas || !renderer) return { x: 0, y: 0 };
-
-      const screenPos = getMousePosition(e, canvas);
-      return renderer.screenToWorld(screenPos.x, screenPos.y);
-    },
-    [getCanvas, getRenderer]
-  );
-
-  // Helper function to get preview color based on spawn config and renderer color mode
   const getPreviewColor = useCallback(
     (velocity?: { x: number; y: number }) => {
       const renderer = getRenderer();
@@ -358,6 +260,118 @@ export function useInteractions({
     },
     [getRenderer, getSpawnConfig]
   );
+
+  // === Streaming System ===
+
+  /**
+   * Initiates continuous particle streaming at a specified position with given size and mass.
+   * Handles both initial particle spawning and setting up interval-based streaming.
+   *
+   * @param x - World X coordinate for streaming
+   * @param y - World Y coordinate for streaming
+   * @param size - Size of particles to stream
+   * @param mass - Optional mass for particles (uses configured mass if not provided)
+   */
+  const startStreaming = useCallback(
+    (x: number, y: number, size: number, mass?: number) => {
+      const mouseState = mouseStateRef.current;
+      if (mouseState.isStreaming) {
+        stopStreaming();
+      }
+
+      mouseState.isStreaming = true;
+      mouseState.streamPosition = { x, y };
+      mouseState.streamSize = size;
+      mouseState.streamedParticles = []; // Reset streamed particles for new session
+
+      // Get spawn config for fresh size (in case stream mode needs current values)
+      const spawnConfig = getSpawnConfig();
+      // Function to get a random color from the captured colors array
+      const getStreamColor = () => {
+        if (mouseState.streamColors.length > 0) {
+          return mouseState.streamColors[Math.floor(Math.random() * mouseState.streamColors.length)];
+        }
+        // Fallback to preview color or random color
+        return mouseState.previewColor || getPreviewColor();
+      };
+      
+      const firstColor = getStreamColor();
+
+      // Spawn the first particle immediately at the exact position
+      const system = getSystem();
+      if (system) {
+        const firstParticle = createParticle(
+          x,
+          y,
+          size,
+          firstColor,
+          undefined,
+          mass
+        );
+        system.addParticle(firstParticle);
+        mouseState.streamedParticles.push(firstParticle);
+      }
+
+      // Then start the interval for subsequent particles
+      const streamRate = spawnConfig.streamRate || DEFAULT_STREAM_SPAWN_RATE;
+      const streamInterval = 1000 / streamRate; // milliseconds between spawns
+
+      mouseState.streamInterval = window.setInterval(() => {
+        const system = getSystem();
+        if (system) {
+          // Get a new random color for each particle from the captured colors array
+          const particleColor = getStreamColor();
+          const particle = createParticle(
+            mouseState.streamPosition.x,
+            mouseState.streamPosition.y,
+            size, // Use the size parameter passed to startStreaming
+            particleColor, // Use a random color from the captured array
+            undefined, // velocity
+            mass // Use the mass parameter passed to startStreaming
+          );
+          system.addParticle(particle);
+          mouseState.streamedParticles.push(particle);
+        }
+      }, streamInterval);
+    },
+    [getSystem, getSpawnConfig, getPreviewColor]
+  );
+
+  /**
+   * Stops the current streaming session and records all streamed particles for undo.
+   * Clears the streaming interval and resets streaming state.
+   */
+  const stopStreaming = useCallback(() => {
+    const mouseState = mouseStateRef.current;
+    if (mouseState.streamInterval) {
+      clearInterval(mouseState.streamInterval);
+      mouseState.streamInterval = null;
+    }
+    mouseState.isStreaming = false;
+
+    // Record streamed particles for undo
+    if (mouseState.streamedParticles.length > 0) {
+      undoRedo.current?.recordSpawnBatch(
+        mouseState.streamedParticles,
+        getIdCounter()
+      );
+      mouseState.streamedParticles = [];
+    }
+  }, []);
+
+  // Helper function to get world position from mouse event
+  const getWorldPosition = useCallback(
+    (e: MouseEvent) => {
+      const canvas = getCanvas();
+      const renderer = getRenderer();
+      if (!canvas || !renderer) return { x: 0, y: 0 };
+
+      const screenPos = getMousePosition(e, canvas);
+      return renderer.screenToWorld(screenPos.x, screenPos.y);
+    },
+    [getCanvas, getRenderer]
+  );
+
 
   // Helper function to update velocity preview
   const updateVelocityPreview = useCallback(() => {
@@ -816,6 +830,10 @@ export function useInteractions({
 
       // Pick appropriate color based on renderer color mode
       mouseState.previewColor = getPreviewColor();
+      
+      // Capture the colors array from spawn config for consistent streaming
+      const currentSpawnConfig = getSpawnConfig();
+      mouseState.streamColors = currentSpawnConfig.colors.length > 0 ? [...currentSpawnConfig.colors] : [];
 
       // Start streaming if shift is pressed OR if stream mode is enabled in spawn config
       if (mouseState.shiftPressed || spawnConfig.streamMode) {
