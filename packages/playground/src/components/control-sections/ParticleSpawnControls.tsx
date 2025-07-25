@@ -1,48 +1,36 @@
 import { useState, useEffect } from "react";
 import { calculateMassFromSize } from "../../utils/particle";
+import { ColorSelector } from "../ColorSelector";
 
 // Default spawn configuration
 export const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
 export const DEFAULT_SPAWN_PARTICLE_MASS = calculateMassFromSize(DEFAULT_SPAWN_PARTICLE_SIZE);
-export const DEFAULT_SPAWN_COLOR_MODE = "random";
-export const DEFAULT_SPAWN_CUSTOM_COLOR = "#F8F8F8";
 export const DEFAULT_SPAWN_STREAM_MODE = false;
 export const DEFAULT_SPAWN_STREAM_RATE = 10; // particles per second
 
 export interface SpawnConfig {
   defaultSize: number;
   defaultMass: number;
-  colorMode: "random" | "custom";
-  customColor: string;
+  colors: string[]; // Array of colors to use for spawning
   streamMode: boolean;
   streamRate: number; // particles per second
-}
-
-interface InitColorConfig {
-  colorMode: "random" | "custom";
-  customColor: string;
 }
 
 interface ParticleSpawnControlsProps {
   onSpawnConfigChange?: (config: SpawnConfig) => void;
   initialSize?: number; // For synchronization with Init section
-  initialColorConfig?: InitColorConfig; // For synchronization with Init section
+  initialColors?: string[]; // For synchronization with Init section
 }
 
 
 export function ParticleSpawnControls({ 
   onSpawnConfigChange,
   initialSize = DEFAULT_SPAWN_PARTICLE_SIZE,
-  initialColorConfig
+  initialColors = []
 }: ParticleSpawnControlsProps) {
   const [particleSize, setParticleSize] = useState(initialSize);
   const [particleMass, setParticleMass] = useState(calculateMassFromSize(initialSize));
-  const [colorMode, setColorMode] = useState<"random" | "custom">(
-    initialColorConfig?.colorMode || DEFAULT_SPAWN_COLOR_MODE
-  );
-  const [customColor, setCustomColor] = useState(
-    initialColorConfig?.customColor || DEFAULT_SPAWN_CUSTOM_COLOR
-  );
+  const [colors, setColors] = useState<string[]>(initialColors);
   const [streamMode, setStreamMode] = useState(DEFAULT_SPAWN_STREAM_MODE);
   const [streamRate, setStreamRate] = useState(DEFAULT_SPAWN_STREAM_RATE);
 
@@ -52,26 +40,22 @@ export function ParticleSpawnControls({
     setParticleMass(calculateMassFromSize(initialSize));
   }, [initialSize]);
 
-  // Update color config when initialColorConfig prop changes (from Init section)
+  // Update colors when initialColors prop changes (from Init section)
   useEffect(() => {
-    if (initialColorConfig) {
-      setColorMode(initialColorConfig.colorMode);
-      setCustomColor(initialColorConfig.customColor);
-    }
-  }, [initialColorConfig]);
+    setColors(initialColors);
+  }, [initialColors]);
 
   // Notify parent of config changes
   useEffect(() => {
     const config: SpawnConfig = {
       defaultSize: particleSize,
       defaultMass: particleMass,
-      colorMode,
-      customColor,
+      colors,
       streamMode,
       streamRate,
     };
     onSpawnConfigChange?.(config);
-  }, [particleSize, particleMass, colorMode, customColor, streamMode, streamRate, onSpawnConfigChange]);
+  }, [particleSize, particleMass, colors, streamMode, streamRate, onSpawnConfigChange]);
 
   const handleSizeChange = (newSize: number) => {
     setParticleSize(newSize);
@@ -84,8 +68,8 @@ export function ParticleSpawnControls({
     // Don't auto-update size when mass is manually changed
   };
 
-  const handleColorModeChange = (mode: "random" | "custom") => {
-    setColorMode(mode);
+  const handleColorsChange = (newColors: string[]) => {
+    setColors(newColors);
   };
 
   return (
@@ -120,6 +104,12 @@ export function ParticleSpawnControls({
         </label>
       </div>
 
+      <ColorSelector
+        colors={colors}
+        onColorsChange={handleColorsChange}
+        label="Spawn Colors"
+      />
+
       <div className="control-group">
         <label>
           <input
@@ -149,29 +139,6 @@ export function ParticleSpawnControls({
         </div>
       )}
 
-      <div className="control-group">
-        <label>
-          Color
-          <div className="color-control-inline">
-            <select
-              value={colorMode}
-              onChange={(e) => handleColorModeChange(e.target.value as "random" | "custom")}
-              className="form-select"
-            >
-              <option value="random">Random</option>
-              <option value="custom">Custom</option>
-            </select>
-            {colorMode === "custom" && (
-              <input
-                type="color"
-                value={customColor}
-                onChange={(e) => setCustomColor(e.target.value)}
-                className="color-picker-inline"
-              />
-            )}
-          </div>
-        </label>
-      </div>
     </div>
   );
 }

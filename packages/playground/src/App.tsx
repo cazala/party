@@ -125,10 +125,7 @@ function App() {
               spacing: 50,
               particleSize: 10,
               radius: 100,
-              colorConfig: {
-                colorMode: "random" as const,
-                customColor: "#F8F8F8",
-              },
+              colors: undefined, // Will use default palette
               velocityConfig: {
                 speed: 0,
                 direction: "random" as const,

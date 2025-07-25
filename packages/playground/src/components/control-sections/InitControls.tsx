@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ColorSelector } from "../ColorSelector";
 
 const DEFAULT_SPAWN_NUM_PARTICLES = 100;
 const DEFAULT_SPAWN_SHAPE = "grid";
@@ -11,11 +12,6 @@ const DEFAULT_CORNER_RADIUS = 0;
 const DEFAULT_VELOCITY_SPEED = 0;
 const DEFAULT_VELOCITY_DIRECTION = "random";
 const DEFAULT_VELOCITY_ANGLE = 0;
-
-interface InitColorConfig {
-  colorMode: "random" | "custom";
-  customColor: string;
-}
 
 interface InitVelocityConfig {
   speed: number;
@@ -36,7 +32,7 @@ interface InitControlsProps {
     spacing: number,
     particleSize: number,
     radius?: number,
-    colorConfig?: InitColorConfig,
+    colors?: string[],
     velocityConfig?: InitVelocityConfig,
     innerRadius?: number,
     squareSize?: number,
@@ -48,7 +44,7 @@ interface InitControlsProps {
     spacing: number;
     particleSize: number;
     radius?: number;
-    colorConfig?: InitColorConfig;
+    colors?: string[];
     velocityConfig?: InitVelocityConfig;
     camera?: { x: number; y: number; zoom: number };
     innerRadius?: number;
@@ -56,7 +52,7 @@ interface InitControlsProps {
     cornerRadius?: number;
   };
   onParticleSizeChange?: (size: number) => void;
-  onColorConfigChange?: (colorConfig: InitColorConfig) => void;
+  onColorsChange?: (colors: string[]) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
 }
 
@@ -64,7 +60,7 @@ export function InitControls({
   onInitParticles,
   onGetInitConfig,
   onParticleSizeChange,
-  onColorConfigChange,
+  onColorsChange,
   getCurrentCamera,
 }: InitControlsProps) {
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
@@ -77,15 +73,18 @@ export function InitControls({
   const [innerRadius, setInnerRadius] = useState(DEFAULT_INNER_RADIUS);
   const [squareSize, setSquareSize] = useState(DEFAULT_SQUARE_SIZE);
   const [cornerRadius, setCornerRadius] = useState(DEFAULT_CORNER_RADIUS);
-  const [colorConfig, setColorConfig] = useState<InitColorConfig>({
-    colorMode: "random",
-    customColor: "#F8F8F8",
-  });
+  const [colors, setColors] = useState<string[]>([]); // Start with empty array, use default palette when empty
   const [velocityConfig, setVelocityConfig] = useState<InitVelocityConfig>({
     speed: DEFAULT_VELOCITY_SPEED,
     direction: DEFAULT_VELOCITY_DIRECTION,
     angle: DEFAULT_VELOCITY_ANGLE,
   });
+
+  // Color management handler
+  const handleColorsChange = (newColors: string[]) => {
+    setColors(newColors);
+    onColorsChange?.(newColors);
+  };
 
   useEffect(() => {
     if (onInitParticles) {
@@ -95,7 +94,7 @@ export function InitControls({
         spacing,
         particleSize,
         radius,
-        colorConfig,
+        colors.length > 0 ? colors : undefined, // Use undefined to trigger default palette
         velocityConfig,
         innerRadius,
         squareSize,
@@ -112,7 +111,7 @@ export function InitControls({
     innerRadius,
     squareSize,
     cornerRadius,
-    colorConfig,
+    colors,
     velocityConfig,
   ]);
 
@@ -124,7 +123,7 @@ export function InitControls({
         spacing,
         particleSize,
         radius,
-        colorConfig,
+        colors: colors.length > 0 ? colors : undefined,
         velocityConfig,
         camera: getCurrentCamera ? getCurrentCamera() : undefined,
         innerRadius,
@@ -143,7 +142,7 @@ export function InitControls({
     innerRadius,
     squareSize,
     cornerRadius,
-    colorConfig,
+    colors,
     velocityConfig,
     getCurrentCamera,
   ]);
@@ -183,7 +182,7 @@ export function InitControls({
         space,
         size,
         rad,
-        colorConfig,
+        colors,
         velocityConfig,
         innerRad,
         sqSize,
@@ -432,43 +431,10 @@ export function InitControls({
         </>
       )}
 
-      <div className="control-group">
-        <label>
-          Color
-          <div className="color-control-inline">
-            <select
-              value={colorConfig.colorMode}
-              onChange={(e) => {
-                const newColorConfig = {
-                  ...colorConfig,
-                  colorMode: e.target.value as "random" | "custom",
-                };
-                setColorConfig(newColorConfig);
-                onColorConfigChange?.(newColorConfig);
-              }}
-              className="form-select"
-            >
-              <option value="random">Random</option>
-              <option value="custom">Custom</option>
-            </select>
-            {colorConfig.colorMode === "custom" && (
-              <input
-                type="color"
-                value={colorConfig.customColor}
-                onChange={(e) => {
-                  const newColorConfig = {
-                    ...colorConfig,
-                    customColor: e.target.value,
-                  };
-                  setColorConfig(newColorConfig);
-                  onColorConfigChange?.(newColorConfig);
-                }}
-                className="color-picker-inline"
-              />
-            )}
-          </div>
-        </label>
-      </div>
+      <ColorSelector
+        colors={colors}
+        onColorsChange={handleColorsChange}
+      />
 
       <div className="control-group">
         <label>

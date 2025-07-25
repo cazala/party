@@ -238,10 +238,8 @@ export function useInteractions({
 
       // Get spawn config for color and fresh size (in case stream mode needs current values)
       const spawnConfig = getSpawnConfig();
-      const color =
-        spawnConfig.colorMode === "custom"
-          ? spawnConfig.customColor
-          : undefined;
+      // Use the first color from the colors array, or undefined for default palette
+      const color = spawnConfig.colors.length > 0 ? spawnConfig.colors[0] : undefined;
 
       // Spawn the first particle immediately at the exact position
       const system = getSystem();
@@ -266,10 +264,10 @@ export function useInteractions({
         const system = getSystem();
         if (system) {
           const currentSpawnConfig = getSpawnConfig(); // Get fresh config for size, mass, and color updates
-          const color =
-            currentSpawnConfig.colorMode === "custom"
-              ? currentSpawnConfig.customColor
-              : undefined;
+          // Use a random color from the colors array, or undefined for default palette
+          const color = currentSpawnConfig.colors.length > 0 
+            ? currentSpawnConfig.colors[Math.floor(Math.random() * currentSpawnConfig.colors.length)]
+            : undefined;
           const particle = createParticle(
             mouseState.streamPosition.x,
             mouseState.streamPosition.y,
@@ -350,10 +348,10 @@ export function useInteractions({
           return "rgb(0, 255, 0)";
         case "particle":
         default:
-          // Use spawn config for color mode
+          // Use spawn config colors
           const spawnConfig = getSpawnConfig();
-          if (spawnConfig.colorMode === "custom") {
-            return spawnConfig.customColor;
+          if (spawnConfig.colors.length > 0) {
+            return spawnConfig.colors[Math.floor(Math.random() * spawnConfig.colors.length)];
           }
           return getRandomColor();
       }

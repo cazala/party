@@ -401,3 +401,106 @@ input[type="checkbox"]:disabled:hover {
   align-items: center;
   gap: 0;
 }
+
+/* Color grid and color management styles */
+.color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.color-square {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.color-square:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.color-square:hover::after {
+  content: "×";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+  font-size: 14px;
+}
+
+/* Color square picking state */
+.color-square.picking {
+  border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.color-square.picking:hover::after {
+  display: none; /* Don't show delete × when picking */
+}
+
+/* Add color square specific styles */
+.add-color-square {
+  border: 1px dashed rgba(255, 255, 255, 0.4) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.add-color-square:hover {
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.add-color-square:hover::after {
+  display: none; /* Don't show the × on hover for add square */
+}
+
+.add-color-icon {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: bold;
+  pointer-events: none;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+}
+
+.clear-colors-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-colors-btn:hover {
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.default-palette-notice {
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+  margin-top: 8px;
+}
+
+.control-group .color-selector-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}

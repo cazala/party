@@ -16,7 +16,6 @@ import {
   DEFAULT_GRAVITY_STRENGTH,
   getIdCounter,
   Spawner,
-  type ColorConfig,
   type VelocityConfig,
   degToRad,
 } from "@party/core";
@@ -63,8 +62,7 @@ export function usePlayground(
   const [spawnConfig, setSpawnConfig] = useState<SpawnConfig>({
     defaultSize: 10,
     defaultMass: calculateMassFromSize(10),
-    colorMode: "random",
-    customColor: "#F8F8F8",
+    colors: [], // Empty array means use default palette
     streamMode: false,
     streamRate: 10,
   });
@@ -369,7 +367,7 @@ export function usePlayground(
       spacing: number,
       particleSize: number = 10,
       radius: number = 100,
-      colorConfig?: { colorMode: "random" | "custom"; customColor: string },
+      colors?: string[],
       velocityConfig?: {
         speed: number;
         direction:
@@ -410,11 +408,7 @@ export function usePlayground(
       const centerY = (-camera.y + canvasHeight / 2) / zoom;
       const center = new Vector2D(centerX, centerY);
 
-      // Convert playground color config to core ColorConfig
-      const coreColorConfig: ColorConfig | undefined = colorConfig ? {
-        colorMode: colorConfig.colorMode,
-        customColor: colorConfig.customColor,
-      } : undefined;
+      // Use colors array directly - no conversion needed
 
       // Convert playground velocity config to core VelocityConfig
       const coreVelocityConfig: VelocityConfig | undefined = velocityConfig ? {
@@ -440,7 +434,7 @@ export function usePlayground(
         center,
         particleOptions,
         velocityConfig: coreVelocityConfig,
-        colorConfig: coreColorConfig,
+        colors: colors || (spawnConfig.colors.length > 0 ? spawnConfig.colors : undefined),
         spacing,
         radius,
         innerRadius,
@@ -475,7 +469,7 @@ export function usePlayground(
         initConfig.spacing,
         initConfig.particleSize,
         initConfig.radius,
-        initConfig.colorConfig,
+        initConfig.colors,
         initConfig.velocityConfig,
         initConfig.innerRadius,
         initConfig.squareSize,

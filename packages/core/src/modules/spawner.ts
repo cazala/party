@@ -15,11 +15,18 @@ export interface VelocityConfig {
   center?: Vector2D; // Center point for directional calculations
 }
 
-export interface ColorConfig {
-  colorMode: "random" | "custom";
-  customColor?: string;
-  palette?: string[]; // Optional custom palette for random mode
-}
+// Default color palette - exported for external use
+export const DEFAULT_COLOR_PALETTE = [
+  "#F8F8F8", // Bright White
+  "#FF3C3C", // Neon Red
+  "#00E0FF", // Cyber Cyan
+  "#C85CFF", // Electric Purple
+  "#AFFF00", // Lime Neon
+  "#FF2D95", // Hot Magenta
+  "#FF6A00", // Sunset Orange
+  "#3B82F6", // Deep Blue Glow
+  "#00FFC6", // Turquoise Mint
+];
 
 export interface GridSpawnOptions {
   particleOptions?: ParticleOptions;
@@ -28,7 +35,7 @@ export interface GridSpawnOptions {
   spacing: Vector2D;
   center: Vector2D;
   velocityConfig?: VelocityConfig;
-  colorConfig?: ColorConfig;
+  colors?: string[]; // Array of colors to randomly select from
   safeSpacing?: boolean; // Ensures particles don't touch by using max(spacing, particleSize * 2)
 }
 
@@ -40,7 +47,7 @@ export interface RandomSpawnOptions {
   };
   count: number;
   velocityConfig?: VelocityConfig;
-  colorConfig?: ColorConfig;
+  colors?: string[]; // Array of colors to randomly select from
   camera?: { position: Vector2D; zoom: number }; // For camera-aware spawning
   canvasSize?: { width: number; height: number }; // For viewport calculations
 }
@@ -51,7 +58,7 @@ export interface CircleSpawnOptions {
   radius: number;
   count: number;
   velocityConfig?: VelocityConfig;
-  colorConfig?: ColorConfig;
+  colors?: string[]; // Array of colors to randomly select from
 }
 
 export interface DonutSpawnOptions {
@@ -61,7 +68,7 @@ export interface DonutSpawnOptions {
   innerRadius: number;
   count: number;
   velocityConfig?: VelocityConfig;
-  colorConfig?: ColorConfig;
+  colors?: string[]; // Array of colors to randomly select from
 }
 
 export interface SquareSpawnOptions {
@@ -71,7 +78,7 @@ export interface SquareSpawnOptions {
   cornerRadius: number;
   count: number;
   velocityConfig?: VelocityConfig;
-  colorConfig?: ColorConfig;
+  colors?: string[]; // Array of colors to randomly select from
 }
 
 export interface ParticleWithSide extends Particle {
@@ -79,19 +86,6 @@ export interface ParticleWithSide extends Particle {
   cornerPosition?: "top-left" | "top-right" | "bottom-right" | "bottom-left";
   sideProgress?: number; // 0-1 progress along the side/corner
 }
-
-// Default color palette
-const DEFAULT_COLOR_PALETTE = [
-  "#F8F8F8", // Bright White
-  "#FF3C3C", // Neon Red
-  "#00E0FF", // Cyber Cyan
-  "#C85CFF", // Electric Purple
-  "#AFFF00", // Lime Neon
-  "#FF2D95", // Hot Magenta
-  "#FF6A00", // Sunset Orange
-  "#3B82F6", // Deep Blue Glow
-  "#00FFC6", // Turquoise Mint
-];
 
 export function calculateVelocity(
   particlePosition: Vector2D,
@@ -144,19 +138,8 @@ export function calculateVelocity(
   return new Vector2D(speed * Math.cos(angle), speed * Math.sin(angle));
 }
 
-export function getParticleColor(colorConfig?: ColorConfig): string {
-  if (!colorConfig) {
-    // Default random color from default palette
-    const palette = DEFAULT_COLOR_PALETTE;
-    return palette[Math.floor(Math.random() * palette.length)];
-  }
-
-  if (colorConfig.colorMode === "custom" && colorConfig.customColor) {
-    return colorConfig.customColor;
-  }
-
-  // Random color from palette
-  const palette = colorConfig.palette || DEFAULT_COLOR_PALETTE;
+export function getParticleColor(colors?: string[]): string {
+  const palette = colors || DEFAULT_COLOR_PALETTE;
   return palette[Math.floor(Math.random() * palette.length)];
 }
 
@@ -166,7 +149,7 @@ export interface InitParticlesOptions {
   center: Vector2D;
   particleOptions?: ParticleOptions;
   velocityConfig?: VelocityConfig;
-  colorConfig?: ColorConfig;
+  colors?: string[]; // Array of colors to randomly select from
   // Shape-specific options
   spacing?: number; // For grid spacing (uniform)
   radius?: number; // For circle/donut outer radius
@@ -192,7 +175,7 @@ export class Spawner {
       center,
       particleOptions,
       velocityConfig,
-      colorConfig,
+      colors,
       spacing = 50,
       radius = 100,
       innerRadius = 50,
@@ -214,7 +197,7 @@ export class Spawner {
           spacing: new Vector2D(spacing, spacing),
           center,
           velocityConfig,
-          colorConfig,
+          colors,
           safeSpacing: true, // Enable collision prevention by default
         });
       }
@@ -226,7 +209,7 @@ export class Spawner {
           radius,
           count,
           velocityConfig,
-          colorConfig,
+          colors,
         });
 
       case "donut":
@@ -237,7 +220,7 @@ export class Spawner {
           innerRadius,
           count,
           velocityConfig,
-          colorConfig,
+          colors,
         });
 
       case "square":
@@ -248,7 +231,7 @@ export class Spawner {
           cornerRadius,
           count,
           velocityConfig,
-          colorConfig,
+          colors,
         });
 
       case "random": {
@@ -281,7 +264,7 @@ export class Spawner {
           bounds,
           count,
           velocityConfig,
-          colorConfig,
+          colors,
           camera,
           canvasSize,
         });
@@ -295,7 +278,7 @@ export class Spawner {
 
   spawnGrid(options: GridSpawnOptions): Particle[] {
     const particles: Particle[] = [];
-    const { rows, cols, spacing, center, velocityConfig, colorConfig, safeSpacing } = options;
+    const { rows, cols, spacing, center, velocityConfig, colors, safeSpacing } = options;
 
     // Apply safe spacing if enabled
     let adjustedSpacing = spacing;
@@ -325,7 +308,7 @@ export class Spawner {
           : new Vector2D(0, 0);
 
         // Get color
-        const color = getParticleColor(colorConfig);
+        const color = getParticleColor(colors);
 
         const particle = new Particle({
           ...options.particleOptions,
@@ -343,7 +326,7 @@ export class Spawner {
 
   spawnRandom(options: RandomSpawnOptions): Particle[] {
     const particles: Particle[] = [];
-    const { bounds, count, velocityConfig, colorConfig, camera, canvasSize } = options;
+    const { bounds, count, velocityConfig, colors, camera, canvasSize } = options;
 
     // Calculate effective bounds (camera-aware if camera info provided)
     let effectiveBounds = bounds;
@@ -384,7 +367,7 @@ export class Spawner {
         : new Vector2D(0, 0);
 
       // Get color
-      const color = getParticleColor(colorConfig);
+      const color = getParticleColor(colors);
 
       const particle = new Particle({
         ...options.particleOptions,
@@ -401,14 +384,14 @@ export class Spawner {
 
   spawnCircle(options: CircleSpawnOptions): Particle[] {
     const particles: Particle[] = [];
-    const { center, radius, count, velocityConfig, colorConfig } = options;
+    const { center, radius, count, velocityConfig, colors } = options;
 
     if (count === 1) {
       // Special case: single particle at center
       const velocity = velocityConfig 
         ? calculateVelocity(center, { ...velocityConfig, center: velocityConfig.center || center })
         : new Vector2D(0, 0);
-      const color = getParticleColor(colorConfig);
+      const color = getParticleColor(colors);
 
       const particle = new Particle({
         ...options.particleOptions,
@@ -476,7 +459,7 @@ export class Spawner {
           : new Vector2D(0, 0);
 
         // Get color
-        const color = getParticleColor(colorConfig);
+        const color = getParticleColor(colors);
 
         const particle = new Particle({
           ...options.particleOptions,
@@ -497,7 +480,7 @@ export class Spawner {
 
   spawnDonut(options: DonutSpawnOptions): Particle[] {
     const particles: Particle[] = [];
-    const { center, outerRadius, innerRadius, count, velocityConfig, colorConfig } = options;
+    const { center, outerRadius, innerRadius, count, velocityConfig, colors } = options;
 
     if (count === 0) return particles;
 
@@ -562,7 +545,7 @@ export class Spawner {
           : new Vector2D(0, 0);
 
         // Get color
-        const color = getParticleColor(colorConfig);
+        const color = getParticleColor(colors);
 
         const particle = new Particle({
           ...options.particleOptions,
@@ -583,7 +566,7 @@ export class Spawner {
 
   spawnSquare(options: SquareSpawnOptions): ParticleWithSide[] {
     const particles: ParticleWithSide[] = [];
-    const { center, size, cornerRadius, count, velocityConfig, colorConfig } = options;
+    const { center, size, cornerRadius, count, velocityConfig, colors } = options;
 
     if (count === 0) return particles;
 
@@ -635,7 +618,7 @@ export class Spawner {
       }
 
       // Get color
-      const color = getParticleColor(colorConfig);
+      const color = getParticleColor(colors);
 
       const particle = new Particle({
         ...options.particleOptions,

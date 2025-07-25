@@ -16,11 +16,6 @@ import { PerformanceControls } from "./control-sections/PerformanceControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useState } from "react";
 
-interface InitColorConfig {
-  colorMode: "random" | "custom";
-  customColor: string;
-}
-
 interface InitVelocityConfig {
   speed: number;
   direction:
@@ -44,7 +39,7 @@ interface SystemControlsProps {
     spacing: number,
     particleSize: number,
     radius?: number,
-    colorConfig?: InitColorConfig,
+    colors?: string[],
     velocityConfig?: InitVelocityConfig,
     innerRadius?: number,
     squareSize?: number,
@@ -56,7 +51,7 @@ interface SystemControlsProps {
     spacing: number;
     particleSize: number;
     radius?: number;
-    colorConfig?: InitColorConfig;
+    colors?: string[];
     velocityConfig?: InitVelocityConfig;
     camera?: { x: number; y: number; zoom: number };
     innerRadius?: number;
@@ -78,17 +73,14 @@ export function SystemControls({
   getCurrentCamera,
 }: SystemControlsProps) {
   const [particleSize, setParticleSize] = useState(10);
-  const [initColorConfig, setInitColorConfig] = useState<InitColorConfig>({
-    colorMode: "random",
-    customColor: "#F8F8F8",
-  });
+  const [initColors, setInitColors] = useState<string[]>([]);
 
   const handleParticleSizeChange = (size: number) => {
     setParticleSize(size);
   };
 
-  const handleColorConfigChange = (colorConfig: InitColorConfig) => {
-    setInitColorConfig(colorConfig);
+  const handleColorsChange = (colors: string[]) => {
+    setInitColors(colors);
   };
   return (
     <div className="controls-panel">
@@ -101,7 +93,7 @@ export function SystemControls({
           onInitParticles={onInitParticles}
           onGetInitConfig={onGetInitConfig}
           onParticleSizeChange={handleParticleSizeChange}
-          onColorConfigChange={handleColorConfigChange}
+          onColorsChange={handleColorsChange}
           getCurrentCamera={getCurrentCamera}
         />
       </CollapsibleSection>
@@ -110,7 +102,7 @@ export function SystemControls({
         <ParticleSpawnControls
           onSpawnConfigChange={onSpawnConfigChange}
           initialSize={particleSize}
-          initialColorConfig={initColorConfig}
+          initialColors={initColors}
         />
       </CollapsibleSection>
 

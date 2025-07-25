@@ -22,11 +22,11 @@ export {
   type DonutSpawnOptions,
   type InitParticlesOptions,
   type VelocityConfig,
-  type ColorConfig,
   type ParticleWithSide,
   calculateSquareVelocity,
   calculateVelocity,
   getParticleColor,
+  DEFAULT_COLOR_PALETTE,
 } from "./modules/spawner";
 export {
   Bounds as BoundingBox,
