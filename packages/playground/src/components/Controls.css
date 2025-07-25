@@ -132,6 +132,31 @@
   color: #666;
 }
 
+/* Disabled form-select styles */
+.form-select.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background-color: #444;
+  border-color: #555;
+  color: #666;
+  /* Update arrow color for disabled state */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+.form-select.disabled:hover {
+  opacity: 0.3;
+  background-color: #444;
+  border-color: #555;
+  /* Keep arrow color consistent on disabled hover */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+/* Disabled label styling for form-select */
+.control-group label:has(.form-select.disabled) {
+  opacity: 0.5;
+  color: #666;
+}
+
 .preset-buttons {
   display: flex;
   flex-wrap: wrap;

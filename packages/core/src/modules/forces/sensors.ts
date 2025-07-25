@@ -16,6 +16,12 @@ export const DEFAULT_SENSOR_RADIUS = 3;
 export const DEFAULT_SENSOR_THRESHOLD = 0.1;
 export const DEFAULT_SENSOR_STRENGTH = 1000;
 
+// Default constants for new behaviors
+export const DEFAULT_FOLLOW_BEHAVIOR: SensorBehavior = "any";
+export const DEFAULT_FLEE_BEHAVIOR: SensorBehavior = "none";
+
+export type SensorBehavior = "any" | "same" | "different" | "none";
+
 export interface SensorsOptions {
   enableTrail?: boolean;
   trailDecay?: number;
@@ -27,6 +33,37 @@ export interface SensorsOptions {
   sensorRadius?: number;
   sensorThreshold?: number;
   sensorStrength?: number;
+  followBehavior?: SensorBehavior;
+  fleeBehavior?: SensorBehavior;
+}
+
+// Helper function to convert hex color to RGB
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : { r: 0, g: 0, b: 0 };
+}
+
+// Helper function to calculate color similarity (0-1, where 1 is identical)
+function calculateColorSimilarity(
+  color1: { r: number; g: number; b: number },
+  color2: { r: number; g: number; b: number }
+): number {
+  const rDiff = Math.abs(color1.r - color2.r);
+  const gDiff = Math.abs(color1.g - color2.g);
+  const bDiff = Math.abs(color1.b - color2.b);
+
+  // Calculate Euclidean distance in RGB space
+  const distance = Math.sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
+
+  // Convert to similarity (max distance in RGB space is ~441.67)
+  const maxDistance = Math.sqrt(255 * 255 * 3);
+  return 1 - distance / maxDistance;
 }
 
 export class Sensors implements Force {
@@ -44,6 +81,10 @@ export class Sensors implements Force {
   public sensorThreshold: number;
   public sensorStrength: number;
 
+  // New behavior properties
+  public followBehavior: SensorBehavior;
+  public fleeBehavior: SensorBehavior;
+
   // Renderer reference for pixel reading
   private renderer: any = null;
 
@@ -60,6 +101,10 @@ export class Sensors implements Force {
     this.sensorRadius = options.sensorRadius ?? DEFAULT_SENSOR_RADIUS;
     this.sensorThreshold = options.sensorThreshold ?? DEFAULT_SENSOR_THRESHOLD;
     this.sensorStrength = options.sensorStrength ?? DEFAULT_SENSOR_STRENGTH;
+
+    // New behavior configuration
+    this.followBehavior = options.followBehavior ?? DEFAULT_FOLLOW_BEHAVIOR;
+    this.fleeBehavior = options.fleeBehavior ?? DEFAULT_FLEE_BEHAVIOR;
   }
 
   setEnableTrail(enableTrail: boolean): void {
@@ -100,6 +145,14 @@ export class Sensors implements Force {
 
   setSensorStrength(sensorStrength: number): void {
     this.sensorStrength = sensorStrength;
+  }
+
+  setFollowBehavior(followBehavior: SensorBehavior): void {
+    this.followBehavior = followBehavior;
+  }
+
+  setFleeBehavior(fleeBehavior: SensorBehavior): void {
+    this.fleeBehavior = fleeBehavior;
   }
 
   setRenderer(renderer: any): void {
@@ -149,27 +202,81 @@ export class Sensors implements Force {
       .clone()
       .add(rightDirection.multiply(this.sensorDistance));
 
-    // Read pixel intensity at each sensor position
-    const centerIntensity = this.renderer.readPixelIntensity(
-      centerSensorPos.x,
-      centerSensorPos.y,
-      this.sensorRadius
-    );
-    const leftIntensity = this.renderer.readPixelIntensity(
-      leftSensorPos.x,
-      leftSensorPos.y,
-      this.sensorRadius
-    );
-    const rightIntensity = this.renderer.readPixelIntensity(
-      rightSensorPos.x,
-      rightSensorPos.y,
-      this.sensorRadius
-    );
+    // Process follow behavior
+    let followForce: Vector2D | null = null;
+    if (this.followBehavior !== "none") {
+      followForce = this.calculateBehaviorForce(
+        particle,
+        centerSensorPos,
+        leftSensorPos,
+        rightSensorPos,
+        leftDirection,
+        rightDirection,
+        this.followBehavior,
+        false
+      );
+    }
 
-    // Determine which sensors are activated (above threshold)
-    const centerActivated = centerIntensity > this.sensorThreshold;
-    const leftActivated = leftIntensity > this.sensorThreshold;
-    const rightActivated = rightIntensity > this.sensorThreshold;
+    // Process flee behavior
+    let fleeForce: Vector2D | null = null;
+    if (this.fleeBehavior !== "none") {
+      fleeForce = this.calculateBehaviorForce(
+        particle,
+        centerSensorPos,
+        leftSensorPos,
+        rightSensorPos,
+        leftDirection,
+        rightDirection,
+        this.fleeBehavior,
+        true
+      );
+    }
+
+    // Combine forces if both are present
+    let finalForce: Vector2D | null = null;
+    if (followForce && fleeForce) {
+      finalForce = followForce.add(fleeForce);
+    } else if (followForce) {
+      finalForce = followForce;
+    } else if (fleeForce) {
+      finalForce = fleeForce;
+    }
+
+    // Apply final force
+    if (finalForce) {
+      particle.velocity = finalForce
+        .normalize()
+        .multiply(this.sensorStrength / 5);
+    }
+  }
+
+  private calculateBehaviorForce(
+    particle: Particle,
+    centerSensorPos: Vector2D,
+    leftSensorPos: Vector2D,
+    rightSensorPos: Vector2D,
+    leftDirection: Vector2D,
+    rightDirection: Vector2D,
+    behavior: SensorBehavior,
+    isFleeMode: boolean
+  ): Vector2D | null {
+    // Get sensor readings
+    const centerData = this.getSensorData(centerSensorPos.x, centerSensorPos.y);
+    const leftData = this.getSensorData(leftSensorPos.x, leftSensorPos.y);
+    const rightData = this.getSensorData(rightSensorPos.x, rightSensorPos.y);
+
+    // Determine activation based on behavior type
+    const centerActivated = this.isSensorActivated(
+      particle,
+      centerData,
+      behavior
+    );
+    const leftActivated = this.isSensorActivated(particle, leftData, behavior);
+    const rightActivated = this.isSensorActivated(
+      particle,
+      rightData,
+      behavior
+    );
 
     // Find the winning sensor (highest intensity among activated sensors)
     let winningDirection: Vector2D | null = null;
@@ -185,11 +292,69 @@ export class Sensors implements Force {
       winningDirection = rightDirection.clone();
     }
 
-    // Apply force in the direction of the winning sensor
+    // Apply force in the direction of the winning sensor (or opposite for flee mode)
     if (winningDirection) {
-      particle.velocity = winningDirection
-        .normalize()
-        .multiply(this.sensorStrength / 5);
+      if (isFleeMode) {
+        // For flee mode, reverse the direction
+        winningDirection = winningDirection.multiply(-1);
+      }
+      return winningDirection;
+    }
+
+    return null;
+  }
+
+  private getSensorData(
+    x: number,
+    y: number
+  ): { intensity: number; color: { r: number; g: number; b: number } } {
+    // Read pixel intensity (for 'any' behavior compatibility)
+    const intensity = this.renderer.readPixelIntensity(x, y, this.sensorRadius);
+
+    // Read pixel color (for 'same' and 'different' behaviors)
+    const color = this.renderer.readPixelColor
+      ? this.renderer.readPixelColor(x, y, this.sensorRadius)
+      : { r: 255, g: 255, b: 255 }; // fallback to white if method not available
+
+    return { intensity, color };
+  }
+
+  private isSensorActivated(
+    particle: Particle,
+    sensorData: {
+      intensity: number;
+      color: { r: number; g: number; b: number };
+    },
+    behavior: SensorBehavior
+  ): boolean {
+    const { intensity, color } = sensorData;
+
+    // First check if intensity is above threshold
+    if (intensity <= this.sensorThreshold) {
+      return false;
+    }
+
+    switch (behavior) {
+      case "any":
+        return true; // Already passed intensity threshold
+
+      case "same": {
+        const particleColor = hexToRgb(particle.color);
+        const similarity = calculateColorSimilarity(particleColor, color);
+        // Account for trail fade - lower similarity threshold (0.5 instead of 0.8)
+        return similarity > 0.5;
+      }
+
+      case "different": {
+        const particleColor = hexToRgb(particle.color);
+        const similarity = calculateColorSimilarity(particleColor, color);
+        // Opposite of 'same' - activate when colors are different
+        return similarity <= 0.5;
+      }
+
+      case "none":
+      default:
+        return false;
     }
   }
 }
@@ -207,7 +372,9 @@ export function createSensorsForce(
   sensorAngle: number = DEFAULT_SENSOR_ANGLE,
   sensorRadius: number = DEFAULT_SENSOR_RADIUS,
   sensorThreshold: number = DEFAULT_SENSOR_THRESHOLD,
-  sensorStrength: number = DEFAULT_SENSOR_STRENGTH
+  sensorStrength: number = DEFAULT_SENSOR_STRENGTH,
+  followBehavior: SensorBehavior = DEFAULT_FOLLOW_BEHAVIOR,
+  fleeBehavior: SensorBehavior = DEFAULT_FLEE_BEHAVIOR
 ): Sensors {
   return new Sensors({
     enableTrail,
@@ -219,6 +386,8 @@ export function createSensorsForce(
     sensorRadius,
     sensorThreshold,
     sensorStrength,
+    followBehavior,
+    fleeBehavior,
   });
 }
 

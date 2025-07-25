@@ -10,6 +10,9 @@ import {
   DEFAULT_SENSOR_RADIUS,
   DEFAULT_SENSOR_THRESHOLD,
   DEFAULT_SENSOR_STRENGTH,
+  DEFAULT_FOLLOW_BEHAVIOR,
+  DEFAULT_FLEE_BEHAVIOR,
+  SensorBehavior,
 } from "@party/core/modules/forces/sensors";
 
 interface SensorsControlsProps {
@@ -34,6 +37,14 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
   );
   const [sensorStrength, setSensorStrength] = useState(DEFAULT_SENSOR_STRENGTH);
 
+  // New behavior state
+  const [followBehavior, setFollowBehavior] = useState<SensorBehavior>(
+    DEFAULT_FOLLOW_BEHAVIOR
+  );
+  const [fleeBehavior, setFleeBehavior] = useState<SensorBehavior>(
+    DEFAULT_FLEE_BEHAVIOR
+  );
+
   useEffect(() => {
     if (sensors) {
       setTrailEnabled(sensors.enableTrail);
@@ -45,6 +56,8 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
       setSensorRadius(sensors.sensorRadius);
       setSensorThreshold(sensors.sensorThreshold);
       setSensorStrength(sensors.sensorStrength);
+      setFollowBehavior(sensors.followBehavior);
+      setFleeBehavior(sensors.fleeBehavior);
     }
   }, [sensors]);
 
@@ -55,8 +68,8 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
   }, [trailEnabled, sensorsEnabled]);
 
   const handleSensorsChange = (
-    property: keyof Sensors,
-    value: number | boolean
+    property: keyof Sensors | "followBehavior" | "fleeBehavior",
+    value: number | boolean | SensorBehavior
   ) => {
     if (!sensors) return;
 
@@ -97,8 +110,23 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
         setSensorStrength(value as number);
         sensors.setSensorStrength(value as number);
         break;
+      case "followBehavior":
+        setFollowBehavior(value as SensorBehavior);
+        sensors.setFollowBehavior(value as SensorBehavior);
+        break;
+      case "fleeBehavior":
+        setFleeBehavior(value as SensorBehavior);
+        sensors.setFleeBehavior(value as SensorBehavior);
+        break;
     }
   };
+
+  const behaviorOptions: SensorBehavior[] = [
+    "none",
+    "any",
+    "same",
+    "different",
+  ];
 
   return (
     <div className="control-section">
@@ -169,6 +197,53 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
         </label>
       </div>
 
+      {/* Behavior Controls */}
+      <div className="control-group">
+        <label>
+          Follow Behavior:
+          <select
+            value={followBehavior}
+            disabled={!sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange(
+                "followBehavior",
+                e.target.value as SensorBehavior
+              )
+            }
+            className={`form-select ${!sensorsEnabled ? "disabled" : ""}`}
+          >
+            {behaviorOptions.map((option) => (
+              <option key={option} value={option}>
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Flee Behavior:
+          <select
+            value={fleeBehavior}
+            disabled={!sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange(
+                "fleeBehavior",
+                e.target.value as SensorBehavior
+              )
+            }
+            className={`form-select ${!sensorsEnabled ? "disabled" : ""}`}
+          >
+            {behaviorOptions.map((option) => (
+              <option key={option} value={option}>
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <div className="control-group">
         <label>
           Sensor Distance: {sensorDistance}
@@ -229,7 +304,7 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
           <input
             type="range"
             min="0"
-            max="1"
+            max="0.3"
             step="0.01"
             value={sensorThreshold}
             disabled={!sensorsEnabled}

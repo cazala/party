@@ -50,6 +50,9 @@ import {
   DEFAULT_SENSOR_RADIUS,
   DEFAULT_SENSOR_THRESHOLD,
   DEFAULT_SENSOR_STRENGTH,
+  DEFAULT_FOLLOW_BEHAVIOR,
+  DEFAULT_FLEE_BEHAVIOR,
+  SensorBehavior,
 } from "./forces/sensors";
 import { Vector2D } from "./vector";
 
@@ -105,6 +108,8 @@ export interface Config {
     sensorRadius?: number;
     sensorThreshold?: number;
     sensorStrength?: number;
+    followBehavior?: SensorBehavior;
+    fleeBehavior?: SensorBehavior;
   };
 }
 
@@ -380,6 +385,8 @@ export class System {
           sensorRadius: force.sensorRadius,
           sensorThreshold: force.sensorThreshold,
           sensorStrength: force.sensorStrength,
+          followBehavior: force.followBehavior,
+          fleeBehavior: force.fleeBehavior,
         };
       }
     }
@@ -469,6 +476,12 @@ export class System {
         );
         force.setSensorStrength(
           config.sensors.sensorStrength ?? DEFAULT_SENSOR_STRENGTH
+        );
+        force.setFollowBehavior(
+          config.sensors.followBehavior ?? DEFAULT_FOLLOW_BEHAVIOR
+        );
+        force.setFleeBehavior(
+          config.sensors.fleeBehavior ?? DEFAULT_FLEE_BEHAVIOR
         );
       }
     }

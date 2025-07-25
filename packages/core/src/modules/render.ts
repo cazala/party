@@ -418,6 +418,94 @@ export abstract class Renderer {
       return 0;
     }
   }
+
+  public readPixelColor(
+    x: number,
+    y: number,
+    radius: number
+  ): { r: number; g: number; b: number } {
+    try {
+      // For base Renderer class, assume coordinates are already in screen space
+      const screenX = Math.round(x);
+      const screenY = Math.round(y);
+
+      // Check bounds
+      if (
+        screenX < 0 ||
+        screenY < 0 ||
+        screenX >= this.canvas.width ||
+        screenY >= this.canvas.height
+      ) {
+        return { r: 0, g: 0, b: 0 };
+      }
+
+      // For radius of 1, just sample single pixel
+      if (radius <= 1) {
+        const imageData = this.ctx.getImageData(screenX, screenY, 1, 1);
+        const data = imageData.data;
+        return { r: data[0], g: data[1], b: data[2] };
+      }
+
+      // For larger radius, sample circular area and get average color
+      const sampleRadius = Math.max(1, Math.round(radius));
+
+      // Clamp sample area to canvas bounds
+      const startX = Math.max(0, screenX - sampleRadius);
+      const startY = Math.max(0, screenY - sampleRadius);
+      const endX = Math.min(this.canvas.width - 1, screenX + sampleRadius);
+      const endY = Math.min(this.canvas.height - 1, screenY + sampleRadius);
+
+      const width = endX - startX + 1;
+      const height = endY - startY + 1;
+
+      if (width <= 0 || height <= 0) return { r: 0, g: 0, b: 0 };
+
+      const imageData = this.ctx.getImageData(startX, startY, width, height);
+      const data = imageData.data;
+
+      let totalR = 0,
+        totalG = 0,
+        totalB = 0;
+      let sampleCount = 0;
+
+      // Sample pixels in circular pattern
+      for (let dy = 0; dy < height; dy++) {
+        for (let dx = 0; dx < width; dx++) {
+          const pixelX = startX + dx;
+          const pixelY = startY + dy;
+
+          // Check if pixel is within circular radius
+          const distanceFromCenter = Math.sqrt(
+            Math.pow(pixelX - screenX, 2) + Math.pow(pixelY - screenY, 2)
+          );
+
+          if (distanceFromCenter <= sampleRadius) {
+            const pixelIndex = (dy * width + dx) * 4;
+            const alpha = data[pixelIndex + 3] / 255;
+
+            // Weight colors by alpha to handle transparency properly
+            totalR += data[pixelIndex] * alpha;
+            totalG += data[pixelIndex + 1] * alpha;
+            totalB += data[pixelIndex + 2] * alpha;
+            sampleCount += alpha; // Use alpha as weight
+          }
+        }
+      }
+
+      if (sampleCount > 0) {
+        return {
+          r: Math.round(totalR / sampleCount),
+          g: Math.round(totalG / sampleCount),
+          b: Math.round(totalB / sampleCount),
+        };
+      }
+
+      return { r: 0, g: 0, b: 0 };
+    } catch (error) {
+      // Return black if reading fails
+      return { r: 0, g: 0, b: 0 };
+    }
+  }
 }
 
 export class Canvas2DRenderer extends Renderer {
@@ -1249,6 +1337,17 @@ export class Canvas2DRenderer extends Renderer {
     // Convert world coordinates to screen coordinates
     const screenCoords = this.worldToScreen(worldX, worldY);
     return super.readPixelIntensity(screenCoords.x, screenCoords.y, radius);
+  }
+
+  // Override to handle world-to-screen coordinate transformation
+  public readPixelColor(
+    worldX: number,
+    worldY: number,
+    radius: number
+  ): { r: number; g: number; b: number } {
+    // Convert world coordinates to screen coordinates
+    const screenCoords = this.worldToScreen(worldX, worldY);
+    return super.readPixelColor(screenCoords.x, screenCoords.y, radius);
   }
 }
 
