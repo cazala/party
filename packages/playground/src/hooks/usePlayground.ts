@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import {
   Canvas2DRenderer,
-  Gravity,
+  Physics,
   Particle,
   System,
   Vector2D,
@@ -49,7 +49,7 @@ export function usePlayground(
   const systemRef = useRef<System | null>(null);
   // Individual force/utility refs – kept outside of React state because the
   // physics engine mutates them on every tick.
-  const gravityRef = useRef<Gravity | null>(null);
+  const physicsRef = useRef<Physics | null>(null);
   const boundsRef = useRef<Bounds | null>(null);
   const behaviorRef = useRef<Behavior | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
@@ -260,8 +260,8 @@ export function usePlayground(
   useEffect(() => {
     if (systemRef.current) return;
 
-    const gravity = new Gravity({ strength: DEFAULT_GRAVITY_STRENGTH });
-    gravityRef.current = gravity;
+    const physics = new Physics({ gravity: { strength: DEFAULT_GRAVITY_STRENGTH } });
+    physicsRef.current = physics;
 
     const bounds = new Bounds();
     boundsRef.current = bounds;
@@ -301,7 +301,7 @@ export function usePlayground(
     // Connect renderer to sensors for pixel reading
     sensors.setRenderer(renderer);
 
-    system.addForce(gravity);
+    system.addForce(physics);
     system.addForce(bounds);
     system.addForce(behavior);
     system.addForce(collisions);
@@ -510,8 +510,20 @@ export function usePlayground(
   }, [spawnParticles]);
 
   const updateGravity = useCallback((strength: number) => {
-    if (gravityRef.current) {
-      gravityRef.current.strength = strength;
+    if (physicsRef.current) {
+      physicsRef.current.setStrength(strength);
+    }
+  }, []);
+
+  const updateInertia = useCallback((inertia: number) => {
+    if (physicsRef.current) {
+      physicsRef.current.setInertia(inertia);
+    }
+  }, []);
+
+  const updateFriction = useCallback((friction: number) => {
+    if (physicsRef.current) {
+      physicsRef.current.setFriction(friction);
     }
   }, []);
 
@@ -577,7 +589,7 @@ export function usePlayground(
   return {
     // Live engine handles ------------------------------------------------------
     system: systemRef.current,
-    gravity: gravityRef.current,
+    physics: physicsRef.current,
     bounds: boundsRef.current,
     behavior: behaviorRef.current,
     collisions: collisionsRef.current,
@@ -596,6 +608,8 @@ export function usePlayground(
     resetParticles,
     spawnParticles,
     updateGravity,
+    updateInertia,
+    updateFriction,
     addParticle,
     updateParticleDefaults,
     // Spawn config

@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { RotateCcw, Download, Upload } from "lucide-react";
 import {
-  Gravity,
+  Physics,
   Behavior,
   Bounds,
   Collisions,
@@ -57,7 +57,7 @@ import "./ForcesControls.css";
 
 interface ForcesControlsProps {
   system: System | null;
-  gravity: Gravity | null;
+  physics: Physics | null;
   behavior: Behavior | null;
   bounds: Bounds | null;
   collisions: Collisions | null;
@@ -69,7 +69,7 @@ interface ForcesControlsProps {
 
 export function ForcesControls({
   system,
-  gravity,
+  physics,
   behavior,
   bounds,
   collisions,
@@ -89,10 +89,12 @@ export function ForcesControls({
   }, [sessionLoadTrigger]);
 
   const resetToDefaults = () => {
-    // Reset gravity
-    if (gravity) {
-      gravity.setStrength(DEFAULT_GRAVITY_STRENGTH);
-      gravity.setDirectionFromAngle(DEFAULT_GRAVITY_ANGLE); // DEFAULT_GRAVITY_ANGLE is already in radians
+    // Reset physics
+    if (physics) {
+      physics.setStrength(DEFAULT_GRAVITY_STRENGTH);
+      physics.setDirectionFromAngle(DEFAULT_GRAVITY_ANGLE); // DEFAULT_GRAVITY_ANGLE is already in radians
+      physics.setInertia(0);
+      physics.setFriction(0);
     }
 
     // Reset bounds
@@ -251,7 +253,7 @@ export function ForcesControls({
       <CollapsibleSection title="Physics" defaultOpen={true}>
         <PhysicsControls
           key={`physics-${refreshKey}`}
-          gravity={gravity}
+          physics={physics}
           collisions={collisions}
         />
       </CollapsibleSection>
@@ -273,7 +275,7 @@ export function ForcesControls({
       </CollapsibleSection>
 
       <CollapsibleSection title="Joints">
-        <JointControls key={`joints-${refreshKey}`} joints={joints} />
+        <JointControls key={`joints-${refreshKey}`} joints={joints} system={system} />
       </CollapsibleSection>
     </div>
   );

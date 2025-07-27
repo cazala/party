@@ -6,7 +6,7 @@ import { SpatialGrid } from "../spatial-grid";
 // Default constants for Joints
 export const DEFAULT_JOINTS_ENABLED = true;
 export const DEFAULT_JOINT_STIFFNESS = 0.5;
-export const DEFAULT_JOINT_DAMPING = 0;
+export const DEFAULT_JOINT_DAMPING = 0.1;
 export const DEFAULT_JOINT_MAX_FORCE = 1000;
 export const DEFAULT_JOINT_TYPE: JointType = "pin";
 
@@ -361,6 +361,21 @@ export class Joints implements Force {
    */
   getJointCount(): number {
     return this.joints.size;
+  }
+
+  /**
+   * Check if a particle has any pin joints connected to it
+   */
+  hasJoint(particleId: number): boolean {
+    for (const joint of this.joints.values()) {
+      if (
+        joint.type === "pin" &&
+        (joint.particleA.id === particleId || joint.particleB.id === particleId)
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

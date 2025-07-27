@@ -1,10 +1,13 @@
 import { Particle } from "./particle";
 import { SpatialGrid } from "./spatial-grid";
+import { Vector2D } from "./vector";
 import {
-  Gravity,
+  Physics,
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_DIRECTION,
-} from "./forces/gravity";
+  DEFAULT_INERTIA,
+  DEFAULT_FRICTION,
+} from "./forces/physics";
 import {
   Bounds,
   DEFAULT_BOUNDS_BOUNCE,
@@ -61,7 +64,6 @@ import {
   DEFAULT_JOINT_DAMPING,
   DEFAULT_JOINT_MAX_FORCE,
 } from "./forces/joints";
-import { Vector2D } from "./vector";
 
 export interface Force {
   warmup?(particles: Particle[], deltaTime: number): void;
@@ -70,6 +72,15 @@ export interface Force {
 }
 
 export interface Config {
+  physics?: {
+    gravity?: {
+      strength?: number;
+      direction?: { x?: number; y?: number };
+    };
+    inertia?: number;
+    friction?: number;
+  };
+  // Legacy support for old configs
   gravity?: {
     strength?: number;
     direction?: { x?: number; y?: number };
@@ -213,6 +224,12 @@ export class System {
       force.warmup?.(this.particles, deltaTime);
     }
 
+    // Store initial positions before processing
+    const initialPositions = new Map<number, Vector2D>();
+    for (const particle of this.particles) {
+      initialPositions.set(particle.id, particle.position.clone());
+    }
+
     for (const particle of this.particles) {
       for (const force of this.forces) {
         force.apply(particle, this.spatialGrid);
@@ -222,6 +239,27 @@ export class System {
       } else {
         particle.velocity.x = 0;
         particle.velocity.y = 0;
+      }
+    }
+
+    // Update velocities based on actual position changes only for particles with joints
+    if (deltaTime > 0) {
+      // Find the joints force to check which particles have joints
+      const jointsForce = this.forces.find(force => force instanceof Joints);
+      if (jointsForce) {
+        for (const particle of this.particles) {
+          if (!particle.static && jointsForce.hasJoint(particle.id)) {
+            const initialPosition = initialPositions.get(particle.id);
+            if (initialPosition) {
+              // Calculate actual position change
+              const actualPositionChange = particle.position
+                .clone()
+                .subtract(initialPosition);
+              // Update velocity to reflect actual movement
+              particle.velocity = actualPositionChange.divide(deltaTime);
+            }
+          }
+        }
       }
     }
 
@@ -347,10 +385,14 @@ export class System {
 
     // Export configuration for each force type present in the system
     for (const force of this.forces) {
-      if (force instanceof Gravity) {
-        config.gravity = {
-          strength: force.strength,
-          direction: { x: force.direction.x, y: force.direction.y },
+      if (force instanceof Physics) {
+        config.physics = {
+          gravity: {
+            strength: force.strength,
+            direction: { x: force.direction.x, y: force.direction.y },
+          },
+          inertia: force.inertia,
+          friction: force.friction,
         };
       } else if (force instanceof Bounds) {
         config.bounds = {
@@ -417,14 +459,37 @@ export class System {
   import(config: Config): void {
     // Apply configuration for each force type present in the system
     for (const force of this.forces) {
-      if (force instanceof Gravity && config.gravity) {
-        force.setStrength(config.gravity.strength ?? DEFAULT_GRAVITY_STRENGTH);
-        force.setDirection(
-          new Vector2D(
-            config.gravity.direction?.x ?? DEFAULT_GRAVITY_DIRECTION.x,
-            config.gravity.direction?.y ?? DEFAULT_GRAVITY_DIRECTION.y
-          )
-        );
+      if (force instanceof Physics) {
+        // Handle new physics config format
+        if (config.physics) {
+          force.setStrength(
+            config.physics.gravity?.strength ?? DEFAULT_GRAVITY_STRENGTH
+          );
+          force.setDirection(
+            new Vector2D(
+              config.physics.gravity?.direction?.x ??
+                DEFAULT_GRAVITY_DIRECTION.x,
+              config.physics.gravity?.direction?.y ??
+                DEFAULT_GRAVITY_DIRECTION.y
+            )
+          );
+          force.setInertia(config.physics.inertia ?? DEFAULT_INERTIA);
+          force.setFriction(config.physics.friction ?? DEFAULT_FRICTION);
+        }
+        // Handle legacy gravity config for backward compatibility
+        else if (config.gravity) {
+          force.setStrength(
+            config.gravity.strength ?? DEFAULT_GRAVITY_STRENGTH
+          );
+          force.setDirection(
+            new Vector2D(
+              config.gravity.direction?.x ?? DEFAULT_GRAVITY_DIRECTION.x,
+              config.gravity.direction?.y ?? DEFAULT_GRAVITY_DIRECTION.y
+            )
+          );
+          force.setInertia(DEFAULT_INERTIA);
+          force.setFriction(DEFAULT_FRICTION);
+        }
       } else if (force instanceof Bounds && config.bounds) {
         force.bounce = config.bounds.bounce ?? DEFAULT_BOUNDS_BOUNCE;
         force.setFriction(config.bounds.friction ?? DEFAULT_BOUNDS_FRICTION);

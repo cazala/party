@@ -27,7 +27,7 @@ function App() {
 
   const {
     system,
-    gravity,
+    physics,
     bounds,
     behavior,
     collisions,
@@ -51,7 +51,7 @@ function App() {
   useEffect(() => {
     if (
       !system ||
-      !gravity ||
+      !physics ||
       !bounds ||
       !behavior ||
       !collisions ||
@@ -68,7 +68,7 @@ function App() {
     );
   }, [
     system,
-    gravity,
+    physics,
     bounds,
     behavior,
     collisions,
@@ -169,7 +169,7 @@ function App() {
         <div className="right-sidebar">
           <ForcesControls
             system={system}
-            gravity={gravity}
+            physics={physics}
             behavior={behavior}
             bounds={bounds}
             collisions={collisions}
