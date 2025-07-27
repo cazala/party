@@ -212,6 +212,7 @@ export class System {
     this.forces = [];
   }
 
+
   update(deltaTime: number): void {
     // Clear and repopulate spatial grid
     this.spatialGrid.clear();
@@ -224,10 +225,11 @@ export class System {
       force.warmup?.(this.particles, deltaTime);
     }
 
-    // Store initial positions before processing
-    const initialPositions = new Map<number, Vector2D>();
+
+    // Store positions before physics integration for constraint velocity correction
+    const prePhysicsPositions = new Map<number, Vector2D>();
     for (const particle of this.particles) {
-      initialPositions.set(particle.id, particle.position.clone());
+      prePhysicsPositions.set(particle.id, particle.position.clone());
     }
 
     for (const particle of this.particles) {
@@ -242,21 +244,21 @@ export class System {
       }
     }
 
-    // Update velocities based on actual position changes only for particles with joints
-    if (deltaTime > 0) {
-      // Find the joints force to check which particles have joints
-      const jointsForce = this.forces.find(force => force instanceof Joints);
-      if (jointsForce) {
+    // Apply joint constraints AFTER physics integration to preserve natural motion
+    const jointsForce = this.forces.find(force => force instanceof Joints);
+    if (jointsForce && 'applyConstraints' in jointsForce) {
+      (jointsForce as any).applyConstraints();
+
+      // Update velocities to match actual movement after constraint solving
+      if (deltaTime > 0) {
         for (const particle of this.particles) {
           if (!particle.static && jointsForce.hasJoint(particle.id)) {
-            const initialPosition = initialPositions.get(particle.id);
-            if (initialPosition) {
-              // Calculate actual position change
-              const actualPositionChange = particle.position
-                .clone()
-                .subtract(initialPosition);
-              // Update velocity to reflect actual movement
-              particle.velocity = actualPositionChange.divide(deltaTime);
+            const prePhysicsPosition = prePhysicsPositions.get(particle.id);
+            if (prePhysicsPosition) {
+              // Calculate total actual movement from start to end
+              const totalMovement = particle.position.clone().subtract(prePhysicsPosition);
+              // Update velocity to reflect this actual movement
+              particle.velocity = totalMovement.divide(deltaTime);
             }
           }
         }

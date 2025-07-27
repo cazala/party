@@ -402,6 +402,16 @@ export class Joints implements Force {
 
     invalidJoints.forEach((id) => this.joints.delete(id));
 
+    // Note: Joint constraints are now applied AFTER physics integration
+    // to avoid interfering with natural motion from forces like gravity
+  }
+
+  /**
+   * Apply all joint constraints - should be called AFTER physics integration
+   */
+  applyConstraints(): void {
+    if (!this.enabled) return;
+
     // Apply all joint constraints
     for (const joint of this.joints.values()) {
       joint.applyConstraint();
