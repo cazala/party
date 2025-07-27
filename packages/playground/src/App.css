@@ -31,6 +31,15 @@
   height: 100%;
 }
 
+/* Cursor styles for different tool modes */
+#canvas.grab-tool {
+  cursor: grab;
+}
+
+#canvas.grab-tool.grabbing {
+  cursor: grabbing;
+}
+
 .right-sidebar {
   width: 320px;
   background: var(--color-panel);

@@ -156,6 +156,14 @@ interface MouseState {
   /** Joints created during current session for undo */
   createdJoints: string[];
 
+  // === Grab Mode State ===
+  /** Particle currently being grabbed/dragged */
+  grabbedParticle: Particle | null;
+  /** Whether currently grabbing a particle */
+  isGrabbing: boolean;
+  /** Offset from particle center to mouse when grabbing */
+  grabOffset: { x: number; y: number };
+
   // === Undo/Redo Tracking ===
   /** Particles created during streaming sessions for undo */
   streamedParticles: any[];
@@ -231,6 +239,9 @@ export function useInteractions({
     highlightedParticle: null,
     isCreatingJoint: false,
     createdJoints: [],
+    grabbedParticle: null,
+    isGrabbing: false,
+    grabOffset: { x: 0, y: 0 },
     streamedParticles: [],
     removedParticles: [],
   });
@@ -524,6 +535,32 @@ export function useInteractions({
       ),
     });
   }, [getRenderer]);
+
+  /**
+   * Handle grab tool click - start grabbing a particle
+   */
+  const handleGrabClick = useCallback(
+    (worldPos: { x: number; y: number }) => {
+      const mouseState = mouseStateRef.current;
+      const particle = findParticleAtPosition(worldPos);
+
+      if (particle) {
+        // Start grabbing the particle
+        mouseState.grabbedParticle = particle;
+        mouseState.isGrabbing = true;
+        
+        // Calculate offset from particle center to mouse position
+        mouseState.grabOffset = {
+          x: worldPos.x - particle.position.x,
+          y: worldPos.y - particle.position.y,
+        };
+
+        // Set the particle as static so it doesn't respond to forces
+        particle.static = true;
+      }
+    },
+    [findParticleAtPosition]
+  );
 
   // Helper function to update velocity preview
   const updateVelocityPreview = useCallback(() => {
@@ -933,6 +970,13 @@ export function useInteractions({
         return;
       }
 
+      // Handle grab mode
+      if (toolMode === "grab") {
+        const pos = getWorldPosition(e);
+        handleGrabClick(pos);
+        return;
+      }
+
       const mouseState = mouseStateRef.current;
       const pos = getWorldPosition(e);
 
@@ -1094,6 +1138,28 @@ export function useInteractions({
 
         // Update joint preview if creating a joint
         updateJointPreview();
+
+        return;
+      }
+
+      // Handle grab mode
+      if (toolMode === "grab") {
+        mouseState.currentPos = worldPos;
+
+        if (mouseState.isGrabbing && mouseState.grabbedParticle) {
+          // Update grabbed particle position
+          mouseState.grabbedParticle.position.x = worldPos.x - mouseState.grabOffset.x;
+          mouseState.grabbedParticle.position.y = worldPos.y - mouseState.grabOffset.y;
+          
+          // Reset velocity to prevent unwanted movement
+          mouseState.grabbedParticle.velocity.x = 0;
+          mouseState.grabbedParticle.velocity.y = 0;
+        } else {
+          // Update particle highlighting for grab tool
+          const hoveredParticle = findParticleAtPosition(worldPos);
+          mouseState.highlightedParticle = hoveredParticle;
+          renderer.setHighlightedParticle(hoveredParticle);
+        }
 
         return;
       }
@@ -1261,6 +1327,23 @@ export function useInteractions({
           }
           mouseState.removedParticles = [];
         }
+        return;
+      }
+
+      // Handle grab mode mouse up
+      if (toolMode === "grab" && mouseStateRef.current.isGrabbing) {
+        const mouseState = mouseStateRef.current;
+        
+        if (mouseState.grabbedParticle) {
+          // Release the particle by making it non-static again
+          mouseState.grabbedParticle.static = false;
+        }
+        
+        // Reset grab state
+        mouseState.grabbedParticle = null;
+        mouseState.isGrabbing = false;
+        mouseState.grabOffset = { x: 0, y: 0 };
+        
         return;
       }
 
@@ -1438,6 +1521,17 @@ export function useInteractions({
     renderer.setJointPreview(null);
     renderer.setHighlightedParticle(null);
     renderer.setSelectedParticle(null);
+    
+    // Clear grab mode and release grabbed particle
+    if (mouseState.isGrabbing && mouseState.grabbedParticle) {
+      // Release the particle by making it non-static again
+      mouseState.grabbedParticle.static = false;
+    }
+    // Reset grab state
+    mouseState.grabbedParticle = null;
+    mouseState.isGrabbing = false;
+    mouseState.grabOffset = { x: 0, y: 0 };
+    
     mouseState.isDown = false;
     mouseState.isDragging = false;
     mouseState.previewColor = "";

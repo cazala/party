@@ -123,7 +123,7 @@ export function TopBar({
             <div className="tool-mode-selector">
               <button
                 onClick={() => onToolModeChange("spawn")}
-                className={`tool-mode-button tool-mode-left ${
+                className={`tool-mode-button tool-mode-first ${
                   toolMode === "spawn" ? "tool-mode-active" : ""
                 }`}
               >
@@ -139,7 +139,7 @@ export function TopBar({
               </button>
               <button
                 onClick={() => onToolModeChange("remove")}
-                className={`tool-mode-button tool-mode-center ${
+                className={`tool-mode-button tool-mode-second ${
                   toolMode === "remove" ? "tool-mode-active" : ""
                 }`}
               >
@@ -163,7 +163,7 @@ export function TopBar({
               </button>
               <button
                 onClick={() => onToolModeChange("joint")}
-                className={`tool-mode-button tool-mode-right ${
+                className={`tool-mode-button tool-mode-third ${
                   toolMode === "joint" ? "tool-mode-active" : ""
                 }`}
               >
@@ -178,6 +178,22 @@ export function TopBar({
                   <circle cx="10" cy="9" r="1.5" />
                 </svg>
                 <span>Joint</span>
+              </button>
+              <button
+                onClick={() => onToolModeChange("grab")}
+                className={`tool-mode-button tool-mode-fourth ${
+                  toolMode === "grab" ? "tool-mode-active" : ""
+                }`}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                >
+                  <path d="M2 4c0-.5.4-1 1-1s1 .5 1 1v2h1V3c0-.5.4-1 1-1s1 .5 1 1v3h1V2c0-.5.4-1 1-1s1 .5 1 1v4h.5c.5 0 1 .4 1 1v2c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V4z" />
+                </svg>
+                <span>Grab</span>
               </button>
             </div>
           </div>

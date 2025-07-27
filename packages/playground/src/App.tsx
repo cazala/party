@@ -161,6 +161,7 @@ function App() {
           <canvas
             ref={canvasRef}
             id="canvas"
+            className={toolMode === "grab" ? "grab-tool" : ""}
             width={size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH}
             height={size.height - TOPBAR_HEIGHT}
           />

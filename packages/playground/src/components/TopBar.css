@@ -67,11 +67,15 @@
   color: var(--color-accent-white);
 }
 
-.tool-mode-left {
+.tool-mode-first {
   border-right: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.tool-mode-center {
+.tool-mode-second {
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tool-mode-third {
   border-right: 1px solid rgba(255, 255, 255, 0.2);
 }
 
