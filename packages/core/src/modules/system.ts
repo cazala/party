@@ -135,15 +135,20 @@ export interface Config {
     defaultDamping?: number;
     defaultMaxForce?: number;
   };
+  system?: {
+    momentumPreservation?: number;
+  };
 }
 
 // Default constants for ParticleSystem
 export const DEFAULT_SPATIAL_GRID_CELL_SIZE = 100;
+export const DEFAULT_MOMENTUM_PRESERVATION = 0.7;
 
 export interface SystemOptions {
   width: number;
   height: number;
   cellSize?: number;
+  momentumPreservation?: number;
 }
 
 export class System {
@@ -153,6 +158,7 @@ export class System {
   public width: number;
   public height: number;
   public isPlaying: boolean = false;
+  public momentumPreservation: number;
 
   private lastTime: number = 0;
   private animationId: number | null = null;
@@ -167,6 +173,7 @@ export class System {
   constructor(options: SystemOptions) {
     this.width = options.width;
     this.height = options.height;
+    this.momentumPreservation = options.momentumPreservation ?? DEFAULT_MOMENTUM_PRESERVATION;
 
     this.spatialGrid = new SpatialGrid({
       width: this.width,
@@ -195,6 +202,10 @@ export class System {
     if (index > -1) {
       this.particles.splice(index, 1);
     }
+  }
+
+  setMomentumPreservation(value: number): void {
+    this.momentumPreservation = Math.max(0, Math.min(1, value)); // Clamp between 0 and 1
   }
 
   addForce(force: Force): void {
@@ -257,8 +268,13 @@ export class System {
             if (prePhysicsPosition) {
               // Calculate total actual movement from start to end
               const totalMovement = particle.position.clone().subtract(prePhysicsPosition);
-              // Update velocity to reflect this actual movement
-              particle.velocity = totalMovement.divide(deltaTime);
+              const actualVelocity = totalMovement.divide(deltaTime);
+              
+              // Blend between current velocity and actual movement based on momentum preservation
+              particle.velocity = particle.velocity
+                .clone()
+                .multiply(1 - this.momentumPreservation)
+                .add(actualVelocity.multiply(this.momentumPreservation));
             }
           }
         }
@@ -455,6 +471,11 @@ export class System {
       }
     }
 
+    // Export system settings
+    config.system = {
+      momentumPreservation: this.momentumPreservation,
+    };
+
     return config;
   }
 
@@ -582,6 +603,13 @@ export class System {
           config.joints.defaultMaxForce ?? DEFAULT_JOINT_MAX_FORCE
         );
       }
+    }
+
+    // Import system settings
+    if (config.system) {
+      this.setMomentumPreservation(
+        config.system.momentumPreservation ?? DEFAULT_MOMENTUM_PRESERVATION
+      );
     }
   }
 }

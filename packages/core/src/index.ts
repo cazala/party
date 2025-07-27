@@ -11,6 +11,7 @@ export {
   type SystemOptions,
   type Config,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
+  DEFAULT_MOMENTUM_PRESERVATION,
 } from "./modules/system";
 export { SpatialGrid, type SpatialGridOptions } from "./modules/spatial-grid";
 export {
