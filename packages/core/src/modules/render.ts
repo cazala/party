@@ -4,6 +4,7 @@ import { SpatialGrid } from "./spatial-grid";
 import { Vector2D } from "./vector";
 import { calculateDensity, Fluid } from "./forces/fluid";
 import { Sensors } from "./forces/sensors";
+import { Joint, Joints } from "./forces/joints";
 
 // Default constants for Render options
 export const DEFAULT_RENDER_COLOR_MODE = "particle";
@@ -508,11 +509,20 @@ export abstract class Renderer {
   }
 }
 
+// Joint preview interface
+interface JointPreview {
+  particleA: Particle;
+  targetPosition: Vector2D;
+}
+
 export class Canvas2DRenderer extends Renderer {
   private previewParticle: Particle | null = null;
   private isDragMode: boolean = false;
   private previewVelocity: Vector2D | null = null;
   private removalPreview: { position: Vector2D; radius: number } | null = null;
+  private jointPreview: JointPreview | null = null;
+  private selectedParticles: Set<number> = new Set(); // Particle IDs
+  private highlightedParticle: Particle | null = null;
   private densityFieldFrameCount: number = 0;
 
   // Camera/Zoom properties
@@ -536,6 +546,22 @@ export class Canvas2DRenderer extends Renderer {
     preview: { position: Vector2D; radius: number } | null
   ): void {
     this.removalPreview = preview;
+  }
+
+  setJointPreview(preview: JointPreview | null): void {
+    this.jointPreview = preview;
+  }
+
+  setSelectedParticle(particle: Particle | null): void {
+    if (particle) {
+      this.selectedParticles.add(particle.id);
+    } else {
+      this.selectedParticles.clear();
+    }
+  }
+
+  setHighlightedParticle(particle: Particle | null): void {
+    this.highlightedParticle = particle;
   }
 
   setShowDensity(show: boolean): void {
@@ -597,6 +623,9 @@ export class Canvas2DRenderer extends Renderer {
       this.renderSpatialGrid(system.spatialGrid);
     }
 
+    // Render joints first (behind particles)
+    this.renderJoints(system);
+
     // Calculate min/max speeds for velocity color mode
 
     for (const particle of system.particles) {
@@ -640,6 +669,23 @@ export class Canvas2DRenderer extends Renderer {
     // Render removal preview circle if it exists
     if (this.removalPreview) {
       this.renderRemovalPreview(this.removalPreview);
+    }
+
+    // Render joint preview if it exists
+    if (this.jointPreview) {
+      this.renderJointPreview(this.jointPreview);
+    }
+
+    // Render particle highlighting for joint mode
+    if (this.highlightedParticle) {
+      this.renderParticleHighlight(this.highlightedParticle);
+    }
+
+    // Render selected particles for joint mode
+    for (const particle of system.particles) {
+      if (this.selectedParticles.has(particle.id)) {
+        this.renderSelectedParticle(particle);
+      }
     }
 
     // Render density circle and arrow in world coordinates
@@ -1348,6 +1394,146 @@ export class Canvas2DRenderer extends Renderer {
     // Convert world coordinates to screen coordinates
     const screenCoords = this.worldToScreen(worldX, worldY);
     return super.readPixelColor(screenCoords.x, screenCoords.y, radius);
+  }
+
+  // === Joint Rendering Methods ===
+
+  /**
+   * Render all joints in the system
+   */
+  private renderJoints(system: System): void {
+    const joints = system.forces.find(force => force instanceof Joints) as Joints;
+    if (!joints || !joints.enabled) return;
+
+    for (const joint of joints.getAllJoints()) {
+      this.renderJoint(joint);
+    }
+  }
+
+  /**
+   * Render a single joint
+   */
+  private renderJoint(joint: Joint): void {
+    if (!joint.isValid) return;
+
+    this.ctx.save();
+
+    // Get joint stress for coloring
+    const stressRatio = joint.getStressRatio();
+    
+    // Color based on stress: blue (compression) -> green (rest) -> red (tension)
+    let color: string;
+    if (stressRatio < 0) {
+      // Compression - blue to green
+      const intensity = Math.abs(stressRatio);
+      const blue = Math.floor(255 * intensity);
+      const green = Math.floor(255 * (1 - intensity));
+      color = `rgb(0, ${green}, ${blue})`;
+    } else if (stressRatio > 0) {
+      // Tension - green to red
+      const intensity = Math.abs(stressRatio);
+      const red = Math.floor(255 * intensity);
+      const green = Math.floor(255 * (1 - intensity));
+      color = `rgb(${red}, ${green}, 0)`;
+    } else {
+      // At rest - green
+      color = "rgb(0, 255, 0)";
+    }
+
+    // Set line style
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = Math.max(1, 2 / this.zoom); // Scale with zoom
+    this.ctx.globalAlpha = 0.8;
+    this.ctx.lineCap = "round";
+
+    // Draw joint line
+    this.ctx.beginPath();
+    this.ctx.moveTo(joint.particleA.position.x, joint.particleA.position.y);
+    this.ctx.lineTo(joint.particleB.position.x, joint.particleB.position.y);
+    this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
+  /**
+   * Render joint preview (line from selected particle to cursor)
+   */
+  private renderJointPreview(preview: JointPreview): void {
+    this.ctx.save();
+
+    // Set preview line style
+    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+    this.ctx.lineWidth = Math.max(1, 2 / this.zoom);
+    this.ctx.globalAlpha = 0.8;
+    this.ctx.lineCap = "round";
+    
+    // Dashed line for preview
+    const dashSize = Math.max(3, 6 / this.zoom);
+    this.ctx.setLineDash([dashSize, dashSize]);
+
+    // Draw preview line
+    this.ctx.beginPath();
+    this.ctx.moveTo(preview.particleA.position.x, preview.particleA.position.y);
+    this.ctx.lineTo(preview.targetPosition.x, preview.targetPosition.y);
+    this.ctx.stroke();
+
+    // Reset line dash
+    this.ctx.setLineDash([]);
+
+    this.ctx.restore();
+  }
+
+  /**
+   * Render particle highlighting for joint mode
+   */
+  private renderParticleHighlight(particle: Particle): void {
+    this.ctx.save();
+
+    // Highlight with pulsing outline
+    const time = Date.now() / 1000;
+    const pulseAlpha = 0.5 + 0.3 * Math.sin(time * 4); // Pulse between 0.2 and 0.8
+    
+    this.ctx.strokeStyle = "rgba(255, 255, 255, " + pulseAlpha + ")";
+    this.ctx.lineWidth = Math.max(2, 4 / this.zoom);
+    this.ctx.globalAlpha = 1;
+
+    // Draw highlight circle around particle
+    this.ctx.beginPath();
+    this.ctx.arc(
+      particle.position.x,
+      particle.position.y,
+      particle.size + Math.max(2, 4 / this.zoom), // Slightly larger than particle
+      0,
+      Math.PI * 2
+    );
+    this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
+  /**
+   * Render selected particle outline for joint mode
+   */
+  private renderSelectedParticle(particle: Particle): void {
+    this.ctx.save();
+
+    // Selected particle gets a solid white outline
+    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+    this.ctx.lineWidth = Math.max(2, 3 / this.zoom);
+    this.ctx.globalAlpha = 1;
+
+    // Draw selection circle around particle
+    this.ctx.beginPath();
+    this.ctx.arc(
+      particle.position.x,
+      particle.position.y,
+      particle.size + Math.max(1, 3 / this.zoom), // Slightly larger than particle
+      0,
+      Math.PI * 2
+    );
+    this.ctx.stroke();
+
+    this.ctx.restore();
   }
 }
 

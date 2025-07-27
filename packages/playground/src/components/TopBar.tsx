@@ -139,7 +139,7 @@ export function TopBar({
               </button>
               <button
                 onClick={() => onToolModeChange("remove")}
-                className={`tool-mode-button tool-mode-right ${
+                className={`tool-mode-button tool-mode-center ${
                   toolMode === "remove" ? "tool-mode-active" : ""
                 }`}
               >
@@ -160,6 +160,24 @@ export function TopBar({
                   />
                 </svg>
                 <span>Remove</span>
+              </button>
+              <button
+                onClick={() => onToolModeChange("joint")}
+                className={`tool-mode-button tool-mode-right ${
+                  toolMode === "joint" ? "tool-mode-active" : ""
+                }`}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                >
+                  <line x1="2" y1="3" x2="10" y2="9" stroke="currentColor" strokeWidth="1.5" />
+                  <circle cx="2" cy="3" r="1.5" />
+                  <circle cx="10" cy="9" r="1.5" />
+                </svg>
+                <span>Joint</span>
               </button>
             </div>
           </div>

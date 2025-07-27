@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-export type ToolMode = "spawn" | "remove";
+export type ToolMode = "spawn" | "remove" | "joint";
 
 export interface UseToolModeReturn {
   toolMode: ToolMode;
@@ -8,13 +8,18 @@ export interface UseToolModeReturn {
   toggleToolMode: () => void;
   isSpawnMode: boolean;
   isRemoveMode: boolean;
+  isJointMode: boolean;
 }
 
 export function useToolMode(initialMode: ToolMode = "spawn"): UseToolModeReturn {
   const [toolMode, setToolMode] = useState<ToolMode>(initialMode);
 
   const toggleToolMode = useCallback(() => {
-    setToolMode(current => current === "spawn" ? "remove" : "spawn");
+    setToolMode(current => {
+      if (current === "spawn") return "remove";
+      if (current === "remove") return "joint";
+      return "spawn";
+    });
   }, []);
 
   return {
@@ -23,5 +28,6 @@ export function useToolMode(initialMode: ToolMode = "spawn"): UseToolModeReturn 
     toggleToolMode,
     isSpawnMode: toolMode === "spawn",
     isRemoveMode: toolMode === "remove",
+    isJointMode: toolMode === "joint",
   };
 }

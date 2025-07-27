@@ -54,6 +54,13 @@ import {
   DEFAULT_FLEE_BEHAVIOR,
   SensorBehavior,
 } from "./forces/sensors";
+import {
+  Joints,
+  DEFAULT_JOINTS_ENABLED,
+  DEFAULT_JOINT_STIFFNESS,
+  DEFAULT_JOINT_DAMPING,
+  DEFAULT_JOINT_MAX_FORCE,
+} from "./forces/joints";
 import { Vector2D } from "./vector";
 
 export interface Force {
@@ -110,6 +117,12 @@ export interface Config {
     sensorStrength?: number;
     followBehavior?: SensorBehavior;
     fleeBehavior?: SensorBehavior;
+  };
+  joints?: {
+    enabled?: boolean;
+    defaultStiffness?: number;
+    defaultDamping?: number;
+    defaultMaxForce?: number;
   };
 }
 
@@ -388,6 +401,13 @@ export class System {
           followBehavior: force.followBehavior,
           fleeBehavior: force.fleeBehavior,
         };
+      } else if (force instanceof Joints) {
+        config.joints = {
+          enabled: force.enabled,
+          defaultStiffness: force.defaultStiffness,
+          defaultDamping: force.defaultDamping,
+          defaultMaxForce: force.defaultMaxForce,
+        };
       }
     }
 
@@ -482,6 +502,17 @@ export class System {
         );
         force.setFleeBehavior(
           config.sensors.fleeBehavior ?? DEFAULT_FLEE_BEHAVIOR
+        );
+      } else if (force instanceof Joints && config.joints) {
+        force.setEnabled(config.joints.enabled ?? DEFAULT_JOINTS_ENABLED);
+        force.setDefaultStiffness(
+          config.joints.defaultStiffness ?? DEFAULT_JOINT_STIFFNESS
+        );
+        force.setDefaultDamping(
+          config.joints.defaultDamping ?? DEFAULT_JOINT_DAMPING
+        );
+        force.setDefaultMaxForce(
+          config.joints.defaultMaxForce ?? DEFAULT_JOINT_MAX_FORCE
         );
       }
     }

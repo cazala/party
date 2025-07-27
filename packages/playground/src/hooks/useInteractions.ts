@@ -6,6 +6,8 @@ import {
   Vector2D,
   Interaction,
   getIdCounter,
+  Joints,
+  Particle,
 } from "@party/core";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
@@ -144,6 +146,16 @@ interface MouseState {
   /** Whether currently removing particles */
   isRemoving: boolean;
 
+  // === Joint Mode State ===
+  /** Currently selected particle for joint creation */
+  selectedParticle: Particle | null;
+  /** Whether a particle is highlighted for selection */
+  highlightedParticle: Particle | null;
+  /** Whether currently creating a joint */
+  isCreatingJoint: boolean;
+  /** Joints created during current session for undo */
+  createdJoints: string[];
+
   // === Undo/Redo Tracking ===
   /** Particles created during streaming sessions for undo */
   streamedParticles: any[];
@@ -164,6 +176,8 @@ interface UseSpawnerProps {
   getCanvas: () => HTMLCanvasElement | null;
   /** Function to get the interaction system instance */
   getInteraction: () => Interaction | null;
+  /** Function to get the joints system instance */
+  getJoints: () => Joints | null;
   /** Function to get the current spawn configuration */
   getSpawnConfig: () => SpawnConfig;
   /** Optional callback for zoom events */
@@ -179,6 +193,7 @@ export function useInteractions({
   getRenderer,
   getCanvas,
   getInteraction,
+  getJoints,
   getSpawnConfig,
   onZoom,
   toolMode,
@@ -212,6 +227,10 @@ export function useInteractions({
     removalRadius: 25, // Screen-space radius in pixels (25px = 50px diameter)
     removalPreviewActive: false,
     isRemoving: false,
+    selectedParticle: null,
+    highlightedParticle: null,
+    isCreatingJoint: false,
+    createdJoints: [],
     streamedParticles: [],
     removedParticles: [],
   });
@@ -377,6 +396,134 @@ export function useInteractions({
     },
     [getCanvas, getRenderer]
   );
+
+  // === Joint System Helpers ===
+
+  /**
+   * Find particle at the given world position
+   */
+  const findParticleAtPosition = useCallback(
+    (
+      worldPos: { x: number; y: number },
+      tolerance: number = 20
+    ): Particle | null => {
+      const system = getSystem();
+      const renderer = getRenderer();
+      if (!system || !renderer) return null;
+
+      // Convert tolerance from screen pixels to world units
+      const worldTolerance = tolerance / renderer.getZoom();
+
+      // Find the closest particle within tolerance
+      let closestParticle: Particle | null = null;
+      let closestDistance = worldTolerance;
+
+      for (const particle of system.particles) {
+        if (particle.mass <= 0) continue; // Skip removed particles
+
+        const dx = particle.position.x - worldPos.x;
+        const dy = particle.position.y - worldPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy) - particle.size;
+
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestParticle = particle;
+        }
+      }
+
+      return closestParticle;
+    },
+    [getSystem, getRenderer]
+  );
+
+  /**
+   * Create a joint between two particles
+   */
+  const createJoint = useCallback(
+    (particleA: Particle, particleB: Particle) => {
+      const joints = getJoints();
+      if (!joints) return null;
+
+      const joint = joints.createJoint({
+        particleA,
+        particleB,
+        // Uses the default type from joints configuration
+      });
+
+      return joint;
+    },
+    [getJoints]
+  );
+
+  /**
+   * Handle joint creation click
+   */
+  const handleJointClick = useCallback(
+    (worldPos: { x: number; y: number }, keepJoining: boolean = false) => {
+      const mouseState = mouseStateRef.current;
+      const particle = findParticleAtPosition(worldPos);
+
+      if (!particle) {
+        // Clicked on empty space - clear selection
+        mouseState.selectedParticle = null;
+        mouseState.isCreatingJoint = false;
+        return;
+      }
+
+      if (!mouseState.selectedParticle) {
+        // First particle selection
+        mouseState.selectedParticle = particle;
+        mouseState.isCreatingJoint = true;
+      } else if (mouseState.selectedParticle.id === particle.id) {
+        // Clicked same particle - deselect
+        mouseState.selectedParticle = null;
+        mouseState.isCreatingJoint = false;
+      } else {
+        // Second particle selection - create joint
+        const joint = createJoint(mouseState.selectedParticle, particle);
+        if (joint) {
+          mouseState.createdJoints.push(joint.id);
+
+          // Record joint creation for undo
+          // TODO: Add joint creation to undo system
+        }
+
+        // Reset selection
+        if (!keepJoining) {
+          mouseState.selectedParticle = null;
+          mouseState.isCreatingJoint = false;
+        } else {
+          mouseState.selectedParticle = particle;
+        }
+      }
+    },
+    [findParticleAtPosition, createJoint]
+  );
+
+  /**
+   * Update joint preview (line between selected particle and cursor)
+   */
+  const updateJointPreview = useCallback(() => {
+    const mouseState = mouseStateRef.current;
+    const renderer = getRenderer();
+
+    if (!renderer) return;
+
+    if (!mouseState.selectedParticle || !mouseState.isCreatingJoint) {
+      // Clear joint preview
+      renderer.setJointPreview(null);
+      return;
+    }
+
+    // Show joint preview line
+    renderer.setJointPreview({
+      particleA: mouseState.selectedParticle,
+      targetPosition: new Vector2D(
+        mouseState.currentPos.x,
+        mouseState.currentPos.y
+      ),
+    });
+  }, [getRenderer]);
 
   // Helper function to update velocity preview
   const updateVelocityPreview = useCallback(() => {
@@ -779,6 +926,13 @@ export function useInteractions({
         return;
       }
 
+      // Handle joint mode
+      if (toolMode === "joint") {
+        const pos = getWorldPosition(e);
+        handleJointClick(pos, e.shiftKey);
+        return;
+      }
+
       const mouseState = mouseStateRef.current;
       const pos = getWorldPosition(e);
 
@@ -920,6 +1074,26 @@ export function useInteractions({
         if (mouseState.isRemoving) {
           removeParticlesAtPosition(worldPos);
         }
+
+        return;
+      }
+
+      // Handle joint mode preview and particle highlighting
+      if (toolMode === "joint") {
+        mouseState.currentPos = worldPos;
+
+        // Update particle highlighting
+        const hoveredParticle = findParticleAtPosition(worldPos);
+        mouseState.highlightedParticle = hoveredParticle;
+        renderer.setHighlightedParticle(hoveredParticle);
+
+        // Update selected particle rendering
+        if (mouseState.selectedParticle) {
+          renderer.setSelectedParticle(mouseState.selectedParticle);
+        }
+
+        // Update joint preview if creating a joint
+        updateJointPreview();
 
         return;
       }
@@ -1257,6 +1431,13 @@ export function useInteractions({
     mouseState.removalPreviewActive = false;
     mouseState.isRemoving = false;
     updateRemovalPreview();
+    // Clear joint previews and selections
+    mouseState.selectedParticle = null;
+    mouseState.highlightedParticle = null;
+    mouseState.isCreatingJoint = false;
+    renderer.setJointPreview(null);
+    renderer.setHighlightedParticle(null);
+    renderer.setSelectedParticle(null);
     mouseState.isDown = false;
     mouseState.isDragging = false;
     mouseState.previewColor = "";

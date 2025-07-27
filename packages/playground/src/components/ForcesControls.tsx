@@ -7,6 +7,7 @@ import {
   Collisions,
   Fluid,
   Sensors,
+  Joints,
   System,
   Config,
   DEFAULT_GRAVITY_STRENGTH,
@@ -40,12 +41,17 @@ import {
   DEFAULT_SENSOR_RADIUS,
   DEFAULT_SENSOR_THRESHOLD,
   DEFAULT_SENSOR_STRENGTH,
+  DEFAULT_JOINTS_ENABLED,
+  DEFAULT_JOINT_STIFFNESS,
+  DEFAULT_JOINT_DAMPING,
+  DEFAULT_JOINT_MAX_FORCE,
 } from "@party/core";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
 import { BoundsControls } from "./control-sections/BoundsControls";
 import { FluidsControls } from "./control-sections/FluidsControls";
 import { SensorsControls } from "./control-sections/SensorsControls";
+import { JointControls } from "./control-sections/JointControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import "./ForcesControls.css";
 
@@ -57,6 +63,7 @@ interface ForcesControlsProps {
   collisions: Collisions | null;
   fluid: Fluid | null;
   sensors: Sensors | null;
+  joints: Joints | null;
   sessionLoadTrigger?: number;
 }
 
@@ -68,6 +75,7 @@ export function ForcesControls({
   collisions,
   fluid,
   sensors,
+  joints,
   sessionLoadTrigger = 0,
 }: ForcesControlsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,6 +144,15 @@ export function ForcesControls({
       sensors.setSensorRadius(DEFAULT_SENSOR_RADIUS);
       sensors.setSensorThreshold(DEFAULT_SENSOR_THRESHOLD);
       sensors.setSensorStrength(DEFAULT_SENSOR_STRENGTH);
+    }
+
+    // Reset joints
+    if (joints) {
+      joints.setEnabled(DEFAULT_JOINTS_ENABLED);
+      joints.setDefaultStiffness(DEFAULT_JOINT_STIFFNESS);
+      joints.setDefaultDamping(DEFAULT_JOINT_DAMPING);
+      joints.setDefaultMaxForce(DEFAULT_JOINT_MAX_FORCE);
+      joints.clear(); // Clear all existing joints
     }
 
     // Force UI re-render
@@ -253,6 +270,10 @@ export function ForcesControls({
 
       <CollapsibleSection title="Sensors">
         <SensorsControls key={`sensors-${refreshKey}`} sensors={sensors} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Joints">
+        <JointControls key={`joints-${refreshKey}`} joints={joints} />
       </CollapsibleSection>
     </div>
   );

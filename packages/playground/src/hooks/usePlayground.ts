@@ -11,6 +11,7 @@ import {
   Fluid,
   Interaction,
   Sensors,
+  Joints,
   type SpatialGrid,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
   DEFAULT_GRAVITY_STRENGTH,
@@ -55,6 +56,7 @@ export function usePlayground(
   const fluidRef = useRef<Fluid | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
   const sensorsRef = useRef<Sensors | null>(null);
+  const jointsRef = useRef<Joints | null>(null);
   const rendererRef = useRef<Canvas2DRenderer | null>(null);
   const spatialGridRef = useRef<SpatialGrid | null>(null);
 
@@ -201,6 +203,7 @@ export function usePlayground(
     getRenderer: () => rendererRef.current,
     getCanvas: () => canvasRef.current,
     getInteraction: () => interactionRef.current,
+    getJoints: () => jointsRef.current,
     getSpawnConfig: () => spawnConfig,
     onZoom: handleZoom,
     toolMode,
@@ -278,6 +281,9 @@ export function usePlayground(
     const sensors = new Sensors({ enableTrail: false }); // Playground default: off
     sensorsRef.current = sensors;
 
+    const joints = new Joints({ enabled: true }); // Playground default: on
+    jointsRef.current = joints;
+
     const system = new System({
       width: canvasRef.current?.width || 1200,
       height: canvasRef.current?.height || 800,
@@ -302,6 +308,7 @@ export function usePlayground(
     system.addForce(fluid);
     system.addForce(interaction);
     system.addForce(sensors);
+    system.addForce(joints);
 
     system.setRenderCallback((system) => {
       renderer.render(system);
@@ -350,6 +357,11 @@ export function usePlayground(
         );
       }
       systemRef.current.clear();
+
+      // Clear all joints when clearing particles
+      if (jointsRef.current) {
+        jointsRef.current.clear();
+      }
 
       // Clear the canvas completely (full background repaint with 100% alpha)
       if (rendererRef.current) {
@@ -471,6 +483,11 @@ export function usePlayground(
       rendererRef.current.clearCanvas();
     }
 
+    // Clear all joints when restarting
+    if (jointsRef.current) {
+      jointsRef.current.clear();
+    }
+
     // This will be called with current spawn config from Controls
     const initConfig = (window as any).__getInitConfig?.();
     if (initConfig) {
@@ -567,6 +584,7 @@ export function usePlayground(
     fluid: fluidRef.current,
     interaction: interactionRef.current,
     sensors: sensorsRef.current,
+    joints: jointsRef.current,
     renderer: rendererRef.current,
     spatialGrid: spatialGridRef.current,
     zoomStateRef, // Expose zoom state for session loading
