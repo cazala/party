@@ -173,7 +173,8 @@ export class System {
   constructor(options: SystemOptions) {
     this.width = options.width;
     this.height = options.height;
-    this.momentumPreservation = options.momentumPreservation ?? DEFAULT_MOMENTUM_PRESERVATION;
+    this.momentumPreservation =
+      options.momentumPreservation ?? DEFAULT_MOMENTUM_PRESERVATION;
 
     this.spatialGrid = new SpatialGrid({
       width: this.width,
@@ -223,7 +224,6 @@ export class System {
     this.forces = [];
   }
 
-
   update(deltaTime: number): void {
     // Clear and repopulate spatial grid
     this.spatialGrid.clear();
@@ -235,7 +235,6 @@ export class System {
     for (const force of this.forces) {
       force.warmup?.(this.particles, deltaTime);
     }
-
 
     // Store positions before physics integration for constraint velocity correction
     const prePhysicsPositions = new Map<number, Vector2D>();
@@ -256,8 +255,8 @@ export class System {
     }
 
     // Apply joint constraints AFTER physics integration to preserve natural motion
-    const jointsForce = this.forces.find(force => force instanceof Joints);
-    if (jointsForce && 'applyConstraints' in jointsForce) {
+    const jointsForce = this.forces.find((force) => force instanceof Joints);
+    if (jointsForce && "applyConstraints" in jointsForce) {
       (jointsForce as any).applyConstraints();
 
       // Update velocities to match actual movement after constraint solving
@@ -267,14 +266,21 @@ export class System {
             const prePhysicsPosition = prePhysicsPositions.get(particle.id);
             if (prePhysicsPosition) {
               // Calculate total actual movement from start to end
-              const totalMovement = particle.position.clone().subtract(prePhysicsPosition);
+              const totalMovement = particle.position
+                .clone()
+                .subtract(prePhysicsPosition);
               const actualVelocity = totalMovement.divide(deltaTime);
-              
+
+              const momentum =
+                jointsForce.getJointsForParticle(particle).length < 3
+                  ? 0.75
+                  : 0.95;
+
               // Blend between current velocity and actual movement based on momentum preservation
               particle.velocity = particle.velocity
                 .clone()
-                .multiply(1 - this.momentumPreservation)
-                .add(actualVelocity.multiply(this.momentumPreservation));
+                .multiply(1 - momentum)
+                .add(actualVelocity.multiply(momentum));
             }
           }
         }
