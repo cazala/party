@@ -43,6 +43,42 @@ export function TopBar({
     }
   }, [system]);
 
+  // Add keyboard shortcuts for tool mode changes
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!onToolModeChange) return;
+
+      // Check for Cmd (Mac) or Ctrl (PC)
+      if (e.metaKey || e.ctrlKey) {
+        switch (e.key.toLowerCase()) {
+          case "a":
+            e.preventDefault();
+            onToolModeChange("spawn");
+            break;
+          case "s":
+            e.preventDefault();
+            onToolModeChange("joint");
+            break;
+          case "d":
+            e.preventDefault();
+            onToolModeChange("grab");
+            break;
+          case "f":
+            e.preventDefault();
+            onToolModeChange("pin");
+            break;
+          case "g":
+            e.preventDefault();
+            onToolModeChange("remove");
+            break;
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onToolModeChange]);
+
   const handlePlayPause = () => {
     if (isPlaying) {
       onPause();
@@ -138,32 +174,8 @@ export function TopBar({
                 <span>Spawn</span>
               </button>
               <button
-                onClick={() => onToolModeChange("remove")}
-                className={`tool-mode-button tool-mode-second ${
-                  toolMode === "remove" ? "tool-mode-active" : ""
-                }`}
-              >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="currentColor"
-                >
-                  <circle
-                    cx="6"
-                    cy="6"
-                    r="5"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeDasharray="2,2"
-                    fill="none"
-                  />
-                </svg>
-                <span>Remove</span>
-              </button>
-              <button
                 onClick={() => onToolModeChange("joint")}
-                className={`tool-mode-button tool-mode-third ${
+                className={`tool-mode-button tool-mode-second ${
                   toolMode === "joint" ? "tool-mode-active" : ""
                 }`}
               >
@@ -188,7 +200,7 @@ export function TopBar({
               </button>
               <button
                 onClick={() => onToolModeChange("grab")}
-                className={`tool-mode-button tool-mode-fourth ${
+                className={`tool-mode-button tool-mode-third ${
                   toolMode === "grab" ? "tool-mode-active" : ""
                 }`}
               >
@@ -204,7 +216,7 @@ export function TopBar({
               </button>
               <button
                 onClick={() => onToolModeChange("pin")}
-                className={`tool-mode-button tool-mode-fifth ${
+                className={`tool-mode-button tool-mode-fourth ${
                   toolMode === "pin" ? "tool-mode-active" : ""
                 }`}
               >
@@ -217,6 +229,30 @@ export function TopBar({
                   <path d="M6 1L7 2V4L8 5V6L7 7V9L6 10L5 9V7L4 6V5L5 4V2L6 1Z M6 3L5.5 3.5V5.5L6 6L6.5 5.5V3.5L6 3Z" />
                 </svg>
                 <span>Pin</span>
+              </button>
+              <button
+                onClick={() => onToolModeChange("remove")}
+                className={`tool-mode-button tool-mode-fifth ${
+                  toolMode === "remove" ? "tool-mode-active" : ""
+                }`}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                >
+                  <circle
+                    cx="6"
+                    cy="6"
+                    r="5"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeDasharray="2,2"
+                    fill="none"
+                  />
+                </svg>
+                <span>Remove</span>
               </button>
             </div>
           </div>

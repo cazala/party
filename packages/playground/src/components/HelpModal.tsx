@@ -118,6 +118,38 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           </section>
 
           <section className="help-section">
+            <h3>Tool Mode Shortcuts</h3>
+            <div className="help-list">
+              <div className="help-item">
+                <div className="help-action">Ctrl/⌘ + A</div>
+                <div className="help-description">Switch to Spawn tool</div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Ctrl/⌘ + S</div>
+                <div className="help-description">Switch to Joint tool</div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Ctrl/⌘ + D</div>
+                <div className="help-description">Switch to Grab tool</div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Ctrl/⌘ + F</div>
+                <div className="help-description">Switch to Pin tool</div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Ctrl/⌘ + G</div>
+                <div className="help-description">Switch to Remove tool</div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Ctrl/⌘ + SHIFT + F</div>
+                <div className="help-description">
+                  Toggle Pin checkbox in spawn controls
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="help-section">
             <h3>Advanced Features</h3>
             <div className="help-list">
               <div className="help-item">

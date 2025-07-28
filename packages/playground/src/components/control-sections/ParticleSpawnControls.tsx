@@ -51,6 +51,24 @@ export function ParticleSpawnControls({
     setColors(initialColors);
   }, [initialColors]);
 
+  // Add keyboard shortcut for toggling Pin checkbox
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Cmd (Mac) or Ctrl (PC) + A
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "f"
+      ) {
+        e.preventDefault();
+        setIsPinned((prev) => !prev);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Notify parent of config changes
   useEffect(() => {
     const config: SpawnConfig = {
