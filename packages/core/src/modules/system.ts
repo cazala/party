@@ -254,8 +254,13 @@ export class System {
       }
     }
 
-    // Apply joint constraints AFTER physics integration to preserve natural motion
+    // Apply optimized joint collisions using spatial grid
     const jointsForce = this.forces.find((force) => force instanceof Joints);
+    if (jointsForce && 'checkAllJointCollisions' in jointsForce) {
+      (jointsForce as any).checkAllJointCollisions(this.spatialGrid);
+    }
+
+    // Apply joint constraints AFTER physics integration to preserve natural motion
     if (jointsForce && "applyConstraints" in jointsForce) {
       (jointsForce as any).applyConstraints();
 

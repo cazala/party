@@ -378,18 +378,19 @@ export class Joints implements Force {
     return false;
   }
 
+
   /**
-   * Force interface: apply all joint constraints
+   * Force interface: apply joint collisions - now optimized with spatial grid
    */
-  apply(_particle: Particle, _spatialGrid: SpatialGrid): void {
-    // Joints are applied globally, not per particle
-    // This method is called for each particle, but we only process once
+  apply(particle: Particle, spatialGrid: SpatialGrid): void {
+    // Joint collisions are now handled globally in warmup() for better performance
+    // This method is kept for interface compatibility but does nothing
   }
 
   /**
    * Force interface: apply constraints to all joints (called once per frame)
    */
-  warmup(_particles: Particle[], _deltaTime: number): void {
+  warmup(particles: Particle[], _deltaTime: number): void {
     if (!this.enabled) return;
 
     // Remove invalid joints (particles that have been deleted)
@@ -415,6 +416,343 @@ export class Joints implements Force {
     // Apply all joint constraints
     for (const joint of this.joints.values()) {
       joint.applyConstraint();
+    }
+  }
+
+  /**
+   * Check joint collisions using spatial grid optimization
+   * This method should be called during the force application phase
+   */
+  checkAllJointCollisions(spatialGrid: SpatialGrid): void {
+    if (!this.enabled) return;
+
+    // For each joint, find nearby particles and check collisions
+    for (const joint of this.joints.values()) {
+      this.checkJointCollisionsOptimized(joint, spatialGrid);
+    }
+  }
+
+  /**
+   * Check for collisions between a particle and all joint line segments (DEPRECATED)
+   * This method is kept for compatibility but replaced by optimized version
+   */
+  private checkJointCollisions(particle: Particle): void {
+    if (particle.static) return;
+
+    for (const joint of this.joints.values()) {
+      // Skip joints that involve this particle (can't collide with your own joints)
+      if (joint.particleA.id === particle.id || joint.particleB.id === particle.id) {
+        continue;
+      }
+
+      // Get the closest point on the joint line segment to the particle
+      const closestPoint = this.getClosestPointOnLineSegment(
+        particle.position,
+        joint.particleA.position,
+        joint.particleB.position
+      );
+
+      // Check if particle is colliding with the joint line
+      const distance = particle.position.distance(closestPoint);
+      const radius = particle.size; // size IS radius in this system
+
+      if (distance < radius && distance > 0.001) {
+        // Collision detected - apply bounce physics
+        this.handleJointCollision(particle, closestPoint, joint);
+      }
+    }
+  }
+
+  /**
+   * Optimized collision detection for a single joint using spatial grid
+   */
+  private checkJointCollisionsOptimized(joint: Joint, spatialGrid: SpatialGrid): void {
+    // Calculate joint bounding circle for spatial grid lookup
+    const boundingCircle = this.getJointBoundingCircle(joint);
+    
+    // Get nearby particles using spatial grid
+    const nearbyParticles = spatialGrid.getParticles(
+      boundingCircle.center,
+      boundingCircle.radius
+    );
+
+    // Check collision with each nearby particle
+    for (const particle of nearbyParticles) {
+      if (particle.static) continue;
+      
+      // Skip particles that are part of this joint
+      if (this.isParticleInvolvedInJoint(particle, joint)) continue;
+
+      // Early exit: quick distance check before expensive line-segment collision
+      if (!this.quickDistanceCheck(particle, boundingCircle)) continue;
+
+      // Get the closest point on the joint line segment to the particle
+      const closestPoint = this.getClosestPointOnLineSegment(
+        particle.position,
+        joint.particleA.position,
+        joint.particleB.position
+      );
+
+      // Check if particle is colliding with the joint line
+      const distance = particle.position.distance(closestPoint);
+      const radius = particle.size; // size IS radius in this system
+
+      if (distance < radius && distance > 0.001) {
+        // Collision detected - apply bounce physics
+        this.handleJointCollision(particle, closestPoint, joint);
+      }
+    }
+  }
+
+  /**
+   * Find the closest point on a line segment to a given point
+   */
+  private getClosestPointOnLineSegment(
+    point: Vector2D,
+    lineStart: Vector2D,
+    lineEnd: Vector2D
+  ): Vector2D {
+    // Vector from line start to line end
+    const lineVector = lineEnd.clone().subtract(lineStart);
+    
+    // Vector from line start to point
+    const pointVector = point.clone().subtract(lineStart);
+    
+    // Project point onto line (parameterized as t)
+    const lineLength = lineVector.magnitude();
+    
+    if (lineLength === 0) {
+      // Line has zero length, return the start point
+      return lineStart.clone();
+    }
+    
+    const t = pointVector.dot(lineVector) / (lineLength * lineLength);
+    
+    // Clamp t to [0, 1] to stay within line segment bounds
+    const clampedT = Math.max(0, Math.min(1, t));
+    
+    // Calculate the closest point
+    return lineStart.clone().add(lineVector.multiply(clampedT));
+  }
+
+  /**
+   * Handle collision between particle and joint line segment with force transfer
+   */
+  private handleJointCollision(
+    particle: Particle,
+    closestPoint: Vector2D,
+    joint: Joint
+  ): void {
+    // Skip collision if any joint particle is static (immovable joints shouldn't transfer force)
+    if (joint.particleA.static && joint.particleB.static) {
+      // Handle collision with static joint (only bounce the hitting particle)
+      this.handleStaticJointCollision(particle, closestPoint, joint);
+      return;
+    }
+
+    // Calculate collision normal (from joint line to particle center)
+    const collisionNormal = particle.position.clone().subtract(closestPoint);
+    
+    if (collisionNormal.magnitude() === 0) {
+      // Particle is exactly on the line - use perpendicular to line as normal
+      const lineVector = joint.particleB.position.clone().subtract(joint.particleA.position);
+      collisionNormal.x = -lineVector.y;
+      collisionNormal.y = lineVector.x;
+    }
+    
+    collisionNormal.normalize();
+
+    // Calculate impact point weights based on distance along joint
+    const weights = this.calculateImpactWeights(closestPoint, joint);
+    
+    // Calculate effective mass of joint system at impact point
+    const effectiveJointMass = this.calculateEffectiveJointMass(joint, weights);
+    
+    // Apply collision response with restitution and mass transfer
+    const restitution = 0.95;
+    
+    // Calculate relative velocity in collision normal direction
+    const relativeVelocity = particle.velocity.dot(collisionNormal);
+    
+    // Don't resolve if velocities are separating
+    if (relativeVelocity > 0) return;
+    
+    // Calculate collision impulse considering both particle and joint masses
+    const totalMass = particle.mass + effectiveJointMass;
+    const impulse = -(1 + restitution) * relativeVelocity * particle.mass * effectiveJointMass / totalMass;
+    
+    // Apply impulse to hitting particle (reduced by mass ratio)
+    const particleImpulse = collisionNormal.clone().multiply(impulse / particle.mass);
+    particle.velocity.add(particleImpulse);
+    
+    // Transfer force to joint particles based on impact location and masses
+    this.transferForceToJoint(joint, weights, collisionNormal, impulse);
+
+    // Position correction to prevent particle from staying inside the joint
+    const overlap = particle.size - particle.position.distance(closestPoint);
+    if (overlap > 0) {
+      const correction = collisionNormal.clone().multiply(overlap);
+      particle.position.add(correction);
+    }
+  }
+
+  /**
+   * Handle collision with static joint (original behavior)
+   */
+  private handleStaticJointCollision(
+    particle: Particle,
+    closestPoint: Vector2D,
+    joint: Joint
+  ): void {
+    // Calculate collision normal (from joint line to particle center)
+    const collisionNormal = particle.position.clone().subtract(closestPoint);
+    
+    if (collisionNormal.magnitude() === 0) {
+      // Particle is exactly on the line - use perpendicular to line as normal
+      const lineVector = joint.particleB.position.clone().subtract(joint.particleA.position);
+      collisionNormal.x = -lineVector.y;
+      collisionNormal.y = lineVector.x;
+    }
+    
+    collisionNormal.normalize();
+
+    // Apply collision response with restitution (same as particle-particle collisions)
+    const restitution = 0.95;
+    
+    // Calculate relative velocity in collision normal direction
+    const relativeVelocity = particle.velocity.dot(collisionNormal);
+    
+    // Don't resolve if velocities are separating
+    if (relativeVelocity > 0) return;
+    
+    // Calculate collision impulse
+    const impulse = -(1 + restitution) * relativeVelocity;
+    
+    // Apply impulse to particle velocity
+    const impulseVector = collisionNormal.clone().multiply(impulse);
+    particle.velocity.add(impulseVector);
+
+    // Position correction to prevent particle from staying inside the joint
+    const overlap = particle.size - particle.position.distance(closestPoint);
+    if (overlap > 0) {
+      const correction = collisionNormal.clone().multiply(overlap);
+      particle.position.add(correction);
+    }
+  }
+
+  /**
+   * Calculate bounding circle for a joint (center + radius for spatial grid lookup)
+   */
+  private getJointBoundingCircle(joint: Joint): { center: Vector2D; radius: number } {
+    // Joint center is midpoint between the two particles
+    const center = new Vector2D(
+      (joint.particleA.position.x + joint.particleB.position.x) / 2,
+      (joint.particleA.position.y + joint.particleB.position.y) / 2
+    );
+
+    // Joint radius is half the joint length plus maximum possible particle size
+    const jointLength = joint.particleA.position.distance(joint.particleB.position);
+    const maxParticleSize = Math.max(joint.particleA.size, joint.particleB.size);
+    
+    // Add some padding for particle sizes that might collide with the joint
+    // Use a reasonable estimate for maximum particle size (can be made configurable)
+    const estimatedMaxParticleSize = maxParticleSize * 2; // Conservative estimate
+    const radius = jointLength / 2 + estimatedMaxParticleSize;
+
+    return { center, radius };
+  }
+
+  /**
+   * Check if a particle is involved in a joint (can't collide with your own joints)
+   */
+  private isParticleInvolvedInJoint(particle: Particle, joint: Joint): boolean {
+    return joint.particleA.id === particle.id || joint.particleB.id === particle.id;
+  }
+
+  /**
+   * Quick distance check to cull particles that are definitely too far away
+   */
+  private quickDistanceCheck(
+    particle: Particle,
+    boundingCircle: { center: Vector2D; radius: number }
+  ): boolean {
+    // Check if particle is within the joint's bounding circle
+    const distanceToCenter = particle.position.distance(boundingCircle.center);
+    const combinedRadius = particle.size + boundingCircle.radius;
+
+    // If particle is outside the bounding area, skip expensive line-segment collision
+    return distanceToCenter <= combinedRadius;
+  }
+
+  /**
+   * Calculate impact weights based on where along the joint the collision occurred
+   */
+  private calculateImpactWeights(
+    impactPoint: Vector2D,
+    joint: Joint
+  ): { weightA: number; weightB: number } {
+    const jointVector = joint.particleB.position.clone().subtract(joint.particleA.position);
+    const impactVector = impactPoint.clone().subtract(joint.particleA.position);
+    
+    const jointLength = jointVector.magnitude();
+    
+    if (jointLength === 0) {
+      // Zero-length joint, split force equally
+      return { weightA: 0.5, weightB: 0.5 };
+    }
+    
+    // Project impact point onto joint line to get position parameter t [0,1]
+    const t = impactVector.dot(jointVector) / (jointLength * jointLength);
+    const clampedT = Math.max(0, Math.min(1, t));
+    
+    // Weight inversely proportional to distance from joint particles
+    // Impact closer to particleA gives more force to particleA
+    const weightB = clampedT;
+    const weightA = 1 - clampedT;
+    
+    return { weightA, weightB };
+  }
+
+  /**
+   * Calculate effective mass of joint system at impact point
+   */
+  private calculateEffectiveJointMass(
+    joint: Joint,
+    weights: { weightA: number; weightB: number }
+  ): number {
+    let effectiveMass = 0;
+    
+    // Add mass contribution from each joint particle based on impact weights
+    if (!joint.particleA.static) {
+      effectiveMass += joint.particleA.mass * weights.weightA;
+    }
+    
+    if (!joint.particleB.static) {
+      effectiveMass += joint.particleB.mass * weights.weightB;
+    }
+    
+    return effectiveMass;
+  }
+
+  /**
+   * Transfer force to joint particles based on impact location and masses
+   */
+  private transferForceToJoint(
+    joint: Joint,
+    weights: { weightA: number; weightB: number },
+    collisionNormal: Vector2D,
+    totalImpulse: number
+  ): void {
+    // Transfer force to particleA (force opposite to collision normal)
+    if (!joint.particleA.static && weights.weightA > 0) {
+      const forceA = collisionNormal.clone().multiply(-totalImpulse * weights.weightA / joint.particleA.mass);
+      joint.particleA.velocity.add(forceA);
+    }
+    
+    // Transfer force to particleB (force opposite to collision normal)
+    if (!joint.particleB.static && weights.weightB > 0) {
+      const forceB = collisionNormal.clone().multiply(-totalImpulse * weights.weightB / joint.particleB.mass);
+      joint.particleB.velocity.add(forceB);
     }
   }
 }
