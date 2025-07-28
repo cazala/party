@@ -38,5 +38,6 @@ export {
   Canvas2DRenderer,
   createCanvas2DRenderer,
   type RenderOptions,
+  PINNED_PARTICLE_COLOR,
 } from "./modules/render";
 export * from "./modules/forces";

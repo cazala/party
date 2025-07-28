@@ -73,7 +73,7 @@ export const createParticle = (
   color?: string,
   velocity?: { x: number; y: number },
   mass?: number,
-  isStatic?: boolean
+  isPinned?: boolean
 ) => {
   // Use provided mass or calculate from size
   let finalMass = mass;
@@ -88,6 +88,6 @@ export const createParticle = (
     mass: finalMass,
     size,
     color: color || getRandomColor(),
-    static: isStatic || false,
+    pinned: isPinned || false,
   });
 };

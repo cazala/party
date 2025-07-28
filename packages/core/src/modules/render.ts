@@ -11,6 +11,7 @@ export const DEFAULT_RENDER_COLOR_MODE = "particle";
 export const DEFAULT_RENDER_CUSTOM_COLOR = "#FFFFFF";
 export const DEFAULT_RENDER_MAX_SPEED = 400;
 export const DEFAULT_RENDER_ROTATION_SPEED = 1; // rotations per second
+export const PINNED_PARTICLE_COLOR = "#6b7280"; // Grey color for pinned particles
 
 export interface RenderOptions {
   canvas: HTMLCanvasElement;
@@ -731,7 +732,7 @@ export class Canvas2DRenderer extends Renderer {
   private getParticleColor(particle: Particle): string {
     // Pinned particles are always rendered in grey
     if (particle.pinned) {
-      return "#6b7280";
+      return PINNED_PARTICLE_COLOR;
     }
 
     switch (this.colorMode) {

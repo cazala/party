@@ -8,6 +8,7 @@ import {
   getIdCounter,
   Joints,
   Particle,
+  PINNED_PARTICLE_COLOR,
 } from "@party/core";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
@@ -259,6 +260,13 @@ export function useInteractions({
    */
   const getPreviewColor = useCallback(
     (velocity?: { x: number; y: number }) => {
+      const spawnConfig = getSpawnConfig();
+
+      // If pinned mode is enabled, always show pinned color
+      if (spawnConfig.pinned) {
+        return PINNED_PARTICLE_COLOR;
+      }
+
       const renderer = getRenderer();
       if (!renderer) return getRandomColor();
 
@@ -286,7 +294,6 @@ export function useInteractions({
         case "particle":
         default:
           // Use spawn config colors
-          const spawnConfig = getSpawnConfig();
           if (spawnConfig.colors.length > 0) {
             return spawnConfig.colors[
               Math.floor(Math.random() * spawnConfig.colors.length)
