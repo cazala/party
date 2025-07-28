@@ -11,6 +11,7 @@ export const DEFAULT_JOINT_MAX_FORCE = 1000;
 export const DEFAULT_JOINT_TYPE: JointType = "pin";
 export const DEFAULT_JOINT_RESTITUTION = 0.95;
 export const DEFAULT_JOINT_COLLISIONS_ENABLED = true;
+export const DEFAULT_JOINT_FRICTION = 0.1;
 
 export type JointType = "spring" | "pin";
 
@@ -33,6 +34,7 @@ export interface JointsOptions {
   defaultType?: JointType;
   restitution?: number;
   enableCollisions?: boolean;
+  friction?: number;
 }
 
 /**
@@ -253,6 +255,7 @@ export class Joints implements Force {
   public defaultType: JointType;
   public restitution: number;
   public enableCollisions: boolean;
+  public friction: number;
 
   // Track grabbed particles and their previous positions for velocity calculation
   private grabbedParticlePositions: Map<number, Vector2D> = new Map();
@@ -266,6 +269,7 @@ export class Joints implements Force {
     this.restitution = options.restitution ?? DEFAULT_JOINT_RESTITUTION;
     this.enableCollisions =
       options.enableCollisions ?? DEFAULT_JOINT_COLLISIONS_ENABLED;
+    this.friction = options.friction ?? DEFAULT_JOINT_FRICTION;
   }
 
   setEnabled(enabled: boolean): void {
@@ -294,6 +298,10 @@ export class Joints implements Force {
 
   setEnableCollisions(enableCollisions: boolean): void {
     this.enableCollisions = enableCollisions;
+  }
+
+  setFriction(friction: number): void {
+    this.friction = friction;
   }
 
   /**
@@ -771,6 +779,11 @@ export class Joints implements Force {
       .multiply(impulse / particle.mass);
     particle.velocity.add(particleImpulse);
 
+    // Apply friction to tangential velocity component
+    if (this.friction > 0) {
+      this.applyFriction(particle, collisionNormal);
+    }
+
     // Transfer force to joint particles based on impact location and masses
     this.transferForceToJoint(joint, weights, collisionNormal, impulse);
 
@@ -819,6 +832,11 @@ export class Joints implements Force {
     // Apply impulse to particle velocity
     const impulseVector = collisionNormal.clone().multiply(impulse);
     particle.velocity.add(impulseVector);
+
+    // Apply friction to tangential velocity component
+    if (this.friction > 0) {
+      this.applyFriction(particle, collisionNormal);
+    }
 
     // Position correction to prevent particle from staying inside the joint
     const overlap = particle.size - particle.position.distance(closestPoint);
@@ -1037,5 +1055,23 @@ export class Joints implements Force {
     }
 
     return false;
+  }
+
+  /**
+   * Apply friction to the tangential velocity component of a particle
+   */
+  private applyFriction(particle: Particle, collisionNormal: Vector2D): void {
+    // Get the tangential component of velocity (perpendicular to collision normal)
+    const normalVelocityMagnitude = particle.velocity.dot(collisionNormal);
+    const normalVelocity = collisionNormal
+      .clone()
+      .multiply(normalVelocityMagnitude);
+    const tangentialVelocity = particle.velocity
+      .clone()
+      .subtract(normalVelocity);
+
+    // Apply friction to reduce tangential velocity
+    const frictionForce = tangentialVelocity.clone().multiply(-this.friction);
+    particle.velocity.add(frictionForce);
   }
 }

@@ -5,6 +5,7 @@ import {
   System,
   DEFAULT_JOINT_RESTITUTION,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
+  DEFAULT_JOINT_FRICTION,
 } from "@party/core";
 
 interface JointControlsProps {
@@ -23,6 +24,7 @@ export function JointControls({ joints, system }: JointControlsProps) {
   const [enableCollisions, setEnableCollisions] = useState(
     DEFAULT_JOINT_COLLISIONS_ENABLED
   );
+  const [friction, setFriction] = useState(DEFAULT_JOINT_FRICTION);
 
   // Update local state when joints changes
   useEffect(() => {
@@ -35,6 +37,7 @@ export function JointControls({ joints, system }: JointControlsProps) {
       setJointCount(joints.getJointCount());
       setRestitution(joints.restitution);
       setEnableCollisions(joints.enableCollisions);
+      setFriction(joints.friction);
     }
   }, [joints]);
 
@@ -166,6 +169,13 @@ export function JointControls({ joints, system }: JointControlsProps) {
     }
   };
 
+  const handleFrictionChange = (value: number) => {
+    setFriction(value);
+    if (joints) {
+      joints.setFriction(value);
+    }
+  };
+
   return (
     <div className="control-section">
       <div className="control-group">
@@ -256,6 +266,22 @@ export function JointControls({ joints, system }: JointControlsProps) {
             onChange={(e) =>
               handleRestitutionChange(parseFloat(e.target.value))
             }
+            className="slider"
+            disabled={!enabled}
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Friction: {friction.toFixed(2)}
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={friction}
+            onChange={(e) => handleFrictionChange(parseFloat(e.target.value))}
             className="slider"
             disabled={!enabled}
           />
