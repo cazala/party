@@ -486,19 +486,16 @@ export class Joints implements Force {
       // Early exit: quick distance check before expensive line-segment collision
       if (!this.quickDistanceCheck(particle, boundingCircle)) continue;
 
-      // Get the closest point on the joint line segment to the particle
-      const closestPoint = this.getClosestPointOnLineSegment(
-        particle.position,
-        joint.particleA.position,
-        joint.particleB.position
-      );
-
-      // Check if particle is colliding with the joint line
-      const distance = particle.position.distance(closestPoint);
-      const radius = particle.size; // size IS radius in this system
-
-      if (distance < radius && distance > 0.001) {
-        // Collision detected - apply bounce physics
+      // Simple improved collision detection that catches fast particles
+      if (this.checkImprovedCollision(particle, joint)) {
+        // Get the closest point on the joint line segment to the particle
+        const closestPoint = this.getClosestPointOnLineSegment(
+          particle.position,
+          joint.particleA.position,
+          joint.particleB.position
+        );
+        
+        // Apply collision with force transfer
         this.handleJointCollision(particle, closestPoint, joint);
       }
     }
@@ -755,4 +752,53 @@ export class Joints implements Force {
       joint.particleB.velocity.add(forceB);
     }
   }
+
+  /**
+   * Simple improved collision detection that checks both current position and trajectory
+   * This prevents most tunneling without complex geometric calculations
+   */
+  private checkImprovedCollision(particle: Particle, joint: Joint): boolean {
+    const radius = particle.size;
+    
+    // Check 1: Current position (original method)
+    const currentClosestPoint = this.getClosestPointOnLineSegment(
+      particle.position,
+      joint.particleA.position,
+      joint.particleB.position
+    );
+    const currentDistance = particle.position.distance(currentClosestPoint);
+    
+    if (currentDistance < radius && currentDistance > 0.001) {
+      return true;
+    }
+    
+    // Check 2: Trajectory check for moving particles
+    const speed = particle.velocity.magnitude();
+    if (speed > radius) { // Only check trajectory for fast particles
+      // Check a few points along the particle's trajectory in the next frame
+      const deltaTime = 1/60; // Assume 60 FPS for trajectory prediction
+      const steps = Math.min(5, Math.ceil(speed / radius));
+      
+      for (let i = 1; i <= steps; i++) {
+        const t = (i / steps) * deltaTime;
+        const checkPosition = particle.position.clone().add(
+          particle.velocity.clone().multiply(t)
+        );
+        
+        const checkClosestPoint = this.getClosestPointOnLineSegment(
+          checkPosition,
+          joint.particleA.position,
+          joint.particleB.position
+        );
+        const checkDistance = checkPosition.distance(checkClosestPoint);
+        
+        if (checkDistance < radius && checkDistance > 0.001) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
 }
