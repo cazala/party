@@ -262,7 +262,7 @@ export class System {
 
     // Apply joint constraints AFTER physics integration to preserve natural motion
     if (jointsForce && "applyConstraints" in jointsForce) {
-      (jointsForce as any).applyConstraints();
+      (jointsForce as any).applyConstraints(this.spatialGrid);
 
       // Update velocities to match actual movement after constraint solving
       if (deltaTime > 0) {

@@ -410,12 +410,62 @@ export class Joints implements Force {
   /**
    * Apply all joint constraints - should be called AFTER physics integration
    */
-  applyConstraints(): void {
+  applyConstraints(spatialGrid?: SpatialGrid): void {
     if (!this.enabled) return;
 
     // Apply all joint constraints
     for (const joint of this.joints.values()) {
       joint.applyConstraint();
+    }
+
+    // After applying constraints, check if any particles have been moved into collision with joints
+    // and apply corrective forces if needed
+    if (spatialGrid) {
+      this.resolveConstraintCollisionConflicts(spatialGrid);
+    }
+  }
+
+  /**
+   * Check if joint constraints have moved particles into collision with other joints
+   * and apply corrective measures
+   */
+  private resolveConstraintCollisionConflicts(spatialGrid: SpatialGrid): void {
+
+    // Check each joint-connected particle for collisions with other joints
+    for (const joint of this.joints.values()) {
+      [joint.particleA, joint.particleB].forEach(particle => {
+        if (particle.static) return;
+        
+        // Check this particle against all other joints
+        for (const otherJoint of this.joints.values()) {
+          if (otherJoint.id === joint.id) continue;
+          if (this.isParticleInvolvedInJoint(particle, otherJoint)) continue;
+          
+          // Check if particle is now colliding with this other joint
+          if (this.checkCollision(particle, otherJoint)) {
+            const closestPoint = this.getClosestPointOnLineSegment(
+              particle.position,
+              otherJoint.particleA.position,
+              otherJoint.particleB.position
+            );
+            
+            // Apply position correction only (no velocity change since constraint system handles that)
+            const collisionNormal = particle.position.clone().subtract(closestPoint);
+            if (collisionNormal.magnitude() === 0) {
+              const lineVector = otherJoint.particleB.position.clone().subtract(otherJoint.particleA.position);
+              collisionNormal.x = -lineVector.y;
+              collisionNormal.y = lineVector.x;
+            }
+            collisionNormal.normalize();
+            
+            const overlap = particle.size - particle.position.distance(closestPoint);
+            if (overlap > 0) {
+              const correction = collisionNormal.clone().multiply(overlap + 0.1); // Small buffer
+              particle.position.add(correction);
+            }
+          }
+        }
+      });
     }
   }
 
