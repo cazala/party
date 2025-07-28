@@ -53,6 +53,7 @@ import { FluidsControls } from "./control-sections/FluidsControls";
 import { SensorsControls } from "./control-sections/SensorsControls";
 import { JointControls } from "./control-sections/JointControls";
 import { CollapsibleSection } from "./CollapsibleSection";
+import { UseUndoRedoReturn } from "../hooks/useUndoRedo";
 import "./ForcesControls.css";
 
 interface ForcesControlsProps {
@@ -64,6 +65,7 @@ interface ForcesControlsProps {
   fluid: Fluid | null;
   sensors: Sensors | null;
   joints: Joints | null;
+  undoRedo: UseUndoRedoReturn | null;
   sessionLoadTrigger?: number;
 }
 
@@ -76,6 +78,7 @@ export function ForcesControls({
   fluid,
   sensors,
   joints,
+  undoRedo,
   sessionLoadTrigger = 0,
 }: ForcesControlsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -279,6 +282,7 @@ export function ForcesControls({
           key={`joints-${refreshKey}`}
           joints={joints}
           system={system}
+          undoRedo={undoRedo}
         />
       </CollapsibleSection>
     </div>

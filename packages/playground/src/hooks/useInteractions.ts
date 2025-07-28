@@ -178,6 +178,8 @@ interface MouseState {
   lastDrawnPosition: { x: number; y: number };
   /** Particles created during drawing session for undo */
   drawnParticles: any[];
+  /** Joints created during drawing session for undo */
+  drawnJoints: any[];
 
   // === Undo/Redo Tracking ===
   /** Particles created during streaming sessions for undo */
@@ -262,6 +264,7 @@ export function useInteractions({
     lastDrawnParticle: null,
     lastDrawnPosition: { x: 0, y: 0 },
     drawnParticles: [],
+    drawnJoints: [],
     streamedParticles: [],
     removedParticles: [],
   });
@@ -333,6 +336,7 @@ export function useInteractions({
 
       mouseState.isDrawing = true;
       mouseState.drawnParticles = []; // Reset drawn particles for new session
+      mouseState.drawnJoints = []; // Reset drawn joints for new session
 
       // Spawn the first particle
       const firstParticle = createParticle(
@@ -387,10 +391,12 @@ export function useInteractions({
         mouseState.drawnParticles.push(newParticle);
 
         // Create joint between last particle and new particle
-        joints.createJoint({
+        const joint = joints.createJoint({
           particleA: mouseState.lastDrawnParticle,
           particleB: newParticle,
         });
+        
+        mouseState.drawnJoints.push(joint);
 
         // Update state for next particle
         mouseState.lastDrawnParticle = newParticle;
@@ -410,13 +416,15 @@ export function useInteractions({
     mouseState.lastDrawnParticle = null;
     mouseState.lastDrawnPosition = { x: 0, y: 0 };
 
-    // Record drawn particles for undo
+    // Record drawn particles and joints for undo
     if (mouseState.drawnParticles.length > 0) {
-      undoRedo.current?.recordSpawnBatch(
+      undoRedo.current?.recordDrawBatch(
         mouseState.drawnParticles,
+        mouseState.drawnJoints,
         getIdCounter()
       );
       mouseState.drawnParticles = [];
+      mouseState.drawnJoints = [];
     }
   }, []);
 
@@ -624,7 +632,7 @@ export function useInteractions({
           mouseState.createdJoints.push(joint.id);
 
           // Record joint creation for undo
-          // TODO: Add joint creation to undo system
+          undoRedo.current?.recordJointCreate(joint, getIdCounter());
         }
 
         // Reset selection
@@ -698,11 +706,15 @@ export function useInteractions({
       const particle = findParticleAtPosition(worldPos);
 
       if (particle) {
+        // Store the state before toggling
+        const wasStaticBefore = particle.pinned || false;
+        const wasGrabbedBefore = particle.grabbed || false;
+        
         // Toggle the pinned state
         particle.pinned = !particle.pinned;
 
         // Record pin/unpin action for undo
-        // TODO: Add pin state change to undo system
+        undoRedo.current?.recordPinToggle(particle.id, wasStaticBefore, wasGrabbedBefore, getIdCounter());
       }
     },
     [findParticleAtPosition]

@@ -5,14 +5,17 @@ import {
   DEFAULT_JOINT_RESTITUTION,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
   DEFAULT_JOINT_FRICTION,
+  getIdCounter,
 } from "@party/core";
+import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
 
 interface JointControlsProps {
   joints: Joints | null;
   system: System | null;
+  undoRedo: UseUndoRedoReturn | null;
 }
 
-export function JointControls({ joints, system }: JointControlsProps) {
+export function JointControls({ joints, system, undoRedo }: JointControlsProps) {
   const [enabled, setEnabled] = useState(true);
   const [jointCount, setJointCount] = useState(0);
   const [restitution, setRestitution] = useState(DEFAULT_JOINT_RESTITUTION);
@@ -72,14 +75,23 @@ export function JointControls({ joints, system }: JointControlsProps) {
   };
 
   const handleClearAllJoints = () => {
-    if (joints) {
+    if (joints && undoRedo) {
+      // Get all existing joints before clearing
+      const existingJoints = joints.getAllJoints();
+      
+      // Clear all joints
       joints.clear();
       setJointCount(0);
+      
+      // Record the clear operation for undo (for each joint removal)
+      existingJoints.forEach((joint) => {
+        undoRedo.recordJointRemove(joint, getIdCounter());
+      });
     }
   };
 
   const handleJoinSequence = () => {
-    if (!joints || !system) return;
+    if (!joints || !system || !undoRedo) return;
 
     const particles = system.particles;
     if (particles.length < 2) return;
@@ -88,16 +100,23 @@ export function JointControls({ joints, system }: JointControlsProps) {
     const sortedParticles = [...particles].sort((a, b) => a.id - b.id);
 
     // Create joints between consecutive particles
+    const createdJoints = [];
     for (let i = 0; i < sortedParticles.length - 1; i++) {
-      joints.createJoint({
+      const joint = joints.createJoint({
         particleA: sortedParticles[i],
         particleB: sortedParticles[i + 1],
       });
+      createdJoints.push(joint);
     }
+    
+    // Record all created joints for undo
+    createdJoints.forEach((joint) => {
+      undoRedo.recordJointCreate(joint, getIdCounter());
+    });
   };
 
   const handleJoinCircuit = () => {
-    if (!joints || !system) return;
+    if (!joints || !system || !undoRedo) return;
 
     const particles = system.particles;
     if (particles.length < 2) return;
@@ -106,37 +125,52 @@ export function JointControls({ joints, system }: JointControlsProps) {
     const sortedParticles = [...particles].sort((a, b) => a.id - b.id);
 
     // Create joints between consecutive particles
+    const createdJoints = [];
     for (let i = 0; i < sortedParticles.length - 1; i++) {
-      joints.createJoint({
+      const joint = joints.createJoint({
         particleA: sortedParticles[i],
         particleB: sortedParticles[i + 1],
       });
+      createdJoints.push(joint);
     }
 
     // Close the circuit by joining last to first
     if (sortedParticles.length > 2) {
-      joints.createJoint({
+      const circuitJoint = joints.createJoint({
         particleA: sortedParticles[sortedParticles.length - 1],
         particleB: sortedParticles[0],
       });
+      createdJoints.push(circuitJoint);
     }
+    
+    // Record all created joints for undo
+    createdJoints.forEach((joint) => {
+      undoRedo.recordJointCreate(joint, getIdCounter());
+    });
   };
 
   const handleJoinAll = () => {
-    if (!joints || !system) return;
+    if (!joints || !system || !undoRedo) return;
 
     const particles = system.particles;
     if (particles.length < 2) return;
 
     // Create joints between every pair of particles
+    const createdJoints = [];
     for (let i = 0; i < particles.length; i++) {
       for (let j = i + 1; j < particles.length; j++) {
-        joints.createJoint({
+        const joint = joints.createJoint({
           particleA: particles[i],
           particleB: particles[j],
         });
+        createdJoints.push(joint);
       }
     }
+    
+    // Record all created joints for undo
+    createdJoints.forEach((joint) => {
+      undoRedo.recordJointCreate(joint, getIdCounter());
+    });
   };
 
   return (

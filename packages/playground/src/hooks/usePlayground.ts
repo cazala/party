@@ -190,7 +190,7 @@ export function usePlayground(
   // ---------------------------------------------------------------------------
   // Undo/Redo system
   // ---------------------------------------------------------------------------
-  const undoRedo = useUndoRedo(() => systemRef.current);
+  const undoRedo = useUndoRedo(() => systemRef.current, () => jointsRef.current);
   const undoRedoRef = useRef(undoRedo);
   undoRedoRef.current = undoRedo;
 

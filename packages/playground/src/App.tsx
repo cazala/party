@@ -176,6 +176,7 @@ function App() {
             fluid={fluid}
             sensors={sensors}
             joints={joints}
+            undoRedo={undoRedo}
             sessionLoadTrigger={sessionLoadTrigger}
           />
         </div>

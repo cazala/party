@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { System, Particle, Vector2D, setIdCounter } from "@party/core";
+import { System, Particle, Vector2D, setIdCounter, Joints, Joint } from "@party/core";
 
 /**
  * Undo/Redo System for Particle Operations
@@ -36,6 +36,28 @@ export interface SerializedParticle {
   mass: number;
   size: number;
   color: string;
+  pinned?: boolean;
+  grabbed?: boolean;
+}
+
+/**
+ * Serialized representation of a joint for undo/redo operations
+ * Contains all necessary data to recreate a joint with identical state
+ */
+export interface SerializedJoint {
+  id: string;
+  particleAId: number;
+  particleBId: number;
+  restLength: number;
+}
+
+/**
+ * Pin state change tracking for undo/redo
+ */
+export interface PinStateChange {
+  particleId: number;
+  wasStaticBefore: boolean;
+  wasGrabbedBefore: boolean;
 }
 
 /**
@@ -47,9 +69,15 @@ export interface UndoAction {
     | "SPAWN_BATCH"
     | "REMOVE_SINGLE"
     | "REMOVE_BATCH"
-    | "SYSTEM_CLEAR";
+    | "SYSTEM_CLEAR"
+    | "DRAW_BATCH"
+    | "JOINT_CREATE"
+    | "JOINT_REMOVE"
+    | "PIN_TOGGLE";
   timestamp: number;
-  particles: SerializedParticle[]; // For remove/clear: particles to restore. For spawn: particles that were spawned
+  particles?: SerializedParticle[]; // For remove/clear: particles to restore. For spawn: particles that were spawned
+  joints?: SerializedJoint[]; // For joint operations: joints to create/remove
+  pinChanges?: PinStateChange[]; // For pin operations: pin state changes
   systemStateBefore?: SerializedParticle[]; // Legacy field, no longer used but kept for compatibility
   idCounter?: number; // ID counter state at the time of the action
 }
@@ -64,9 +92,13 @@ export interface UseUndoRedoReturn {
   redo: () => void; // Redo the last undone action
   recordSpawnSingle: (particle: Particle, idCounter: number) => void; // Record a single particle spawn
   recordSpawnBatch: (particles: Particle[], idCounter: number) => void; // Record multiple particle spawns
+  recordDrawBatch: (particles: Particle[], joints: Joint[], idCounter: number) => void; // Record draw mode batch with joints
   recordRemoveSingle: (particle: Particle, idCounter: number) => void; // Record a single particle removal
   recordRemoveBatch: (particles: Particle[], idCounter: number) => void; // Record multiple particle removals
   recordSystemClear: (particles: Particle[], idCounter: number) => void; // Record a system clear operation
+  recordJointCreate: (joint: Joint, idCounter: number) => void; // Record joint creation
+  recordJointRemove: (joint: Joint, idCounter: number) => void; // Record joint removal
+  recordPinToggle: (particleId: number, wasStaticBefore: boolean, wasGrabbedBefore: boolean, idCounter: number) => void; // Record pin state toggle
   clearHistory: () => void; // Clear all undo/redo history
 }
 
@@ -76,9 +108,10 @@ const MAX_HISTORY_SIZE = 50;
  * Hook that provides undo/redo functionality for particle operations
  *
  * @param getSystem Function that returns the current particle system instance
+ * @param getJoints Function that returns the current joints system instance
  * @returns Object containing undo/redo state and control functions
  */
-export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
+export function useUndoRedo(getSystem: () => System | null, getJoints?: () => Joints | null): UseUndoRedoReturn {
   const [actionHistory, setActionHistory] = useState<UndoAction[]>([]);
   const [redoHistory, setRedoHistory] = useState<UndoAction[]>([]);
 
@@ -98,6 +131,8 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
         mass: particle.mass,
         size: particle.size,
         color: particle.color,
+        pinned: particle.pinned,
+        grabbed: particle.grabbed,
       };
     },
     []
@@ -120,11 +155,49 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
         mass: serialized.mass,
         size: serialized.size,
         color: serialized.color,
+        pinned: serialized.pinned || false,
+        grabbed: serialized.grabbed || false,
       });
 
       return particle;
     },
     []
+  );
+
+  /**
+   * Converts a Joint instance to a serializable format for storage
+   */
+  const serializeJoint = useCallback((joint: Joint): SerializedJoint => {
+    return {
+      id: joint.id,
+      particleAId: joint.particleA.id,
+      particleBId: joint.particleB.id,
+      restLength: joint.restLength,
+    };
+  }, []);
+
+  /**
+   * Converts a serialized joint back to a Joint instance
+   * Requires access to the particle system to find the referenced particles
+   */
+  const deserializeJoint = useCallback(
+    (serialized: SerializedJoint): Joint | null => {
+      const system = getSystem();
+      if (!system) return null;
+
+      const particleA = system.getParticle(serialized.particleAId);
+      const particleB = system.getParticle(serialized.particleBId);
+
+      if (!particleA || !particleB) return null;
+
+      return new Joint({
+        id: serialized.id,
+        particleA,
+        particleB,
+        restLength: serialized.restLength,
+      });
+    },
+    [getSystem]
   );
 
   /**
@@ -234,6 +307,73 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
   );
 
   /**
+   * Records a draw batch operation (particles with joints)
+   */
+  const recordDrawBatch = useCallback(
+    (particles: Particle[], joints: Joint[], idCounter: number) => {
+      if (particles.length === 0) return;
+
+      const action: UndoAction = {
+        type: "DRAW_BATCH",
+        timestamp: Date.now(),
+        particles: particles.map(serializeParticle),
+        joints: joints.map(serializeJoint),
+        idCounter,
+      };
+      addToHistory(action);
+    },
+    [serializeParticle, serializeJoint, addToHistory]
+  );
+
+  /**
+   * Records a joint creation operation
+   */
+  const recordJointCreate = useCallback(
+    (joint: Joint, idCounter: number) => {
+      const action: UndoAction = {
+        type: "JOINT_CREATE",
+        timestamp: Date.now(),
+        joints: [serializeJoint(joint)],
+        idCounter,
+      };
+      addToHistory(action);
+    },
+    [serializeJoint, addToHistory]
+  );
+
+  /**
+   * Records a joint removal operation
+   */
+  const recordJointRemove = useCallback(
+    (joint: Joint, idCounter: number) => {
+      const action: UndoAction = {
+        type: "JOINT_REMOVE",
+        timestamp: Date.now(),
+        joints: [serializeJoint(joint)],
+        idCounter,
+      };
+      addToHistory(action);
+    },
+    [serializeJoint, addToHistory]
+  );
+
+  /**
+   * Records a pin state toggle operation
+   */
+  const recordPinToggle = useCallback(
+    (particleId: number, wasStaticBefore: boolean, wasGrabbedBefore: boolean, idCounter: number) => {
+      const action: UndoAction = {
+        type: "PIN_TOGGLE",
+        timestamp: Date.now(),
+        pinChanges: [{ particleId, wasStaticBefore, wasGrabbedBefore }],
+        idCounter,
+      };
+      addToHistory(action);
+    },
+    [addToHistory]
+  );
+
+  /**
    * Undoes the last action in the history
    * For spawn operations: Removes the spawned particles
    * For remove/clear operations: Restores the removed particles
@@ -260,7 +400,23 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
         case "SPAWN_SINGLE":
         case "SPAWN_BATCH":
           // Remove only the specific particles that were spawned
-          lastAction.particles.forEach((serializedParticle) => {
+          lastAction.particles?.forEach((serializedParticle) => {
+            const particle = system.getParticle(serializedParticle.id);
+            if (particle) {
+              system.removeParticle(particle);
+            }
+          });
+          break;
+
+        case "DRAW_BATCH":
+          // Remove the drawn particles and joints
+          const joints = getJoints?.();
+          if (joints && lastAction.joints) {
+            lastAction.joints.forEach((serializedJoint) => {
+              joints.removeJoint(serializedJoint.id);
+            });
+          }
+          lastAction.particles?.forEach((serializedParticle) => {
             const particle = system.getParticle(serializedParticle.id);
             if (particle) {
               system.removeParticle(particle);
@@ -272,10 +428,51 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
         case "REMOVE_BATCH":
         case "SYSTEM_CLEAR":
           // Restore the removed particles
-          lastAction.particles.forEach((serializedParticle) => {
+          lastAction.particles?.forEach((serializedParticle) => {
             const particle = deserializeParticle(serializedParticle);
             system.addParticle(particle);
           });
+          break;
+
+        case "JOINT_CREATE":
+          // Remove the created joint
+          const jointsSystem1 = getJoints?.();
+          if (jointsSystem1 && lastAction.joints) {
+            lastAction.joints.forEach((serializedJoint) => {
+              jointsSystem1.removeJoint(serializedJoint.id);
+            });
+          }
+          break;
+
+        case "JOINT_REMOVE":
+          // Restore the removed joint
+          const jointsSystem2 = getJoints?.();
+          if (jointsSystem2 && lastAction.joints) {
+            lastAction.joints.forEach((serializedJoint) => {
+              const joint = deserializeJoint(serializedJoint);
+              if (joint) {
+                jointsSystem2.createJoint({
+                  id: joint.id,
+                  particleA: joint.particleA,
+                  particleB: joint.particleB,
+                  restLength: joint.restLength,
+                });
+              }
+            });
+          }
+          break;
+
+        case "PIN_TOGGLE":
+          // Restore the previous pin state
+          if (lastAction.pinChanges) {
+            lastAction.pinChanges.forEach((pinChange) => {
+              const particle = system.getParticle(pinChange.particleId);
+              if (particle) {
+                particle.pinned = pinChange.wasStaticBefore;
+                particle.grabbed = pinChange.wasGrabbedBefore;
+              }
+            });
+          }
           break;
       }
 
@@ -310,7 +507,7 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
         case "SPAWN_SINGLE":
         case "SPAWN_BATCH":
           // Re-add the spawned particles
-          actionToRedo.particles.forEach((serializedParticle) => {
+          actionToRedo.particles?.forEach((serializedParticle) => {
             const particle = deserializeParticle(serializedParticle);
             console.log(
               `Re-adding spawned particle ${serializedParticle.id} with mass ${particle.mass}`
@@ -319,10 +516,32 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
           });
           break;
 
+        case "DRAW_BATCH":
+          // Re-add the drawn particles and joints
+          actionToRedo.particles?.forEach((serializedParticle) => {
+            const particle = deserializeParticle(serializedParticle);
+            system.addParticle(particle);
+          });
+          const joints = getJoints?.();
+          if (joints && actionToRedo.joints) {
+            actionToRedo.joints.forEach((serializedJoint) => {
+              const joint = deserializeJoint(serializedJoint);
+              if (joint) {
+                joints.createJoint({
+                  id: joint.id,
+                  particleA: joint.particleA,
+                  particleB: joint.particleB,
+                  restLength: joint.restLength,
+                });
+              }
+            });
+          }
+          break;
+
         case "REMOVE_SINGLE":
         case "REMOVE_BATCH":
           // Re-remove the particles by marking them with mass = 0 (same as original removal)
-          actionToRedo.particles.forEach((serializedParticle) => {
+          actionToRedo.particles?.forEach((serializedParticle) => {
             const particle = system.getParticle(serializedParticle.id);
             if (particle) {
               console.log(
@@ -340,12 +559,54 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
 
         case "SYSTEM_CLEAR":
           // Re-remove the particles
-          actionToRedo.particles.forEach((serializedParticle) => {
+          actionToRedo.particles?.forEach((serializedParticle) => {
             const particle = system.getParticle(serializedParticle.id);
             if (particle) {
               system.removeParticle(particle);
             }
           });
+          break;
+
+        case "JOINT_CREATE":
+          // Re-create the joint
+          const jointsSystem1 = getJoints?.();
+          if (jointsSystem1 && actionToRedo.joints) {
+            actionToRedo.joints.forEach((serializedJoint) => {
+              const joint = deserializeJoint(serializedJoint);
+              if (joint) {
+                jointsSystem1.createJoint({
+                  id: joint.id,
+                  particleA: joint.particleA,
+                  particleB: joint.particleB,
+                  restLength: joint.restLength,
+                });
+              }
+            });
+          }
+          break;
+
+        case "JOINT_REMOVE":
+          // Re-remove the joint
+          const jointsSystem2 = getJoints?.();
+          if (jointsSystem2 && actionToRedo.joints) {
+            actionToRedo.joints.forEach((serializedJoint) => {
+              jointsSystem2.removeJoint(serializedJoint.id);
+            });
+          }
+          break;
+
+        case "PIN_TOGGLE":
+          // Re-apply the pin state toggle
+          if (actionToRedo.pinChanges) {
+            actionToRedo.pinChanges.forEach((pinChange) => {
+              const particle = system.getParticle(pinChange.particleId);
+              if (particle) {
+                // Toggle the pin state (opposite of what it was before)
+                particle.pinned = !pinChange.wasStaticBefore;
+                particle.grabbed = !pinChange.wasGrabbedBefore;
+              }
+            });
+          }
           break;
       }
 
@@ -371,9 +632,13 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
       redo,
       recordSpawnSingle,
       recordSpawnBatch,
+      recordDrawBatch,
       recordRemoveSingle,
       recordRemoveBatch,
       recordSystemClear,
+      recordJointCreate,
+      recordJointRemove,
+      recordPinToggle,
       clearHistory,
     }),
     [
@@ -383,9 +648,13 @@ export function useUndoRedo(getSystem: () => System | null): UseUndoRedoReturn {
       redo,
       recordSpawnSingle,
       recordSpawnBatch,
+      recordDrawBatch,
       recordRemoveSingle,
       recordRemoveBatch,
       recordSystemClear,
+      recordJointCreate,
+      recordJointRemove,
+      recordPinToggle,
       clearHistory,
     ]
   );
