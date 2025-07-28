@@ -41,7 +41,7 @@ export class Gravity implements Force {
   }
 
   apply(particle: Particle, _spatialGrid: SpatialGrid): void {
-    if (particle.static) {
+    if (particle.pinned) {
       return;
     }
 

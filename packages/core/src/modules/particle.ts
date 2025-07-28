@@ -8,7 +8,7 @@ export interface ParticleOptions {
   size?: number;
   color?: string;
   id?: number; // Optional ID for restoring particles
-  static?: boolean; // If true, particle is not affected by forces but still affects others
+  pinned?: boolean; // If true, particle is not affected by forces but still affects others
   grabbed?: boolean; // If true, particle is being grabbed by user
 }
 
@@ -23,7 +23,7 @@ export class Particle {
   public size: number;
   public color: string;
   public density?: number;
-  public static?: boolean;
+  public pinned?: boolean;
   public grabbed?: boolean;
 
   constructor(options: ParticleOptions = {}) {
@@ -34,7 +34,7 @@ export class Particle {
     this.mass = options.mass || 1;
     this.size = options.size || 5;
     this.color = options.color || "#ffffff";
-    this.static = options.static || false;
+    this.pinned = options.pinned || false;
     this.grabbed = options.grabbed || false;
   }
 
@@ -66,7 +66,7 @@ export class Particle {
     this.mass = options.mass || 1;
     this.size = options.size || 5;
     this.color = options.color || "#ffffff";
-    this.static = options.static || false;
+    this.pinned = options.pinned || false;
   }
 
   clone(): Particle {
@@ -78,7 +78,7 @@ export class Particle {
       mass: this.mass,
       size: this.size,
       color: this.color,
-      static: this.static,
+      pinned: this.pinned,
     });
   }
 }

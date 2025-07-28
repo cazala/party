@@ -164,6 +164,10 @@ interface MouseState {
   /** Offset from particle center to mouse when grabbing */
   grabOffset: { x: number; y: number };
 
+  // === Pin Mode State ===
+  /** Whether pin tool is active */
+  isPinning: boolean;
+
   // === Undo/Redo Tracking ===
   /** Particles created during streaming sessions for undo */
   streamedParticles: any[];
@@ -242,6 +246,7 @@ export function useInteractions({
     grabbedParticle: null,
     isGrabbing: false,
     grabOffset: { x: 0, y: 0 },
+    isPinning: false,
     streamedParticles: [],
     removedParticles: [],
   });
@@ -341,7 +346,7 @@ export function useInteractions({
           firstColor,
           undefined,
           mass,
-          spawnConfig.static
+          spawnConfig.pinned
         );
         system.addParticle(firstParticle);
         mouseState.streamedParticles.push(firstParticle);
@@ -363,7 +368,7 @@ export function useInteractions({
             particleColor, // Use a random color from the captured array
             undefined, // velocity
             mass, // Use the mass parameter passed to startStreaming
-            spawnConfig.static
+            spawnConfig.pinned
           );
           system.addParticle(particle);
           mouseState.streamedParticles.push(particle);
@@ -548,7 +553,7 @@ export function useInteractions({
         // Start grabbing the particle
         mouseState.grabbedParticle = particle;
         mouseState.isGrabbing = true;
-        
+
         // Calculate offset from particle center to mouse position
         mouseState.grabOffset = {
           x: worldPos.x - particle.position.x,
@@ -557,6 +562,24 @@ export function useInteractions({
 
         // Mark the particle as grabbed so collision systems can handle it specially
         particle.grabbed = true;
+      }
+    },
+    [findParticleAtPosition]
+  );
+
+  /**
+   * Handle pin tool click - toggle particle pinned state
+   */
+  const handlePinClick = useCallback(
+    (worldPos: { x: number; y: number }) => {
+      const particle = findParticleAtPosition(worldPos);
+
+      if (particle) {
+        // Toggle the pinned state
+        particle.pinned = !particle.pinned;
+
+        // Record pin/unpin action for undo
+        // TODO: Add pin state change to undo system
       }
     },
     [findParticleAtPosition]
@@ -977,6 +1000,13 @@ export function useInteractions({
         return;
       }
 
+      // Handle pin mode
+      if (toolMode === "pin") {
+        const pos = getWorldPosition(e);
+        handlePinClick(pos);
+        return;
+      }
+
       const mouseState = mouseStateRef.current;
       const pos = getWorldPosition(e);
 
@@ -1148,9 +1178,11 @@ export function useInteractions({
 
         if (mouseState.isGrabbing && mouseState.grabbedParticle) {
           // Update grabbed particle position
-          mouseState.grabbedParticle.position.x = worldPos.x - mouseState.grabOffset.x;
-          mouseState.grabbedParticle.position.y = worldPos.y - mouseState.grabOffset.y;
-          
+          mouseState.grabbedParticle.position.x =
+            worldPos.x - mouseState.grabOffset.x;
+          mouseState.grabbedParticle.position.y =
+            worldPos.y - mouseState.grabOffset.y;
+
           // Reset velocity to prevent unwanted movement
           mouseState.grabbedParticle.velocity.x = 0;
           mouseState.grabbedParticle.velocity.y = 0;
@@ -1160,6 +1192,18 @@ export function useInteractions({
           mouseState.highlightedParticle = hoveredParticle;
           renderer.setHighlightedParticle(hoveredParticle);
         }
+
+        return;
+      }
+
+      // Handle pin mode
+      if (toolMode === "pin") {
+        mouseState.currentPos = worldPos;
+
+        // Update particle highlighting for pin tool
+        const hoveredParticle = findParticleAtPosition(worldPos);
+        mouseState.highlightedParticle = hoveredParticle;
+        renderer.setHighlightedParticle(hoveredParticle);
 
         return;
       }
@@ -1333,17 +1377,17 @@ export function useInteractions({
       // Handle grab mode mouse up
       if (toolMode === "grab" && mouseStateRef.current.isGrabbing) {
         const mouseState = mouseStateRef.current;
-        
+
         if (mouseState.grabbedParticle) {
           // Release the particle by unmarking it as grabbed
           mouseState.grabbedParticle.grabbed = false;
         }
-        
+
         // Reset grab state
         mouseState.grabbedParticle = null;
         mouseState.isGrabbing = false;
         mouseState.grabOffset = { x: 0, y: 0 };
-        
+
         return;
       }
 
@@ -1416,7 +1460,7 @@ export function useInteractions({
           mouseState.previewColor, // Use the same color as preview
           mouseState.initialVelocity,
           finalMass,
-          spawnConfig.static
+          spawnConfig.pinned
         );
       } else {
         // Size mode: create particle with drag-to-size or spawn config defaults
@@ -1455,7 +1499,7 @@ export function useInteractions({
           mouseState.previewColor, // Use the same color as preview
           undefined, // velocity
           finalMass,
-          spawnConfig.static
+          spawnConfig.pinned
         );
       }
 
@@ -1521,17 +1565,17 @@ export function useInteractions({
     renderer.setJointPreview(null);
     renderer.setHighlightedParticle(null);
     renderer.setSelectedParticle(null);
-    
+
     // Clear grab mode and release grabbed particle
     if (mouseState.isGrabbing && mouseState.grabbedParticle) {
-      // Release the particle by making it non-static again
-      mouseState.grabbedParticle.static = false;
+      // Release the particle by making it non-pinned again
+      mouseState.grabbedParticle.pinned = false;
     }
     // Reset grab state
     mouseState.grabbedParticle = null;
     mouseState.isGrabbing = false;
     mouseState.grabOffset = { x: 0, y: 0 };
-    
+
     mouseState.isDown = false;
     mouseState.isDragging = false;
     mouseState.previewColor = "";

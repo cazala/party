@@ -240,7 +240,7 @@ export class System {
       for (const force of this.forces) {
         force.apply(particle, this.spatialGrid);
       }
-      if (!particle.static) {
+      if (!particle.pinned) {
         particle.update(deltaTime);
 
         // Reset velocity for grabbed particles after physics update
@@ -268,7 +268,7 @@ export class System {
       // Update velocities to match actual movement after constraint solving
       if (deltaTime > 0) {
         for (const particle of this.particles) {
-          if (!particle.static && jointsForce.hasJoint(particle.id)) {
+          if (!particle.pinned && jointsForce.hasJoint(particle.id)) {
             const prePhysicsPosition = prePhysicsPositions.get(particle.id);
             if (prePhysicsPosition) {
               // Calculate total actual movement from start to end

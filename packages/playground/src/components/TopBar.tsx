@@ -33,12 +33,12 @@ export function TopBar({
   useEffect(() => {
     if (system) {
       setIsPlaying(system.isPlaying);
-      
+
       // Poll the system's playing state to keep the button in sync
       const interval = setInterval(() => {
         setIsPlaying(system.isPlaying);
       }, 100); // Check every 100ms
-      
+
       return () => clearInterval(interval);
     }
   }, [system]);
@@ -173,7 +173,14 @@ export function TopBar({
                   viewBox="0 0 12 12"
                   fill="currentColor"
                 >
-                  <line x1="2" y1="3" x2="10" y2="9" stroke="currentColor" strokeWidth="1.5" />
+                  <line
+                    x1="2"
+                    y1="3"
+                    x2="10"
+                    y2="9"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
                   <circle cx="2" cy="3" r="1.5" />
                   <circle cx="10" cy="9" r="1.5" />
                 </svg>
@@ -194,6 +201,22 @@ export function TopBar({
                   <path d="M2 4c0-.5.4-1 1-1s1 .5 1 1v2h1V3c0-.5.4-1 1-1s1 .5 1 1v3h1V2c0-.5.4-1 1-1s1 .5 1 1v4h.5c.5 0 1 .4 1 1v2c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V4z" />
                 </svg>
                 <span>Grab</span>
+              </button>
+              <button
+                onClick={() => onToolModeChange("pin")}
+                className={`tool-mode-button tool-mode-fifth ${
+                  toolMode === "pin" ? "tool-mode-active" : ""
+                }`}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                >
+                  <path d="M6 1L7 2V4L8 5V6L7 7V9L6 10L5 9V7L4 6V5L5 4V2L6 1Z M6 3L5.5 3.5V5.5L6 6L6.5 5.5V3.5L6 3Z" />
+                </svg>
+                <span>Pin</span>
               </button>
             </div>
           </div>

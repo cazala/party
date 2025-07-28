@@ -84,7 +84,7 @@ export class Physics implements Force {
   }
 
   apply(particle: Particle, _spatialGrid: SpatialGrid): void {
-    if (particle.static || particle.grabbed) {
+    if (particle.pinned || particle.grabbed) {
       return;
     }
 

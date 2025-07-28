@@ -226,7 +226,7 @@ export class Behavior implements Force {
   }
 
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
-    if (!this.enabled || particle.static) {
+    if (!this.enabled || particle.pinned) {
       return;
     }
 

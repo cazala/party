@@ -110,13 +110,13 @@ export class Collisions implements Force {
       const angle = Math.random() * Math.PI * 2;
       collisionVector.set(Math.cos(angle), Math.sin(angle));
       // Move them apart immediately
-      if (particle1.static) {
+      if (particle1.pinned) {
         const separationDistance = combinedRadius * 1.01; // Slightly more than touching
         particle2.position.set(
           particle2.position.x + collisionVector.x * separationDistance,
           particle2.position.y + collisionVector.y * separationDistance
         );
-      } else if (particle2.static) {
+      } else if (particle2.pinned) {
         const separationDistance = combinedRadius * 1.01; // Slightly more than touching
         particle1.position.set(
           particle1.position.x + collisionVector.x * separationDistance,
@@ -164,9 +164,9 @@ export class Collisions implements Force {
       const perturbX = (Math.random() - 0.5) * perturbationStrength;
       const perturbY = (Math.random() - 0.5) * perturbationStrength;
 
-      if (particle1.static) {
+      if (particle1.pinned) {
         particle2.position.add(new Vector2D(perturbX, perturbY));
-      } else if (particle2.static) {
+      } else if (particle2.pinned) {
         particle1.position.add(new Vector2D(-perturbX, -perturbY));
       } else {
         particle1.position.add(new Vector2D(perturbX, perturbY));
@@ -190,12 +190,12 @@ export class Collisions implements Force {
       // Smaller (lighter) particles move more than heavier ones
       const separationPerMass = overlap / totalMass;
 
-      if (particle1.static) {
+      if (particle1.pinned) {
         const correction = collisionVector
           .clone()
           .multiply(particle1.size * 1.01); // particle2 moves opposite of particle1
         particle2.position.add(correction);
-      } else if (particle2.static) {
+      } else if (particle2.pinned) {
         const correction = collisionVector
           .clone()
           .multiply(particle2.size * 1.01); // particle1 moves opposite of particle2
@@ -213,7 +213,7 @@ export class Collisions implements Force {
       }
 
       // ---- Eating logic ----
-      if (this.eat && !particle1.static && !particle2.static) {
+      if (this.eat && !particle1.pinned && !particle2.pinned) {
         // Bigger particle eats smaller one
         if (particle1.mass > particle2.mass) {
           particle2.mass = 0; // Mark for removal
@@ -228,7 +228,7 @@ export class Collisions implements Force {
       }
 
       // ---- Velocity response (angle & mass aware) ----
-      if (particle1.static) {
+      if (particle1.pinned) {
         const newDirection = particle1.position
           .clone()
           .subtract(particle2.position)
@@ -236,7 +236,7 @@ export class Collisions implements Force {
         const speed = particle2.velocity.magnitude();
         const newVelocity = newDirection.multiply(speed * -1);
         particle2.velocity.set(newVelocity.x, newVelocity.y);
-      } else if (particle2.static) {
+      } else if (particle2.pinned) {
         const newDirection = particle2.position
           .clone()
           .subtract(particle1.position)

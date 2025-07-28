@@ -729,6 +729,11 @@ export class Canvas2DRenderer extends Renderer {
   }
 
   private getParticleColor(particle: Particle): string {
+    // Pinned particles are always rendered in grey
+    if (particle.pinned) {
+      return "#6b7280";
+    }
+
     switch (this.colorMode) {
       case "custom":
         return this.customColor;
@@ -1402,7 +1407,9 @@ export class Canvas2DRenderer extends Renderer {
    * Render all joints in the system
    */
   private renderJoints(system: System): void {
-    const joints = system.forces.find(force => force instanceof Joints) as Joints;
+    const joints = system.forces.find(
+      (force) => force instanceof Joints
+    ) as Joints;
     if (!joints || !joints.enabled) return;
 
     for (const joint of joints.getAllJoints()) {
@@ -1420,7 +1427,7 @@ export class Canvas2DRenderer extends Renderer {
 
     // Get joint stress for coloring
     const stressRatio = joint.getStressRatio();
-    
+
     // Color based on stress: blue (compression) -> green (rest) -> red (tension)
     let color: string;
     if (stressRatio < 0) {
@@ -1466,7 +1473,7 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.lineWidth = Math.max(1, 2 / this.zoom);
     this.ctx.globalAlpha = 0.8;
     this.ctx.lineCap = "round";
-    
+
     // Dashed line for preview
     const dashSize = Math.max(3, 6 / this.zoom);
     this.ctx.setLineDash([dashSize, dashSize]);
@@ -1492,7 +1499,7 @@ export class Canvas2DRenderer extends Renderer {
     // Highlight with pulsing outline
     const time = Date.now() / 1000;
     const pulseAlpha = 0.5 + 0.3 * Math.sin(time * 4); // Pulse between 0.2 and 0.8
-    
+
     this.ctx.strokeStyle = "rgba(255, 255, 255, " + pulseAlpha + ")";
     this.ctx.lineWidth = Math.max(2, 4 / this.zoom);
     this.ctx.globalAlpha = 1;

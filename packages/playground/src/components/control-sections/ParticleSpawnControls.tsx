@@ -9,7 +9,7 @@ export const DEFAULT_SPAWN_PARTICLE_MASS = calculateMassFromSize(
 );
 export const DEFAULT_SPAWN_STREAM_MODE = false;
 export const DEFAULT_SPAWN_STREAM_RATE = 10; // particles per second
-export const DEFAULT_SPAWN_STATIC = false;
+export const DEFAULT_SPAWN_PINNED = false;
 
 export interface SpawnConfig {
   defaultSize: number;
@@ -17,7 +17,7 @@ export interface SpawnConfig {
   colors: string[]; // Array of colors to use for spawning
   streamMode: boolean;
   streamRate: number; // particles per second
-  static: boolean; // Whether to spawn static particles
+  pinned: boolean; // Whether to spawn pinned particles
 }
 
 interface ParticleSpawnControlsProps {
@@ -38,7 +38,7 @@ export function ParticleSpawnControls({
   const [colors, setColors] = useState<string[]>(initialColors);
   const [streamMode, setStreamMode] = useState(DEFAULT_SPAWN_STREAM_MODE);
   const [streamRate, setStreamRate] = useState(DEFAULT_SPAWN_STREAM_RATE);
-  const [isStatic, setIsStatic] = useState(DEFAULT_SPAWN_STATIC);
+  const [isPinned, setIsPinned] = useState(DEFAULT_SPAWN_PINNED);
 
   // Update particle size when initialSize prop changes (from Init section)
   useEffect(() => {
@@ -59,7 +59,7 @@ export function ParticleSpawnControls({
       colors,
       streamMode,
       streamRate,
-      static: isStatic,
+      pinned: isPinned,
     };
     onSpawnConfigChange?.(config);
   }, [
@@ -68,7 +68,7 @@ export function ParticleSpawnControls({
     colors,
     streamMode,
     streamRate,
-    isStatic,
+    isPinned,
     onSpawnConfigChange,
   ]);
 
@@ -129,11 +129,11 @@ export function ParticleSpawnControls({
         <label>
           <input
             type="checkbox"
-            checked={isStatic}
-            onChange={(e) => setIsStatic(e.target.checked)}
+            checked={isPinned}
+            onChange={(e) => setIsPinned(e.target.checked)}
             className="checkbox"
           />
-          Static
+          Pin
         </label>
       </div>
 
