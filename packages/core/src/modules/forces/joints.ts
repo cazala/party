@@ -64,8 +64,11 @@ export class Joint {
   applyConstraint(): void {
     if (!this.validate()) return;
 
-    // Skip if either particle is static (but allow static-dynamic pairs)
+    // Skip if both particles are static (but allow static-dynamic pairs)
     if (this.particleA.static && this.particleB.static) return;
+
+    // Skip if both particles are grabbed (but allow grabbed-dynamic pairs)
+    if (this.particleA.grabbed && this.particleB.grabbed) return;
 
     // Calculate current distance and direction
     const dx = this.particleB.position.x - this.particleA.position.x;
@@ -103,20 +106,33 @@ export class Joint {
     const correctionY = correction * directionY;
 
     // Apply position corrections
-    if (!this.particleA.static && !this.particleB.static) {
+    if (
+      !this.particleA.static &&
+      !this.particleA.grabbed &&
+      !this.particleB.static &&
+      !this.particleB.grabbed
+    ) {
       // Both particles can move - split the correction
       this.particleA.position.x += correctionX;
       this.particleA.position.y += correctionY;
       this.particleB.position.x -= correctionX;
       this.particleB.position.y -= correctionY;
-    } else if (this.particleA.static && !this.particleB.static) {
-      // Only particle B can move
+    } else if (
+      (this.particleA.static || this.particleA.grabbed) &&
+      !this.particleB.static &&
+      !this.particleB.grabbed
+    ) {
+      // Only particle B can move (A is static or grabbed)
       this.particleB.position.x =
         this.particleA.position.x + this.restLength * directionX;
       this.particleB.position.y =
         this.particleA.position.y + this.restLength * directionY;
-    } else if (!this.particleA.static && this.particleB.static) {
-      // Only particle A can move
+    } else if (
+      !this.particleA.static &&
+      !this.particleA.grabbed &&
+      (this.particleB.static || this.particleB.grabbed)
+    ) {
+      // Only particle A can move (B is static or grabbed)
       this.particleA.position.x =
         this.particleB.position.x - this.restLength * directionX;
       this.particleA.position.y =
@@ -346,7 +362,7 @@ export class Joints implements Force {
     // Check each joint-connected particle for collisions with other joints
     for (const joint of this.joints.values()) {
       [joint.particleA, joint.particleB].forEach((particle) => {
-        if (particle.static) return;
+        if (particle.static || particle.grabbed) return;
 
         // Check this particle against all other joints
         for (const otherJoint of this.joints.values()) {
@@ -506,7 +522,11 @@ export class Joints implements Force {
     // Push joint particles away from the grabbed particle
     const pushStrength = overlap * 0.5; // How much to push each joint particle
 
-    if (!joint.particleA.static && weights.weightA > 0) {
+    if (
+      !joint.particleA.static &&
+      !joint.particleA.grabbed &&
+      weights.weightA > 0
+    ) {
       // Push particle A away
       const pushForce = collisionNormal
         .clone()
@@ -520,7 +540,11 @@ export class Joints implements Force {
       joint.particleA.velocity.add(pushVelocity);
     }
 
-    if (!joint.particleB.static && weights.weightB > 0) {
+    if (
+      !joint.particleB.static &&
+      !joint.particleB.grabbed &&
+      weights.weightB > 0
+    ) {
       // Push particle B away
       const pushForce = collisionNormal
         .clone()
@@ -569,7 +593,11 @@ export class Joints implements Force {
     const restitution = this.restitution; // Same as other collisions
     const repulsionStrength = overlap * 2; // How strongly to push joint particles away
 
-    if (!joint.particleA.static && weights.weightA > 0) {
+    if (
+      !joint.particleA.static &&
+      !joint.particleA.grabbed &&
+      weights.weightA > 0
+    ) {
       // Push particle A away from static particle
       const repulsionForce = collisionNormal
         .clone()
@@ -583,7 +611,11 @@ export class Joints implements Force {
       joint.particleA.velocity.add(velocityChange);
     }
 
-    if (!joint.particleB.static && weights.weightB > 0) {
+    if (
+      !joint.particleB.static &&
+      !joint.particleB.grabbed &&
+      weights.weightB > 0
+    ) {
       // Push particle B away from static particle
       const repulsionForce = collisionNormal
         .clone()
@@ -606,8 +638,11 @@ export class Joints implements Force {
     closestPoint: Vector2D,
     joint: Joint
   ): void {
-    // Skip collision if any joint particle is static (immovable joints shouldn't transfer force)
-    if (joint.particleA.static && joint.particleB.static) {
+    // Skip collision if both joint particles are static or grabbed (immovable joints shouldn't transfer force)
+    if (
+      (joint.particleA.static || joint.particleA.grabbed) &&
+      (joint.particleB.static || joint.particleB.grabbed)
+    ) {
       // Handle collision with static joint (only bounce the hitting particle)
       this.handleStaticJointCollision(particle, closestPoint, joint);
       return;
@@ -827,11 +862,11 @@ export class Joints implements Force {
     let effectiveMass = 0;
 
     // Add mass contribution from each joint particle based on impact weights
-    if (!joint.particleA.static) {
+    if (!joint.particleA.static && !joint.particleA.grabbed) {
       effectiveMass += joint.particleA.mass * weights.weightA;
     }
 
-    if (!joint.particleB.static) {
+    if (!joint.particleB.static && !joint.particleB.grabbed) {
       effectiveMass += joint.particleB.mass * weights.weightB;
     }
 
@@ -848,7 +883,11 @@ export class Joints implements Force {
     totalImpulse: number
   ): void {
     // Transfer force to particleA (force opposite to collision normal)
-    if (!joint.particleA.static && weights.weightA > 0) {
+    if (
+      !joint.particleA.static &&
+      !joint.particleA.grabbed &&
+      weights.weightA > 0
+    ) {
       const forceA = collisionNormal
         .clone()
         .multiply((-totalImpulse * weights.weightA) / joint.particleA.mass);
@@ -856,7 +895,11 @@ export class Joints implements Force {
     }
 
     // Transfer force to particleB (force opposite to collision normal)
-    if (!joint.particleB.static && weights.weightB > 0) {
+    if (
+      !joint.particleB.static &&
+      !joint.particleB.grabbed &&
+      weights.weightB > 0
+    ) {
       const forceB = collisionNormal
         .clone()
         .multiply((-totalImpulse * weights.weightB) / joint.particleB.mass);

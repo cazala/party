@@ -35,7 +35,8 @@ export class Physics implements Force {
   constructor(options: PhysicsOptions = {}) {
     this.gravity = {
       strength: options.gravity?.strength || DEFAULT_GRAVITY_STRENGTH,
-      direction: options.gravity?.direction || DEFAULT_GRAVITY_DIRECTION.clone(),
+      direction:
+        options.gravity?.direction || DEFAULT_GRAVITY_DIRECTION.clone(),
     };
     this.inertia = options.inertia || DEFAULT_INERTIA;
     this.friction = options.friction || DEFAULT_FRICTION;
@@ -83,7 +84,7 @@ export class Physics implements Force {
   }
 
   apply(particle: Particle, _spatialGrid: SpatialGrid): void {
-    if (particle.static) {
+    if (particle.static || particle.grabbed) {
       return;
     }
 
@@ -103,13 +104,17 @@ export class Physics implements Force {
     if (this.inertia > 0 && previousPosition) {
       // Calculate actual velocity from position change
       const actualVelocity = currentPosition.clone().subtract(previousPosition);
-      const inertiaForce = actualVelocity.clone().multiply(this.inertia * particle.mass);
+      const inertiaForce = actualVelocity
+        .clone()
+        .multiply(this.inertia * particle.mass);
       particle.applyForce(inertiaForce);
     }
 
     // Apply friction (dampen current velocity)
     if (this.friction > 0) {
-      const frictionForce = particle.velocity.clone().multiply(-this.friction * particle.mass);
+      const frictionForce = particle.velocity
+        .clone()
+        .multiply(-this.friction * particle.mass);
       particle.applyForce(frictionForce);
     }
 
@@ -141,13 +146,13 @@ export function createPhysicsForce(
   inertia: number = DEFAULT_INERTIA,
   friction: number = DEFAULT_FRICTION
 ): Physics {
-  return new Physics({ 
+  return new Physics({
     gravity: {
       strength: gravity.strength || DEFAULT_GRAVITY_STRENGTH,
-      direction: gravity.direction || DEFAULT_GRAVITY_DIRECTION
+      direction: gravity.direction || DEFAULT_GRAVITY_DIRECTION,
     },
-    inertia, 
-    friction 
+    inertia,
+    friction,
   });
 }
 
