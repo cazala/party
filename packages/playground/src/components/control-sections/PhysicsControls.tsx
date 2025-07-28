@@ -1,8 +1,18 @@
 import { useState, useEffect } from "react";
-import { Physics, Collisions, degToRad, radToDeg, DEFAULT_GRAVITY_STRENGTH, DEFAULT_GRAVITY_ANGLE, DEFAULT_INERTIA, DEFAULT_FRICTION } from "@party/core";
+import {
+  Physics,
+  Collisions,
+  degToRad,
+  radToDeg,
+  DEFAULT_GRAVITY_STRENGTH,
+  DEFAULT_GRAVITY_ANGLE,
+  DEFAULT_INERTIA,
+  DEFAULT_FRICTION,
+} from "@party/core";
 import {
   DEFAULT_COLLISIONS_ENABLED,
   DEFAULT_COLLISIONS_EAT,
+  DEFAULT_COLLISIONS_RESTITUTION,
 } from "@party/core/modules/forces/collisions";
 
 interface PhysicsControlsProps {
@@ -14,13 +24,18 @@ export function PhysicsControls({ physics, collisions }: PhysicsControlsProps) {
   const [gravityStrength, setGravityStrength] = useState(
     DEFAULT_GRAVITY_STRENGTH
   );
-  const [gravityAngle, setGravityAngle] = useState(radToDeg(DEFAULT_GRAVITY_ANGLE)); // Convert radians to degrees for UI
+  const [gravityAngle, setGravityAngle] = useState(
+    radToDeg(DEFAULT_GRAVITY_ANGLE)
+  ); // Convert radians to degrees for UI
   const [inertia, setInertia] = useState(DEFAULT_INERTIA);
   const [friction, setFriction] = useState(DEFAULT_FRICTION);
   const [collisionsEnabled, setCollisionsEnabled] = useState(
     DEFAULT_COLLISIONS_ENABLED
   );
   const [collisionsEat, setCollisionsEat] = useState(DEFAULT_COLLISIONS_EAT);
+  const [collisionsRestitution, setCollisionsRestitution] = useState(
+    DEFAULT_COLLISIONS_RESTITUTION
+  );
 
   useEffect(() => {
     if (physics) {
@@ -34,6 +49,7 @@ export function PhysicsControls({ physics, collisions }: PhysicsControlsProps) {
     if (collisions) {
       setCollisionsEnabled(collisions.enabled);
       setCollisionsEat(collisions.eat);
+      setCollisionsRestitution(collisions.restitution);
     }
   }, [physics, collisions]);
 
@@ -76,6 +92,13 @@ export function PhysicsControls({ physics, collisions }: PhysicsControlsProps) {
     setCollisionsEat(eat);
     if (collisions) {
       collisions.setEat(eat);
+    }
+  };
+
+  const handleCollisionsRestitutionChange = (restitution: number) => {
+    setCollisionsRestitution(restitution);
+    if (collisions) {
+      collisions.setRestitution(restitution);
     }
   };
 
@@ -164,6 +187,23 @@ export function PhysicsControls({ physics, collisions }: PhysicsControlsProps) {
             className={`checkbox ${!collisionsEnabled ? "disabled" : ""}`}
           />
           Eat on Collision
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Collision Restitution: {collisionsRestitution.toFixed(3)}
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.001"
+            value={collisionsRestitution}
+            onChange={(e) =>
+              handleCollisionsRestitutionChange(parseFloat(e.target.value))
+            }
+            className="slider"
+          />
         </label>
       </div>
     </div>

@@ -7,6 +7,7 @@ import mitt, { Emitter } from "mitt";
 // Default constants for Collisions
 export const DEFAULT_COLLISIONS_ENABLED = true;
 export const DEFAULT_COLLISIONS_EAT = false;
+export const DEFAULT_COLLISIONS_RESTITUTION = 0.95;
 
 export type CollisionsEvents = {
   collision: { particle1: Particle; particle2: Particle; enabled: boolean };
@@ -15,16 +16,19 @@ export type CollisionsEvents = {
 export interface CollisionsOptions {
   enabled?: boolean;
   eat?: boolean;
+  restitution?: number;
 }
 
 export class Collisions implements Force {
   public enabled: boolean;
   public eat: boolean;
+  public restitution: number;
   public events: Emitter<CollisionsEvents>; // For emitting collision events
 
   constructor(options: CollisionsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_COLLISIONS_ENABLED;
     this.eat = options.eat ?? DEFAULT_COLLISIONS_EAT;
+    this.restitution = options.restitution ?? DEFAULT_COLLISIONS_RESTITUTION;
     this.events = mitt<CollisionsEvents>();
   }
 
@@ -34,6 +38,10 @@ export class Collisions implements Force {
 
   setEat(eat: boolean): void {
     this.eat = eat;
+  }
+
+  setRestitution(restitution: number): void {
+    this.restitution = restitution;
   }
 
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
@@ -71,10 +79,20 @@ export class Collisions implements Force {
 
     // Handle grabbed particles specially - they push others out of the way
     if (particle1.grabbed && !particle2.grabbed) {
-      this.handleGrabbedParticleCollision(particle1, particle2, distance, combinedRadius);
+      this.handleGrabbedParticleCollision(
+        particle1,
+        particle2,
+        distance,
+        combinedRadius
+      );
       return;
     } else if (particle2.grabbed && !particle1.grabbed) {
-      this.handleGrabbedParticleCollision(particle2, particle1, distance, combinedRadius);
+      this.handleGrabbedParticleCollision(
+        particle2,
+        particle1,
+        distance,
+        combinedRadius
+      );
       return;
     } else if (particle1.grabbed && particle2.grabbed) {
       // Both grabbed - no collision response needed
@@ -241,7 +259,7 @@ export class Collisions implements Force {
 
         const m1 = particle1.mass;
         const m2 = particle2.mass;
-        const e = 0.95; // coefficient of restitution (damping)
+        const e = this.restitution; // coefficient of restitution (damping)
 
         // New normal velocities after 1-D collision equations with restitution
         const v1nAfter = (v1n * (m1 - e * m2) + (1 + e) * m2 * v2n) / (m1 + m2);
@@ -288,13 +306,13 @@ export class Collisions implements Force {
 
     // Calculate overlap
     const overlap = combinedRadius - distance;
-    
+
     if (overlap > 0) {
       // Push the regular particle out of the way
       const pushDistance = overlap + 1; // Small buffer to prevent re-collision
       const pushForce = collisionVector.clone().multiply(pushDistance);
       regularParticle.position.add(pushForce);
-      
+
       // Apply velocity to the pushed particle to make it feel natural
       const pushVelocity = collisionVector.clone().multiply(pushDistance * 5);
       regularParticle.velocity.add(pushVelocity);

@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
-import { Joints, JointType, System } from "@party/core";
+import {
+  Joints,
+  JointType,
+  System,
+  DEFAULT_JOINT_RESTITUTION,
+  DEFAULT_JOINT_COLLISIONS_ENABLED,
+} from "@party/core";
 
 interface JointControlsProps {
   joints: Joints | null;
@@ -13,6 +19,10 @@ export function JointControls({ joints, system }: JointControlsProps) {
   const [defaultMaxForce, setDefaultMaxForce] = useState(1000);
   const [defaultType, setDefaultType] = useState<JointType>("pin");
   const [jointCount, setJointCount] = useState(0);
+  const [restitution, setRestitution] = useState(DEFAULT_JOINT_RESTITUTION);
+  const [enableCollisions, setEnableCollisions] = useState(
+    DEFAULT_JOINT_COLLISIONS_ENABLED
+  );
 
   // Update local state when joints changes
   useEffect(() => {
@@ -23,6 +33,8 @@ export function JointControls({ joints, system }: JointControlsProps) {
       setDefaultMaxForce(joints.defaultMaxForce);
       setDefaultType(joints.defaultType);
       setJointCount(joints.getJointCount());
+      setRestitution(joints.restitution);
+      setEnableCollisions(joints.enableCollisions);
     }
   }, [joints]);
 
@@ -81,13 +93,13 @@ export function JointControls({ joints, system }: JointControlsProps) {
 
   const handleJoinSequence = () => {
     if (!joints || !system) return;
-    
+
     const particles = system.particles;
     if (particles.length < 2) return;
-    
+
     // Sort particles by ID
     const sortedParticles = [...particles].sort((a, b) => a.id - b.id);
-    
+
     // Create joints between consecutive particles
     for (let i = 0; i < sortedParticles.length - 1; i++) {
       joints.createJoint({
@@ -99,13 +111,13 @@ export function JointControls({ joints, system }: JointControlsProps) {
 
   const handleJoinCircuit = () => {
     if (!joints || !system) return;
-    
+
     const particles = system.particles;
     if (particles.length < 2) return;
-    
+
     // Sort particles by ID
     const sortedParticles = [...particles].sort((a, b) => a.id - b.id);
-    
+
     // Create joints between consecutive particles
     for (let i = 0; i < sortedParticles.length - 1; i++) {
       joints.createJoint({
@@ -113,7 +125,7 @@ export function JointControls({ joints, system }: JointControlsProps) {
         particleB: sortedParticles[i + 1],
       });
     }
-    
+
     // Close the circuit by joining last to first
     if (sortedParticles.length > 2) {
       joints.createJoint({
@@ -125,10 +137,10 @@ export function JointControls({ joints, system }: JointControlsProps) {
 
   const handleJoinAll = () => {
     if (!joints || !system) return;
-    
+
     const particles = system.particles;
     if (particles.length < 2) return;
-    
+
     // Create joints between every pair of particles
     for (let i = 0; i < particles.length; i++) {
       for (let j = i + 1; j < particles.length; j++) {
@@ -137,6 +149,20 @@ export function JointControls({ joints, system }: JointControlsProps) {
           particleB: particles[j],
         });
       }
+    }
+  };
+
+  const handleRestitutionChange = (value: number) => {
+    setRestitution(value);
+    if (joints) {
+      joints.setRestitution(value);
+    }
+  };
+
+  const handleEnableCollisionsChange = (value: boolean) => {
+    setEnableCollisions(value);
+    if (joints) {
+      joints.setEnableCollisions(value);
     }
   };
 
@@ -219,6 +245,36 @@ export function JointControls({ joints, system }: JointControlsProps) {
       </div>
 
       <div className="control-group">
+        <label>
+          Restitution: {restitution.toFixed(2)}
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={restitution}
+            onChange={(e) =>
+              handleRestitutionChange(parseFloat(e.target.value))
+            }
+            className="slider"
+            disabled={!enabled}
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={enableCollisions}
+            onChange={(e) => handleEnableCollisionsChange(e.target.checked)}
+            className="checkbox"
+          />
+          Enable Collisions
+        </label>
+      </div>
+
+      <div className="control-group">
         <div className="joint-info">
           <span>Active Joints: {jointCount}</span>
         </div>
@@ -254,50 +310,71 @@ export function JointControls({ joints, system }: JointControlsProps) {
             disabled={!enabled || !system || system.particles.length < 2}
             style={{
               padding: "6px 12px",
-              backgroundColor: !enabled || !system || system.particles.length < 2 ? "#666" : "#4CAF50",
+              backgroundColor:
+                !enabled || !system || system.particles.length < 2
+                  ? "#666"
+                  : "#4CAF50",
               color: "white",
               border: "none",
               borderRadius: "4px",
-              cursor: !enabled || !system || system.particles.length < 2 ? "not-allowed" : "pointer",
+              cursor:
+                !enabled || !system || system.particles.length < 2
+                  ? "not-allowed"
+                  : "pointer",
               fontSize: "12px",
               fontWeight: "500",
-              opacity: !enabled || !system || system.particles.length < 2 ? 0.5 : 1,
+              opacity:
+                !enabled || !system || system.particles.length < 2 ? 0.5 : 1,
             }}
           >
             Join Sequence
           </button>
-          
+
           <button
             onClick={handleJoinCircuit}
             disabled={!enabled || !system || system.particles.length < 3}
             style={{
               padding: "6px 12px",
-              backgroundColor: !enabled || !system || system.particles.length < 3 ? "#666" : "#2196F3",
+              backgroundColor:
+                !enabled || !system || system.particles.length < 3
+                  ? "#666"
+                  : "#2196F3",
               color: "white",
               border: "none",
               borderRadius: "4px",
-              cursor: !enabled || !system || system.particles.length < 3 ? "not-allowed" : "pointer",
+              cursor:
+                !enabled || !system || system.particles.length < 3
+                  ? "not-allowed"
+                  : "pointer",
               fontSize: "12px",
               fontWeight: "500",
-              opacity: !enabled || !system || system.particles.length < 3 ? 0.5 : 1,
+              opacity:
+                !enabled || !system || system.particles.length < 3 ? 0.5 : 1,
             }}
           >
             Join Circuit
           </button>
-          
+
           <button
             onClick={handleJoinAll}
             disabled={!enabled || !system || system.particles.length < 2}
             style={{
               padding: "6px 12px",
-              backgroundColor: !enabled || !system || system.particles.length < 2 ? "#666" : "#FF9800",
+              backgroundColor:
+                !enabled || !system || system.particles.length < 2
+                  ? "#666"
+                  : "#FF9800",
               color: "white",
               border: "none",
               borderRadius: "4px",
-              cursor: !enabled || !system || system.particles.length < 2 ? "not-allowed" : "pointer",
+              cursor:
+                !enabled || !system || system.particles.length < 2
+                  ? "not-allowed"
+                  : "pointer",
               fontSize: "12px",
               fontWeight: "500",
-              opacity: !enabled || !system || system.particles.length < 2 ? 0.5 : 1,
+              opacity:
+                !enabled || !system || system.particles.length < 2 ? 0.5 : 1,
             }}
           >
             Join All
@@ -338,11 +415,17 @@ export function JointControls({ joints, system }: JointControlsProps) {
               color: "#aaa",
             }}
           >
-            <li><strong>Sequence:</strong> Connect particles in ID order (chain)</li>
-            <li><strong>Circuit:</strong> Sequence + connect last to first (loop)</li>
-            <li><strong>All:</strong> Connect every particle to every other</li>
+            <li>
+              <strong>Sequence:</strong> Connect particles in ID order (chain)
+            </li>
+            <li>
+              <strong>Circuit:</strong> Sequence + connect last to first (loop)
+            </li>
+            <li>
+              <strong>All:</strong> Connect every particle to every other
+            </li>
           </ul>
-          
+
           <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#ccc" }}>
             Manual Instructions:
           </h4>

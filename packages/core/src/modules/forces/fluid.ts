@@ -152,7 +152,7 @@ export class Fluid implements Force {
     for (const particle of particles) {
       const predictedPosition = particle.position
         .clone()
-        .add(particle.velocity.clone().multiply(1 / 120));
+        .add(particle.velocity.clone().multiply(1 / 60));
       this.densities.set(
         particle.id,
         calculateDensity(predictedPosition, this.influenceRadius, particles)
