@@ -380,10 +380,10 @@ export class Joints implements Force {
 
 
   /**
-   * Force interface: apply joint collisions - now optimized with spatial grid
+   * Force interface: apply joint collisions using spatial grid
    */
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
-    // Joint collisions are now handled globally in warmup() for better performance
+    // Joint collisions are now handled globally in checkAllJointCollisions() for better performance
     // This method is kept for interface compatibility but does nothing
   }
 
@@ -403,7 +403,7 @@ export class Joints implements Force {
 
     invalidJoints.forEach((id) => this.joints.delete(id));
 
-    // Note: Joint constraints are now applied AFTER physics integration
+    // Joint constraints are applied AFTER physics integration
     // to avoid interfering with natural motion from forces like gravity
   }
 
@@ -428,45 +428,15 @@ export class Joints implements Force {
 
     // For each joint, find nearby particles and check collisions
     for (const joint of this.joints.values()) {
-      this.checkJointCollisionsOptimized(joint, spatialGrid);
+      this.checkJointCollisions(joint, spatialGrid);
     }
   }
 
-  /**
-   * Check for collisions between a particle and all joint line segments (DEPRECATED)
-   * This method is kept for compatibility but replaced by optimized version
-   */
-  private checkJointCollisions(particle: Particle): void {
-    if (particle.static) return;
-
-    for (const joint of this.joints.values()) {
-      // Skip joints that involve this particle (can't collide with your own joints)
-      if (joint.particleA.id === particle.id || joint.particleB.id === particle.id) {
-        continue;
-      }
-
-      // Get the closest point on the joint line segment to the particle
-      const closestPoint = this.getClosestPointOnLineSegment(
-        particle.position,
-        joint.particleA.position,
-        joint.particleB.position
-      );
-
-      // Check if particle is colliding with the joint line
-      const distance = particle.position.distance(closestPoint);
-      const radius = particle.size; // size IS radius in this system
-
-      if (distance < radius && distance > 0.001) {
-        // Collision detected - apply bounce physics
-        this.handleJointCollision(particle, closestPoint, joint);
-      }
-    }
-  }
 
   /**
-   * Optimized collision detection for a single joint using spatial grid
+   * Collision detection for a single joint using spatial grid
    */
-  private checkJointCollisionsOptimized(joint: Joint, spatialGrid: SpatialGrid): void {
+  private checkJointCollisions(joint: Joint, spatialGrid: SpatialGrid): void {
     // Calculate joint bounding circle for spatial grid lookup
     const boundingCircle = this.getJointBoundingCircle(joint);
     
@@ -483,11 +453,8 @@ export class Joints implements Force {
       // Skip particles that are part of this joint
       if (this.isParticleInvolvedInJoint(particle, joint)) continue;
 
-      // Early exit: quick distance check before expensive line-segment collision
-      if (!this.quickDistanceCheck(particle, boundingCircle)) continue;
-
-      // Simple improved collision detection that catches fast particles
-      if (this.checkImprovedCollision(particle, joint)) {
+      // Collision detection that catches fast particles
+      if (this.checkCollision(particle, joint)) {
         // Get the closest point on the joint line segment to the particle
         const closestPoint = this.getClosestPointOnLineSegment(
           particle.position,
@@ -666,20 +633,6 @@ export class Joints implements Force {
     return joint.particleA.id === particle.id || joint.particleB.id === particle.id;
   }
 
-  /**
-   * Quick distance check to cull particles that are definitely too far away
-   */
-  private quickDistanceCheck(
-    particle: Particle,
-    boundingCircle: { center: Vector2D; radius: number }
-  ): boolean {
-    // Check if particle is within the joint's bounding circle
-    const distanceToCenter = particle.position.distance(boundingCircle.center);
-    const combinedRadius = particle.size + boundingCircle.radius;
-
-    // If particle is outside the bounding area, skip expensive line-segment collision
-    return distanceToCenter <= combinedRadius;
-  }
 
   /**
    * Calculate impact weights based on where along the joint the collision occurred
@@ -754,10 +707,10 @@ export class Joints implements Force {
   }
 
   /**
-   * Simple improved collision detection that checks both current position and trajectory
+   * Collision detection that checks both current position and trajectory
    * This prevents most tunneling without complex geometric calculations
    */
-  private checkImprovedCollision(particle: Particle, joint: Joint): boolean {
+  private checkCollision(particle: Particle, joint: Joint): boolean {
     const radius = particle.size;
     
     // Check 1: Current position (original method)
