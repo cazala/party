@@ -509,9 +509,6 @@ export class Joints implements Force {
 
     // Check collision with each nearby particle
     for (const particle of nearbyParticles) {
-      // Skip static particles (but handle grabbed particles specially)
-      if (particle.static) continue;
-      
       // Skip particles that are part of this joint
       if (this.isParticleInvolvedInJoint(particle, joint)) continue;
 
@@ -527,6 +524,9 @@ export class Joints implements Force {
         if (particle.grabbed) {
           // Grabbed particles push joints out of the way
           this.handleGrabbedParticleCollision(particle, closestPoint, joint);
+        } else if (particle.static) {
+          // Static particles block joints - joint particles bounce off
+          this.handleStaticParticleCollision(particle, closestPoint, joint);
         } else {
           // Regular particles bounce off joints
           this.handleJointCollision(particle, closestPoint, joint);
@@ -612,6 +612,56 @@ export class Joints implements Force {
       // Also apply velocity to make the push feel natural
       const pushVelocity = collisionNormal.clone().multiply(-pushStrength * weights.weightB * 10);
       joint.particleB.velocity.add(pushVelocity);
+    }
+  }
+
+  /**
+   * Handle collision where joint hits a static particle - joint particles bounce off
+   */
+  private handleStaticParticleCollision(
+    staticParticle: Particle,
+    closestPoint: Vector2D,
+    joint: Joint
+  ): void {
+    // Calculate how much the joint overlaps with the static particle
+    const overlap = staticParticle.size - staticParticle.position.distance(closestPoint);
+    if (overlap <= 0) return;
+
+    // Calculate collision normal (from static particle center to joint line)
+    const collisionNormal = closestPoint.clone().subtract(staticParticle.position);
+    if (collisionNormal.magnitude() === 0) {
+      // Joint line passes through particle center - use perpendicular to line as normal
+      const lineVector = joint.particleB.position.clone().subtract(joint.particleA.position);
+      collisionNormal.x = -lineVector.y;
+      collisionNormal.y = lineVector.x;
+    }
+    collisionNormal.normalize();
+
+    // Calculate impact weights based on where along the joint the collision occurred
+    const weights = this.calculateImpactWeights(closestPoint, joint);
+    
+    // Apply repulsive forces to joint particles (they bounce off the static particle)
+    const restitution = 0.95; // Same as other collisions
+    const repulsionStrength = overlap * 2; // How strongly to push joint particles away
+    
+    if (!joint.particleA.static && weights.weightA > 0) {
+      // Push particle A away from static particle
+      const repulsionForce = collisionNormal.clone().multiply(repulsionStrength * weights.weightA);
+      joint.particleA.position.add(repulsionForce);
+      
+      // Apply collision velocity response
+      const velocityChange = collisionNormal.clone().multiply(repulsionStrength * weights.weightA * restitution);
+      joint.particleA.velocity.add(velocityChange);
+    }
+    
+    if (!joint.particleB.static && weights.weightB > 0) {
+      // Push particle B away from static particle
+      const repulsionForce = collisionNormal.clone().multiply(repulsionStrength * weights.weightB);
+      joint.particleB.position.add(repulsionForce);
+      
+      // Apply collision velocity response
+      const velocityChange = collisionNormal.clone().multiply(repulsionStrength * weights.weightB * restitution);
+      joint.particleB.velocity.add(velocityChange);
     }
   }
 
