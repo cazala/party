@@ -337,8 +337,9 @@ export function useInteractions({
             Math.floor(Math.random() * mouseState.streamColors.length)
           ];
         }
-        // Fallback to preview color or random color
-        return mouseState.previewColor || getPreviewColor();
+        // When no custom colors are set, get a fresh random color each time
+        // This ensures each particle gets a different color from the default palette
+        return getPreviewColor();
       };
 
       const firstColor = getStreamColor();
