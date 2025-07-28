@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Joints,
-  JointType,
   System,
   DEFAULT_JOINT_RESTITUTION,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
@@ -15,10 +14,6 @@ interface JointControlsProps {
 
 export function JointControls({ joints, system }: JointControlsProps) {
   const [enabled, setEnabled] = useState(true);
-  const [defaultStiffness, setDefaultStiffness] = useState(0.5);
-  const [defaultDamping, setDefaultDamping] = useState(0.1);
-  const [defaultMaxForce, setDefaultMaxForce] = useState(1000);
-  const [defaultType, setDefaultType] = useState<JointType>("pin");
   const [jointCount, setJointCount] = useState(0);
   const [restitution, setRestitution] = useState(DEFAULT_JOINT_RESTITUTION);
   const [enableCollisions, setEnableCollisions] = useState(
@@ -30,10 +25,6 @@ export function JointControls({ joints, system }: JointControlsProps) {
   useEffect(() => {
     if (joints) {
       setEnabled(joints.enabled);
-      setDefaultStiffness(joints.defaultStiffness);
-      setDefaultDamping(joints.defaultDamping);
-      setDefaultMaxForce(joints.defaultMaxForce);
-      setDefaultType(joints.defaultType);
       setJointCount(joints.getJointCount());
       setRestitution(joints.restitution);
       setEnableCollisions(joints.enableCollisions);
@@ -59,31 +50,24 @@ export function JointControls({ joints, system }: JointControlsProps) {
     }
   };
 
-  const handleStiffnessChange = (value: number) => {
-    setDefaultStiffness(value);
+  const handleRestitutionChange = (value: number) => {
+    setRestitution(value);
     if (joints) {
-      joints.setDefaultStiffness(value);
+      joints.setRestitution(value);
     }
   };
 
-  const handleDampingChange = (value: number) => {
-    setDefaultDamping(value);
+  const handleEnableCollisionsChange = (value: boolean) => {
+    setEnableCollisions(value);
     if (joints) {
-      joints.setDefaultDamping(value);
+      joints.setEnableCollisions(value);
     }
   };
 
-  const handleMaxForceChange = (value: number) => {
-    setDefaultMaxForce(value);
+  const handleFrictionChange = (value: number) => {
+    setFriction(value);
     if (joints) {
-      joints.setDefaultMaxForce(value);
-    }
-  };
-
-  const handleTypeChange = (type: JointType) => {
-    setDefaultType(type);
-    if (joints) {
-      joints.setDefaultType(type);
+      joints.setFriction(value);
     }
   };
 
@@ -155,27 +139,6 @@ export function JointControls({ joints, system }: JointControlsProps) {
     }
   };
 
-  const handleRestitutionChange = (value: number) => {
-    setRestitution(value);
-    if (joints) {
-      joints.setRestitution(value);
-    }
-  };
-
-  const handleEnableCollisionsChange = (value: boolean) => {
-    setEnableCollisions(value);
-    if (joints) {
-      joints.setEnableCollisions(value);
-    }
-  };
-
-  const handleFrictionChange = (value: number) => {
-    setFriction(value);
-    if (joints) {
-      joints.setFriction(value);
-    }
-  };
-
   return (
     <div className="control-section">
       <div className="control-group">
@@ -187,70 +150,6 @@ export function JointControls({ joints, system }: JointControlsProps) {
             className="checkbox"
           />
           Enable Joints
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Joint Type
-          <select
-            value={defaultType}
-            onChange={(e) => handleTypeChange(e.target.value as JointType)}
-            className="form-select"
-            disabled={!enabled}
-          >
-            <option value="distance">Distance</option>
-            <option value="spring">Spring</option>
-            <option value="pin">Pin</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Default Stiffness: {defaultStiffness.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="2"
-            step="0.01"
-            value={defaultStiffness}
-            onChange={(e) => handleStiffnessChange(parseFloat(e.target.value))}
-            className="slider"
-            disabled={!enabled}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Default Damping: {defaultDamping.toFixed(3)}
-          <input
-            type="range"
-            min="0"
-            max="0.5"
-            step="0.001"
-            value={defaultDamping}
-            onChange={(e) => handleDampingChange(parseFloat(e.target.value))}
-            className="slider"
-            disabled={!enabled}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Max Force: {defaultMaxForce.toLocaleString()}
-          <input
-            type="range"
-            min="100"
-            max="50000"
-            step="50"
-            value={defaultMaxForce}
-            onChange={(e) => handleMaxForceChange(parseFloat(e.target.value))}
-            className="slider"
-            disabled={!enabled}
-          />
         </label>
       </div>
 
@@ -411,7 +310,7 @@ export function JointControls({ joints, system }: JointControlsProps) {
       <div className="control-group">
         <div className="joint-instructions">
           <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#ccc" }}>
-            Joint Types:
+            Pin Joints:
           </h4>
           <ul
             style={{
@@ -422,12 +321,8 @@ export function JointControls({ joints, system }: JointControlsProps) {
             }}
           >
             <li>
-              <strong>Spring:</strong> Maintains distance with spring-like
-              behavior
-            </li>
-            <li>
-              <strong>Pin:</strong> Rigid constraint that enforces exact
-              distance
+              <strong>Pin joints:</strong> Rigid constraints that maintain exact
+              distance between particles
             </li>
           </ul>
           <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#ccc" }}>

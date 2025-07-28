@@ -57,13 +57,7 @@ import {
   DEFAULT_FLEE_BEHAVIOR,
   SensorBehavior,
 } from "./forces/sensors";
-import {
-  Joints,
-  DEFAULT_JOINTS_ENABLED,
-  DEFAULT_JOINT_STIFFNESS,
-  DEFAULT_JOINT_DAMPING,
-  DEFAULT_JOINT_MAX_FORCE,
-} from "./forces/joints";
+import { Joints, DEFAULT_JOINTS_ENABLED } from "./forces/joints";
 
 export interface Force {
   warmup?(particles: Particle[], deltaTime: number): void;
@@ -131,9 +125,9 @@ export interface Config {
   };
   joints?: {
     enabled?: boolean;
-    defaultStiffness?: number;
-    defaultDamping?: number;
-    defaultMaxForce?: number;
+    restitution?: number;
+    enableCollisions?: boolean;
+    friction?: number;
   };
   system?: {
     momentumPreservation?: number;
@@ -248,7 +242,7 @@ export class System {
       }
       if (!particle.static) {
         particle.update(deltaTime);
-        
+
         // Reset velocity for grabbed particles after physics update
         // (the grab tool will set the correct position)
         if (particle.grabbed) {
@@ -263,7 +257,7 @@ export class System {
 
     // Apply optimized joint collisions using spatial grid
     const jointsForce = this.forces.find((force) => force instanceof Joints);
-    if (jointsForce && 'checkAllJointCollisions' in jointsForce) {
+    if (jointsForce && "checkAllJointCollisions" in jointsForce) {
       (jointsForce as any).checkAllJointCollisions(this.spatialGrid);
     }
 
@@ -283,10 +277,7 @@ export class System {
                 .subtract(prePhysicsPosition);
               const actualVelocity = totalMovement.divide(deltaTime);
 
-              const momentum =
-                jointsForce.getJointsForParticle(particle).length < 3
-                  ? 0.75
-                  : 0.95;
+              const momentum = this.momentumPreservation;
 
               // Blend between current velocity and actual movement based on momentum preservation
               particle.velocity = particle.velocity
@@ -482,9 +473,9 @@ export class System {
       } else if (force instanceof Joints) {
         config.joints = {
           enabled: force.enabled,
-          defaultStiffness: force.defaultStiffness,
-          defaultDamping: force.defaultDamping,
-          defaultMaxForce: force.defaultMaxForce,
+          restitution: force.restitution,
+          enableCollisions: force.enableCollisions,
+          friction: force.friction,
         };
       }
     }
@@ -611,15 +602,15 @@ export class System {
         );
       } else if (force instanceof Joints && config.joints) {
         force.setEnabled(config.joints.enabled ?? DEFAULT_JOINTS_ENABLED);
-        force.setDefaultStiffness(
-          config.joints.defaultStiffness ?? DEFAULT_JOINT_STIFFNESS
-        );
-        force.setDefaultDamping(
-          config.joints.defaultDamping ?? DEFAULT_JOINT_DAMPING
-        );
-        force.setDefaultMaxForce(
-          config.joints.defaultMaxForce ?? DEFAULT_JOINT_MAX_FORCE
-        );
+        if (config.joints.restitution !== undefined) {
+          force.setRestitution(config.joints.restitution);
+        }
+        if (config.joints.enableCollisions !== undefined) {
+          force.setEnableCollisions(config.joints.enableCollisions);
+        }
+        if (config.joints.friction !== undefined) {
+          force.setFriction(config.joints.friction);
+        }
       }
     }
 

@@ -5,33 +5,19 @@ import { SpatialGrid } from "../spatial-grid";
 
 // Default constants for Joints
 export const DEFAULT_JOINTS_ENABLED = true;
-export const DEFAULT_JOINT_STIFFNESS = 0.5;
-export const DEFAULT_JOINT_DAMPING = 0.1;
-export const DEFAULT_JOINT_MAX_FORCE = 1000;
-export const DEFAULT_JOINT_TYPE: JointType = "pin";
 export const DEFAULT_JOINT_RESTITUTION = 0.95;
 export const DEFAULT_JOINT_COLLISIONS_ENABLED = true;
 export const DEFAULT_JOINT_FRICTION = 0.1;
 
-export type JointType = "spring" | "pin";
-
 export interface JointOptions {
   particleA: Particle;
   particleB: Particle;
-  type?: JointType;
   restLength?: number;
-  stiffness?: number;
-  damping?: number;
-  maxForce?: number;
   id?: string;
 }
 
 export interface JointsOptions {
   enabled?: boolean;
-  defaultStiffness?: number;
-  defaultDamping?: number;
-  defaultMaxForce?: number;
-  defaultType?: JointType;
   restitution?: number;
   enableCollisions?: boolean;
   friction?: number;
@@ -44,11 +30,7 @@ export class Joint {
   public id: string;
   public particleA: Particle;
   public particleB: Particle;
-  public type: JointType;
   public restLength: number;
-  public stiffness: number;
-  public damping: number;
-  public maxForce: number;
   public isValid: boolean = true;
 
   constructor(options: JointOptions) {
@@ -57,10 +39,6 @@ export class Joint {
       `joint_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     this.particleA = options.particleA;
     this.particleB = options.particleB;
-    this.type = options.type || "pin";
-    this.stiffness = options.stiffness || DEFAULT_JOINT_STIFFNESS;
-    this.damping = options.damping || DEFAULT_JOINT_DAMPING;
-    this.maxForce = options.maxForce || DEFAULT_JOINT_MAX_FORCE;
 
     // Calculate rest length as current distance if not provided
     if (options.restLength !== undefined) {
@@ -100,51 +78,8 @@ export class Joint {
     const directionX = dx / distance;
     const directionY = dy / distance;
 
-    // Pin joints use position constraints, not forces
-    if (this.type === "pin") {
-      this.applyPinConstraint(distance, directionX, directionY);
-      return;
-    }
-
-    // Calculate displacement from rest length
-    const displacement = distance - this.restLength;
-
-    // Calculate relative velocity for damping
-    const relativeVelX = this.particleB.velocity.x - this.particleA.velocity.x;
-    const relativeVelY = this.particleB.velocity.y - this.particleA.velocity.y;
-    const relativeVelAlongDirection =
-      relativeVelX * directionX + relativeVelY * directionY;
-
-    // Calculate spring force magnitude
-    let forceMagnitude = 0;
-
-    switch (this.type) {
-      case "spring":
-        // Spring joint: apply force proportional to displacement (both compression and extension)
-        forceMagnitude =
-          -this.stiffness * displacement -
-          this.damping * relativeVelAlongDirection;
-        break;
-    }
-
-    // Limit maximum force
-    forceMagnitude = Math.max(
-      -this.maxForce,
-      Math.min(this.maxForce, forceMagnitude)
-    );
-
-    // Calculate force vector
-    const forceX = forceMagnitude * directionX;
-    const forceY = forceMagnitude * directionY;
-    const force = new Vector2D(forceX, forceY);
-
-    // Apply forces to particles (equal and opposite)
-    if (!this.particleA.static) {
-      this.particleA.applyForce(force.clone().multiply(-1));
-    }
-    if (!this.particleB.static) {
-      this.particleB.applyForce(force);
-    }
+    // Apply pin constraint
+    this.applyPinConstraint(distance, directionX, directionY);
   }
 
   /**
@@ -188,19 +123,7 @@ export class Joint {
         this.particleB.position.y - this.restLength * directionY;
     }
 
-    // Apply velocity damping for pin joints to reduce oscillation
-    if (this.damping > 0) {
-      const dampingFactor = 1.0 - this.damping;
-
-      if (!this.particleA.static) {
-        this.particleA.velocity.x *= dampingFactor;
-        this.particleA.velocity.y *= dampingFactor;
-      }
-      if (!this.particleB.static) {
-        this.particleB.velocity.x *= dampingFactor;
-        this.particleB.velocity.y *= dampingFactor;
-      }
-    }
+    // Pin joints maintain rigid distance constraint without additional damping
   }
 
   /**
@@ -233,11 +156,7 @@ export class Joint {
     return new Joint({
       particleA: this.particleA,
       particleB: this.particleB,
-      type: this.type,
       restLength: this.restLength,
-      stiffness: this.stiffness,
-      damping: this.damping,
-      maxForce: this.maxForce,
       id: this.id,
     });
   }
@@ -249,10 +168,6 @@ export class Joint {
 export class Joints implements Force {
   public enabled: boolean;
   public joints: Map<string, Joint> = new Map();
-  public defaultStiffness: number;
-  public defaultDamping: number;
-  public defaultMaxForce: number;
-  public defaultType: JointType;
   public restitution: number;
   public enableCollisions: boolean;
   public friction: number;
@@ -262,10 +177,6 @@ export class Joints implements Force {
 
   constructor(options: JointsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_JOINTS_ENABLED;
-    this.defaultStiffness = options.defaultStiffness ?? DEFAULT_JOINT_STIFFNESS;
-    this.defaultDamping = options.defaultDamping ?? DEFAULT_JOINT_DAMPING;
-    this.defaultMaxForce = options.defaultMaxForce ?? DEFAULT_JOINT_MAX_FORCE;
-    this.defaultType = options.defaultType ?? DEFAULT_JOINT_TYPE;
     this.restitution = options.restitution ?? DEFAULT_JOINT_RESTITUTION;
     this.enableCollisions =
       options.enableCollisions ?? DEFAULT_JOINT_COLLISIONS_ENABLED;
@@ -274,22 +185,6 @@ export class Joints implements Force {
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
-  }
-
-  setDefaultStiffness(stiffness: number): void {
-    this.defaultStiffness = stiffness;
-  }
-
-  setDefaultDamping(damping: number): void {
-    this.defaultDamping = damping;
-  }
-
-  setDefaultMaxForce(maxForce: number): void {
-    this.defaultMaxForce = maxForce;
-  }
-
-  setDefaultType(type: JointType): void {
-    this.defaultType = type;
   }
 
   setRestitution(restitution: number): void {
@@ -307,25 +202,8 @@ export class Joints implements Force {
   /**
    * Create a new joint between two particles
    */
-  createJoint(
-    options: Omit<
-      JointOptions,
-      "stiffness" | "damping" | "maxForce" | "type"
-    > & {
-      stiffness?: number;
-      damping?: number;
-      maxForce?: number;
-      type?: JointType;
-    }
-  ): Joint {
-    const joint = new Joint({
-      ...options,
-      type: options.type ?? this.defaultType,
-      stiffness: options.stiffness ?? this.defaultStiffness,
-      damping: options.damping ?? this.defaultDamping,
-      maxForce: options.maxForce ?? this.defaultMaxForce,
-    });
-
+  createJoint(options: JointOptions): Joint {
+    const joint = new Joint(options);
     this.joints.set(joint.id, joint);
     return joint;
   }
@@ -392,13 +270,13 @@ export class Joints implements Force {
   }
 
   /**
-   * Check if a particle has any pin joints connected to it
+   * Check if a particle has any joints connected to it
    */
   hasJoint(particleId: number): boolean {
     for (const joint of this.joints.values()) {
       if (
-        joint.type === "pin" &&
-        (joint.particleA.id === particleId || joint.particleB.id === particleId)
+        joint.particleA.id === particleId ||
+        joint.particleB.id === particleId
       ) {
         return true;
       }

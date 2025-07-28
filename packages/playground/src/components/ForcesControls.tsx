@@ -42,9 +42,9 @@ import {
   DEFAULT_SENSOR_THRESHOLD,
   DEFAULT_SENSOR_STRENGTH,
   DEFAULT_JOINTS_ENABLED,
-  DEFAULT_JOINT_STIFFNESS,
-  DEFAULT_JOINT_DAMPING,
-  DEFAULT_JOINT_MAX_FORCE,
+  DEFAULT_JOINT_RESTITUTION,
+  DEFAULT_JOINT_COLLISIONS_ENABLED,
+  DEFAULT_JOINT_FRICTION,
 } from "@party/core";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
@@ -151,9 +151,9 @@ export function ForcesControls({
     // Reset joints
     if (joints) {
       joints.setEnabled(DEFAULT_JOINTS_ENABLED);
-      joints.setDefaultStiffness(DEFAULT_JOINT_STIFFNESS);
-      joints.setDefaultDamping(DEFAULT_JOINT_DAMPING);
-      joints.setDefaultMaxForce(DEFAULT_JOINT_MAX_FORCE);
+      joints.setRestitution(DEFAULT_JOINT_RESTITUTION);
+      joints.setEnableCollisions(DEFAULT_JOINT_COLLISIONS_ENABLED);
+      joints.setFriction(DEFAULT_JOINT_FRICTION);
       joints.clear(); // Clear all existing joints
     }
 
@@ -275,7 +275,11 @@ export function ForcesControls({
       </CollapsibleSection>
 
       <CollapsibleSection title="Joints">
-        <JointControls key={`joints-${refreshKey}`} joints={joints} system={system} />
+        <JointControls
+          key={`joints-${refreshKey}`}
+          joints={joints}
+          system={system}
+        />
       </CollapsibleSection>
     </div>
   );
