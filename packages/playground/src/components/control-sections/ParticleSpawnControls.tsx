@@ -7,16 +7,20 @@ export const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
 export const DEFAULT_SPAWN_PARTICLE_MASS = calculateMassFromSize(
   DEFAULT_SPAWN_PARTICLE_SIZE
 );
-export const DEFAULT_SPAWN_STREAM_MODE = false;
+export const DEFAULT_SPAWN_MODE = "single" as const;
 export const DEFAULT_SPAWN_STREAM_RATE = 10; // particles per second
+export const DEFAULT_SPAWN_DRAW_STEP_SIZE = 20; // pixels between particles in draw mode
 export const DEFAULT_SPAWN_PINNED = false;
+
+export type SpawnMode = "single" | "stream" | "draw";
 
 export interface SpawnConfig {
   defaultSize: number;
   defaultMass: number;
   colors: string[]; // Array of colors to use for spawning
-  streamMode: boolean;
+  spawnMode: SpawnMode;
   streamRate: number; // particles per second
+  drawStepSize: number; // pixels between particles in draw mode
   pinned: boolean; // Whether to spawn pinned particles
 }
 
@@ -36,8 +40,9 @@ export function ParticleSpawnControls({
     calculateMassFromSize(initialSize)
   );
   const [colors, setColors] = useState<string[]>(initialColors);
-  const [streamMode, setStreamMode] = useState(DEFAULT_SPAWN_STREAM_MODE);
+  const [spawnMode, setSpawnMode] = useState<SpawnMode>(DEFAULT_SPAWN_MODE);
   const [streamRate, setStreamRate] = useState(DEFAULT_SPAWN_STREAM_RATE);
+  const [drawStepSize, setDrawStepSize] = useState(DEFAULT_SPAWN_DRAW_STEP_SIZE);
   const [isPinned, setIsPinned] = useState(DEFAULT_SPAWN_PINNED);
 
   // Update particle size when initialSize prop changes (from Init section)
@@ -75,8 +80,9 @@ export function ParticleSpawnControls({
       defaultSize: particleSize,
       defaultMass: particleMass,
       colors,
-      streamMode,
+      spawnMode,
       streamRate,
+      drawStepSize,
       pinned: isPinned,
     };
     onSpawnConfigChange?.(config);
@@ -84,8 +90,9 @@ export function ParticleSpawnControls({
     particleSize,
     particleMass,
     colors,
-    streamMode,
+    spawnMode,
     streamRate,
+    drawStepSize,
     isPinned,
     onSpawnConfigChange,
   ]);
@@ -157,17 +164,20 @@ export function ParticleSpawnControls({
 
       <div className="control-group">
         <label>
-          <input
-            type="checkbox"
-            checked={streamMode}
-            onChange={(e) => setStreamMode(e.target.checked)}
-            className="checkbox"
-          />
-          Stream
+          Spawn Mode:
+          <select
+            value={spawnMode}
+            onChange={(e) => setSpawnMode(e.target.value as SpawnMode)}
+            className="dropdown"
+          >
+            <option value="single">Single</option>
+            <option value="stream">Stream</option>
+            <option value="draw">Draw</option>
+          </select>
         </label>
       </div>
 
-      {streamMode && (
+      {spawnMode === "stream" && (
         <div className="control-group">
           <label>
             Stream Rate: {streamRate} particles/sec
@@ -178,6 +188,23 @@ export function ParticleSpawnControls({
               step="1"
               value={streamRate}
               onChange={(e) => setStreamRate(parseInt(e.target.value))}
+              className="slider"
+            />
+          </label>
+        </div>
+      )}
+
+      {spawnMode === "draw" && (
+        <div className="control-group">
+          <label>
+            Draw Step Size: {drawStepSize}px
+            <input
+              type="range"
+              min="5"
+              max="100"
+              step="5"
+              value={drawStepSize}
+              onChange={(e) => setDrawStepSize(parseInt(e.target.value))}
               className="slider"
             />
           </label>

@@ -65,9 +65,10 @@ export function usePlayground(
     defaultSize: 10,
     defaultMass: calculateMassFromSize(10),
     colors: [], // Empty array means use default palette
-    streamMode: false,
+    spawnMode: "single",
     streamRate: 10,
-    static: false,
+    drawStepSize: 20,
+    pinned: false,
   });
 
   // ---------------------------------------------------------------------------
@@ -441,7 +442,7 @@ export function usePlayground(
         mass: currentSpawnConfig.defaultMass,
         size: particleSize,
         acceleration: new Vector2D(0, 0),
-        static: currentSpawnConfig.static,
+        pinned: currentSpawnConfig.pinned,
       };
 
       const spawner = new Spawner();

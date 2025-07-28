@@ -169,6 +169,16 @@ interface MouseState {
   /** Whether pin tool is active */
   isPinning: boolean;
 
+  // === Draw Mode State ===
+  /** Whether currently in draw mode */
+  isDrawing: boolean;
+  /** Last particle spawned in draw mode for joint creation */
+  lastDrawnParticle: Particle | null;
+  /** Position of last drawn particle */
+  lastDrawnPosition: { x: number; y: number };
+  /** Particles created during drawing session for undo */
+  drawnParticles: any[];
+
   // === Undo/Redo Tracking ===
   /** Particles created during streaming sessions for undo */
   streamedParticles: any[];
@@ -248,6 +258,10 @@ export function useInteractions({
     isGrabbing: false,
     grabOffset: { x: 0, y: 0 },
     isPinning: false,
+    isDrawing: false,
+    lastDrawnParticle: null,
+    lastDrawnPosition: { x: 0, y: 0 },
+    drawnParticles: [],
     streamedParticles: [],
     removedParticles: [],
   });
@@ -304,6 +318,107 @@ export function useInteractions({
     },
     [getRenderer, getSpawnConfig]
   );
+
+  // === Draw Mode System ===
+
+  /**
+   * Start drawing mode - spawns first particle and initializes drawing state
+   */
+  const startDrawing = useCallback(
+    (x: number, y: number) => {
+      const mouseState = mouseStateRef.current;
+      const system = getSystem();
+      const spawnConfig = getSpawnConfig();
+      if (!system) return;
+
+      mouseState.isDrawing = true;
+      mouseState.drawnParticles = []; // Reset drawn particles for new session
+
+      // Spawn the first particle
+      const firstParticle = createParticle(
+        x,
+        y,
+        spawnConfig.defaultSize,
+        getPreviewColor(),
+        undefined,
+        spawnConfig.defaultMass,
+        spawnConfig.pinned
+      );
+      
+      system.addParticle(firstParticle);
+      mouseState.drawnParticles.push(firstParticle);
+      mouseState.lastDrawnParticle = firstParticle;
+      mouseState.lastDrawnPosition = { x, y };
+    },
+    [getSystem, getSpawnConfig, getPreviewColor]
+  );
+
+  /**
+   * Continue drawing - check distance and spawn/join particles as needed
+   */
+  const continueDrawing = useCallback(
+    (x: number, y: number) => {
+      const mouseState = mouseStateRef.current;
+      const system = getSystem();
+      const joints = getJoints();
+      const spawnConfig = getSpawnConfig();
+      
+      if (!system || !joints || !mouseState.isDrawing || !mouseState.lastDrawnParticle) return;
+
+      // Calculate distance from last drawn position
+      const dx = x - mouseState.lastDrawnPosition.x;
+      const dy = y - mouseState.lastDrawnPosition.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Check if we've moved far enough to spawn a new particle
+      if (distance >= spawnConfig.drawStepSize) {
+        // Spawn new particle
+        const newParticle = createParticle(
+          x,
+          y,
+          spawnConfig.defaultSize,
+          getPreviewColor(),
+          undefined,
+          spawnConfig.defaultMass,
+          spawnConfig.pinned
+        );
+        
+        system.addParticle(newParticle);
+        mouseState.drawnParticles.push(newParticle);
+
+        // Create joint between last particle and new particle
+        joints.createJoint({
+          particleA: mouseState.lastDrawnParticle,
+          particleB: newParticle,
+        });
+
+        // Update state for next particle
+        mouseState.lastDrawnParticle = newParticle;
+        mouseState.lastDrawnPosition = { x, y };
+      }
+    },
+    [getSystem, getJoints, getSpawnConfig, getPreviewColor]
+  );
+
+  /**
+   * Stop drawing mode and record drawn particles for undo
+   */
+  const stopDrawing = useCallback(() => {
+    const mouseState = mouseStateRef.current;
+    
+    mouseState.isDrawing = false;
+    mouseState.lastDrawnParticle = null;
+    mouseState.lastDrawnPosition = { x: 0, y: 0 };
+
+    // Record drawn particles for undo
+    if (mouseState.drawnParticles.length > 0) {
+      undoRedo.current?.recordSpawnBatch(
+        mouseState.drawnParticles,
+        getIdCounter()
+      );
+      mouseState.drawnParticles = [];
+    }
+  }, []);
 
   // === Streaming System ===
 
@@ -1079,11 +1194,16 @@ export function useInteractions({
           ? [...currentSpawnConfig.colors]
           : [];
 
-      // Start streaming if shift is pressed OR if stream mode is enabled in spawn config
-      if (mouseState.shiftPressed || spawnConfig.streamMode) {
+      // Handle different spawn modes and shift key combinations
+      if (spawnConfig.spawnMode === "draw" && !mouseState.shiftPressed) {
+        // Draw mode: start drawing
+        startDrawing(pos.x, pos.y);
+        return; // Don't show preview when drawing
+      } else if (mouseState.shiftPressed || spawnConfig.spawnMode === "stream") {
+        // Stream mode: start streaming 
         let streamSize;
         let streamMass;
-        if (spawnConfig.streamMode) {
+        if (spawnConfig.spawnMode === "stream") {
           // In stream mode, always use current size from spawn config
           streamSize = spawnConfig.defaultSize;
           streamMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
@@ -1122,7 +1242,7 @@ export function useInteractions({
         renderer.setPreviewVelocity(new Vector2D(0, 0)); // Start with zero velocity
       }
     },
-    [getCanvas, getRenderer, startStreaming, getWorldPosition, getPreviewColor]
+    [getCanvas, getRenderer, startStreaming, startDrawing, getWorldPosition, getPreviewColor]
   );
 
   const onMouseMove = useCallback(
@@ -1219,6 +1339,12 @@ export function useInteractions({
       if (!mouseState.isDown) return;
 
       mouseState.currentPos = worldPos;
+
+      // Handle draw mode
+      if (mouseState.isDrawing) {
+        continueDrawing(worldPos.x, worldPos.y);
+        return; // Don't handle other mouse move logic when drawing
+      }
 
       // Update modifier key states from mouse event
       const wasShiftPressed = mouseState.shiftPressed;
@@ -1346,6 +1472,7 @@ export function useInteractions({
       toolMode,
       updateRemovalPreview,
       removeParticlesAtPosition,
+      continueDrawing,
       getSpawnConfig,
     ]
   );
@@ -1407,6 +1534,17 @@ export function useInteractions({
 
       // Update shift state from mouse event
       mouseState.shiftPressed = e.shiftKey;
+
+      // If we're drawing, stop drawing when mouse is released
+      if (mouseState.isDrawing) {
+        stopDrawing();
+        // Reset mouse state
+        mouseState.isDown = false;
+        mouseState.isDragging = false;
+        mouseState.previewColor = "";
+        mouseState.originalDragIntent = null; // Reset drag intent
+        return;
+      }
 
       // If we're streaming, always stop when mouse is released
       if (mouseState.isStreaming) {
@@ -1534,6 +1672,7 @@ export function useInteractions({
       getSystem,
       getRenderer,
       stopStreaming,
+      stopDrawing,
       onRightMouseUp,
       toolMode,
       handleRemovalClick,
@@ -1547,6 +1686,10 @@ export function useInteractions({
     if (!renderer) return;
 
     const mouseState = mouseStateRef.current;
+    // Stop drawing when mouse leaves canvas
+    if (mouseState.isDrawing) {
+      stopDrawing();
+    }
     // Stop streaming when mouse leaves canvas
     if (mouseState.isStreaming) {
       stopStreaming();
@@ -1592,7 +1735,7 @@ export function useInteractions({
     mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
     mouseState.velocityModeSize = 0; // Reset velocity mode size
     mouseState.originalDragIntent = null; // Reset drag intent
-  }, [getRenderer, stopStreaming, getInteraction, updateRemovalPreview]);
+  }, [getRenderer, stopStreaming, stopDrawing, getInteraction, updateRemovalPreview]);
 
   const cleanup = useCallback(() => {
     const mouseState = mouseStateRef.current;
