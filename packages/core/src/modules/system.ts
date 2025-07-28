@@ -248,6 +248,13 @@ export class System {
       }
       if (!particle.static) {
         particle.update(deltaTime);
+        
+        // Reset velocity for grabbed particles after physics update
+        // (the grab tool will set the correct position)
+        if (particle.grabbed) {
+          particle.velocity.x = 0;
+          particle.velocity.y = 0;
+        }
       } else {
         particle.velocity.x = 0;
         particle.velocity.y = 0;

@@ -555,8 +555,8 @@ export function useInteractions({
           y: worldPos.y - particle.position.y,
         };
 
-        // Set the particle as static so it doesn't respond to forces
-        particle.static = true;
+        // Mark the particle as grabbed so collision systems can handle it specially
+        particle.grabbed = true;
       }
     },
     [findParticleAtPosition]
@@ -1335,8 +1335,8 @@ export function useInteractions({
         const mouseState = mouseStateRef.current;
         
         if (mouseState.grabbedParticle) {
-          // Release the particle by making it non-static again
-          mouseState.grabbedParticle.static = false;
+          // Release the particle by unmarking it as grabbed
+          mouseState.grabbedParticle.grabbed = false;
         }
         
         // Reset grab state

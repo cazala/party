@@ -9,6 +9,7 @@ export interface ParticleOptions {
   color?: string;
   id?: number; // Optional ID for restoring particles
   static?: boolean; // If true, particle is not affected by forces but still affects others
+  grabbed?: boolean; // If true, particle is being grabbed by user
 }
 
 let idCounter = 0;
@@ -23,6 +24,7 @@ export class Particle {
   public color: string;
   public density?: number;
   public static?: boolean;
+  public grabbed?: boolean;
 
   constructor(options: ParticleOptions = {}) {
     this.id = options.id !== undefined ? options.id : idCounter++;
@@ -33,6 +35,7 @@ export class Particle {
     this.size = options.size || 5;
     this.color = options.color || "#ffffff";
     this.static = options.static || false;
+    this.grabbed = options.grabbed || false;
   }
 
   update(deltaTime: number): void {

@@ -247,6 +247,9 @@ export class Joints implements Force {
   public defaultDamping: number;
   public defaultMaxForce: number;
   public defaultType: JointType;
+  
+  // Track grabbed particles and their previous positions for velocity calculation
+  private grabbedParticlePositions: Map<number, Vector2D> = new Map();
 
   constructor(options: JointsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_JOINTS_ENABLED;
@@ -403,6 +406,14 @@ export class Joints implements Force {
 
     invalidJoints.forEach((id) => this.joints.delete(id));
 
+    // Clean up grabbed particle positions for particles that no longer exist or are no longer grabbed
+    for (const [particleId] of this.grabbedParticlePositions) {
+      const particle = particles.find(p => p.id === particleId);
+      if (!particle || !particle.grabbed) {
+        this.grabbedParticlePositions.delete(particleId);
+      }
+    }
+
     // Joint constraints are applied AFTER physics integration
     // to avoid interfering with natural motion from forces like gravity
   }
@@ -429,7 +440,7 @@ export class Joints implements Force {
    * Check if joint constraints have moved particles into collision with other joints
    * and apply corrective measures
    */
-  private resolveConstraintCollisionConflicts(spatialGrid: SpatialGrid): void {
+  private resolveConstraintCollisionConflicts(_spatialGrid: SpatialGrid): void {
 
     // Check each joint-connected particle for collisions with other joints
     for (const joint of this.joints.values()) {
@@ -498,12 +509,13 @@ export class Joints implements Force {
 
     // Check collision with each nearby particle
     for (const particle of nearbyParticles) {
+      // Skip static particles (but handle grabbed particles specially)
       if (particle.static) continue;
       
       // Skip particles that are part of this joint
       if (this.isParticleInvolvedInJoint(particle, joint)) continue;
 
-      // Collision detection that catches fast particles
+      // Check collision
       if (this.checkCollision(particle, joint)) {
         // Get the closest point on the joint line segment to the particle
         const closestPoint = this.getClosestPointOnLineSegment(
@@ -512,8 +524,13 @@ export class Joints implements Force {
           joint.particleB.position
         );
         
-        // Apply collision with force transfer
-        this.handleJointCollision(particle, closestPoint, joint);
+        if (particle.grabbed) {
+          // Grabbed particles push joints out of the way
+          this.handleGrabbedParticleCollision(particle, closestPoint, joint);
+        } else {
+          // Regular particles bounce off joints
+          this.handleJointCollision(particle, closestPoint, joint);
+        }
       }
     }
   }
@@ -547,6 +564,55 @@ export class Joints implements Force {
     
     // Calculate the closest point
     return lineStart.clone().add(lineVector.multiply(clampedT));
+  }
+
+  /**
+   * Handle collision where grabbed particle pushes joint particles away
+   */
+  private handleGrabbedParticleCollision(
+    grabbedParticle: Particle,
+    closestPoint: Vector2D,
+    joint: Joint
+  ): void {
+    // Calculate how much the grabbed particle overlaps with the joint
+    const overlap = grabbedParticle.size - grabbedParticle.position.distance(closestPoint);
+    if (overlap <= 0) return;
+
+    // Calculate collision normal (from joint line to grabbed particle center)
+    const collisionNormal = grabbedParticle.position.clone().subtract(closestPoint);
+    if (collisionNormal.magnitude() === 0) {
+      // Particle is exactly on the line - use perpendicular to line as normal
+      const lineVector = joint.particleB.position.clone().subtract(joint.particleA.position);
+      collisionNormal.x = -lineVector.y;
+      collisionNormal.y = lineVector.x;
+    }
+    collisionNormal.normalize();
+
+    // Calculate impact weights based on where along the joint the collision occurred
+    const weights = this.calculateImpactWeights(closestPoint, joint);
+    
+    // Push joint particles away from the grabbed particle
+    const pushStrength = overlap * 0.5; // How much to push each joint particle
+    
+    if (!joint.particleA.static && weights.weightA > 0) {
+      // Push particle A away
+      const pushForce = collisionNormal.clone().multiply(-pushStrength * weights.weightA);
+      joint.particleA.position.add(pushForce);
+      
+      // Also apply velocity to make the push feel natural
+      const pushVelocity = collisionNormal.clone().multiply(-pushStrength * weights.weightA * 10);
+      joint.particleA.velocity.add(pushVelocity);
+    }
+    
+    if (!joint.particleB.static && weights.weightB > 0) {
+      // Push particle B away
+      const pushForce = collisionNormal.clone().multiply(-pushStrength * weights.weightB);
+      joint.particleB.position.add(pushForce);
+      
+      // Also apply velocity to make the push feel natural
+      const pushVelocity = collisionNormal.clone().multiply(-pushStrength * weights.weightB * 10);
+      joint.particleB.velocity.add(pushVelocity);
+    }
   }
 
   /**
@@ -685,6 +751,30 @@ export class Joints implements Force {
 
 
   /**
+   * Get effective velocity for a grabbed particle by calculating its movement
+   */
+  private getEffectiveVelocity(particle: Particle): Vector2D {
+    const previousPos = this.grabbedParticlePositions.get(particle.id);
+    
+    if (!previousPos) {
+      // First time seeing this particle, store its position and return zero velocity
+      this.grabbedParticlePositions.set(particle.id, particle.position.clone());
+      return new Vector2D(0, 0);
+    }
+    
+    // Calculate velocity based on position change
+    const deltaTime = 1/60; // Assume 60 FPS
+    const movement = particle.position.clone().subtract(previousPos);
+    const effectiveVelocity = movement.divide(deltaTime);
+    
+    // Update stored position for next frame
+    this.grabbedParticlePositions.set(particle.id, particle.position.clone());
+    
+    return effectiveVelocity;
+  }
+
+
+  /**
    * Calculate impact weights based on where along the joint the collision occurred
    */
   private calculateImpactWeights(
@@ -775,25 +865,47 @@ export class Joints implements Force {
       return true;
     }
     
-    // Check 2: Trajectory check for moving particles
-    const speed = particle.velocity.magnitude();
-    if (speed > radius) { // Only check trajectory for fast particles
-      // Check a few points along the particle's trajectory in the next frame
-      const deltaTime = 1/60; // Assume 60 FPS for trajectory prediction
-      const steps = Math.min(5, Math.ceil(speed / radius));
+    // Check 2: Relative motion check - consider both particle and joint movement
+    const deltaTime = 1/60; // Assume 60 FPS for trajectory prediction
+    
+    // Get effective velocity (calculate movement for grabbed particles)
+    const effectiveParticleVelocity = particle.grabbed 
+      ? this.getEffectiveVelocity(particle)
+      : particle.velocity;
+    
+    // Calculate relative velocities
+    const particleSpeed = effectiveParticleVelocity.magnitude();
+    const jointASpeed = joint.particleA.velocity.magnitude();
+    const jointBSpeed = joint.particleB.velocity.magnitude();
+    const maxJointSpeed = Math.max(jointASpeed, jointBSpeed);
+    const relativeSpeed = particleSpeed + maxJointSpeed;
+    
+    // Check trajectory if there's any relative motion
+    if (relativeSpeed > 0.1) { // Lower threshold to catch slow relative motion
+      const steps = Math.min(5, Math.max(2, Math.ceil(relativeSpeed / radius)));
       
       for (let i = 1; i <= steps; i++) {
         const t = (i / steps) * deltaTime;
-        const checkPosition = particle.position.clone().add(
-          particle.velocity.clone().multiply(t)
+        
+        // Future particle position
+        const futureParticlePos = particle.position.clone().add(
+          effectiveParticleVelocity.clone().multiply(t)
+        );
+        
+        // Future joint positions
+        const futureJointAPos = joint.particleA.position.clone().add(
+          joint.particleA.velocity.clone().multiply(t)
+        );
+        const futureJointBPos = joint.particleB.position.clone().add(
+          joint.particleB.velocity.clone().multiply(t)
         );
         
         const checkClosestPoint = this.getClosestPointOnLineSegment(
-          checkPosition,
-          joint.particleA.position,
-          joint.particleB.position
+          futureParticlePos,
+          futureJointAPos,
+          futureJointBPos
         );
-        const checkDistance = checkPosition.distance(checkClosestPoint);
+        const checkDistance = futureParticlePos.distance(checkClosestPoint);
         
         if (checkDistance < radius && checkDistance > 0.001) {
           return true;

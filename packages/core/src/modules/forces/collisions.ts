@@ -69,6 +69,18 @@ export class Collisions implements Force {
       return;
     }
 
+    // Handle grabbed particles specially - they push others out of the way
+    if (particle1.grabbed && !particle2.grabbed) {
+      this.handleGrabbedParticleCollision(particle1, particle2, distance, combinedRadius);
+      return;
+    } else if (particle2.grabbed && !particle1.grabbed) {
+      this.handleGrabbedParticleCollision(particle2, particle1, distance, combinedRadius);
+      return;
+    } else if (particle1.grabbed && particle2.grabbed) {
+      // Both grabbed - no collision response needed
+      return;
+    }
+
     // Calculate collision vector (from particle2 to particle1)
     const collisionVector = particle1.position
       .clone()
@@ -249,6 +261,44 @@ export class Collisions implements Force {
 
     // Forces are applied directly to particle velocities above
     return;
+  }
+
+  /**
+   * Handle collision where grabbed particle pushes regular particle away
+   */
+  private handleGrabbedParticleCollision(
+    grabbedParticle: Particle,
+    regularParticle: Particle,
+    distance: number,
+    combinedRadius: number
+  ): void {
+    // Calculate collision vector (from grabbed particle to regular particle)
+    const collisionVector = regularParticle.position
+      .clone()
+      .subtract(grabbedParticle.position);
+
+    // Prevent division by zero
+    if (distance === 0) {
+      // Particles are at exact same position - separate them with random direction
+      const angle = Math.random() * Math.PI * 2;
+      collisionVector.set(Math.cos(angle), Math.sin(angle));
+    } else {
+      collisionVector.normalize();
+    }
+
+    // Calculate overlap
+    const overlap = combinedRadius - distance;
+    
+    if (overlap > 0) {
+      // Push the regular particle out of the way
+      const pushDistance = overlap + 1; // Small buffer to prevent re-collision
+      const pushForce = collisionVector.clone().multiply(pushDistance);
+      regularParticle.position.add(pushForce);
+      
+      // Apply velocity to the pushed particle to make it feel natural
+      const pushVelocity = collisionVector.clone().multiply(pushDistance * 5);
+      regularParticle.velocity.add(pushVelocity);
+    }
   }
 }
 
