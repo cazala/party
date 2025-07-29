@@ -1199,12 +1199,18 @@ export function useInteractions({
         // Store original particle state for undo (clone to preserve original state)
         mouseState.removedParticles.push(particle.clone());
 
+        // Remove all joints connected to this particle immediately
+        const joints = getJoints();
+        if (joints) {
+          joints.removeJointsForParticle(particle);
+        }
+
         // Mark particle for removal
         particle.mass = 0;
         particle.size = 0; // Immediate visual feedback
       });
     },
-    [getSystem, getRenderer]
+    [getSystem, getRenderer, getJoints]
   );
 
   const handleRemovalClick = useCallback(
