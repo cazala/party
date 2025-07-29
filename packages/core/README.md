@@ -8,7 +8,7 @@ A TypeScript particle physics engine featuring advanced force systems, spatial o
 - Modular force system with pluggable architecture and lifecycle management
 - Real-time simulation capable of 60+ FPS with thousands of particles
 - Advanced Canvas2D rendering with trails, glow effects, and density visualization
-- Comprehensive physics including gravity, collisions, flocking, fluid dynamics, joints, and more
+- Comprehensive physics including gravity, collisions, flocking, fluid dynamics, elastic joints, and more
 - Spatial optimization with efficient collision detection and neighbor finding
 - Interactive user-controlled forces and particle manipulation
 - Serializable system configurations for export/import
@@ -247,7 +247,7 @@ const sensors = new Sensors({
 
 ### Joints
 
-Distance constraints between particles:
+Distance constraints between particles with configurable elasticity:
 
 ```typescript
 import { Joints } from "@cazala/party";
@@ -262,8 +262,19 @@ joints.createJoint({
   particleA: particle1,
   particleB: particle2,
   restLength: 50, // Optional: custom rest length
+  stiffness: 1.0, // Optional: joint stiffness (0.0 = elastic, 1.0 = rigid)
 });
+
+// Global stiffness control
+joints.setGlobalStiffness(0.5); // Apply to all existing joints
+const currentStiffness = joints.getGlobalStiffness();
 ```
+
+**Joint Stiffness Values:**
+- `1.0` - Rigid constraint (default behavior)
+- `0.5` - Semi-elastic joint
+- `0.1` - Very elastic joint
+- `0.0` - No constraint (effectively disabled)
 
 ### Interaction
 
@@ -373,6 +384,11 @@ system.import({
   behavior: {
     enabled: true,
     cohesionWeight: 0.2,
+  },
+  joints: {
+    enabled: true,
+    stiffness: 0.8, // Set global joint stiffness
+    enableCollisions: true,
   },
 });
 ```

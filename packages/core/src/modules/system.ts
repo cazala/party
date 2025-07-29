@@ -58,7 +58,7 @@ import {
   DEFAULT_FLEE_ANGLE,
   SensorBehavior,
 } from "./forces/sensors";
-import { Joints, DEFAULT_JOINTS_ENABLED } from "./forces/joints";
+import { Joints, DEFAULT_JOINTS_ENABLED, DEFAULT_JOINT_STIFFNESS } from "./forces/joints";
 
 /**
  * Interface defining the lifecycle methods for a physics force.
@@ -241,6 +241,8 @@ export interface Config {
   joints?: {
     /** Whether joint constraints are enabled */
     enabled?: boolean;
+    /** Joint stiffness (0.0 = elastic, 1.0 = rigid) */
+    stiffness?: number;
     /** Bounce factor for joint stress responses */
     restitution?: number;
     /** Whether joints interact with particle collisions */
@@ -672,6 +674,7 @@ export class System {
       } else if (force instanceof Joints) {
         config.joints = {
           enabled: force.enabled,
+          stiffness: force.getGlobalStiffness(),
           enableCollisions: force.enableCollisions,
         };
       }
@@ -801,6 +804,7 @@ export class System {
         );
       } else if (force instanceof Joints && config.joints) {
         force.setEnabled(config.joints.enabled ?? DEFAULT_JOINTS_ENABLED);
+        force.setGlobalStiffness(config.joints.stiffness ?? DEFAULT_JOINT_STIFFNESS);
         if (config.joints.enableCollisions !== undefined) {
           force.setEnableCollisions(config.joints.enableCollisions);
         }
