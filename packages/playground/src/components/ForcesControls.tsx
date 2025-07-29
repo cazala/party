@@ -40,6 +40,8 @@ import {
   DEFAULT_SENSOR_RADIUS,
   DEFAULT_SENSOR_THRESHOLD,
   DEFAULT_SENSOR_STRENGTH,
+  DEFAULT_COLOR_SIMILARITY_THRESHOLD,
+  DEFAULT_FLEE_ANGLE,
   DEFAULT_JOINTS_ENABLED,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
 } from "@party/core";
@@ -146,6 +148,8 @@ export function ForcesControls({
       sensors.setSensorRadius(DEFAULT_SENSOR_RADIUS);
       sensors.setSensorThreshold(DEFAULT_SENSOR_THRESHOLD);
       sensors.setSensorStrength(DEFAULT_SENSOR_STRENGTH);
+      sensors.setColorSimilarityThreshold(DEFAULT_COLOR_SIMILARITY_THRESHOLD);
+      sensors.setFleeAngle(DEFAULT_FLEE_ANGLE);
     }
 
     // Reset joints

@@ -54,6 +54,8 @@ import {
   DEFAULT_SENSOR_STRENGTH,
   DEFAULT_FOLLOW_BEHAVIOR,
   DEFAULT_FLEE_BEHAVIOR,
+  DEFAULT_COLOR_SIMILARITY_THRESHOLD,
+  DEFAULT_FLEE_ANGLE,
   SensorBehavior,
 } from "./forces/sensors";
 import { Joints, DEFAULT_JOINTS_ENABLED } from "./forces/joints";
@@ -127,6 +129,8 @@ export interface Config {
     sensorStrength?: number;
     followBehavior?: SensorBehavior;
     fleeBehavior?: SensorBehavior;
+    colorSimilarityThreshold?: number;
+    fleeAngle?: number;
   };
   joints?: {
     enabled?: boolean;
@@ -431,6 +435,8 @@ export class System {
           sensorStrength: force.sensorStrength,
           followBehavior: force.followBehavior,
           fleeBehavior: force.fleeBehavior,
+          colorSimilarityThreshold: force.colorSimilarityThreshold,
+          fleeAngle: force.fleeAngle,
         };
       } else if (force instanceof Joints) {
         config.joints = {
@@ -555,6 +561,12 @@ export class System {
         );
         force.setFleeBehavior(
           config.sensors.fleeBehavior ?? DEFAULT_FLEE_BEHAVIOR
+        );
+        force.setColorSimilarityThreshold(
+          config.sensors.colorSimilarityThreshold ?? DEFAULT_COLOR_SIMILARITY_THRESHOLD
+        );
+        force.setFleeAngle(
+          config.sensors.fleeAngle ?? DEFAULT_FLEE_ANGLE
         );
       } else if (force instanceof Joints && config.joints) {
         force.setEnabled(config.joints.enabled ?? DEFAULT_JOINTS_ENABLED);

@@ -10,8 +10,10 @@ import {
   DEFAULT_SENSOR_RADIUS,
   DEFAULT_SENSOR_THRESHOLD,
   DEFAULT_SENSOR_STRENGTH,
+  DEFAULT_COLOR_SIMILARITY_THRESHOLD,
   DEFAULT_FOLLOW_BEHAVIOR,
   DEFAULT_FLEE_BEHAVIOR,
+  DEFAULT_FLEE_ANGLE,
   SensorBehavior,
 } from "@party/core/modules/forces/sensors";
 
@@ -36,6 +38,10 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
     DEFAULT_SENSOR_THRESHOLD
   );
   const [sensorStrength, setSensorStrength] = useState(DEFAULT_SENSOR_STRENGTH);
+  const [colorSimilarityThreshold, setColorSimilarityThreshold] = useState(
+    DEFAULT_COLOR_SIMILARITY_THRESHOLD
+  );
+  const [fleeAngle, setFleeAngle] = useState(radToDeg(DEFAULT_FLEE_ANGLE)); // Convert radians to degrees for UI
 
   // New behavior state
   const [followBehavior, setFollowBehavior] = useState<SensorBehavior>(
@@ -56,6 +62,8 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
       setSensorRadius(sensors.sensorRadius);
       setSensorThreshold(sensors.sensorThreshold);
       setSensorStrength(sensors.sensorStrength);
+      setColorSimilarityThreshold(sensors.colorSimilarityThreshold);
+      setFleeAngle(radToDeg(sensors.fleeAngle)); // Convert radians to degrees for UI
       setFollowBehavior(sensors.followBehavior);
       setFleeBehavior(sensors.fleeBehavior);
     }
@@ -68,7 +76,12 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
   }, [trailEnabled, sensorsEnabled]);
 
   const handleSensorsChange = (
-    property: keyof Sensors | "followBehavior" | "fleeBehavior",
+    property:
+      | keyof Sensors
+      | "followBehavior"
+      | "fleeBehavior"
+      | "colorSimilarityThreshold"
+      | "fleeAngle",
     value: number | boolean | SensorBehavior
   ) => {
     if (!sensors) return;
@@ -110,6 +123,14 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
         setSensorStrength(value as number);
         sensors.setSensorStrength(value as number);
         break;
+      case "colorSimilarityThreshold":
+        setColorSimilarityThreshold(value as number);
+        sensors.setColorSimilarityThreshold(value as number);
+        break;
+      case "fleeAngle":
+        setFleeAngle(value as number); // Store degrees in UI state
+        sensors.setFleeAngle(degToRad(value as number)); // Convert to radians for core library
+        break;
       case "followBehavior":
         setFollowBehavior(value as SensorBehavior);
         sensors.setFollowBehavior(value as SensorBehavior);
@@ -127,6 +148,14 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
     "same",
     "different",
   ];
+
+  // Helper functions for conditional visibility
+  const showColorSimilarity =
+    followBehavior === "same" ||
+    followBehavior === "different" ||
+    fleeBehavior === "same" ||
+    fleeBehavior === "different";
+  const showFleeAngle = fleeBehavior !== "none";
 
   return (
     <div className="control-section">
@@ -194,53 +223,6 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
             className="checkbox"
           />
           Enable Sensors
-        </label>
-      </div>
-
-      {/* Behavior Controls */}
-      <div className="control-group">
-        <label>
-          Follow Behavior:
-          <select
-            value={followBehavior}
-            disabled={!sensorsEnabled}
-            onChange={(e) =>
-              handleSensorsChange(
-                "followBehavior",
-                e.target.value as SensorBehavior
-              )
-            }
-            className={`form-select ${!sensorsEnabled ? "disabled" : ""}`}
-          >
-            {behaviorOptions.map((option) => (
-              <option key={option} value={option}>
-                {option.charAt(0).toUpperCase() + option.slice(1)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Flee Behavior:
-          <select
-            value={fleeBehavior}
-            disabled={!sensorsEnabled}
-            onChange={(e) =>
-              handleSensorsChange(
-                "fleeBehavior",
-                e.target.value as SensorBehavior
-              )
-            }
-            className={`form-select ${!sensorsEnabled ? "disabled" : ""}`}
-          >
-            {behaviorOptions.map((option) => (
-              <option key={option} value={option}>
-                {option.charAt(0).toUpperCase() + option.slice(1)}
-              </option>
-            ))}
-          </select>
         </label>
       </div>
 
@@ -333,6 +315,97 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
           />
         </label>
       </div>
+
+      {/* Behavior Controls - moved to end */}
+      <div className="control-group">
+        <label>
+          Follow Behavior:
+          <select
+            value={followBehavior}
+            disabled={!sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange(
+                "followBehavior",
+                e.target.value as SensorBehavior
+              )
+            }
+            className={`form-select ${!sensorsEnabled ? "disabled" : ""}`}
+          >
+            {behaviorOptions.map((option) => (
+              <option key={option} value={option}>
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Flee Behavior:
+          <select
+            value={fleeBehavior}
+            disabled={!sensorsEnabled}
+            onChange={(e) =>
+              handleSensorsChange(
+                "fleeBehavior",
+                e.target.value as SensorBehavior
+              )
+            }
+            className={`form-select ${!sensorsEnabled ? "disabled" : ""}`}
+          >
+            {behaviorOptions.map((option) => (
+              <option key={option} value={option}>
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {/* Conditional Controls */}
+      {showColorSimilarity && (
+        <div className="control-group">
+          <label>
+            Color Similarity: {colorSimilarityThreshold.toFixed(2)}
+            <input
+              type="range"
+              min="0"
+              max="0.5"
+              step="0.01"
+              value={colorSimilarityThreshold}
+              disabled={!sensorsEnabled}
+              onChange={(e) =>
+                handleSensorsChange(
+                  "colorSimilarityThreshold",
+                  parseFloat(e.target.value)
+                )
+              }
+              className={`slider ${!sensorsEnabled ? "disabled" : ""}`}
+            />
+          </label>
+        </div>
+      )}
+
+      {showFleeAngle && (
+        <div className="control-group">
+          <label>
+            Flee Angle: {Math.round(fleeAngle)}°
+            <input
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              value={fleeAngle}
+              disabled={!sensorsEnabled}
+              onChange={(e) =>
+                handleSensorsChange("fleeAngle", parseFloat(e.target.value))
+              }
+              className={`slider ${!sensorsEnabled ? "disabled" : ""}`}
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
