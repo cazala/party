@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Bounds, BoundsMode } from "@party/core";
 import {
   DEFAULT_BOUNDS_BOUNCE,
-  DEFAULT_BOUNDS_FRICTION,
   DEFAULT_BOUNDS_REPEL_DISTANCE,
   DEFAULT_BOUNDS_REPEL_STRENGTH,
   DEFAULT_BOUNDS_MODE,
@@ -14,7 +13,6 @@ interface BoundsControlsProps {
 
 export function BoundsControls({ bounds }: BoundsControlsProps) {
   const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
-  const [friction, setFriction] = useState(DEFAULT_BOUNDS_FRICTION);
   const [repelDistance, setRepelDistance] = useState(
     DEFAULT_BOUNDS_REPEL_DISTANCE
   );
@@ -26,7 +24,6 @@ export function BoundsControls({ bounds }: BoundsControlsProps) {
   useEffect(() => {
     if (bounds) {
       setBounce(bounds.bounce);
-      setFriction(bounds.friction);
       setRepelDistance(bounds.repelDistance);
       setRepelStrength(bounds.repelStrength);
       setMode(bounds.mode);
@@ -37,13 +34,6 @@ export function BoundsControls({ bounds }: BoundsControlsProps) {
     setBounce(value);
     if (bounds) {
       bounds.bounce = value;
-    }
-  };
-
-  const handleFrictionChange = (value: number) => {
-    setFriction(value);
-    if (bounds) {
-      bounds.setFriction(value);
     }
   };
 
@@ -104,23 +94,6 @@ export function BoundsControls({ bounds }: BoundsControlsProps) {
                 step="0.01"
                 value={bounce}
                 onChange={(e) => handleBounceChange(parseFloat(e.target.value))}
-                className="slider"
-              />
-            </label>
-          </div>
-
-          <div className="control-group">
-            <label>
-              Friction: {friction.toFixed(2)}
-              <input
-                type="range"
-                min="0"
-                max="0.5"
-                step="0.01"
-                value={friction}
-                onChange={(e) =>
-                  handleFrictionChange(parseFloat(e.target.value))
-                }
                 className="slider"
               />
             </label>

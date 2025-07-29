@@ -143,7 +143,7 @@ export class Fluid implements Force {
     this.clearDensities();
   }
 
-  warmup(particles: Particle[]) {
+  before(particles: Particle[]) {
     if (!this.enabled) {
       return;
     }

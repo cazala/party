@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Physics,
-  Collisions,
   degToRad,
   radToDeg,
   DEFAULT_GRAVITY_STRENGTH,
@@ -9,18 +8,12 @@ import {
   DEFAULT_INERTIA,
   DEFAULT_FRICTION,
 } from "@party/core";
-import {
-  DEFAULT_COLLISIONS_ENABLED,
-  DEFAULT_COLLISIONS_EAT,
-  DEFAULT_COLLISIONS_RESTITUTION,
-} from "@party/core/modules/forces/collisions";
 
 interface PhysicsControlsProps {
   physics: Physics | null;
-  collisions: Collisions | null;
 }
 
-export function PhysicsControls({ physics, collisions }: PhysicsControlsProps) {
+export function PhysicsControls({ physics }: PhysicsControlsProps) {
   const [gravityStrength, setGravityStrength] = useState(
     DEFAULT_GRAVITY_STRENGTH
   );
@@ -29,13 +22,6 @@ export function PhysicsControls({ physics, collisions }: PhysicsControlsProps) {
   ); // Convert radians to degrees for UI
   const [inertia, setInertia] = useState(DEFAULT_INERTIA);
   const [friction, setFriction] = useState(DEFAULT_FRICTION);
-  const [collisionsEnabled, setCollisionsEnabled] = useState(
-    DEFAULT_COLLISIONS_ENABLED
-  );
-  const [collisionsEat, setCollisionsEat] = useState(DEFAULT_COLLISIONS_EAT);
-  const [collisionsRestitution, setCollisionsRestitution] = useState(
-    DEFAULT_COLLISIONS_RESTITUTION
-  );
 
   useEffect(() => {
     if (physics) {
@@ -46,12 +32,7 @@ export function PhysicsControls({ physics, collisions }: PhysicsControlsProps) {
       setInertia(physics.inertia);
       setFriction(physics.friction);
     }
-    if (collisions) {
-      setCollisionsEnabled(collisions.enabled);
-      setCollisionsEat(collisions.eat);
-      setCollisionsRestitution(collisions.restitution);
-    }
-  }, [physics, collisions]);
+  }, [physics]);
 
   const handleGravityStrengthChange = (value: number) => {
     setGravityStrength(value);
@@ -78,27 +59,6 @@ export function PhysicsControls({ physics, collisions }: PhysicsControlsProps) {
     setFriction(value);
     if (physics) {
       physics.setFriction(value);
-    }
-  };
-
-  const handleCollisionsEnabledChange = (enabled: boolean) => {
-    setCollisionsEnabled(enabled);
-    if (collisions) {
-      collisions.setEnabled(enabled);
-    }
-  };
-
-  const handleCollisionsEatChange = (eat: boolean) => {
-    setCollisionsEat(eat);
-    if (collisions) {
-      collisions.setEat(eat);
-    }
-  };
-
-  const handleCollisionsRestitutionChange = (restitution: number) => {
-    setCollisionsRestitution(restitution);
-    if (collisions) {
-      collisions.setRestitution(restitution);
     }
   };
 
@@ -161,47 +121,6 @@ export function PhysicsControls({ physics, collisions }: PhysicsControlsProps) {
             step="0.001"
             value={friction}
             onChange={(e) => handleFrictionChange(parseFloat(e.target.value))}
-            className="slider"
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={collisionsEnabled}
-            onChange={(e) => handleCollisionsEnabledChange(e.target.checked)}
-          />
-          Enable Collisions
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={collisionsEat}
-            disabled={!collisionsEnabled}
-            onChange={(e) => handleCollisionsEatChange(e.target.checked)}
-            className={`checkbox ${!collisionsEnabled ? "disabled" : ""}`}
-          />
-          Eat on Collision
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Collision Restitution: {collisionsRestitution.toFixed(3)}
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.001"
-            value={collisionsRestitution}
-            onChange={(e) =>
-              handleCollisionsRestitutionChange(parseFloat(e.target.value))
-            }
             className="slider"
           />
         </label>

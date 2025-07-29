@@ -2,10 +2,10 @@ import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
 import { Vector2D } from "../vector";
+import { Physics } from "./physics";
 
 // Default constants for Bounds behavior
 export const DEFAULT_BOUNDS_BOUNCE = 0.6; // Reduced from 0.8 for more energy dissipation
-export const DEFAULT_BOUNDS_FRICTION = 0.1; // Tangential friction along walls
 export const DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY = 50; // Below this speed, bounce is reduced further
 export const DEFAULT_BOUNDS_REPEL_DISTANCE = 0; // No repel distance by default
 export const DEFAULT_BOUNDS_REPEL_STRENGTH = 0; // No repel strength by default
@@ -15,38 +15,29 @@ export type BoundsMode = "bounce" | "kill" | "warp";
 
 export interface BoundingBoxOptions {
   bounce?: number;
-  friction?: number;
   minBounceVelocity?: number;
   repelDistance?: number;
   repelStrength?: number;
   mode?: BoundsMode;
-  wrap?: boolean; // Legacy option, kept for compatibility
-  kill?: boolean; // Legacy option, kept for compatibility
+  physics?: Physics; // Reference to physics module for friction
 }
 
 export class Bounds implements Force {
   public bounce: number;
-  public friction: number;
   public repelDistance: number;
   public repelStrength: number;
   public mode: BoundsMode;
   private cameraX: number = 0;
   private cameraY: number = 0;
   private zoom: number = 1;
+  private physics?: Physics;
 
   constructor(options: BoundingBoxOptions = {}) {
     this.bounce = options.bounce || DEFAULT_BOUNDS_BOUNCE;
-    this.friction = options.friction || DEFAULT_BOUNDS_FRICTION;
     this.repelDistance = options.repelDistance || DEFAULT_BOUNDS_REPEL_DISTANCE;
     this.repelStrength = options.repelStrength || DEFAULT_BOUNDS_REPEL_STRENGTH;
     this.mode = options.mode || DEFAULT_BOUNDS_MODE;
-
-    // Handle legacy options
-    if (options.kill) {
-      this.mode = "kill";
-    } else if (options.wrap) {
-      this.mode = "warp";
-    }
+    this.physics = options.physics;
   }
 
   setCamera(cameraX: number, cameraY: number, zoom: number): void {
@@ -55,8 +46,8 @@ export class Bounds implements Force {
     this.zoom = zoom;
   }
 
-  setFriction(friction: number): void {
-    this.friction = friction;
+  setPhysics(physics: Physics): void {
+    this.physics = physics;
   }
 
   setRepelDistance(distance: number): void {
@@ -158,7 +149,9 @@ export class Bounds implements Force {
       particle.position.x = worldLeft + radius;
       particle.velocity.x = Math.abs(particle.velocity.x) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce y velocity)
-      particle.velocity.y *= 1 - this.friction;
+      if (this.physics) {
+        particle.velocity.y *= 1 - this.physics.friction;
+      }
     }
 
     // Right wall collision
@@ -166,7 +159,9 @@ export class Bounds implements Force {
       particle.position.x = worldRight - radius;
       particle.velocity.x = -Math.abs(particle.velocity.x) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce y velocity)
-      particle.velocity.y *= 1 - this.friction;
+      if (this.physics) {
+        particle.velocity.y *= 1 - this.physics.friction;
+      }
     }
 
     // Top wall collision
@@ -174,7 +169,9 @@ export class Bounds implements Force {
       particle.position.y = worldTop + radius;
       particle.velocity.y = Math.abs(particle.velocity.y) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce x velocity)
-      particle.velocity.x *= 1 - this.friction;
+      if (this.physics) {
+        particle.velocity.x *= 1 - this.physics.friction;
+      }
     }
 
     // Bottom wall collision
@@ -182,7 +179,9 @@ export class Bounds implements Force {
       particle.position.y = worldBottom - radius;
       particle.velocity.y = -Math.abs(particle.velocity.y) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce x velocity)
-      particle.velocity.x *= 1 - this.friction;
+      if (this.physics) {
+        particle.velocity.x *= 1 - this.physics.friction;
+      }
     }
   }
 

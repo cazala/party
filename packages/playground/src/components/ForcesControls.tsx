@@ -22,7 +22,6 @@ import {
   DEFAULT_BEHAVIOR_VIEW_RADIUS,
   DEFAULT_BEHAVIOR_VIEW_ANGLE,
   DEFAULT_BOUNDS_BOUNCE,
-  DEFAULT_BOUNDS_FRICTION,
   DEFAULT_BOUNDS_REPEL_DISTANCE,
   DEFAULT_BOUNDS_REPEL_STRENGTH,
   DEFAULT_BOUNDS_MODE,
@@ -42,13 +41,12 @@ import {
   DEFAULT_SENSOR_THRESHOLD,
   DEFAULT_SENSOR_STRENGTH,
   DEFAULT_JOINTS_ENABLED,
-  DEFAULT_JOINT_RESTITUTION,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
-  DEFAULT_JOINT_FRICTION,
 } from "@party/core";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
 import { BoundsControls } from "./control-sections/BoundsControls";
+import { CollisionControls } from "./control-sections/CollisionControls";
 import { FluidsControls } from "./control-sections/FluidsControls";
 import { SensorsControls } from "./control-sections/SensorsControls";
 import { JointControls } from "./control-sections/JointControls";
@@ -103,7 +101,6 @@ export function ForcesControls({
     // Reset bounds
     if (bounds) {
       bounds.bounce = DEFAULT_BOUNDS_BOUNCE;
-      bounds.setFriction(DEFAULT_BOUNDS_FRICTION);
       bounds.setRepelDistance(DEFAULT_BOUNDS_REPEL_DISTANCE);
       bounds.setRepelStrength(DEFAULT_BOUNDS_REPEL_STRENGTH);
       bounds.setMode(DEFAULT_BOUNDS_MODE);
@@ -154,9 +151,7 @@ export function ForcesControls({
     // Reset joints
     if (joints) {
       joints.setEnabled(DEFAULT_JOINTS_ENABLED);
-      joints.setRestitution(DEFAULT_JOINT_RESTITUTION);
       joints.setEnableCollisions(DEFAULT_JOINT_COLLISIONS_ENABLED);
-      joints.setFriction(DEFAULT_JOINT_FRICTION);
       joints.clear(); // Clear all existing joints
     }
 
@@ -254,10 +249,14 @@ export function ForcesControls({
       />
 
       <CollapsibleSection title="Physics" defaultOpen={true}>
-        <PhysicsControls
-          key={`physics-${refreshKey}`}
-          physics={physics}
+        <PhysicsControls key={`physics-${refreshKey}`} physics={physics} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Collisions">
+        <CollisionControls
+          key={`collisions-${refreshKey}`}
           collisions={collisions}
+          joints={joints}
         />
       </CollapsibleSection>
 

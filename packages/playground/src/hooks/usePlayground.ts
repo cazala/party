@@ -192,7 +192,10 @@ export function usePlayground(
   // ---------------------------------------------------------------------------
   // Undo/Redo system
   // ---------------------------------------------------------------------------
-  const undoRedo = useUndoRedo(() => systemRef.current, () => jointsRef.current);
+  const undoRedo = useUndoRedo(
+    () => systemRef.current,
+    () => jointsRef.current
+  );
   const undoRedoRef = useRef(undoRedo);
   undoRedoRef.current = undoRedo;
 
@@ -263,16 +266,21 @@ export function usePlayground(
   useEffect(() => {
     if (systemRef.current) return;
 
-    const physics = new Physics({ gravity: { strength: DEFAULT_GRAVITY_STRENGTH } });
+    const physics = new Physics({
+      gravity: { strength: DEFAULT_GRAVITY_STRENGTH },
+    });
     physicsRef.current = physics;
 
-    const bounds = new Bounds();
+    const bounds = new Bounds({ physics: physics });
     boundsRef.current = bounds;
 
     const behavior = new Behavior({ enabled: true }); // Playground default: on
     behaviorRef.current = behavior;
 
-    const collisions = new Collisions();
+    const joints = new Joints({ enabled: true }); // Playground default: on
+    jointsRef.current = joints;
+
+    const collisions = new Collisions({ joints: joints, physics: physics });
     collisionsRef.current = collisions;
 
     const fluid = new Fluid({ enabled: false }); // Playground default: off
@@ -283,9 +291,6 @@ export function usePlayground(
 
     const sensors = new Sensors({ enableTrail: false }); // Playground default: off
     sensorsRef.current = sensors;
-
-    const joints = new Joints({ enabled: true }); // Playground default: on
-    jointsRef.current = joints;
 
     const system = new System({
       width: canvasRef.current?.width || 1200,

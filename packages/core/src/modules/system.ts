@@ -11,7 +11,6 @@ import {
 import {
   Bounds,
   DEFAULT_BOUNDS_BOUNCE,
-  DEFAULT_BOUNDS_FRICTION,
   DEFAULT_BOUNDS_MODE,
   DEFAULT_BOUNDS_REPEL_DISTANCE,
   DEFAULT_BOUNDS_REPEL_STRENGTH,
@@ -60,8 +59,14 @@ import {
 import { Joints, DEFAULT_JOINTS_ENABLED } from "./forces/joints";
 
 export interface Force {
-  warmup?(particles: Particle[], deltaTime: number): void;
+  before?(particles: Particle[], deltaTime: number): void;
   apply(particle: Particle, spatialGrid: SpatialGrid): void;
+  constraints?(particles: Particle[], spatialGrid: SpatialGrid): void;
+  after?(
+    particles: Particle[],
+    deltaTime: number,
+    spatialGrid: SpatialGrid
+  ): void;
   clear?(): void;
 }
 
@@ -129,20 +134,15 @@ export interface Config {
     enableCollisions?: boolean;
     friction?: number;
   };
-  system?: {
-    momentumPreservation?: number;
-  };
 }
 
 // Default constants for ParticleSystem
 export const DEFAULT_SPATIAL_GRID_CELL_SIZE = 100;
-export const DEFAULT_MOMENTUM_PRESERVATION = 0.7;
 
 export interface SystemOptions {
   width: number;
   height: number;
   cellSize?: number;
-  momentumPreservation?: number;
 }
 
 export class System {
@@ -152,7 +152,6 @@ export class System {
   public width: number;
   public height: number;
   public isPlaying: boolean = false;
-  public momentumPreservation: number;
 
   private lastTime: number = 0;
   private animationId: number | null = null;
@@ -167,8 +166,6 @@ export class System {
   constructor(options: SystemOptions) {
     this.width = options.width;
     this.height = options.height;
-    this.momentumPreservation =
-      options.momentumPreservation ?? DEFAULT_MOMENTUM_PRESERVATION;
 
     this.spatialGrid = new SpatialGrid({
       width: this.width,
@@ -199,10 +196,6 @@ export class System {
     }
   }
 
-  setMomentumPreservation(value: number): void {
-    this.momentumPreservation = Math.max(0, Math.min(1, value)); // Clamp between 0 and 1
-  }
-
   addForce(force: Force): void {
     this.forces.push(force);
   }
@@ -227,15 +220,10 @@ export class System {
     }
 
     for (const force of this.forces) {
-      force.warmup?.(this.particles, deltaTime);
+      force.before?.(this.particles, deltaTime);
     }
 
-    // Store positions before physics integration for constraint velocity correction
-    const prePhysicsPositions = new Map<number, Vector2D>();
-    for (const particle of this.particles) {
-      prePhysicsPositions.set(particle.id, particle.position.clone());
-    }
-
+    // Apply forces and integrate physics
     for (const particle of this.particles) {
       for (const force of this.forces) {
         force.apply(particle, this.spatialGrid);
@@ -255,39 +243,14 @@ export class System {
       }
     }
 
-    // Apply optimized joint collisions using spatial grid
-    const jointsForce = this.forces.find((force) => force instanceof Joints);
-    if (jointsForce && "checkAllJointCollisions" in jointsForce) {
-      (jointsForce as any).checkAllJointCollisions(this.spatialGrid);
+    // Apply constraints
+    for (const force of this.forces) {
+      force.constraints?.(this.particles, this.spatialGrid);
     }
 
-    // Apply joint constraints AFTER physics integration to preserve natural motion
-    if (jointsForce && "applyConstraints" in jointsForce) {
-      (jointsForce as any).applyConstraints(this.spatialGrid);
-
-      // Update velocities to match actual movement after constraint solving
-      if (deltaTime > 0) {
-        for (const particle of this.particles) {
-          if (!particle.pinned && jointsForce.hasJoint(particle.id)) {
-            const prePhysicsPosition = prePhysicsPositions.get(particle.id);
-            if (prePhysicsPosition) {
-              // Calculate total actual movement from start to end
-              const totalMovement = particle.position
-                .clone()
-                .subtract(prePhysicsPosition);
-              const actualVelocity = totalMovement.divide(deltaTime);
-
-              const momentum = this.momentumPreservation;
-
-              // Blend between current velocity and actual movement based on momentum preservation
-              particle.velocity = particle.velocity
-                .clone()
-                .multiply(1 - momentum)
-                .add(actualVelocity.multiply(momentum));
-            }
-          }
-        }
-      }
+    // Apply post-physics operations (momentum, etc.)
+    for (const force of this.forces) {
+      force.after?.(this.particles, deltaTime, this.spatialGrid);
     }
 
     // Remove eaten particles (marked with mass = 0)
@@ -424,7 +387,6 @@ export class System {
       } else if (force instanceof Bounds) {
         config.bounds = {
           bounce: force.bounce,
-          friction: force.friction,
           mode: force.mode,
           repelDistance: force.repelDistance,
           repelStrength: force.repelStrength,
@@ -473,17 +435,12 @@ export class System {
       } else if (force instanceof Joints) {
         config.joints = {
           enabled: force.enabled,
-          restitution: force.restitution,
           enableCollisions: force.enableCollisions,
-          friction: force.friction,
         };
       }
     }
 
-    // Export system settings
-    config.system = {
-      momentumPreservation: this.momentumPreservation,
-    };
+    // No system settings to export currently
 
     return config;
   }
@@ -524,7 +481,6 @@ export class System {
         }
       } else if (force instanceof Bounds && config.bounds) {
         force.bounce = config.bounds.bounce ?? DEFAULT_BOUNDS_BOUNCE;
-        force.setFriction(config.bounds.friction ?? DEFAULT_BOUNDS_FRICTION);
         force.setMode(config.bounds.mode ?? DEFAULT_BOUNDS_MODE);
         force.setRepelDistance(
           config.bounds.repelDistance ?? DEFAULT_BOUNDS_REPEL_DISTANCE
@@ -602,23 +558,12 @@ export class System {
         );
       } else if (force instanceof Joints && config.joints) {
         force.setEnabled(config.joints.enabled ?? DEFAULT_JOINTS_ENABLED);
-        if (config.joints.restitution !== undefined) {
-          force.setRestitution(config.joints.restitution);
-        }
         if (config.joints.enableCollisions !== undefined) {
           force.setEnableCollisions(config.joints.enableCollisions);
-        }
-        if (config.joints.friction !== undefined) {
-          force.setFriction(config.joints.friction);
         }
       }
     }
 
-    // Import system settings
-    if (config.system) {
-      this.setMomentumPreservation(
-        config.system.momentumPreservation ?? DEFAULT_MOMENTUM_PRESERVATION
-      );
-    }
+    // No system settings to import currently
   }
 }

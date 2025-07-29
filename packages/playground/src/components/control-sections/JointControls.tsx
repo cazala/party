@@ -1,12 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Joints,
-  System,
-  DEFAULT_JOINT_RESTITUTION,
-  DEFAULT_JOINT_COLLISIONS_ENABLED,
-  DEFAULT_JOINT_FRICTION,
-  getIdCounter,
-} from "@party/core";
+import { Joints, System, getIdCounter } from "@party/core";
 import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
 
 interface JointControlsProps {
@@ -15,23 +8,19 @@ interface JointControlsProps {
   undoRedo: UseUndoRedoReturn | null;
 }
 
-export function JointControls({ joints, system, undoRedo }: JointControlsProps) {
+export function JointControls({
+  joints,
+  system,
+  undoRedo,
+}: JointControlsProps) {
   const [enabled, setEnabled] = useState(true);
   const [jointCount, setJointCount] = useState(0);
-  const [restitution, setRestitution] = useState(DEFAULT_JOINT_RESTITUTION);
-  const [enableCollisions, setEnableCollisions] = useState(
-    DEFAULT_JOINT_COLLISIONS_ENABLED
-  );
-  const [friction, setFriction] = useState(DEFAULT_JOINT_FRICTION);
 
   // Update local state when joints changes
   useEffect(() => {
     if (joints) {
       setEnabled(joints.enabled);
       setJointCount(joints.getJointCount());
-      setRestitution(joints.restitution);
-      setEnableCollisions(joints.enableCollisions);
-      setFriction(joints.friction);
     }
   }, [joints]);
 
@@ -53,36 +42,15 @@ export function JointControls({ joints, system, undoRedo }: JointControlsProps) 
     }
   };
 
-  const handleRestitutionChange = (value: number) => {
-    setRestitution(value);
-    if (joints) {
-      joints.setRestitution(value);
-    }
-  };
-
-  const handleEnableCollisionsChange = (value: boolean) => {
-    setEnableCollisions(value);
-    if (joints) {
-      joints.setEnableCollisions(value);
-    }
-  };
-
-  const handleFrictionChange = (value: number) => {
-    setFriction(value);
-    if (joints) {
-      joints.setFriction(value);
-    }
-  };
-
   const handleClearAllJoints = () => {
     if (joints && undoRedo) {
       // Get all existing joints before clearing
       const existingJoints = joints.getAllJoints();
-      
+
       // Clear all joints
       joints.clear();
       setJointCount(0);
-      
+
       // Record the clear operation for undo (for each joint removal)
       existingJoints.forEach((joint) => {
         undoRedo.recordJointRemove(joint, getIdCounter());
@@ -108,7 +76,7 @@ export function JointControls({ joints, system, undoRedo }: JointControlsProps) 
       });
       createdJoints.push(joint);
     }
-    
+
     // Record all created joints for undo
     createdJoints.forEach((joint) => {
       undoRedo.recordJointCreate(joint, getIdCounter());
@@ -142,7 +110,7 @@ export function JointControls({ joints, system, undoRedo }: JointControlsProps) 
       });
       createdJoints.push(circuitJoint);
     }
-    
+
     // Record all created joints for undo
     createdJoints.forEach((joint) => {
       undoRedo.recordJointCreate(joint, getIdCounter());
@@ -166,7 +134,7 @@ export function JointControls({ joints, system, undoRedo }: JointControlsProps) 
         createdJoints.push(joint);
       }
     }
-    
+
     // Record all created joints for undo
     createdJoints.forEach((joint) => {
       undoRedo.recordJointCreate(joint, getIdCounter());
@@ -184,52 +152,6 @@ export function JointControls({ joints, system, undoRedo }: JointControlsProps) 
             className="checkbox"
           />
           Enable Joints
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Restitution: {restitution.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={restitution}
-            onChange={(e) =>
-              handleRestitutionChange(parseFloat(e.target.value))
-            }
-            className="slider"
-            disabled={!enabled}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Friction: {friction.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={friction}
-            onChange={(e) => handleFrictionChange(parseFloat(e.target.value))}
-            className="slider"
-            disabled={!enabled}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={enableCollisions}
-            onChange={(e) => handleEnableCollisionsChange(e.target.checked)}
-            className="checkbox"
-          />
-          Enable Collisions
         </label>
       </div>
 
