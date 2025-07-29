@@ -113,13 +113,6 @@ export class Collisions implements Force {
   ): void {
     if (!this.joints || deltaTime <= 0) return;
 
-    console.log(
-      "applyMomentumPreservation",
-      particles,
-      deltaTime,
-      prePhysicsPositions
-    );
-
     // Update velocities for constrained particles to match actual movement
     for (const particle of particles) {
       if (!particle.pinned && this.joints.hasJoint(particle.id)) {

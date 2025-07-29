@@ -49,13 +49,13 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               <div className="help-item">
                 <div className="help-action">Click + Drag</div>
                 <div className="help-description">
-                  Drag to set particle size by distance
+                  Drag to set particle size by distance (Single mode only)
                 </div>
               </div>
               <div className="help-item">
                 <div className="help-action">Ctrl/⌘ + Click + Drag</div>
                 <div className="help-description">
-                  Drag to set particle direction and speed
+                  Drag to set particle direction and speed (Single mode only)
                 </div>
               </div>
               <div className="help-item">
@@ -81,9 +81,15 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
             <h3>Keyboard Modifiers</h3>
             <div className="help-list">
               <div className="help-item">
-                <div className="help-action">Hold Shift + Click</div>
+                <div className="help-action">Shift</div>
                 <div className="help-description">
-                  Stream particles continuously
+                  In Joint mode: continue creating joints without deselecting particles
+                </div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Ctrl/⌘ during drag</div>
+                <div className="help-description">
+                  Switch from size mode to velocity mode (Single mode only)
                 </div>
               </div>
             </div>
@@ -149,7 +155,37 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               <div className="help-item">
                 <div className="help-action">Ctrl/⌘ + SHIFT + F</div>
                 <div className="help-description">
-                  Toggle Pin checkbox in spawn controls
+                  Toggle Pin checkbox in spawn controls, or pin/unpin grabbed particle
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="help-section">
+            <h3>Spawn Modes</h3>
+            <div className="help-list">
+              <div className="help-item">
+                <div className="help-action">Single Mode</div>
+                <div className="help-description">
+                  Standard particle spawning with drag-to-size and drag-to-velocity
+                </div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Stream Mode</div>
+                <div className="help-description">
+                  Continuously spawn particles at cursor position
+                </div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Draw Mode</div>
+                <div className="help-description">
+                  Draw connected particle chains by dragging
+                </div>
+              </div>
+              <div className="help-item">
+                <div className="help-action">Shape Mode</div>
+                <div className="help-description">
+                  Spawn geometric shapes with all-to-all particle connections
                 </div>
               </div>
             </div>
@@ -162,7 +198,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 <div className="help-action">Mode Switching</div>
                 <div className="help-description">
                   Press Ctrl/⌘ while dragging to switch from size mode to
-                  velocity mode
+                  velocity mode (only works in Single spawn mode)
                 </div>
               </div>
               <div className="help-item">

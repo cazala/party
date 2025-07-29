@@ -42,9 +42,8 @@ import { UseUndoRedoReturn } from "./useUndoRedo";
  * - **Mouse Wheel/Trackpad Scroll**: Zoom in/out on the simulation
  *
  * ### Keyboard Modifiers:
- * - **Hold Shift + Click**: Stream particles continuously at cursor
- * - **Hold Shift + Click & Drag**: Stream particles with drag-to-size behavior
  * - **Escape**: Cancel current drag operation
+ * - **Shift**: Used in joint mode for continuous joint creation
  *
  * ### Advanced Features:
  * - **Mode Switching**: Press Ctrl/⌘ while dragging to switch from size mode to velocity mode
@@ -59,7 +58,7 @@ import { UseUndoRedoReturn } from "./useUndoRedo";
  * - **Drag-to-Size**: Uses `calculateMassFromSize(dragSize)`
  * - **Ctrl+Click+Drag**: Uses `spawnConfig.defaultMass`
  * - **Click+Drag+Ctrl**: Uses `calculateMassFromSize(dragSize)`
- * - **Streaming**: Uses preserved mass or falls back to configured mass
+ * - **Stream Mode**: Uses configured mass from spawn controls
  *
  * @param props - Configuration object containing system accessors and callbacks
  * @param props.getSystem - Function to get the current particle system
@@ -105,7 +104,7 @@ interface MouseState {
   streamSize: number;
   /** Position where streaming is occurring */
   streamPosition: { x: number; y: number };
-  /** Whether shift key is currently pressed */
+  /** Whether shift key is currently pressed (used for joint mode) */
   shiftPressed: boolean;
   /** Whether streaming occurred during this mouse session */
   wasStreaming: boolean;
@@ -280,7 +279,8 @@ export function useInteractions({
   });
 
   // State to track when we're currently grabbing for cursor styling
-  const [isCurrentlyGrabbing, setIsCurrentlyGrabbing] = useState(false);
+  const [currentlyGrabbedParticle, setCurrentlyGrabbedParticle] =
+    useState<Particle | null>(null);
 
   // Spawner instance for shape creation
   const spawner = new Spawner();
@@ -818,7 +818,7 @@ export function useInteractions({
         particle.grabbed = true;
 
         // Update cursor state for styling
-        setIsCurrentlyGrabbing(true);
+        setCurrentlyGrabbedParticle(particle);
       }
     },
     [findParticleAtPosition]
@@ -1008,56 +1008,24 @@ export function useInteractions({
 
       if (e.key === "Shift") {
         mouseState.shiftPressed = true;
-
-        // If mouse is down and we're not streaming yet, start streaming
-        if (mouseState.isDown && !mouseState.isStreaming) {
-          const distance = getDistance(
-            mouseState.startPos,
-            mouseState.currentPos
-          );
-          const size = calculateParticleSize(
-            distance,
-            mouseState.isDragging,
-            mouseState.dragThreshold,
-            getRenderer()?.getZoom() || 1,
-            getSpawnConfig()
-          );
-          const mass = calculateParticleMass(
-            distance,
-            mouseState.isDragging,
-            mouseState.dragThreshold,
-            getRenderer()?.getZoom() || 1,
-            getSpawnConfig()
-          );
-          startStreaming(
-            mouseState.startPos.x,
-            mouseState.startPos.y,
-            size,
-            mass
-          );
-          // Store the size and mass for subsequent clicks while SHIFT is held
-          mouseState.activeStreamSize = size;
-          mouseState.activeStreamMass = mass;
-          // Clear preview particles when streaming starts
-          const renderer = getRenderer();
-          if (renderer) {
-            renderer.setPreviewParticle(null, false);
-            renderer.setPreviewVelocity(null);
-          }
-        }
+        // Shift key streaming has been removed - now only used for joint mode
       }
 
       // Handle CMD (Mac) or Ctrl (Windows/Linux) key
       if (e.key === "Meta" || e.key === "Control") {
-        // Ignore CMD/Ctrl when shift is pressed (streaming mode) or not in single mode
-        if (
-          !mouseState.shiftPressed &&
-          getSpawnConfig().spawnMode === "single"
-        ) {
+        const spawnConfig = getSpawnConfig();
+
+        // Only allow CMD/Ctrl mode switching in single mode and when not in streaming mode
+        if (!mouseState.shiftPressed && spawnConfig.spawnMode === "single") {
           mouseState.cmdPressed = true;
 
-          // If mouse is down, switch to velocity mode
-          if (mouseState.isDown && !mouseState.isStreaming) {
+          // If mouse is down and not in drawing or shape spawning, switch to velocity mode
+          if (
+            mouseState.isDown &&
+            !mouseState.isStreaming &&
+            !mouseState.isDrawing &&
+            !mouseState.wasStreaming // Prevent switching after shape spawning
+          ) {
             mouseState.isDragToVelocity = true;
             // Use the last calculated size from the size preview to preserve the current size
             mouseState.velocityModeSize = mouseState.lastCalculatedSize;
@@ -1085,12 +1053,7 @@ export function useInteractions({
 
       if (e.key === "Shift") {
         mouseState.shiftPressed = false;
-        mouseState.activeStreamSize = 0; // Reset stream size when shift is released
-        mouseState.activeStreamMass = 0; // Reset stream mass when shift is released
-        if (mouseState.isStreaming) {
-          stopStreaming();
-          mouseState.wasStreaming = true;
-        }
+        // Shift key streaming removed - shift is now only used for joint mode
       }
 
       // Handle CMD (Mac) or Ctrl (Windows/Linux) key release
@@ -1319,7 +1282,6 @@ export function useInteractions({
       const spawnConfig = getSpawnConfig();
 
       // Reset streaming state for new interaction - use ONLY the mouse event's modifier keys
-      const wasShiftPressedBefore = mouseState.shiftPressed;
       const wasCmdPressedBefore = mouseState.cmdPressed;
       mouseState.shiftPressed = e.shiftKey;
       mouseState.cmdPressed = e.metaKey || e.ctrlKey;
@@ -1345,11 +1307,7 @@ export function useInteractions({
         mouseState.velocityModeSize = velocitySize;
       }
 
-      // If shift was released between interactions, reset the active stream size and mass
-      if (wasShiftPressedBefore && !mouseState.shiftPressed) {
-        mouseState.activeStreamSize = 0;
-        mouseState.activeStreamMass = 0;
-      }
+      // Shift key streaming removed - no need to reset stream size/mass on shift release
 
       // If cmd was released between interactions, reset the active velocity size
       if (wasCmdPressedBefore && !mouseState.cmdPressed) {
@@ -1396,29 +1354,10 @@ export function useInteractions({
         mouseState.isDown = true;
         mouseState.wasStreaming = true; // Use this flag to prevent spawning in onMouseUp
         return; // Don't show preview when spawning shape
-      } else if (
-        mouseState.shiftPressed ||
-        spawnConfig.spawnMode === "stream"
-      ) {
-        // Stream mode: start streaming
-        let streamSize;
-        let streamMass;
-        if (spawnConfig.spawnMode === "stream") {
-          // In stream mode, always use current size from spawn config
-          streamSize = spawnConfig.defaultSize;
-          streamMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
-        } else if (
-          mouseState.activeStreamSize > 0 &&
-          mouseState.activeStreamMass > 0
-        ) {
-          // Use the preserved size and mass from previous drag-to-size (shift+click behavior)
-          streamSize = mouseState.activeStreamSize;
-          streamMass = mouseState.activeStreamMass;
-        } else {
-          // Use default size from spawn config for first shift+click
-          streamSize = spawnConfig.defaultSize;
-          streamMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
-        }
+      } else if (spawnConfig.spawnMode === "stream") {
+        // Stream mode: start streaming (shift key streaming removed)
+        const streamSize = spawnConfig.defaultSize;
+        const streamMass = spawnConfig.defaultMass; // Use configured mass from spawn controls
         startStreaming(pos.x, pos.y, streamSize, streamMass);
         mouseState.wasStreaming = true; // Mark that we were streaming
         return; // Don't show preview when streaming
@@ -1591,50 +1530,9 @@ export function useInteractions({
         // Don't show preview again - user already placed particles via streaming
       }
 
-      // If shift was just released, reset the active stream size and mass
-      if (wasShiftPressed && !mouseState.shiftPressed) {
-        mouseState.activeStreamSize = 0;
-        mouseState.activeStreamMass = 0;
-      }
+      // Shift key streaming removed - no longer need to track stream size/mass
 
-      // If shift was just pressed during mouse move, start streaming (ignore CMD in streaming mode)
-      if (
-        !wasShiftPressed &&
-        mouseState.shiftPressed &&
-        !mouseState.isStreaming
-      ) {
-        const distance = getDistance(
-          mouseState.startPos,
-          mouseState.currentPos
-        );
-        const size = calculateParticleSize(
-          distance,
-          mouseState.isDragging,
-          mouseState.dragThreshold,
-          renderer.getZoom(),
-          getSpawnConfig()
-        );
-        const mass = calculateParticleMass(
-          distance,
-          mouseState.isDragging,
-          mouseState.dragThreshold,
-          renderer.getZoom(),
-          getSpawnConfig()
-        );
-        mouseState.activeStreamSize = size; // Store this size for subsequent clicks
-        mouseState.activeStreamMass = mass; // Store this mass for subsequent clicks
-        startStreaming(
-          mouseState.startPos.x,
-          mouseState.startPos.y,
-          size,
-          mass
-        );
-        mouseState.wasStreaming = true; // Mark that we were streaming
-        // Hide the preview particle when streaming starts
-        renderer.setPreviewParticle(null, false);
-        renderer.setPreviewVelocity(null); // Clear velocity preview
-        return;
-      }
+      // Shift key streaming has been removed - shift is now only used for joint mode
 
       // If we're streaming, update the stream position to follow the cursor
       if (mouseState.isStreaming) {
@@ -1647,8 +1545,13 @@ export function useInteractions({
         return;
       }
 
-      // Handle CMD/Ctrl mode switching (only when not in streaming mode and in single mode)
-      if (!mouseState.shiftPressed && getSpawnConfig().spawnMode === "single") {
+      // Handle CMD/Ctrl mode switching (only when not in streaming mode, in single mode, and not drawing/shape spawning)
+      if (
+        !mouseState.shiftPressed &&
+        getSpawnConfig().spawnMode === "single" &&
+        !mouseState.isDrawing &&
+        !mouseState.wasStreaming
+      ) {
         if (!wasCmdPressed && mouseState.cmdPressed) {
           // Just pressed CMD: switch to velocity mode
           mouseState.isDragToVelocity = true;
@@ -1759,7 +1662,7 @@ export function useInteractions({
         mouseState.isGrabbing = false;
 
         // Update cursor state for styling
-        setIsCurrentlyGrabbing(false);
+        setCurrentlyGrabbedParticle(null);
         mouseState.grabOffset = { x: 0, y: 0 };
         mouseState.grabPreviousPos = { x: 0, y: 0 };
         mouseState.grabLastMoveTime = 0;
@@ -1970,7 +1873,7 @@ export function useInteractions({
     mouseState.isGrabbing = false;
 
     // Update cursor state for styling
-    setIsCurrentlyGrabbing(false);
+    setCurrentlyGrabbedParticle(null);
     mouseState.grabOffset = { x: 0, y: 0 };
     mouseState.grabPreviousPos = { x: 0, y: 0 };
     mouseState.grabLastMoveTime = 0;
@@ -2040,6 +1943,6 @@ export function useInteractions({
     onWheel,
     cleanup,
     setupKeyboardListeners,
-    isCurrentlyGrabbing,
+    currentlyGrabbedParticle,
   };
 }

@@ -10,8 +10,8 @@ The `useInteractions` hook is the core interaction system for the particle playg
 
 #### Basic Particle Spawning
 - **Click**: Spawn a single particle at cursor position using configured size and mass
-- **Click & Drag**: Set particle size based on drag distance (drag-to-size)
-- **Ctrl/⌘ + Click & Drag**: Set particle direction and speed (drag-to-velocity)
+- **Click & Drag**: Set particle size based on drag distance (drag-to-size) - Single mode only
+- **Ctrl/⌘ + Click & Drag**: Set particle direction and speed (drag-to-velocity) - Single mode only
 
 #### Particle Interaction
 - **Right Click**: Attract particles to cursor position
@@ -20,14 +20,12 @@ The `useInteractions` hook is the core interaction system for the particle playg
 
 ### Keyboard Modifiers
 
-#### Streaming Mode
-- **Hold Shift + Click**: Stream particles continuously at cursor
-- **Hold Shift + Click & Drag**: Stream particles with drag-to-size behavior
-- **Shift + Click (after drag)**: Continue streaming with preserved size/mass from previous drag
-
 #### Mode Switching
-- **Ctrl/⌘ during drag**: Switch from size mode to velocity mode
+- **Ctrl/⌘ during drag**: Switch from size mode to velocity mode (Single mode only)
 - **Escape**: Cancel current drag operation
+
+#### Tool-Specific Modifiers
+- **Shift in Joint Mode**: Continue creating joints without deselecting particles
 
 ### Advanced Features
 
@@ -39,15 +37,16 @@ The hook respects the mass configuration from the Particle Spawner Controls:
 3. **Drag-to-Velocity from Click**: Uses configured mass from spawner controls
 4. **Drag-to-Velocity from Drag**: Uses mass calculated from drag size
 
-#### Active Size/Mass Preservation
-- **Size Preservation**: Maintains particle size across multiple stream operations
-- **Mass Preservation**: Maintains particle mass across multiple stream operations
-- **State Persistence**: Preserved values cleared when SHIFT is released
-
 #### Mode Switching
-- **Dynamic Switching**: Switch between size and velocity modes during drag
+- **Dynamic Switching**: Switch between size and velocity modes during drag (Single mode only)
 - **State Preservation**: Maintains current size when switching modes
 - **Visual Feedback**: Real-time preview updates during mode changes
+
+#### Spawn Mode System
+- **Single Mode**: Standard spawning with drag-to-size and drag-to-velocity features
+- **Stream Mode**: Continuous particle spawning at cursor position
+- **Draw Mode**: Creates connected particle chains by dragging
+- **Shape Mode**: Spawns geometric shapes with all-to-all connections
 
 ## State Management
 
@@ -72,7 +71,7 @@ interface MouseState {
   activeStreamMass: number;
   
   // Mode tracking
-  shiftPressed: boolean;
+  shiftPressed: boolean; // Used for joint mode continuity
   cmdPressed: boolean;
   isDragToVelocity: boolean;
   originalDragIntent: "size" | "velocity" | null;
@@ -99,10 +98,10 @@ interface MouseState {
 - **Values**: `"size"` | `"velocity"` | `null`
 - **Usage**: Determines correct mass calculation for drag-to-velocity operations
 
-#### Active Stream Size/Mass
-- **Purpose**: Preserves size and mass values across multiple stream operations
-- **Lifecycle**: Set during drag operations, cleared when SHIFT is released
-- **Behavior**: Allows continuing streams with consistent particle properties
+#### Shift Key Usage
+- **Purpose**: Used in Joint mode for continuous joint creation
+- **Behavior**: When held, allows creating multiple joints without deselecting particles
+- **Note**: No longer used for streaming - streaming is now only available via Stream mode
 
 ## Mass Calculation Logic
 
@@ -139,46 +138,57 @@ if (mouseState.isDragToVelocity) {
 2. **Drag-to-Size**: Uses `calculateMassFromSize(dragSize)`
 3. **Ctrl+Click+Drag**: Uses `spawnConfig.defaultMass`
 4. **Click+Drag+Ctrl**: Uses `calculateMassFromSize(dragSize)`
-5. **Streaming**: Uses preserved mass or falls back to configured mass
+5. **Stream Mode**: Uses configured mass from spawn controls
 
-## Streaming System
+## Spawn Mode System
 
-### Stream Lifecycle
-1. **Initiation**: SHIFT + Click or configured stream mode
-2. **Continuation**: Interval-based particle spawning
-3. **Termination**: SHIFT release or mode change
-4. **Cleanup**: State reset and undo tracking
+### Single Mode
+- **Drag-to-Size**: Click and drag to set particle size
+- **Drag-to-Velocity**: Ctrl/⌘ + click and drag to set particle direction and speed
+- **Mode Switching**: Press Ctrl/⌘ during drag to switch between size and velocity modes
 
-### Stream Configuration
-- **Rate**: Configurable particles per second (1-50)
-- **Size**: Uses drag size or configured default
-- **Mass**: Uses preserved mass or configured default
-- **Color**: Respects spawn configuration
+### Stream Mode
+- **Continuous Spawning**: Automatically spawns particles at cursor position
+- **Rate Control**: Configurable particles per second (1-50)
+- **Size/Mass**: Uses configured values from spawn controls
+
+### Draw Mode
+- **Connected Chains**: Creates particles connected by joints as you drag
+- **Step Size**: Configurable distance between particles
+- **Auto-Joints**: Automatically creates joints between consecutive particles
+
+### Shape Mode
+- **Geometric Shapes**: Spawns particles in polygon formations
+- **All-to-All Connections**: Creates joints between every pair of particles
+- **Configurable**: Adjustable number of sides and size
 
 ## Event Handlers
 
 ### Mouse Events
-- **onMouseDown**: Initiates interactions, sets mode, starts streaming
-- **onMouseMove**: Updates drag state, provides visual feedback
+- **onMouseDown**: Initiates interactions, determines spawn mode behavior
+- **onMouseMove**: Updates drag state, provides visual feedback, handles mode switching
 - **onMouseUp**: Finalizes interactions, spawns particles
 - **onMouseLeave**: Cleanup and state reset
 - **onWheel**: Zoom control with momentum
 
 ### Keyboard Events
-- **onKeyDown**: Handles modifier key presses (Shift, Ctrl/⌘)
+- **onKeyDown**: Handles modifier key presses (Shift for joints, Ctrl/⌘ for mode switching)
 - **onKeyUp**: Handles modifier key releases and state cleanup
 
 ## Undo/Redo Integration
 
 ### Tracked Operations
 - **Single Particle Spawn**: Individual particle creation
-- **Streaming Sessions**: Batch particle creation during streaming
+- **Stream Sessions**: Batch particle creation during stream mode
+- **Draw Sessions**: Connected particle chains with joints
+- **Shape Spawns**: Geometric shapes with all joints
 - **Particle Removal**: Removal tool operations
-- **Clear Operations**: Bulk particle removal
+- **Joint Operations**: Joint creation and removal
+- **Pin/Unpin Operations**: Particle pinning state changes
 
 ### State Management
 - **Automatic Tracking**: All particle modifications are tracked
-- **Batch Operations**: Streaming treated as single undoable operation
+- **Batch Operations**: Multi-particle operations treated as single undoable operations
 - **State Cleanup**: Proper cleanup on undo/redo operations
 
 ## Performance Optimizations
@@ -234,14 +244,20 @@ const interactions = useInteractions({
 
 ## Recent Updates
 
+### Spawn Mode Restrictions (Latest)
+- **Mode-Specific Features**: Drag-to-size and drag-to-velocity now only work in Single mode
+- **Prevented Conflicts**: Removed ability to trigger drag-to-velocity during Draw/Shape mode operations
+- **Shift Key Streaming Removed**: Streaming is now only available via dedicated Stream mode
+- **Enhanced Pin Feature**: Cmd+Shift+F now pins grabbed particles or toggles spawn control pin setting
+
 ### Mass Configuration Enhancement
 - **Independent Mass Control**: Mass can now be configured independently from size
-- **Preserved Mass Behavior**: Mass is preserved across streaming operations
 - **Smart Mass Calculation**: Different mass calculation based on interaction type
+- **Mode-Aware Behavior**: Mass calculation respects spawn mode constraints
 
 ### Improved State Management
 - **Original Drag Intent**: Better tracking of user intentions
-- **Active Mass Preservation**: Consistent mass behavior across operations
+- **Mode-Specific Logic**: Enhanced logic to prevent inappropriate mode switching
 - **Enhanced Cleanup**: Proper state reset and memory management
 
 ### Performance Improvements

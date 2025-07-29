@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { calculateMassFromSize } from "../../utils/particle";
 import { ColorSelector } from "../ColorSelector";
+import { Particle } from "@party/core";
 
 // Default spawn configuration
 export const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
@@ -32,12 +33,14 @@ interface SpawnControlsProps {
   onSpawnConfigChange?: (config: SpawnConfig) => void;
   initialSize?: number; // For synchronization with Init section
   initialColors?: string[]; // For synchronization with Init section
+  currentlyGrabbedParticle: Particle | null;
 }
 
 export function SpawnControls({
   onSpawnConfigChange,
   initialSize = DEFAULT_SPAWN_PARTICLE_SIZE,
   initialColors = [],
+  currentlyGrabbedParticle,
 }: SpawnControlsProps) {
   const [particleSize, setParticleSize] = useState(initialSize);
   const [particleMass, setParticleMass] = useState(
@@ -74,7 +77,11 @@ export function SpawnControls({
         e.key.toLowerCase() === "f"
       ) {
         e.preventDefault();
-        setIsPinned((prev) => !prev);
+        if (currentlyGrabbedParticle) {
+          currentlyGrabbedParticle.pinned = !currentlyGrabbedParticle.pinned;
+        } else {
+          setIsPinned((prev) => !prev);
+        }
       }
       if (
         (e.metaKey || e.ctrlKey) &&
@@ -96,7 +103,7 @@ export function SpawnControls({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [spawnMode, setSpawnMode]);
+  }, [spawnMode, setSpawnMode, currentlyGrabbedParticle]);
 
   // Notify parent of config changes
   useEffect(() => {

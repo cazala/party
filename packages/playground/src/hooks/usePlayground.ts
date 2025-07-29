@@ -217,7 +217,7 @@ export function usePlayground(
   });
 
   // Extract grab state for cursor styling
-  const { isCurrentlyGrabbing } = interactions;
+  const { currentlyGrabbedParticle } = interactions;
 
   // Attach / detach low-level DOM listeners once – they call back into the
   // `spawner` helpers defined above.
@@ -627,6 +627,6 @@ export function usePlayground(
     spawnConfig,
     setSpawnConfig,
     // Grab state for cursor styling
-    isCurrentlyGrabbing,
+    currentlyGrabbedParticle,
   };
 }

@@ -4,6 +4,7 @@ import {
   Interaction,
   System,
   Fluid,
+  Particle,
 } from "@party/core";
 import { InitControls } from "./control-sections/InitControls";
 import { SpawnControls, SpawnConfig } from "./control-sections/SpawnControls";
@@ -58,6 +59,7 @@ interface SystemControlsProps {
   };
   onSpawnConfigChange?: (config: SpawnConfig) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
+  currentlyGrabbedParticle: Particle | null;
 }
 
 export function SystemControls({
@@ -69,6 +71,7 @@ export function SystemControls({
   onGetInitConfig,
   onSpawnConfigChange,
   getCurrentCamera,
+  currentlyGrabbedParticle,
 }: SystemControlsProps) {
   const [particleSize, setParticleSize] = useState(10);
   const [initColors, setInitColors] = useState<string[]>([]);
@@ -101,6 +104,7 @@ export function SystemControls({
           onSpawnConfigChange={onSpawnConfigChange}
           initialSize={particleSize}
           initialColors={initColors}
+          currentlyGrabbedParticle={currentlyGrabbedParticle}
         />
       </CollapsibleSection>
 

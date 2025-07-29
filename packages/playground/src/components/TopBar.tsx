@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, Save, FolderOpen } from "lucide-react";
-import { System } from "@party/core";
+import { Particle, System } from "@party/core";
 import { ToolMode } from "../hooks/useToolMode";
 
 interface TopBarProps {
@@ -49,7 +49,7 @@ export function TopBar({
       if (!onToolModeChange) return;
 
       // Check for Cmd (Mac) or Ctrl (PC)
-      if (e.metaKey || e.ctrlKey) {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
         switch (e.key.toLowerCase()) {
           case "a":
             e.preventDefault();
@@ -64,7 +64,6 @@ export function TopBar({
             onToolModeChange("grab");
             break;
           case "f":
-            e.preventDefault();
             onToolModeChange("pin");
             break;
           case "g":
