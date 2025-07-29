@@ -79,6 +79,10 @@
   border-right: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+.tool-mode-fourth {
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .topbar-right {
   flex: 1;
   display: flex;

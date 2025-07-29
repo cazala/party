@@ -8,7 +8,7 @@ export interface SerializedParticle {
   mass: number;
   size: number;
   color: string;
-  static?: boolean;
+  pinned?: boolean;
 }
 
 export interface SavedSession {

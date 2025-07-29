@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import type React from "react";
 import {
   System,
@@ -277,6 +277,9 @@ export function useInteractions({
     streamedParticles: [],
     removedParticles: [],
   });
+
+  // State to track when we're currently grabbing for cursor styling
+  const [isCurrentlyGrabbing, setIsCurrentlyGrabbing] = useState(false);
 
   // === Shape Mode System ===
 
@@ -848,6 +851,9 @@ export function useInteractions({
 
         // Mark the particle as grabbed so collision systems can handle it specially
         particle.grabbed = true;
+
+        // Update cursor state for styling
+        setIsCurrentlyGrabbing(true);
       }
     },
     [findParticleAtPosition]
@@ -1786,6 +1792,9 @@ export function useInteractions({
         // Reset grab state
         mouseState.grabbedParticle = null;
         mouseState.isGrabbing = false;
+
+        // Update cursor state for styling
+        setIsCurrentlyGrabbing(false);
         mouseState.grabOffset = { x: 0, y: 0 };
         mouseState.grabPreviousPos = { x: 0, y: 0 };
         mouseState.grabLastMoveTime = 0;
@@ -1994,6 +2003,9 @@ export function useInteractions({
     // Reset grab state
     mouseState.grabbedParticle = null;
     mouseState.isGrabbing = false;
+
+    // Update cursor state for styling
+    setIsCurrentlyGrabbing(false);
     mouseState.grabOffset = { x: 0, y: 0 };
     mouseState.grabPreviousPos = { x: 0, y: 0 };
     mouseState.grabLastMoveTime = 0;
@@ -2063,5 +2075,6 @@ export function useInteractions({
     onWheel,
     cleanup,
     setupKeyboardListeners,
+    isCurrentlyGrabbing,
   };
 }

@@ -216,6 +216,9 @@ export function usePlayground(
     undoRedo: undoRedoRef,
   });
 
+  // Extract grab state for cursor styling
+  const { isCurrentlyGrabbing } = interactions;
+
   // Attach / detach low-level DOM listeners once – they call back into the
   // `spawner` helpers defined above.
   useEffect(() => {
@@ -623,5 +626,7 @@ export function usePlayground(
     // Spawn config
     spawnConfig,
     setSpawnConfig,
+    // Grab state for cursor styling
+    isCurrentlyGrabbing,
   };
 }

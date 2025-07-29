@@ -45,6 +45,7 @@ function App() {
     resetParticles,
     spawnParticles,
     setSpawnConfig,
+    isCurrentlyGrabbing,
   } = usePlayground(canvasRef, toolMode);
   const size = useWindowSize();
 
@@ -161,7 +162,11 @@ function App() {
           <canvas
             ref={canvasRef}
             id="canvas"
-            className={toolMode === "grab" ? "grab-tool" : ""}
+            className={
+              toolMode === "grab"
+                ? `grab-tool${isCurrentlyGrabbing ? " grabbing" : ""}`
+                : ""
+            }
             width={size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH}
             height={size.height - TOPBAR_HEIGHT}
           />
