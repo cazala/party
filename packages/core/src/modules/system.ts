@@ -60,113 +60,278 @@ import {
 } from "./forces/sensors";
 import { Joints, DEFAULT_JOINTS_ENABLED } from "./forces/joints";
 
+/**
+ * Interface defining the lifecycle methods for a physics force.
+ * Forces are applied to particles during each simulation step using a four-phase lifecycle:
+ * before → apply → constraints → after
+ * 
+ * @interface Force
+ */
 export interface Force {
+  /**
+   * Called once per frame before applying force to individual particles.
+   * Use for global calculations or setup that affects all particles.
+   * 
+   * @param particles - Array of all particles in the system
+   * @param deltaTime - Time elapsed since last frame in milliseconds
+   */
   before?(particles: Particle[], deltaTime: number): void;
+  
+  /**
+   * Called once per particle to apply the force effect.
+   * This is where the main force logic should be implemented.
+   * 
+   * @param particle - The particle to apply the force to
+   * @param spatialGrid - Spatial grid for efficient neighbor queries
+   */
   apply(particle: Particle, spatialGrid: SpatialGrid): void;
+  
+  /**
+   * Called after applying forces but before updating particle positions.
+   * Use for constraint resolution and position corrections.
+   * 
+   * @param particles - Array of all particles in the system
+   * @param spatialGrid - Spatial grid for efficient neighbor queries
+   */
   constraints?(particles: Particle[], spatialGrid: SpatialGrid): void;
+  
+  /**
+   * Called once per frame after all particles have been updated.
+   * Use for cleanup or post-processing operations.
+   * 
+   * @param particles - Array of all particles in the system
+   * @param deltaTime - Time elapsed since last frame in milliseconds
+   * @param spatialGrid - Spatial grid for efficient neighbor queries
+   */
   after?(
     particles: Particle[],
     deltaTime: number,
     spatialGrid: SpatialGrid
   ): void;
+  
+  /**
+   * Called when the force is being removed or the system is being reset.
+   * Use for cleanup of resources, event listeners, or internal state.
+   */
   clear?(): void;
 }
 
+/**
+ * Configuration interface for the particle system.
+ * Contains all settings for physics forces, behaviors, and system-wide parameters.
+ * All properties are optional to allow partial configuration updates.
+ * 
+ * @interface Config
+ */
 export interface Config {
+  /** Physics force configurations */
   physics?: {
+    /** Gravity settings */
     gravity?: {
+      /** Gravitational acceleration strength (default: 0.1) */
       strength?: number;
+      /** Gravity direction vector. Default is downward: {x: 0, y: 1} */
       direction?: { x?: number; y?: number };
     };
+    /** Inertia factor for momentum preservation (0-1, default: 0.99) */
     inertia?: number;
+    /** Friction coefficient for velocity damping (0-1, default: 0.01) */
     friction?: number;
   };
-  // Legacy support for old configs
+  
+  /** @deprecated Legacy gravity support - use physics.gravity instead */
   gravity?: {
     strength?: number;
     direction?: { x?: number; y?: number };
   };
+  
+  /** Boundary behavior settings */
   bounds?: {
+    /** Bounce coefficient when particles hit boundaries (0-1) */
     bounce?: number;
+    /** Friction applied during boundary interactions (0-1) */
     friction?: number;
+    /** Boundary interaction mode */
     mode?: "bounce" | "kill" | "warp";
+    /** Distance from boundary to start repel force */
     repelDistance?: number;
+    /** Strength of boundary repel force */
     repelStrength?: number;
   };
+  
+  /** Particle collision settings */
   collisions?: {
+    /** Whether particle-particle collisions are enabled */
     enabled?: boolean;
+    /** Whether larger particles can consume smaller ones */
     eat?: boolean;
   };
+  
+  /** Flocking behavior settings */
   behavior?: {
+    /** Whether behavior forces are enabled */
     enabled?: boolean;
+    /** Random wandering force strength */
     wanderWeight?: number;
+    /** Attraction to group center strength */
     cohesionWeight?: number;
+    /** Velocity matching with neighbors strength */
     alignmentWeight?: number;
+    /** Avoidance of nearby particles strength */
     separationWeight?: number;
+    /** Chase behavior toward different colored particles */
     chaseWeight?: number;
+    /** Avoidance of different colored particles */
     avoidWeight?: number;
+    /** Distance at which separation force activates */
     separationRange?: number;
+    /** Maximum distance for neighbor detection */
     viewRadius?: number;
+    /** Field of view angle in degrees for behavior interactions */
     viewAngle?: number;
   };
+  
+  /** Fluid dynamics (SPH) settings */
   fluid?: {
+    /** Whether fluid forces are enabled */
     enabled?: boolean;
+    /** Radius of influence for fluid interactions */
     influenceRadius?: number;
+    /** Target density for fluid pressure calculations */
     targetDensity?: number;
+    /** Multiplier for pressure force strength */
     pressureMultiplier?: number;
+    /** Random movement factor for fluid instability */
     wobbleFactor?: number;
+    /** Resistance to movement through fluid medium */
     resistance?: number;
   };
+  
+  /** Environmental sensor settings */
   sensors?: {
+    /** Whether particles leave visual trails */
     enableTrail?: boolean;
+    /** Rate of trail decay (0-1, higher = faster decay) */
     trailDecay?: number;
+    /** Trail blur/diffusion strength */
     trailDiffuse?: number;
+    /** Whether sensor-based navigation is enabled */
     enableSensors?: boolean;
+    /** Distance sensors project in front of particles */
     sensorDistance?: number;
+    /** Angle offset for left/right sensors (degrees) */
     sensorAngle?: number;
+    /** Radius of sensor detection area */
     sensorRadius?: number;
+    /** Minimum intensity threshold for sensor activation */
     sensorThreshold?: number;
+    /** Strength of sensor-based steering forces */
     sensorStrength?: number;
+    /** Behavior mode for following sensor targets */
     followBehavior?: SensorBehavior;
+    /** Behavior mode for fleeing from sensor targets */
     fleeBehavior?: SensorBehavior;
+    /** Threshold for color similarity detection (0-1) */
     colorSimilarityThreshold?: number;
+    /** Maximum angle for flee behavior steering (degrees) */
     fleeAngle?: number;
   };
+  
+  /** Joint constraint settings */
   joints?: {
+    /** Whether joint constraints are enabled */
     enabled?: boolean;
+    /** Bounce factor for joint stress responses */
     restitution?: number;
+    /** Whether joints interact with particle collisions */
     enableCollisions?: boolean;
+    /** Friction applied to connected particles */
     friction?: number;
   };
 }
 
-// Default constants for ParticleSystem
+/** Default cell size for spatial grid optimization */
 export const DEFAULT_SPATIAL_GRID_CELL_SIZE = 100;
 
+/**
+ * Options for initializing a particle system.
+ * 
+ * @interface SystemOptions
+ */
 export interface SystemOptions {
+  /** Width of the simulation area in world units */
   width: number;
+  /** Height of the simulation area in world units */
   height: number;
+  /** Size of spatial grid cells for collision optimization (default: 100) */
   cellSize?: number;
 }
 
+/**
+ * Main particle system class that manages particles, forces, and simulation lifecycle.
+ * 
+ * The System class provides:
+ * - Particle management (add, remove, update)
+ * - Force system with pluggable architecture
+ * - Spatial grid optimization for performance
+ * - Animation loop with play/pause controls
+ * - Configuration import/export
+ * - FPS tracking and performance monitoring
+ * 
+ * @class System
+ * @example
+ * ```typescript
+ * const system = new System({ width: 800, height: 600 });
+ * 
+ * // Add some particles
+ * const particle = new Particle(100, 100, { size: 5, mass: 1 });
+ * system.addParticle(particle);
+ * 
+ * // Add forces
+ * system.addForce(new Physics());
+ * system.addForce(new Bounds());
+ * 
+ * // Start simulation
+ * system.play();
+ * ```
+ */
 export class System {
+  /** Array of all particles in the system */
   public particles: Particle[] = [];
+  /** Array of all active forces */
   public forces: Force[] = [];
+  /** Spatial grid for efficient neighbor queries and collision detection */
   public spatialGrid: SpatialGrid;
+  /** Width of the simulation area */
   public width: number;
+  /** Height of the simulation area */
   public height: number;
+  /** Whether the simulation is currently running */
   public isPlaying: boolean = false;
 
+  /** Timestamp of the last animation frame */
   private lastTime: number = 0;
+  /** Current animation frame request ID */
   private animationId: number | null = null;
 
-  // FPS tracking
+  /** Frame time history for FPS calculation */
   private fpsFrameTimes: number[] = [];
-  private fpsMaxSamples: number = 60; // Track last 60 frames
+  /** Maximum number of frame times to track */
+  private fpsMaxSamples: number = 60;
+  /** Current calculated FPS */
   private currentFPS: number = 0;
 
+  /** Optional callback function called after each frame update */
   private renderCallback?: (system: System) => void;
 
+  /**
+   * Creates a new particle system.
+   * 
+   * @param options - Configuration options for the system
+   * @param options.width - Width of the simulation area
+   * @param options.height - Height of the simulation area  
+   * @param options.cellSize - Size of spatial grid cells (optional, default: 100)
+   */
   constructor(options: SystemOptions) {
     this.width = options.width;
     this.height = options.height;
@@ -178,21 +343,42 @@ export class System {
     });
   }
 
+  /**
+   * Adds a particle to the system.
+   * 
+   * @param particle - The particle to add
+   */
   addParticle(particle: Particle): void {
     this.particles.push(particle);
   }
 
+  /**
+   * Adds multiple particles to the system.
+   * 
+   * @param particles - Array of particles to add
+   */
   addParticles(particles: Particle[]): void {
     for (const particle of particles) {
       this.addParticle(particle);
     }
   }
 
+  /**
+   * Finds a particle by its unique ID.
+   * 
+   * @param id - The particle ID to search for
+   * @returns The particle if found, null otherwise
+   */
   getParticle(id: number): Particle | null {
     const particle = this.particles.find((particle) => particle.id === id);
     return particle || null;
   }
 
+  /**
+   * Removes a particle from the system.
+   * 
+   * @param particle - The particle to remove
+   */
   removeParticle(particle: Particle): void {
     const index = this.particles.indexOf(particle);
     if (index > -1) {
@@ -200,10 +386,21 @@ export class System {
     }
   }
 
+  /**
+   * Adds a force to the system.
+   * Forces are applied to particles during each update cycle.
+   * 
+   * @param force - The force to add
+   */
   addForce(force: Force): void {
     this.forces.push(force);
   }
 
+  /**
+   * Removes a force from the system.
+   * 
+   * @param force - The force to remove
+   */
   removeForce(force: Force): void {
     const index = this.forces.indexOf(force);
     if (index > -1) {
@@ -211,10 +408,24 @@ export class System {
     }
   }
 
+  /**
+   * Removes all forces from the system.
+   */
   clearForces(): void {
     this.forces = [];
   }
 
+  /**
+   * Updates the simulation by one time step.
+   * 
+   * This method:
+   * 1. Updates the spatial grid with current particle positions
+   * 2. Runs the force lifecycle: before → apply → constraints → after
+   * 3. Updates particle physics and positions
+   * 4. Removes particles marked for deletion (mass = 0)
+   * 
+   * @param deltaTime - Time elapsed since last update in milliseconds
+   */
   update(deltaTime: number): void {
     // Clear and repopulate spatial grid
     this.spatialGrid.clear();
@@ -261,6 +472,10 @@ export class System {
     this.particles = this.particles.filter((particle) => particle.mass > 0);
   }
 
+  /**
+   * Starts the simulation animation loop.
+   * If already playing, this method does nothing.
+   */
   play(): void {
     if (this.isPlaying) return;
 
@@ -272,10 +487,17 @@ export class System {
     this.animate();
   }
 
+  /**
+   * Pauses the simulation animation loop.
+   * The simulation state is preserved and can be resumed with play().
+   */
   pause(): void {
     this.isPlaying = false;
   }
 
+  /**
+   * Toggles the simulation between playing and paused states.
+   */
   toggle(): void {
     if (this.isPlaying) {
       this.pause();
@@ -284,6 +506,15 @@ export class System {
     }
   }
 
+  /**
+   * Resets the simulation to its initial state.
+   * 
+   * This method:
+   * - Pauses the simulation
+   * - Clears all particles
+   * - Resets timing and FPS data
+   * - Clears force-specific caches
+   */
   reset(): void {
     this.pause();
     // Ensure animation frame is properly cancelled

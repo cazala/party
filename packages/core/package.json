@@ -1,16 +1,50 @@
 {
   "name": "@cazala/party",
   "version": "0.1.0",
-  "description": "Core particle system library",
+  "description": "A powerful TypeScript particle physics engine featuring advanced force systems, spatial optimization, and comprehensive rendering capabilities. Supports complex behaviors like flocking, fluid dynamics, collision detection, and interactive user controls.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
+  "keywords": [
+    "particle-physics",
+    "physics-engine",
+    "simulation",
+    "particles",
+    "forces",
+    "collision-detection",
+    "fluid-dynamics",
+    "flocking",
+    "spatial-grid",
+    "canvas-rendering",
+    "typescript",
+    "interactive"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cazala/party.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/cazala/party#readme",
+  "bugs": {
+    "url": "https://github.com/cazala/party/issues"
+  },
+  "author": "cazala",
+  "license": "MIT",
   "scripts": {
     "build": "rollup -c",
-    "dev": "rollup -c --watch"
+    "dev": "rollup -c --watch",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.0",
@@ -28,5 +62,8 @@
   },
   "dependencies": {
     "mitt": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

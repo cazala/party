@@ -1,12 +1,36 @@
 {
   "name": "@cazala/playground",
-  "private": true,
   "version": "0.1.0",
+  "description": "Interactive web playground for experimenting with particle physics simulations. Features real-time parameter adjustment, multiple interaction modes, session management, and comprehensive physics force controls.",
+  "private": true,
   "type": "module",
+  "keywords": [
+    "particle-physics",
+    "simulation",
+    "interactive",
+    "playground",
+    "physics-demo",
+    "react",
+    "vite",
+    "canvas",
+    "real-time"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cazala/party.git",
+    "directory": "packages/playground"
+  },
+  "homepage": "https://github.com/cazala/party#readme",
+  "bugs": {
+    "url": "https://github.com/cazala/party/issues"
+  },
+  "author": "cazala",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@cazala/party": "file:../core",
@@ -20,5 +44,8 @@
     "@vitejs/plugin-react": "^4.0.0",
     "typescript": "^5.0.0",
     "vite": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

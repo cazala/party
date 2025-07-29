@@ -1,15 +1,37 @@
 {
   "name": "party",
+  "version": "0.1.0",
+  "description": "A comprehensive particle physics simulation system with interactive playground",
   "private": true,
   "type": "module",
+  "keywords": [
+    "particle-physics",
+    "simulation",
+    "interactive",
+    "physics-engine",
+    "particles",
+    "canvas",
+    "typescript",
+    "react"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cazala/party.git"
+  },
+  "author": "cazala",
+  "license": "MIT",
   "scripts": {
-    "dev": "pnpm --filter playground dev",
-    "build": "pnpm --filter core build && pnpm --filter playground build",
-    "build:core": "pnpm --filter core build",
-    "build:playground": "pnpm --filter playground build"
+    "dev": "pnpm --filter=@cazala/playground dev",
+    "build": "pnpm --filter=@cazala/party build && pnpm --filter=@cazala/playground build",
+    "build:core": "pnpm --filter=@cazala/party build",
+    "build:playground": "pnpm --filter=@cazala/playground build",
+    "test": "echo 'No tests specified' && exit 0"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
   },
-  "packageManager": "pnpm@8.0.0"
+  "packageManager": "pnpm@8.0.0",
+  "workspaces": [
+    "packages/*"
+  ]
 }
