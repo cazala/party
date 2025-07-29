@@ -1516,7 +1516,14 @@ export function useInteractions({
       // Update modifier key states from mouse event
       const wasShiftPressed = mouseState.shiftPressed;
       const wasCmdPressed = mouseState.cmdPressed;
-      mouseState.shiftPressed = e.shiftKey;
+      
+      // In single mode, ignore shift key changes during drag operations to prevent interference
+      // with drag-to-size and drag-to-velocity previews (shift streaming has been removed)
+      const spawnConfig = getSpawnConfig();
+      if (!(spawnConfig.spawnMode === "single" && mouseState.isDown)) {
+        mouseState.shiftPressed = e.shiftKey;
+      }
+      
       mouseState.cmdPressed = e.metaKey || e.ctrlKey;
 
       // If shift was just released during streaming, stop streaming
@@ -1586,11 +1593,11 @@ export function useInteractions({
 
       // Update preview based on current mode (only in single mode)
       if (getSpawnConfig().spawnMode === "single") {
-        if (mouseState.isDragToVelocity && !mouseState.shiftPressed) {
-          // Velocity mode: update velocity arrow (ignore shift in velocity mode)
+        if (mouseState.isDragToVelocity) {
+          // Velocity mode: update velocity arrow (shift key is ignored in single mode)
           updateVelocityPreview();
-        } else if (!mouseState.shiftPressed) {
-          // Size mode: update particle size (normal behavior when not streaming)
+        } else {
+          // Size mode: update particle size (shift key is ignored in single mode)
           updateSizePreview();
         }
       }

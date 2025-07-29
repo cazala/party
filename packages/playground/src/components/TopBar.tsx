@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, Save, FolderOpen } from "lucide-react";
-import { Particle, System } from "@party/core";
+import { System } from "@party/core";
 import { ToolMode } from "../hooks/useToolMode";
 
 interface TopBarProps {
