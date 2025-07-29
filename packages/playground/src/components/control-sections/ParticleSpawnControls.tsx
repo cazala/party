@@ -76,11 +76,27 @@ export function ParticleSpawnControls({
         e.preventDefault();
         setIsPinned((prev) => !prev);
       }
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "a"
+      ) {
+        e.preventDefault();
+        setSpawnMode(
+          spawnMode === "single"
+            ? "stream"
+            : spawnMode === "stream"
+            ? "draw"
+            : spawnMode === "draw"
+            ? "shape"
+            : "single"
+        );
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [spawnMode, setSpawnMode]);
 
   // Notify parent of config changes
   useEffect(() => {

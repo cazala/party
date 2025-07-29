@@ -141,6 +141,12 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 <div className="help-description">Switch to Remove tool</div>
               </div>
               <div className="help-item">
+                <div className="help-action">Ctrl/⌘ + SHIFT + A</div>
+                <div className="help-description">
+                  Circle through Modes in spawn controls
+                </div>
+              </div>
+              <div className="help-item">
                 <div className="help-action">Ctrl/⌘ + SHIFT + F</div>
                 <div className="help-description">
                   Toggle Pin checkbox in spawn controls

@@ -164,6 +164,12 @@ interface MouseState {
   isGrabbing: boolean;
   /** Offset from particle center to mouse when grabbing */
   grabOffset: { x: number; y: number };
+  /** Previous mouse position for velocity calculation */
+  grabPreviousPos: { x: number; y: number };
+  /** Time of last mouse movement for velocity calculation */
+  grabLastMoveTime: number;
+  /** Calculated velocity from mouse movement */
+  grabVelocity: { x: number; y: number };
 
   // === Pin Mode State ===
   /** Whether pin tool is active */
@@ -259,6 +265,9 @@ export function useInteractions({
     grabbedParticle: null,
     isGrabbing: false,
     grabOffset: { x: 0, y: 0 },
+    grabPreviousPos: { x: 0, y: 0 },
+    grabLastMoveTime: 0,
+    grabVelocity: { x: 0, y: 0 },
     isPinning: false,
     isDrawing: false,
     lastDrawnParticle: null,
@@ -772,6 +781,11 @@ export function useInteractions({
           x: worldPos.x - particle.position.x,
           y: worldPos.y - particle.position.y,
         };
+
+        // Initialize velocity tracking
+        mouseState.grabPreviousPos = { x: worldPos.x, y: worldPos.y };
+        mouseState.grabLastMoveTime = Date.now();
+        mouseState.grabVelocity = { x: 0, y: 0 };
 
         // Mark the particle as grabbed so collision systems can handle it specially
         particle.grabbed = true;
@@ -1399,13 +1413,29 @@ export function useInteractions({
         mouseState.currentPos = worldPos;
 
         if (mouseState.isGrabbing && mouseState.grabbedParticle) {
+          // Calculate velocity for throwing
+          const currentTime = Date.now();
+          const deltaTime = Math.max(currentTime - mouseState.grabLastMoveTime, 1); // Prevent division by zero
+          
+          const deltaX = worldPos.x - mouseState.grabPreviousPos.x;
+          const deltaY = worldPos.y - mouseState.grabPreviousPos.y;
+          
+          // Calculate velocity in pixels per millisecond, then convert to reasonable units
+          const velocityScale = 0.5; // Adjust this value to control throwing sensitivity
+          mouseState.grabVelocity.x = (deltaX / deltaTime) * velocityScale * 1000; // Convert to per second
+          mouseState.grabVelocity.y = (deltaY / deltaTime) * velocityScale * 1000;
+          
+          // Update tracking for next frame
+          mouseState.grabPreviousPos = { x: worldPos.x, y: worldPos.y };
+          mouseState.grabLastMoveTime = currentTime;
+
           // Update grabbed particle position
           mouseState.grabbedParticle.position.x =
             worldPos.x - mouseState.grabOffset.x;
           mouseState.grabbedParticle.position.y =
             worldPos.y - mouseState.grabOffset.y;
 
-          // Reset velocity to prevent unwanted movement
+          // Reset velocity to prevent unwanted movement while dragging
           mouseState.grabbedParticle.velocity.x = 0;
           mouseState.grabbedParticle.velocity.y = 0;
         } else {
@@ -1612,6 +1642,10 @@ export function useInteractions({
         const mouseState = mouseStateRef.current;
 
         if (mouseState.grabbedParticle) {
+          // Apply throwing velocity to the particle
+          mouseState.grabbedParticle.velocity.x = mouseState.grabVelocity.x;
+          mouseState.grabbedParticle.velocity.y = mouseState.grabVelocity.y;
+          
           // Release the particle by unmarking it as grabbed
           mouseState.grabbedParticle.grabbed = false;
         }
@@ -1620,6 +1654,9 @@ export function useInteractions({
         mouseState.grabbedParticle = null;
         mouseState.isGrabbing = false;
         mouseState.grabOffset = { x: 0, y: 0 };
+        mouseState.grabPreviousPos = { x: 0, y: 0 };
+        mouseState.grabLastMoveTime = 0;
+        mouseState.grabVelocity = { x: 0, y: 0 };
 
         return;
       }
@@ -1845,13 +1882,16 @@ export function useInteractions({
 
     // Clear grab mode and release grabbed particle
     if (mouseState.isGrabbing && mouseState.grabbedParticle) {
-      // Release the particle by making it non-pinned again
-      mouseState.grabbedParticle.pinned = false;
+      // Release the particle by unmarking it as grabbed
+      mouseState.grabbedParticle.grabbed = false;
     }
     // Reset grab state
     mouseState.grabbedParticle = null;
     mouseState.isGrabbing = false;
     mouseState.grabOffset = { x: 0, y: 0 };
+    mouseState.grabPreviousPos = { x: 0, y: 0 };
+    mouseState.grabLastMoveTime = 0;
+    mouseState.grabVelocity = { x: 0, y: 0 };
 
     mouseState.isDown = false;
     mouseState.isDragging = false;
