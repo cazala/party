@@ -9,6 +9,7 @@ import {
   Joints,
   Particle,
   PINNED_PARTICLE_COLOR,
+  Spawner,
 } from "@party/core";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
@@ -281,32 +282,10 @@ export function useInteractions({
   // State to track when we're currently grabbing for cursor styling
   const [isCurrentlyGrabbing, setIsCurrentlyGrabbing] = useState(false);
 
+  // Spawner instance for shape creation
+  const spawner = new Spawner();
+
   // === Shape Mode System ===
-
-  /**
-   * Calculate positions for particles in a regular polygon shape
-   * @param centerX - Center X coordinate
-   * @param centerY - Center Y coordinate
-   * @param sides - Number of sides (particles)
-   * @param length - Distance from center to each particle
-   * @returns Array of {x, y} positions
-   */
-  const calculateShapePositions = useCallback(
-    (centerX: number, centerY: number, sides: number, length: number) => {
-      const positions = [];
-      const angleStep = (2 * Math.PI) / sides;
-
-      for (let i = 0; i < sides; i++) {
-        const angle = i * angleStep;
-        const x = centerX + Math.cos(angle) * length;
-        const y = centerY + Math.sin(angle) * length;
-        positions.push({ x, y });
-      }
-
-      return positions;
-    },
-    []
-  );
 
   /**
    * Spawn particles in a shape formation and connect them all-to-all
@@ -328,29 +307,21 @@ export function useInteractions({
       const joints = getJoints();
       if (!system || !joints) return;
 
-      // Calculate positions for all particles
-      const positions = calculateShapePositions(
-        centerX,
-        centerY,
+      // Use spawner to create particles in polygon formation
+      const shapeParticles = spawner.spawnPolygon({
+        center: new Vector2D(centerX, centerY),
         sides,
-        length
-      );
-
-      // Create all particles with different colors
-      const shapeParticles = positions.map((pos) => {
-        return createParticle(
-          pos.x,
-          pos.y,
-          spawnConfig.defaultSize,
-          mouseStateRef.current.previewColor || getRandomColor(),
-          undefined,
-          spawnConfig.defaultMass,
-          spawnConfig.pinned
-        );
+        radius: length,
+        particleOptions: {
+          size: spawnConfig.defaultSize,
+          mass: spawnConfig.defaultMass,
+          pinned: spawnConfig.pinned,
+        },
+        colors: [mouseStateRef.current.previewColor || getRandomColor()],
       });
 
       // Add all particles to the system
-      shapeParticles.forEach((particle) => {
+      shapeParticles.forEach((particle: Particle) => {
         system.addParticle(particle);
       });
 
@@ -375,13 +346,7 @@ export function useInteractions({
         getIdCounter()
       );
     },
-    [
-      getSystem,
-      getJoints,
-      calculateShapePositions,
-      createParticle,
-      getRandomColor,
-    ]
+    [getSystem, getJoints, getRandomColor]
   );
 
   // === Color Preview System ===

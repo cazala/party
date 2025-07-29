@@ -280,7 +280,6 @@ export function ForcesControls({
         <JointControls
           key={`joints-${refreshKey}`}
           joints={joints}
-          system={system}
           undoRedo={undoRedo}
         />
       </CollapsibleSection>
