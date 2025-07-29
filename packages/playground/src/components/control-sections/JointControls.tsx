@@ -10,12 +10,14 @@ interface JointControlsProps {
 export function JointControls({ joints, undoRedo }: JointControlsProps) {
   const [enabled, setEnabled] = useState(true);
   const [jointCount, setJointCount] = useState(0);
+  const [stiffness, setStiffness] = useState(1.0);
 
   // Update local state when joints changes
   useEffect(() => {
     if (joints) {
       setEnabled(joints.enabled);
       setJointCount(joints.getJointCount());
+      setStiffness(joints.getGlobalStiffness());
     }
   }, [joints]);
 
@@ -34,6 +36,13 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
     setEnabled(value);
     if (joints) {
       joints.setEnabled(value);
+    }
+  };
+
+  const handleStiffnessChange = (value: number) => {
+    setStiffness(value);
+    if (joints) {
+      joints.setGlobalStiffness(value);
     }
   };
 
@@ -65,6 +74,24 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
           />
           Enable Joints
         </label>
+      </div>
+
+      <div className="control-group">
+        <label>Joint Stiffness: {stiffness.toFixed(2)}</label>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={stiffness}
+          onChange={(e) => handleStiffnessChange(parseFloat(e.target.value))}
+          className="slider"
+          disabled={!enabled}
+          style={{
+            width: "100%",
+            marginTop: "4px",
+          }}
+        />
       </div>
 
       <div className="control-group">

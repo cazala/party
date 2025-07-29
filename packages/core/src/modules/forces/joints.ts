@@ -6,11 +6,13 @@ import { SpatialGrid } from "../spatial-grid";
 // Default constants for Joints
 export const DEFAULT_JOINTS_ENABLED = true;
 export const DEFAULT_JOINT_COLLISIONS_ENABLED = true;
+export const DEFAULT_JOINT_STIFFNESS = 1.0;
 
 export interface JointOptions {
   particleA: Particle;
   particleB: Particle;
   restLength?: number;
+  stiffness?: number;
   id?: string;
 }
 
@@ -20,13 +22,15 @@ export interface JointsOptions {
 }
 
 /**
- * Represents a constraint between two particles
+ * Represents a constraint between two particles.
+ * Supports both rigid and elastic joints based on stiffness parameter.
  */
 export class Joint {
   public id: string;
   public particleA: Particle;
   public particleB: Particle;
   public restLength: number;
+  public stiffness: number;
   public isValid: boolean = true;
 
   constructor(options: JointOptions) {
@@ -35,6 +39,7 @@ export class Joint {
       `joint_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     this.particleA = options.particleA;
     this.particleB = options.particleB;
+    this.stiffness = options.stiffness ?? DEFAULT_JOINT_STIFFNESS;
 
     // Calculate rest length as current distance if not provided
     if (options.restLength !== undefined) {
@@ -55,7 +60,8 @@ export class Joint {
   }
 
   /**
-   * Apply joint constraint forces to the connected particles
+   * Apply joint constraint forces to the connected particles.
+   * Uses stiffness parameter to control elasticity (1.0 = rigid, 0.0 = no constraint).
    */
   applyConstraint(): void {
     if (!this.validate()) return;
@@ -82,7 +88,7 @@ export class Joint {
   }
 
   /**
-   * Apply pin constraint by directly adjusting particle positions
+   * Apply joint constraint by adjusting particle positions based on stiffness
    */
   private applyJointConstraint(
     currentDistance: number,
@@ -94,8 +100,8 @@ export class Joint {
     // If already at correct distance, do nothing
     if (Math.abs(displacement) < 0.001) return;
 
-    // Calculate correction needed
-    const correction = displacement * 0.5; // Split correction between both particles
+    // Calculate correction needed based on stiffness
+    const correction = displacement * this.stiffness * 0.5; // Split correction between both particles
 
     // Calculate position adjustments
     const correctionX = correction * directionX;
@@ -135,7 +141,7 @@ export class Joint {
         this.particleB.position.y - this.restLength * directionY;
     }
 
-    // Pin joints maintain rigid distance constraint without additional damping
+    // Joints maintain distance constraint based on stiffness (1.0 = rigid, 0.0 = no constraint)
   }
 
   /**
@@ -169,18 +175,21 @@ export class Joint {
       particleA: this.particleA,
       particleB: this.particleB,
       restLength: this.restLength,
+      stiffness: this.stiffness,
       id: this.id,
     });
   }
 }
 
 /**
- * Manages a collection of joints and applies their constraints
+ * Manages a collection of joints and applies their constraints.
+ * Supports both rigid and elastic joints with configurable stiffness.
  */
 export class Joints implements Force {
   public enabled: boolean;
   public joints: Map<string, Joint> = new Map();
   public enableCollisions: boolean;
+  private globalStiffness: number = DEFAULT_JOINT_STIFFNESS;
 
   // Track grabbed particles and their previous positions for velocity calculation
   private grabbedParticlePositions: Map<number, Vector2D> = new Map();
@@ -200,10 +209,33 @@ export class Joints implements Force {
   }
 
   /**
+   * Set global stiffness for all existing joints
+   */
+  setGlobalStiffness(stiffness: number): void {
+    this.globalStiffness = Math.max(0, Math.min(1, stiffness)); // Clamp between 0 and 1
+    // Apply to all existing joints
+    for (const joint of this.joints.values()) {
+      joint.stiffness = this.globalStiffness;
+    }
+  }
+
+  /**
+   * Get current global stiffness setting
+   */
+  getGlobalStiffness(): number {
+    return this.globalStiffness;
+  }
+
+  /**
    * Create a new joint between two particles
    */
   createJoint(options: JointOptions): Joint {
-    const joint = new Joint(options);
+    // Use global stiffness if not specified in options
+    const jointOptions = {
+      ...options,
+      stiffness: options.stiffness ?? this.globalStiffness
+    };
+    const joint = new Joint(jointOptions);
     this.joints.set(joint.id, joint);
     return joint;
   }
