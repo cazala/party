@@ -675,6 +675,23 @@ export function useInteractions({
   );
 
   /**
+   * Check if a joint already exists between two particles (in either direction)
+   */
+  const hasJointBetween = useCallback(
+    (particleA: Particle, particleB: Particle): boolean => {
+      const joints = getJoints();
+      if (!joints) return false;
+
+      const existingJoints = joints.getAllJoints();
+      return existingJoints.some(joint => 
+        (joint.particleA.id === particleA.id && joint.particleB.id === particleB.id) ||
+        (joint.particleA.id === particleB.id && joint.particleB.id === particleA.id)
+      );
+    },
+    [getJoints]
+  );
+
+  /**
    * Create a joint between two particles
    */
   const createJoint = useCallback(
@@ -717,7 +734,19 @@ export function useInteractions({
         mouseState.selectedParticle = null;
         mouseState.isCreatingJoint = false;
       } else {
-        // Second particle selection - create joint
+        // Second particle selection - check for duplicate joint first
+        if (hasJointBetween(mouseState.selectedParticle, particle)) {
+          // Joint already exists - don't create duplicate, just reset selection
+          if (!keepJoining) {
+            mouseState.selectedParticle = null;
+            mouseState.isCreatingJoint = false;
+          } else {
+            mouseState.selectedParticle = particle;
+          }
+          return; // Exit early without creating duplicate joint
+        }
+
+        // Create joint (no duplicate exists)
         const joint = createJoint(mouseState.selectedParticle, particle);
         if (joint) {
           mouseState.createdJoints.push(joint.id);
@@ -735,7 +764,7 @@ export function useInteractions({
         }
       }
     },
-    [findParticleAtPosition, createJoint]
+    [findParticleAtPosition, createJoint, hasJointBetween]
   );
 
   /**
