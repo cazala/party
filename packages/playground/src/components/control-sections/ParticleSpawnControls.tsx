@@ -11,8 +11,10 @@ export const DEFAULT_SPAWN_MODE = "single" as const;
 export const DEFAULT_SPAWN_STREAM_RATE = 10; // particles per second
 export const DEFAULT_SPAWN_DRAW_STEP_SIZE = 20; // pixels between particles in draw mode
 export const DEFAULT_SPAWN_PINNED = false;
+export const DEFAULT_SPAWN_SHAPE_SIDES = 3;
+export const DEFAULT_SPAWN_SHAPE_LENGTH = 50;
 
-export type SpawnMode = "single" | "stream" | "draw";
+export type SpawnMode = "single" | "stream" | "draw" | "shape";
 
 export interface SpawnConfig {
   defaultSize: number;
@@ -22,6 +24,8 @@ export interface SpawnConfig {
   streamRate: number; // particles per second
   drawStepSize: number; // pixels between particles in draw mode
   pinned: boolean; // Whether to spawn pinned particles
+  shapeSides: number; // number of sides for shape mode (3-9)
+  shapeLength: number; // distance between particles in shape mode (10-100)
 }
 
 interface ParticleSpawnControlsProps {
@@ -42,8 +46,12 @@ export function ParticleSpawnControls({
   const [colors, setColors] = useState<string[]>(initialColors);
   const [spawnMode, setSpawnMode] = useState<SpawnMode>(DEFAULT_SPAWN_MODE);
   const [streamRate, setStreamRate] = useState(DEFAULT_SPAWN_STREAM_RATE);
-  const [drawStepSize, setDrawStepSize] = useState(DEFAULT_SPAWN_DRAW_STEP_SIZE);
+  const [drawStepSize, setDrawStepSize] = useState(
+    DEFAULT_SPAWN_DRAW_STEP_SIZE
+  );
   const [isPinned, setIsPinned] = useState(DEFAULT_SPAWN_PINNED);
+  const [shapeSides, setShapeSides] = useState(DEFAULT_SPAWN_SHAPE_SIDES);
+  const [shapeLength, setShapeLength] = useState(DEFAULT_SPAWN_SHAPE_LENGTH);
 
   // Update particle size when initialSize prop changes (from Init section)
   useEffect(() => {
@@ -84,6 +92,8 @@ export function ParticleSpawnControls({
       streamRate,
       drawStepSize,
       pinned: isPinned,
+      shapeSides,
+      shapeLength,
     };
     onSpawnConfigChange?.(config);
   }, [
@@ -94,6 +104,8 @@ export function ParticleSpawnControls({
     streamRate,
     drawStepSize,
     isPinned,
+    shapeSides,
+    shapeLength,
     onSpawnConfigChange,
   ]);
 
@@ -119,7 +131,7 @@ export function ParticleSpawnControls({
           Particle Size: {particleSize.toFixed(1)}
           <input
             type="range"
-            min="3"
+            min="1"
             max="50"
             step="0.5"
             value={particleSize}
@@ -147,7 +159,7 @@ export function ParticleSpawnControls({
       <ColorSelector
         colors={colors}
         onColorsChange={handleColorsChange}
-        label="Spawn Colors"
+        label="Colors"
       />
 
       <div className="control-group">
@@ -164,15 +176,16 @@ export function ParticleSpawnControls({
 
       <div className="control-group">
         <label>
-          Spawn Mode:
+          Mode
           <select
             value={spawnMode}
             onChange={(e) => setSpawnMode(e.target.value as SpawnMode)}
-            className="dropdown"
+            className="form-select"
           >
             <option value="single">Single</option>
             <option value="stream">Stream</option>
             <option value="draw">Draw</option>
+            <option value="shape">Shape</option>
           </select>
         </label>
       </div>
@@ -209,6 +222,39 @@ export function ParticleSpawnControls({
             />
           </label>
         </div>
+      )}
+
+      {spawnMode === "shape" && (
+        <>
+          <div className="control-group">
+            <label>
+              Sides: {shapeSides}
+              <input
+                type="range"
+                min="3"
+                max="6"
+                step="1"
+                value={shapeSides}
+                onChange={(e) => setShapeSides(parseInt(e.target.value))}
+                className="slider"
+              />
+            </label>
+          </div>
+          <div className="control-group">
+            <label>
+              Length: {shapeLength}
+              <input
+                type="range"
+                min="10"
+                max="100"
+                step="1"
+                value={shapeLength}
+                onChange={(e) => setShapeLength(parseInt(e.target.value))}
+                className="slider"
+              />
+            </label>
+          </div>
+        </>
       )}
     </div>
   );

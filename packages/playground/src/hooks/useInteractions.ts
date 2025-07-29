@@ -269,6 +269,88 @@ export function useInteractions({
     removedParticles: [],
   });
 
+  // === Shape Mode System ===
+
+  /**
+   * Calculate positions for particles in a regular polygon shape
+   * @param centerX - Center X coordinate
+   * @param centerY - Center Y coordinate  
+   * @param sides - Number of sides (particles)
+   * @param length - Distance from center to each particle
+   * @returns Array of {x, y} positions
+   */
+  const calculateShapePositions = useCallback(
+    (centerX: number, centerY: number, sides: number, length: number) => {
+      const positions = [];
+      const angleStep = (2 * Math.PI) / sides;
+      
+      for (let i = 0; i < sides; i++) {
+        const angle = i * angleStep;
+        const x = centerX + Math.cos(angle) * length;
+        const y = centerY + Math.sin(angle) * length;
+        positions.push({ x, y });
+      }
+      
+      return positions;
+    },
+    []
+  );
+
+  /**
+   * Spawn particles in a shape formation and connect them all-to-all
+   * @param centerX - Center X coordinate
+   * @param centerY - Center Y coordinate
+   * @param sides - Number of particles to spawn
+   * @param length - Distance from center to each particle
+   * @param spawnConfig - Spawn configuration
+   */
+  const spawnShapeParticles = useCallback(
+    (centerX: number, centerY: number, sides: number, length: number, spawnConfig: SpawnConfig) => {
+      const system = getSystem();
+      const joints = getJoints();
+      if (!system || !joints) return;
+
+      // Calculate positions for all particles
+      const positions = calculateShapePositions(centerX, centerY, sides, length);
+      
+      // Create all particles with different colors
+      const shapeParticles = positions.map(pos => {
+        return createParticle(
+          pos.x,
+          pos.y,
+          spawnConfig.defaultSize,
+          mouseStateRef.current.previewColor || getRandomColor(),
+          undefined,
+          spawnConfig.defaultMass,
+          spawnConfig.pinned
+        );
+      });
+
+      // Add all particles to the system
+      shapeParticles.forEach(particle => {
+        system.addParticle(particle);
+      });
+
+      // Create all-to-all joints between particles
+      const createdJoints = [];
+      for (let i = 0; i < shapeParticles.length; i++) {
+        for (let j = i + 1; j < shapeParticles.length; j++) {
+          const joint = joints.createJoint({
+            particleA: shapeParticles[i],
+            particleB: shapeParticles[j],
+          });
+          if (joint) {
+            createdJoints.push(joint);
+          }
+        }
+      }
+
+      // Record the shape spawn for undo with both particles and joints
+      undoRedo.current?.recordShapeSpawn(shapeParticles, createdJoints, getIdCounter());
+    },
+    [getSystem, getJoints, calculateShapePositions, createParticle, getRandomColor]
+  );
+
   // === Color Preview System ===
 
   /**
@@ -895,8 +977,8 @@ export function useInteractions({
 
       // Handle CMD (Mac) or Ctrl (Windows/Linux) key
       if (e.key === "Meta" || e.key === "Control") {
-        // Ignore CMD/Ctrl when shift is pressed (streaming mode)
-        if (!mouseState.shiftPressed) {
+        // Ignore CMD/Ctrl when shift is pressed (streaming mode) or not in single mode
+        if (!mouseState.shiftPressed && getSpawnConfig().spawnMode === "single") {
           mouseState.cmdPressed = true;
 
           // If mouse is down, switch to velocity mode
@@ -941,8 +1023,8 @@ export function useInteractions({
         mouseState.cmdPressed = false;
         mouseState.activeVelocitySize = 0; // Reset velocity size when cmd is released
 
-        // If mouse is down, switch back to size mode
-        if (mouseState.isDown && !mouseState.isStreaming) {
+        // If mouse is down, switch back to size mode (only in single mode)
+        if (mouseState.isDown && !mouseState.isStreaming && getSpawnConfig().spawnMode === "single") {
           const renderer = getRenderer();
           if (renderer) {
             mouseState.isDragToVelocity = false;
@@ -1148,6 +1230,9 @@ export function useInteractions({
       // Ensure canvas has focus for keyboard events
       canvas.focus();
 
+      // Get spawn config early for use throughout the function
+      const spawnConfig = getSpawnConfig();
+
       // Reset streaming state for new interaction - use ONLY the mouse event's modifier keys
       const wasShiftPressedBefore = mouseState.shiftPressed;
       const wasCmdPressedBefore = mouseState.cmdPressed;
@@ -1156,11 +1241,8 @@ export function useInteractions({
       mouseState.wasStreaming = false; // Reset for new interaction
       mouseState.isStreaming = false; // Make sure we're not streaming from previous interaction
       mouseState.isDragToVelocity =
-        mouseState.cmdPressed && !mouseState.shiftPressed; // Set initial mode
+        mouseState.cmdPressed && !mouseState.shiftPressed && spawnConfig.spawnMode === "single"; // Only allow drag-to-velocity in single mode
       mouseState.initialVelocity = { x: 0, y: 0 }; // Reset velocity
-
-      // Get spawn config early for use throughout the function
-      const spawnConfig = getSpawnConfig();
 
       // Set the size for velocity mode
       if (mouseState.isDragToVelocity) {
@@ -1431,8 +1513,8 @@ export function useInteractions({
         return;
       }
 
-      // Handle CMD/Ctrl mode switching (only when not in streaming mode)
-      if (!mouseState.shiftPressed) {
+      // Handle CMD/Ctrl mode switching (only when not in streaming mode and in single mode)
+      if (!mouseState.shiftPressed && getSpawnConfig().spawnMode === "single") {
         if (!wasCmdPressed && mouseState.cmdPressed) {
           // Just pressed CMD: switch to velocity mode
           mouseState.isDragToVelocity = true;
@@ -1453,23 +1535,27 @@ export function useInteractions({
 
       const distance = getDistance(mouseState.startPos, worldPos);
 
-      // Check if we should enter drag mode
-      // Adjust threshold based on zoom level - when zoomed out, use smaller threshold
-      const currentRenderer = getRenderer();
-      const zoomScale = currentRenderer ? currentRenderer.getZoom() : 1;
-      const adjustedThreshold = mouseState.dragThreshold / zoomScale;
+      // Check if we should enter drag mode (only in single mode)
+      if (getSpawnConfig().spawnMode === "single") {
+        // Adjust threshold based on zoom level - when zoomed out, use smaller threshold
+        const currentRenderer = getRenderer();
+        const zoomScale = currentRenderer ? currentRenderer.getZoom() : 1;
+        const adjustedThreshold = mouseState.dragThreshold / zoomScale;
 
-      if (distance >= adjustedThreshold) {
-        mouseState.isDragging = true;
+        if (distance >= adjustedThreshold) {
+          mouseState.isDragging = true;
+        }
       }
 
-      // Update preview based on current mode
-      if (mouseState.isDragToVelocity && !mouseState.shiftPressed) {
-        // Velocity mode: update velocity arrow (ignore shift in velocity mode)
-        updateVelocityPreview();
-      } else if (!mouseState.shiftPressed) {
-        // Size mode: update particle size (normal behavior when not streaming)
-        updateSizePreview();
+      // Update preview based on current mode (only in single mode)
+      if (getSpawnConfig().spawnMode === "single") {
+        if (mouseState.isDragToVelocity && !mouseState.shiftPressed) {
+          // Velocity mode: update velocity arrow (ignore shift in velocity mode)
+          updateVelocityPreview();
+        } else if (!mouseState.shiftPressed) {
+          // Size mode: update particle size (normal behavior when not streaming)
+          updateSizePreview();
+        }
       }
     },
     [
@@ -1583,8 +1669,36 @@ export function useInteractions({
         return;
       }
 
-      let finalParticle;
       const spawnConfig = getSpawnConfig();
+
+      // Check if we're in shape mode
+      if (spawnConfig.spawnMode === "shape") {
+        // Spawn particles in shape formation
+        spawnShapeParticles(
+          mouseState.startPos.x,
+          mouseState.startPos.y,
+          spawnConfig.shapeSides,
+          spawnConfig.shapeLength,
+          spawnConfig
+        );
+
+        // Clear preview particle and velocity
+        renderer.setPreviewParticle(null, false);
+        renderer.setPreviewVelocity(null);
+
+        // Reset mouse state
+        mouseState.isDown = false;
+        mouseState.isDragging = false;
+        mouseState.previewColor = "";
+        mouseState.wasStreaming = false;
+        mouseState.isDragToVelocity = false;
+        mouseState.initialVelocity = { x: 0, y: 0 };
+        mouseState.velocityModeSize = 0;
+        mouseState.originalDragIntent = null;
+        return;
+      }
+
+      let finalParticle;
 
       // === Mass Calculation Logic ===
       // The mass calculation depends on the interaction type and original drag intent:

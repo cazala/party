@@ -71,6 +71,7 @@ export interface UndoAction {
     | "REMOVE_BATCH"
     | "SYSTEM_CLEAR"
     | "DRAW_BATCH"
+    | "SHAPE_SPAWN"
     | "JOINT_CREATE"
     | "JOINT_REMOVE"
     | "PIN_TOGGLE";
@@ -93,6 +94,7 @@ export interface UseUndoRedoReturn {
   recordSpawnSingle: (particle: Particle, idCounter: number) => void; // Record a single particle spawn
   recordSpawnBatch: (particles: Particle[], idCounter: number) => void; // Record multiple particle spawns
   recordDrawBatch: (particles: Particle[], joints: Joint[], idCounter: number) => void; // Record draw mode batch with joints
+  recordShapeSpawn: (particles: Particle[], joints: Joint[], idCounter: number) => void; // Record shape spawn with particles and joints
   recordRemoveSingle: (particle: Particle, idCounter: number) => void; // Record a single particle removal
   recordRemoveBatch: (particles: Particle[], idCounter: number) => void; // Record multiple particle removals
   recordSystemClear: (particles: Particle[], idCounter: number) => void; // Record a system clear operation
@@ -326,6 +328,25 @@ export function useUndoRedo(getSystem: () => System | null, getJoints?: () => Jo
   );
 
   /**
+   * Records a shape spawn operation (particles with all-to-all joints)
+   */
+  const recordShapeSpawn = useCallback(
+    (particles: Particle[], joints: Joint[], idCounter: number) => {
+      if (particles.length === 0) return;
+
+      const action: UndoAction = {
+        type: "SHAPE_SPAWN",
+        timestamp: Date.now(),
+        particles: particles.map(serializeParticle),
+        joints: joints.map(serializeJoint),
+        idCounter,
+      };
+      addToHistory(action);
+    },
+    [serializeParticle, serializeJoint, addToHistory]
+  );
+
+  /**
    * Records a joint creation operation
    */
   const recordJointCreate = useCallback(
@@ -414,6 +435,22 @@ export function useUndoRedo(getSystem: () => System | null, getJoints?: () => Jo
           if (joints && lastAction.joints) {
             lastAction.joints.forEach((serializedJoint) => {
               joints.removeJoint(serializedJoint.id);
+            });
+          }
+          lastAction.particles?.forEach((serializedParticle) => {
+            const particle = system.getParticle(serializedParticle.id);
+            if (particle) {
+              system.removeParticle(particle);
+            }
+          });
+          break;
+
+        case "SHAPE_SPAWN":
+          // Remove the shape particles and joints
+          const shapeJoints = getJoints?.();
+          if (shapeJoints && lastAction.joints) {
+            lastAction.joints.forEach((serializedJoint) => {
+              shapeJoints.removeJoint(serializedJoint.id);
             });
           }
           lastAction.particles?.forEach((serializedParticle) => {
@@ -538,6 +575,28 @@ export function useUndoRedo(getSystem: () => System | null, getJoints?: () => Jo
           }
           break;
 
+        case "SHAPE_SPAWN":
+          // Re-add the shape particles and joints
+          actionToRedo.particles?.forEach((serializedParticle) => {
+            const particle = deserializeParticle(serializedParticle);
+            system.addParticle(particle);
+          });
+          const shapeJoints = getJoints?.();
+          if (shapeJoints && actionToRedo.joints) {
+            actionToRedo.joints.forEach((serializedJoint) => {
+              const joint = deserializeJoint(serializedJoint);
+              if (joint) {
+                shapeJoints.createJoint({
+                  id: joint.id,
+                  particleA: joint.particleA,
+                  particleB: joint.particleB,
+                  restLength: joint.restLength,
+                });
+              }
+            });
+          }
+          break;
+
         case "REMOVE_SINGLE":
         case "REMOVE_BATCH":
           // Re-remove the particles by marking them with mass = 0 (same as original removal)
@@ -633,6 +692,7 @@ export function useUndoRedo(getSystem: () => System | null, getJoints?: () => Jo
       recordSpawnSingle,
       recordSpawnBatch,
       recordDrawBatch,
+      recordShapeSpawn,
       recordRemoveSingle,
       recordRemoveBatch,
       recordSystemClear,
@@ -649,6 +709,7 @@ export function useUndoRedo(getSystem: () => System | null, getJoints?: () => Jo
       recordSpawnSingle,
       recordSpawnBatch,
       recordDrawBatch,
+      recordShapeSpawn,
       recordRemoveSingle,
       recordRemoveBatch,
       recordSystemClear,

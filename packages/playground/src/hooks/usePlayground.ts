@@ -69,6 +69,8 @@ export function usePlayground(
     streamRate: 10,
     drawStepSize: 20,
     pinned: false,
+    shapeSides: 3,
+    shapeLength: 50,
   });
 
   // ---------------------------------------------------------------------------
