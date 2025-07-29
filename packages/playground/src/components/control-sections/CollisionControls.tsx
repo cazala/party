@@ -114,7 +114,7 @@ export function CollisionControls({
 
       <div className="control-group">
         <label>
-          Restitution: {restitution.toFixed(3)}
+          Restitution: {restitution.toFixed(2)}
           <input
             type="range"
             min="0"
@@ -131,7 +131,7 @@ export function CollisionControls({
 
       <div className="control-group">
         <label>
-          Momentum: {momentum.toFixed(3)}
+          Momentum: {momentum.toFixed(2)}
           <input
             type="range"
             min="0"
