@@ -1,4 +1,4 @@
-import { Config } from "@party/core";
+import { Config } from "@cazala/party";
 
 export interface SerializedParticle {
   id: number;

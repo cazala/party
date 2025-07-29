@@ -4,7 +4,7 @@ import {
   Canvas2DRenderer,
   System,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
-} from "@party/core";
+} from "@cazala/party";
 
 interface PerformanceControlsProps {
   system: System | null;

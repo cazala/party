@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Behavior } from "@party/core";
+import { Behavior } from "@cazala/party";
 import {
   DEFAULT_BEHAVIOR_WANDER_WEIGHT,
   DEFAULT_BEHAVIOR_COHESION_WEIGHT,
@@ -10,7 +10,7 @@ import {
   DEFAULT_BEHAVIOR_SEPARATION_RANGE,
   DEFAULT_BEHAVIOR_VIEW_RADIUS,
   DEFAULT_BEHAVIOR_VIEW_ANGLE,
-} from "@party/core/modules/forces/behavior";
+} from "@cazala/party/modules/forces/behavior";
 
 interface BehaviorControlsProps {
   behavior: Behavior | null;

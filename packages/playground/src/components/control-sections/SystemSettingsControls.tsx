@@ -1,4 +1,4 @@
-import { System } from "@party/core";
+import { System } from "@cazala/party";
 
 interface SystemSettingsControlsProps {
   system: System | null;

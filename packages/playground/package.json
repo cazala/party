@@ -1,5 +1,5 @@
 {
-  "name": "@party/playground",
+  "name": "@cazala/playground",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@party/core": "file:../core",
+    "@cazala/party": "file:../core",
     "lucide-react": "^0.525.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

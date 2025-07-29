@@ -3,8 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@party/core": ["../core/src"],
-      "@party/core/*": ["../core/src/*"]
+      "@cazala/party": ["../core/src"],
+      "@cazala/party/*": ["../core/src/*"]
     }
   },
   "include": ["src/**/*"],

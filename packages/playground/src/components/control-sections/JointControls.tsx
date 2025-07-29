@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Joints, getIdCounter } from "@party/core";
+import { Joints, getIdCounter } from "@cazala/party";
 import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
 
 interface JointControlsProps {

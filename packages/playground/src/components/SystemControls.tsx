@@ -5,7 +5,7 @@ import {
   System,
   Fluid,
   Particle,
-} from "@party/core";
+} from "@cazala/party";
 import { InitControls } from "./control-sections/InitControls";
 import { SpawnControls, SpawnConfig } from "./control-sections/SpawnControls";
 import { InteractionControls } from "./control-sections/InteractionControls";

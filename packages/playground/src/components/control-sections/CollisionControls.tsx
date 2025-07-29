@@ -7,7 +7,7 @@ import {
   DEFAULT_COLLISIONS_RESTITUTION,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
   DEFAULT_MOMENTUM_PRESERVATION,
-} from "@party/core";
+} from "@cazala/party";
 
 interface CollisionControlsProps {
   collisions: Collisions | null;

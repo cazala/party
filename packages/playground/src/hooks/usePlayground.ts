@@ -19,7 +19,7 @@ import {
   Spawner,
   type VelocityConfig,
   degToRad,
-} from "@party/core";
+} from "@cazala/party";
 import { useInteractions } from "./useInteractions";
 import { SpawnConfig } from "../components/control-sections/SpawnControls";
 import { ToolMode } from "./useToolMode";

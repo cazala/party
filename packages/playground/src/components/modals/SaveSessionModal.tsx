@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { System } from "@party/core";
+import { System } from "@cazala/party";
 import { SessionManager } from "../../utils/SessionManager";
 import "./Modal.css";
 

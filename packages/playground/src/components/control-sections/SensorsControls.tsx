@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sensors, degToRad, radToDeg } from "@party/core";
+import { Sensors, degToRad, radToDeg } from "@cazala/party";
 import {
   DEFAULT_TRAIL_ENABLED,
   DEFAULT_TRAIL_DECAY,
@@ -15,7 +15,7 @@ import {
   DEFAULT_FLEE_BEHAVIOR,
   DEFAULT_FLEE_ANGLE,
   SensorBehavior,
-} from "@party/core/modules/forces/sensors";
+} from "@cazala/party/modules/forces/sensors";
 
 interface SensorsControlsProps {
   sensors: Sensors | null;

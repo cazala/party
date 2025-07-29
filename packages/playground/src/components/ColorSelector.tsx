@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { DEFAULT_COLOR_PALETTE } from "@party/core";
+import { DEFAULT_COLOR_PALETTE } from "@cazala/party";
 
 interface ColorSelectorProps {
   colors: string[];

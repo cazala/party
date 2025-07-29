@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Bounds, BoundsMode } from "@party/core";
+import { Bounds, BoundsMode } from "@cazala/party";
 import {
   DEFAULT_BOUNDS_BOUNCE,
   DEFAULT_BOUNDS_REPEL_DISTANCE,
   DEFAULT_BOUNDS_REPEL_STRENGTH,
   DEFAULT_BOUNDS_MODE,
-} from "@party/core/modules/forces/bounds";
+} from "@cazala/party/modules/forces/bounds";
 
 interface BoundsControlsProps {
   bounds: Bounds | null;

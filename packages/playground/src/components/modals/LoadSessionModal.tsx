@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SpatialGrid, Bounds, Canvas2DRenderer, System } from "@party/core";
+import { SpatialGrid, Bounds, Canvas2DRenderer, System } from "@cazala/party";
 import { SessionManager } from "../../utils/SessionManager";
 import { SessionMetadata } from "../../types/session";
 import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";

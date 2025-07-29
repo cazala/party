@@ -10,7 +10,7 @@ import {
   Particle,
   PINNED_PARTICLE_COLOR,
   Spawner,
-} from "@party/core";
+} from "@cazala/party";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
 import {
@@ -1516,14 +1516,14 @@ export function useInteractions({
       // Update modifier key states from mouse event
       const wasShiftPressed = mouseState.shiftPressed;
       const wasCmdPressed = mouseState.cmdPressed;
-      
+
       // In single mode, ignore shift key changes during drag operations to prevent interference
       // with drag-to-size and drag-to-velocity previews (shift streaming has been removed)
       const spawnConfig = getSpawnConfig();
       if (!(spawnConfig.spawnMode === "single" && mouseState.isDown)) {
         mouseState.shiftPressed = e.shiftKey;
       }
-      
+
       mouseState.cmdPressed = e.metaKey || e.ctrlKey;
 
       // If shift was just released during streaming, stop streaming

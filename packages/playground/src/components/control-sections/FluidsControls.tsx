@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Fluid } from "@party/core";
+import { Fluid } from "@cazala/party";
 import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
   DEFAULT_WOBBLE_FACTOR,
-} from "@party/core/modules/forces/fluid";
+} from "@cazala/party/modules/forces/fluid";
 
 interface FluidsControlsProps {
   fluid: Fluid | null;

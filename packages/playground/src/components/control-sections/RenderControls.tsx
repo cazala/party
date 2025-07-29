@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { Canvas2DRenderer, Fluid } from "@party/core";
+import { Canvas2DRenderer, Fluid } from "@cazala/party";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
   DEFAULT_RENDER_ROTATION_SPEED,
-} from "@party/core/modules/render";
+} from "@cazala/party/modules/render";
 
 interface RenderControlsProps {
   renderer: Canvas2DRenderer | null;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Interaction } from "@party/core";
+import { Interaction } from "@cazala/party";
 
 interface InteractionControlsProps {
   interaction: Interaction | null;

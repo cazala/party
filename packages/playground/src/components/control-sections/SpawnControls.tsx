@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { calculateMassFromSize } from "../../utils/particle";
 import { ColorSelector } from "../ColorSelector";
-import { Particle } from "@party/core";
+import { Particle } from "@cazala/party";
 
 // Default spawn configuration
 export const DEFAULT_SPAWN_PARTICLE_SIZE = 10;

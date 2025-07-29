@@ -7,7 +7,7 @@ import {
   DEFAULT_GRAVITY_ANGLE,
   DEFAULT_INERTIA,
   DEFAULT_FRICTION,
-} from "@party/core";
+} from "@cazala/party";
 
 interface PhysicsControlsProps {
   physics: Physics | null;

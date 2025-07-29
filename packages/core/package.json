@@ -1,5 +1,5 @@
 {
-  "name": "@party/core",
+  "name": "@cazala/party",
   "version": "0.1.0",
   "description": "Core particle system library",
   "type": "module",

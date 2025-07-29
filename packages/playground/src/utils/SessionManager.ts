@@ -1,11 +1,11 @@
-import { System, Particle, Vector2D, Canvas2DRenderer } from "@party/core";
+import { System, Particle, Vector2D, Canvas2DRenderer } from "@cazala/party";
 import {
   SavedSession,
   SerializedParticle,
   SessionMetadata,
 } from "../types/session";
-import { Bounds } from "@party/core";
-import { SpatialGrid } from "@party/core";
+import { Bounds } from "@cazala/party";
+import { SpatialGrid } from "@cazala/party";
 import { UseUndoRedoReturn } from "../hooks/useUndoRedo";
 
 const STORAGE_KEY = "playground-sessions";

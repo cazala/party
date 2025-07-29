@@ -44,7 +44,7 @@ import {
   DEFAULT_FLEE_ANGLE,
   DEFAULT_JOINTS_ENABLED,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
-} from "@party/core";
+} from "@cazala/party";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
 import { BoundsControls } from "./control-sections/BoundsControls";
