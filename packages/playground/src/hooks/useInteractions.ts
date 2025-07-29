@@ -1307,6 +1307,19 @@ export function useInteractions({
         // Draw mode: start drawing
         startDrawing(pos.x, pos.y);
         return; // Don't show preview when drawing
+      } else if (spawnConfig.spawnMode === "shape" && !mouseState.shiftPressed) {
+        // Shape mode: spawn particles immediately
+        spawnShapeParticles(
+          pos.x,
+          pos.y,
+          spawnConfig.shapeSides,
+          spawnConfig.shapeLength,
+          spawnConfig
+        );
+        // Set mouse state to prevent additional spawning on mouse up
+        mouseState.isDown = true;
+        mouseState.wasStreaming = true; // Use this flag to prevent spawning in onMouseUp
+        return; // Don't show preview when spawning shape
       } else if (mouseState.shiftPressed || spawnConfig.spawnMode === "stream") {
         // Stream mode: start streaming 
         let streamSize;
@@ -1707,33 +1720,6 @@ export function useInteractions({
       }
 
       const spawnConfig = getSpawnConfig();
-
-      // Check if we're in shape mode
-      if (spawnConfig.spawnMode === "shape") {
-        // Spawn particles in shape formation
-        spawnShapeParticles(
-          mouseState.startPos.x,
-          mouseState.startPos.y,
-          spawnConfig.shapeSides,
-          spawnConfig.shapeLength,
-          spawnConfig
-        );
-
-        // Clear preview particle and velocity
-        renderer.setPreviewParticle(null, false);
-        renderer.setPreviewVelocity(null);
-
-        // Reset mouse state
-        mouseState.isDown = false;
-        mouseState.isDragging = false;
-        mouseState.previewColor = "";
-        mouseState.wasStreaming = false;
-        mouseState.isDragToVelocity = false;
-        mouseState.initialVelocity = { x: 0, y: 0 };
-        mouseState.velocityModeSize = 0;
-        mouseState.originalDragIntent = null;
-        return;
-      }
 
       let finalParticle;
 
