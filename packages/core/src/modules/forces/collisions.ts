@@ -110,7 +110,11 @@ export class Collisions implements Force {
       const angle = Math.random() * Math.PI * 2;
       collisionVector.set(Math.cos(angle), Math.sin(angle));
       // Move them apart immediately
-      if (particle1.pinned) {
+      if (particle1.pinned && particle2.pinned) {
+        // Both particles are pinned - don't move either of them
+        // Skip separation to prevent erratic movement
+        return; // No force needed and no position correction
+      } else if (particle1.pinned) {
         const separationDistance = combinedRadius * 1.01; // Slightly more than touching
         particle2.position.set(
           particle2.position.x + collisionVector.x * separationDistance,
@@ -164,7 +168,10 @@ export class Collisions implements Force {
       const perturbX = (Math.random() - 0.5) * perturbationStrength;
       const perturbY = (Math.random() - 0.5) * perturbationStrength;
 
-      if (particle1.pinned) {
+      if (particle1.pinned && particle2.pinned) {
+        // Both particles are pinned - don't perturb either position
+        // Skip perturbation to prevent erratic movement
+      } else if (particle1.pinned) {
         particle2.position.add(new Vector2D(perturbX, perturbY));
       } else if (particle2.pinned) {
         particle1.position.add(new Vector2D(-perturbX, -perturbY));
@@ -190,15 +197,18 @@ export class Collisions implements Force {
       // Smaller (lighter) particles move more than heavier ones
       const separationPerMass = overlap / totalMass;
 
-      if (particle1.pinned) {
+      if (particle1.pinned && particle2.pinned) {
+        // Both particles are pinned - don't move either of them
+        // Skip position correction to prevent erratic movement
+      } else if (particle1.pinned) {
         const correction = collisionVector
           .clone()
-          .multiply(particle1.size * 1.01); // particle2 moves opposite of particle1
+          .multiply(overlap); // Use actual overlap distance, not particle size
         particle2.position.add(correction);
       } else if (particle2.pinned) {
         const correction = collisionVector
           .clone()
-          .multiply(particle2.size * 1.01); // particle1 moves opposite of particle2
+          .multiply(overlap); // Use actual overlap distance, not particle size
         particle1.position.add(correction);
       } else {
         const correction1 = collisionVector
