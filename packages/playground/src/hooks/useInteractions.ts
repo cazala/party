@@ -938,11 +938,26 @@ export function useInteractions({
         return;
       }
 
-      // Handle ESC key to cancel drag operations
+      // Handle ESC key to cancel operations
       if (e.key === "Escape") {
-        // Only cancel if user is currently dragging
+        e.preventDefault(); // Prevent any browser ESC behavior
+        
+        // Cancel joint creation if a particle is selected
+        if (mouseState.selectedParticle && mouseState.isCreatingJoint) {
+          mouseState.selectedParticle = null;
+          mouseState.isCreatingJoint = false;
+          
+          // Clear visual previews
+          const renderer = getRenderer();
+          if (renderer) {
+            renderer.setJointPreview(null);
+            renderer.setSelectedParticle(null);
+          }
+          return;
+        }
+        
+        // Cancel drag operations if user is currently dragging
         if (mouseState.isDown && mouseState.isDragging) {
-          e.preventDefault(); // Prevent any browser ESC behavior
           cancelDragOperation();
         }
         return;
