@@ -20,7 +20,7 @@ import {
   getRandomColor,
 } from "../utils/particle";
 import { calculateVelocity } from "../utils/velocity";
-import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
+import { SpawnConfig } from "../components/control-sections/SpawnControls";
 import { ToolMode } from "./useToolMode";
 import { UseUndoRedoReturn } from "./useUndoRedo";
 

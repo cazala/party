@@ -1,5 +1,5 @@
 import { Particle, Vector2D } from "@party/core";
-import { SpawnConfig } from "src/components/control-sections/ParticleSpawnControls";
+import { SpawnConfig } from "src/components/control-sections/SpawnControls";
 
 export const getRandomColor = () => {
   const colors = [

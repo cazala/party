@@ -21,7 +21,7 @@ import {
   degToRad,
 } from "@party/core";
 import { useInteractions } from "./useInteractions";
-import { SpawnConfig } from "../components/control-sections/ParticleSpawnControls";
+import { SpawnConfig } from "../components/control-sections/SpawnControls";
 import { ToolMode } from "./useToolMode";
 import { useUndoRedo } from "./useUndoRedo";
 import { calculateMassFromSize } from "../utils/particle";

@@ -6,10 +6,7 @@ import {
   Fluid,
 } from "@party/core";
 import { InitControls } from "./control-sections/InitControls";
-import {
-  ParticleSpawnControls,
-  SpawnConfig,
-} from "./control-sections/ParticleSpawnControls";
+import { SpawnControls, SpawnConfig } from "./control-sections/SpawnControls";
 import { InteractionControls } from "./control-sections/InteractionControls";
 import { RenderControls } from "./control-sections/RenderControls";
 import { PerformanceControls } from "./control-sections/PerformanceControls";
@@ -100,7 +97,7 @@ export function SystemControls({
       </CollapsibleSection>
 
       <CollapsibleSection title="Spawn" tooltip="Click to spawn particles">
-        <ParticleSpawnControls
+        <SpawnControls
           onSpawnConfigChange={onSpawnConfigChange}
           initialSize={particleSize}
           initialColors={initColors}

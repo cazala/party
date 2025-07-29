@@ -28,17 +28,17 @@ export interface SpawnConfig {
   shapeLength: number; // distance between particles in shape mode (10-100)
 }
 
-interface ParticleSpawnControlsProps {
+interface SpawnControlsProps {
   onSpawnConfigChange?: (config: SpawnConfig) => void;
   initialSize?: number; // For synchronization with Init section
   initialColors?: string[]; // For synchronization with Init section
 }
 
-export function ParticleSpawnControls({
+export function SpawnControls({
   onSpawnConfigChange,
   initialSize = DEFAULT_SPAWN_PARTICLE_SIZE,
   initialColors = [],
-}: ParticleSpawnControlsProps) {
+}: SpawnControlsProps) {
   const [particleSize, setParticleSize] = useState(initialSize);
   const [particleMass, setParticleMass] = useState(
     calculateMassFromSize(initialSize)
