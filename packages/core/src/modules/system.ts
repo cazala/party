@@ -58,47 +58,51 @@ import {
   DEFAULT_FLEE_ANGLE,
   SensorBehavior,
 } from "./forces/sensors";
-import { Joints, DEFAULT_JOINTS_ENABLED, DEFAULT_JOINT_STIFFNESS } from "./forces/joints";
+import {
+  Joints,
+  DEFAULT_JOINTS_ENABLED,
+  DEFAULT_JOINT_STIFFNESS,
+} from "./forces/joints";
 
 /**
  * Interface defining the lifecycle methods for a physics force.
  * Forces are applied to particles during each simulation step using a four-phase lifecycle:
  * before → apply → constraints → after
- * 
+ *
  * @interface Force
  */
 export interface Force {
   /**
    * Called once per frame before applying force to individual particles.
    * Use for global calculations or setup that affects all particles.
-   * 
+   *
    * @param particles - Array of all particles in the system
    * @param deltaTime - Time elapsed since last frame in milliseconds
    */
   before?(particles: Particle[], deltaTime: number): void;
-  
+
   /**
    * Called once per particle to apply the force effect.
    * This is where the main force logic should be implemented.
-   * 
+   *
    * @param particle - The particle to apply the force to
    * @param spatialGrid - Spatial grid for efficient neighbor queries
    */
   apply(particle: Particle, spatialGrid: SpatialGrid): void;
-  
+
   /**
    * Called after applying forces but before updating particle positions.
    * Use for constraint resolution and position corrections.
-   * 
+   *
    * @param particles - Array of all particles in the system
    * @param spatialGrid - Spatial grid for efficient neighbor queries
    */
   constraints?(particles: Particle[], spatialGrid: SpatialGrid): void;
-  
+
   /**
    * Called once per frame after all particles have been updated.
    * Use for cleanup or post-processing operations.
-   * 
+   *
    * @param particles - Array of all particles in the system
    * @param deltaTime - Time elapsed since last frame in milliseconds
    * @param spatialGrid - Spatial grid for efficient neighbor queries
@@ -108,7 +112,7 @@ export interface Force {
     deltaTime: number,
     spatialGrid: SpatialGrid
   ): void;
-  
+
   /**
    * Called when the force is being removed or the system is being reset.
    * Use for cleanup of resources, event listeners, or internal state.
@@ -120,7 +124,7 @@ export interface Force {
  * Configuration interface for the particle system.
  * Contains all settings for physics forces, behaviors, and system-wide parameters.
  * All properties are optional to allow partial configuration updates.
- * 
+ *
  * @interface Config
  */
 export interface Config {
@@ -138,13 +142,7 @@ export interface Config {
     /** Friction coefficient for velocity damping (0-1, default: 0.01) */
     friction?: number;
   };
-  
-  /** @deprecated Legacy gravity support - use physics.gravity instead */
-  gravity?: {
-    strength?: number;
-    direction?: { x?: number; y?: number };
-  };
-  
+
   /** Boundary behavior settings */
   bounds?: {
     /** Bounce coefficient when particles hit boundaries (0-1) */
@@ -158,7 +156,7 @@ export interface Config {
     /** Strength of boundary repel force */
     repelStrength?: number;
   };
-  
+
   /** Particle collision settings */
   collisions?: {
     /** Whether particle-particle collisions are enabled */
@@ -166,7 +164,7 @@ export interface Config {
     /** Whether larger particles can consume smaller ones */
     eat?: boolean;
   };
-  
+
   /** Flocking behavior settings */
   behavior?: {
     /** Whether behavior forces are enabled */
@@ -190,7 +188,7 @@ export interface Config {
     /** Field of view angle in degrees for behavior interactions */
     viewAngle?: number;
   };
-  
+
   /** Fluid dynamics (SPH) settings */
   fluid?: {
     /** Whether fluid forces are enabled */
@@ -206,7 +204,7 @@ export interface Config {
     /** Resistance to movement through fluid medium */
     resistance?: number;
   };
-  
+
   /** Environmental sensor settings */
   sensors?: {
     /** Whether particles leave visual trails */
@@ -236,7 +234,7 @@ export interface Config {
     /** Maximum angle for flee behavior steering (degrees) */
     fleeAngle?: number;
   };
-  
+
   /** Joint constraint settings */
   joints?: {
     /** Whether joint constraints are enabled */
@@ -257,7 +255,7 @@ export const DEFAULT_SPATIAL_GRID_CELL_SIZE = 100;
 
 /**
  * Options for initializing a particle system.
- * 
+ *
  * @interface SystemOptions
  */
 export interface SystemOptions {
@@ -271,7 +269,7 @@ export interface SystemOptions {
 
 /**
  * Main particle system class that manages particles, forces, and simulation lifecycle.
- * 
+ *
  * The System class provides:
  * - Particle management (add, remove, update)
  * - Force system with pluggable architecture
@@ -279,20 +277,20 @@ export interface SystemOptions {
  * - Animation loop with play/pause controls
  * - Configuration import/export
  * - FPS tracking and performance monitoring
- * 
+ *
  * @class System
  * @example
  * ```typescript
  * const system = new System({ width: 800, height: 600 });
- * 
+ *
  * // Add some particles
  * const particle = new Particle(100, 100, { size: 5, mass: 1 });
  * system.addParticle(particle);
- * 
+ *
  * // Add forces
  * system.addForce(new Physics());
  * system.addForce(new Bounds());
- * 
+ *
  * // Start simulation
  * system.play();
  * ```
@@ -328,10 +326,10 @@ export class System {
 
   /**
    * Creates a new particle system.
-   * 
+   *
    * @param options - Configuration options for the system
    * @param options.width - Width of the simulation area
-   * @param options.height - Height of the simulation area  
+   * @param options.height - Height of the simulation area
    * @param options.cellSize - Size of spatial grid cells (optional, default: 100)
    */
   constructor(options: SystemOptions) {
@@ -347,7 +345,7 @@ export class System {
 
   /**
    * Adds a particle to the system.
-   * 
+   *
    * @param particle - The particle to add
    */
   addParticle(particle: Particle): void {
@@ -356,7 +354,7 @@ export class System {
 
   /**
    * Adds multiple particles to the system.
-   * 
+   *
    * @param particles - Array of particles to add
    */
   addParticles(particles: Particle[]): void {
@@ -367,7 +365,7 @@ export class System {
 
   /**
    * Finds a particle by its unique ID.
-   * 
+   *
    * @param id - The particle ID to search for
    * @returns The particle if found, null otherwise
    */
@@ -378,7 +376,7 @@ export class System {
 
   /**
    * Removes a particle from the system.
-   * 
+   *
    * @param particle - The particle to remove
    */
   removeParticle(particle: Particle): void {
@@ -391,7 +389,7 @@ export class System {
   /**
    * Adds a force to the system.
    * Forces are applied to particles during each update cycle.
-   * 
+   *
    * @param force - The force to add
    */
   addForce(force: Force): void {
@@ -400,7 +398,7 @@ export class System {
 
   /**
    * Removes a force from the system.
-   * 
+   *
    * @param force - The force to remove
    */
   removeForce(force: Force): void {
@@ -419,13 +417,13 @@ export class System {
 
   /**
    * Updates the simulation by one time step.
-   * 
+   *
    * This method:
    * 1. Updates the spatial grid with current particle positions
    * 2. Runs the force lifecycle: before → apply → constraints → after
    * 3. Updates particle physics and positions
    * 4. Removes particles marked for deletion (mass = 0)
-   * 
+   *
    * @param deltaTime - Time elapsed since last update in milliseconds
    */
   update(deltaTime: number): void {
@@ -510,7 +508,7 @@ export class System {
 
   /**
    * Resets the simulation to its initial state.
-   * 
+   *
    * This method:
    * - Pauses the simulation
    * - Clears all particles
@@ -689,7 +687,6 @@ export class System {
     // Apply configuration for each force type present in the system
     for (const force of this.forces) {
       if (force instanceof Physics) {
-        // Handle new physics config format
         if (config.physics) {
           force.setStrength(
             config.physics.gravity?.strength ?? DEFAULT_GRAVITY_STRENGTH
@@ -704,20 +701,6 @@ export class System {
           );
           force.setInertia(config.physics.inertia ?? DEFAULT_INERTIA);
           force.setFriction(config.physics.friction ?? DEFAULT_FRICTION);
-        }
-        // Handle legacy gravity config for backward compatibility
-        else if (config.gravity) {
-          force.setStrength(
-            config.gravity.strength ?? DEFAULT_GRAVITY_STRENGTH
-          );
-          force.setDirection(
-            new Vector2D(
-              config.gravity.direction?.x ?? DEFAULT_GRAVITY_DIRECTION.x,
-              config.gravity.direction?.y ?? DEFAULT_GRAVITY_DIRECTION.y
-            )
-          );
-          force.setInertia(DEFAULT_INERTIA);
-          force.setFriction(DEFAULT_FRICTION);
         }
       } else if (force instanceof Bounds && config.bounds) {
         force.bounce = config.bounds.bounce ?? DEFAULT_BOUNDS_BOUNCE;
@@ -797,14 +780,15 @@ export class System {
           config.sensors.fleeBehavior ?? DEFAULT_FLEE_BEHAVIOR
         );
         force.setColorSimilarityThreshold(
-          config.sensors.colorSimilarityThreshold ?? DEFAULT_COLOR_SIMILARITY_THRESHOLD
+          config.sensors.colorSimilarityThreshold ??
+            DEFAULT_COLOR_SIMILARITY_THRESHOLD
         );
-        force.setFleeAngle(
-          config.sensors.fleeAngle ?? DEFAULT_FLEE_ANGLE
-        );
+        force.setFleeAngle(config.sensors.fleeAngle ?? DEFAULT_FLEE_ANGLE);
       } else if (force instanceof Joints && config.joints) {
         force.setEnabled(config.joints.enabled ?? DEFAULT_JOINTS_ENABLED);
-        force.setGlobalStiffness(config.joints.stiffness ?? DEFAULT_JOINT_STIFFNESS);
+        force.setGlobalStiffness(
+          config.joints.stiffness ?? DEFAULT_JOINT_STIFFNESS
+        );
         if (config.joints.enableCollisions !== undefined) {
           force.setEnableCollisions(config.joints.enableCollisions);
         }

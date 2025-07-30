@@ -7,8 +7,8 @@ import { SpatialGrid } from "../spatial-grid";
 export const DEFAULT_GRAVITY_STRENGTH = 0;
 export const DEFAULT_GRAVITY_DIRECTION = new Vector2D(0, 1); // Downward
 export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downward)
-export const DEFAULT_INERTIA = 0;
-export const DEFAULT_FRICTION = 0;
+export const DEFAULT_INERTIA = 0.1;
+export const DEFAULT_FRICTION = 0.1;
 
 export interface PhysicsOptions {
   gravity?: {

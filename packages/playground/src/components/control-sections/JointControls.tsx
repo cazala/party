@@ -77,7 +77,7 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
       </div>
 
       <div className="control-group">
-        <label>Joint Stiffness: {stiffness.toFixed(2)}</label>
+        <label>Stiffness: {stiffness.toFixed(2)}</label>
         <input
           type="range"
           min="0"

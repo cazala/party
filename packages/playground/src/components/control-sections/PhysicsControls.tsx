@@ -98,7 +98,7 @@ export function PhysicsControls({ physics }: PhysicsControlsProps) {
 
       <div className="control-group">
         <label>
-          Inertia: {inertia.toFixed(3)}
+          Inertia: {inertia.toFixed(2)}
           <input
             type="range"
             min="0"
@@ -113,7 +113,7 @@ export function PhysicsControls({ physics }: PhysicsControlsProps) {
 
       <div className="control-group">
         <label>
-          Friction: {friction.toFixed(3)}
+          Friction: {friction.toFixed(2)}
           <input
             type="range"
             min="0"

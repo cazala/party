@@ -66,6 +66,8 @@ export class Joint {
   applyConstraint(): void {
     if (!this.validate()) return;
 
+    if (this.stiffness === 0) return;
+
     // Skip if both particles are pinned (but allow pinned-dynamic pairs)
     if (this.particleA.pinned && this.particleB.pinned) return;
 
@@ -233,7 +235,7 @@ export class Joints implements Force {
     // Use global stiffness if not specified in options
     const jointOptions = {
       ...options,
-      stiffness: options.stiffness ?? this.globalStiffness
+      stiffness: options.stiffness ?? this.globalStiffness,
     };
     const joint = new Joint(jointOptions);
     this.joints.set(joint.id, joint);

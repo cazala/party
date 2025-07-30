@@ -8,6 +8,7 @@ import {
   DEFAULT_JOINT_COLLISIONS_ENABLED,
   DEFAULT_MOMENTUM_PRESERVATION,
 } from "@cazala/party";
+import { Tooltip } from "../Tooltip";
 
 interface CollisionControlsProps {
   collisions: Collisions | null;
@@ -95,6 +96,7 @@ export function CollisionControls({
             }
           />
           Enable Particles
+          <Tooltip content="Enable collisions between particles" />
         </label>
       </div>
 
@@ -109,6 +111,7 @@ export function CollisionControls({
             className="checkbox"
           />
           Enable Joints
+          <Tooltip content="Enable collisions between particles and joints" />
         </label>
       </div>
 
@@ -155,7 +158,8 @@ export function CollisionControls({
               !particleCollisionsEnabled ? "disabled" : ""
             }`}
           />
-          Eat on Collision
+          Enable Eat
+          <Tooltip content="When enabled, when two particles hit, the one with less mass is removed" />
         </label>
       </div>
     </div>

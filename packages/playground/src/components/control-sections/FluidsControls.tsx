@@ -97,7 +97,7 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
 
       <div className="control-group">
         <label>
-          Pressure: {pressureMultiplier.toFixed(1)}
+          Pressure: {pressureMultiplier.toFixed(2)}
           <input
             type="range"
             min="0.1"
@@ -118,7 +118,7 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
 
       <div className="control-group">
         <label>
-          Influence: {influenceRadius.toFixed(1)}px
+          Influence: {influenceRadius.toFixed(0)}px
           <input
             type="range"
             min="10"

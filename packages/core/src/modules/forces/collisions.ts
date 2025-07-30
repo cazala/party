@@ -111,7 +111,12 @@ export class Collisions implements Force {
     deltaTime: number,
     prePhysicsPositions: Map<number, Vector2D>
   ): void {
-    if (!this.joints || deltaTime <= 0) return;
+    if (
+      !this.joints ||
+      deltaTime <= 0 ||
+      this.joints.getGlobalStiffness() === 0
+    )
+      return;
 
     // Update velocities for constrained particles to match actual movement
     for (const particle of particles) {

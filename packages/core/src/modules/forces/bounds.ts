@@ -5,7 +5,7 @@ import { Vector2D } from "../vector";
 import { Physics } from "./physics";
 
 // Default constants for Bounds behavior
-export const DEFAULT_BOUNDS_BOUNCE = 0.6; // Reduced from 0.8 for more energy dissipation
+export const DEFAULT_BOUNDS_BOUNCE = 0.4;
 export const DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY = 50; // Below this speed, bounce is reduced further
 export const DEFAULT_BOUNDS_REPEL_DISTANCE = 0; // No repel distance by default
 export const DEFAULT_BOUNDS_REPEL_STRENGTH = 0; // No repel strength by default
