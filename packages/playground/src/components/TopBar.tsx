@@ -1,5 +1,16 @@
 import { useState, useEffect } from "react";
-import { RefreshCw, Save, FolderOpen, Maximize } from "lucide-react";
+import {
+  RefreshCw,
+  Save,
+  FolderOpen,
+  Maximize,
+  Trash2,
+  Circle,
+  Link,
+  Hand,
+  Pin,
+  Eraser,
+} from "lucide-react";
 import { System } from "@cazala/party";
 import { ToolMode } from "../hooks/useToolMode";
 
@@ -134,10 +145,7 @@ export function TopBar({
             <span>{isPlaying ? "Pause" : "Play"}</span>
           </button>
           <button onClick={handleClear} className="clear-button">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-              <path d="M3 1v1H1v1h1v8a1 1 0 001 1h6a1 1 0 001-1V3h1V2H9V1a1 1 0 00-1-1H4a1 1 0 00-1 1zm1 0h4v1H4V1z" />
-              <path d="M4 4h1v5H4V4zm3 0h1v5H7V4z" />
-            </svg>
+            <Trash2 width="12" height="12" />
             <span>Clear</span>
           </button>
           <button onClick={handleReset} className="reset-spawn-button">
@@ -166,14 +174,7 @@ export function TopBar({
                   toolMode === "spawn" ? "tool-mode-active" : ""
                 }`}
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="currentColor"
-                >
-                  <circle cx="6" cy="6" r="3" />
-                </svg>
+                <Circle width="12" height="12" />
                 <span>Spawn</span>
               </button>
               <button
@@ -182,23 +183,7 @@ export function TopBar({
                   toolMode === "joint" ? "tool-mode-active" : ""
                 }`}
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="currentColor"
-                >
-                  <line
-                    x1="2"
-                    y1="3"
-                    x2="10"
-                    y2="9"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  />
-                  <circle cx="2" cy="3" r="1.5" />
-                  <circle cx="10" cy="9" r="1.5" />
-                </svg>
+                <Link width="12" height="12" />
                 <span>Joint</span>
               </button>
               <button
@@ -207,14 +192,7 @@ export function TopBar({
                   toolMode === "grab" ? "tool-mode-active" : ""
                 }`}
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="currentColor"
-                >
-                  <path d="M2 4c0-.5.4-1 1-1s1 .5 1 1v2h1V3c0-.5.4-1 1-1s1 .5 1 1v3h1V2c0-.5.4-1 1-1s1 .5 1 1v4h.5c.5 0 1 .4 1 1v2c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V4z" />
-                </svg>
+                <Hand width="12" height="12" />
                 <span>Grab</span>
               </button>
               <button
@@ -223,14 +201,7 @@ export function TopBar({
                   toolMode === "pin" ? "tool-mode-active" : ""
                 }`}
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="currentColor"
-                >
-                  <path d="M6 1L7 2V4L8 5V6L7 7V9L6 10L5 9V7L4 6V5L5 4V2L6 1Z M6 3L5.5 3.5V5.5L6 6L6.5 5.5V3.5L6 3Z" />
-                </svg>
+                <Pin width="12" height="12" />
                 <span>Pin</span>
               </button>
               <button
@@ -239,22 +210,7 @@ export function TopBar({
                   toolMode === "remove" ? "tool-mode-active" : ""
                 }`}
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="currentColor"
-                >
-                  <circle
-                    cx="6"
-                    cy="6"
-                    r="5"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeDasharray="2,2"
-                    fill="none"
-                  />
-                </svg>
+                <Eraser width="12" height="12" />
                 <span>Remove</span>
               </button>
             </div>
