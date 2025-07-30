@@ -11,7 +11,6 @@ import { SpawnControls, SpawnConfig } from "./control-sections/SpawnControls";
 import { InteractionControls } from "./control-sections/InteractionControls";
 import { RenderControls } from "./control-sections/RenderControls";
 import { PerformanceControls } from "./control-sections/PerformanceControls";
-import { SystemSettingsControls } from "./control-sections/SystemSettingsControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useState } from "react";
 
@@ -131,10 +130,6 @@ export function SystemControls({
           spatialGrid={spatialGrid}
           renderer={renderer}
         />
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Settings">
-        <SystemSettingsControls system={system} />
       </CollapsibleSection>
     </div>
   );
