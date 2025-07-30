@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { ColorSelector } from "../ColorSelector";
 
 const DEFAULT_SPAWN_NUM_PARTICLES = 100;
@@ -56,13 +56,40 @@ interface InitControlsProps {
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
 }
 
-export function InitControls({
+export interface InitControlsRef {
+  getState: () => {
+    numParticles: number;
+    spawnShape: "grid" | "random" | "circle" | "donut" | "square";
+    spacing: number;
+    particleSize: number;
+    radius: number;
+    innerRadius: number;
+    squareSize: number;
+    cornerRadius: number;
+    colors: string[];
+    velocityConfig: InitVelocityConfig;
+  };
+  setState: (state: Partial<{
+    numParticles: number;
+    spawnShape: "grid" | "random" | "circle" | "donut" | "square";
+    spacing: number;
+    particleSize: number;
+    radius: number;
+    innerRadius: number;
+    squareSize: number;
+    cornerRadius: number;
+    colors: string[];
+    velocityConfig: InitVelocityConfig;
+  }>) => void;
+}
+
+export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(({
   onInitParticles,
   onGetInitConfig,
   onParticleSizeChange,
   onColorsChange,
   getCurrentCamera,
-}: InitControlsProps) {
+}, ref) => {
   const [numParticles, setNumParticles] = useState(DEFAULT_SPAWN_NUM_PARTICLES);
   const [spawnShape, setSpawnShape] = useState<
     "grid" | "random" | "circle" | "donut" | "square"
@@ -79,6 +106,34 @@ export function InitControls({
     direction: DEFAULT_VELOCITY_DIRECTION,
     angle: DEFAULT_VELOCITY_ANGLE,
   });
+
+  // Expose state management methods
+  useImperativeHandle(ref, () => ({
+    getState: () => ({
+      numParticles,
+      spawnShape,
+      spacing,
+      particleSize,
+      radius,
+      innerRadius,
+      squareSize,
+      cornerRadius,
+      colors,
+      velocityConfig,
+    }),
+    setState: (state) => {
+      if (state.numParticles !== undefined) setNumParticles(state.numParticles);
+      if (state.spawnShape !== undefined) setSpawnShape(state.spawnShape);
+      if (state.spacing !== undefined) setSpacing(state.spacing);
+      if (state.particleSize !== undefined) setParticleSize(state.particleSize);
+      if (state.radius !== undefined) setRadius(state.radius);
+      if (state.innerRadius !== undefined) setInnerRadius(state.innerRadius);
+      if (state.squareSize !== undefined) setSquareSize(state.squareSize);
+      if (state.cornerRadius !== undefined) setCornerRadius(state.cornerRadius);
+      if (state.colors !== undefined) setColors(state.colors);
+      if (state.velocityConfig !== undefined) setVelocityConfig(state.velocityConfig);
+    },
+  }), [numParticles, spawnShape, spacing, particleSize, radius, innerRadius, squareSize, cornerRadius, colors, velocityConfig]);
 
   // Color management handler
   const handleColorsChange = (newColors: string[]) => {
@@ -511,4 +566,4 @@ export function InitControls({
       )}
     </div>
   );
-}
+});

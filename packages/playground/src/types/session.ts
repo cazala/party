@@ -37,6 +37,52 @@ export interface SavedSession {
     jointCount: number;
     version: string;
   };
+  // Left sidebar control states
+  systemControls?: {
+    init?: {
+      numParticles: number;
+      shape: "grid" | "random" | "circle" | "donut" | "square";
+      spacing: number;
+      particleSize: number;
+      radius?: number;
+      colors?: string[];
+      velocityConfig?: {
+        speed: number;
+        direction: "random" | "in" | "out" | "custom" | "clockwise" | "counter-clockwise";
+        angle: number;
+      };
+      innerRadius?: number;
+      squareSize?: number;
+      cornerRadius?: number;
+    };
+    spawn?: {
+      defaultSize: number;
+      defaultMass: number;
+      colors: string[];
+      spawnMode: "single" | "stream" | "draw" | "shape";
+      streamRate: number;
+      drawStepSize: number;
+      pinned: boolean;
+      shapeSides: number;
+      shapeLength: number;
+    };
+    interaction?: {
+      strength: number;
+      radius: number;
+    };
+    render?: {
+      colorMode: "particle" | "custom" | "velocity" | "rotate";
+      customColor: string;
+      rotationSpeed: number;
+      showDensity: boolean;
+      showVelocity: boolean;
+      densityFieldColor: string;
+    };
+    performance?: {
+      cellSize: number;
+      showSpatialGrid: boolean;
+    };
+  };
 }
 
 export interface SessionMetadata {

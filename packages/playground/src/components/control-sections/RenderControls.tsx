@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Canvas2DRenderer, Fluid } from "@cazala/party";
 import {
   DEFAULT_RENDER_COLOR_MODE,
@@ -11,7 +11,26 @@ interface RenderControlsProps {
   fluid: Fluid | null;
 }
 
-export function RenderControls({ renderer, fluid }: RenderControlsProps) {
+export interface RenderControlsRef {
+  getState: () => {
+    colorMode: "particle" | "custom" | "velocity" | "rotate";
+    customColor: string;
+    rotationSpeed: number;
+    showDensity: boolean;
+    showVelocity: boolean;
+    densityFieldColor: string;
+  };
+  setState: (state: Partial<{
+    colorMode: "particle" | "custom" | "velocity" | "rotate";
+    customColor: string;
+    rotationSpeed: number;
+    showDensity: boolean;
+    showVelocity: boolean;
+    densityFieldColor: string;
+  }>) => void;
+}
+
+export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>(({ renderer, fluid }, ref) => {
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
   const [rotationSpeed, setRotationSpeed] = useState(
@@ -21,9 +40,59 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
   const [showVelocity, setShowVelocity] = useState(true);
   const [densityFieldColor, setDensityFieldColor] = useState("#FF6B35");
 
+  // Expose state management methods
+  useImperativeHandle(ref, () => ({
+    getState: () => ({
+      colorMode: colorMode as "particle" | "custom" | "velocity" | "rotate",
+      customColor,
+      rotationSpeed,
+      showDensity,
+      showVelocity,
+      densityFieldColor,
+    }),
+    setState: (state) => {
+      if (state.colorMode !== undefined) {
+        setColorMode(state.colorMode);
+        if (renderer) {
+          renderer.setColorMode(state.colorMode);
+        }
+      }
+      if (state.customColor !== undefined) {
+        setCustomColor(state.customColor);
+        if (renderer) {
+          renderer.setCustomColor(state.customColor);
+        }
+      }
+      if (state.rotationSpeed !== undefined) {
+        setRotationSpeed(state.rotationSpeed);
+        if (renderer) {
+          renderer.setRotationSpeed(state.rotationSpeed);
+        }
+      }
+      if (state.showDensity !== undefined) {
+        setShowDensity(state.showDensity);
+        if (renderer) {
+          renderer.setShowDensity(state.showDensity);
+        }
+      }
+      if (state.showVelocity !== undefined) {
+        setShowVelocity(state.showVelocity);
+        if (renderer) {
+          renderer.setShowVelocity(state.showVelocity);
+        }
+      }
+      if (state.densityFieldColor !== undefined) {
+        setDensityFieldColor(state.densityFieldColor);
+        if (renderer) {
+          renderer.setDensityFieldColor(state.densityFieldColor);
+        }
+      }
+    },
+  }), [colorMode, customColor, rotationSpeed, showDensity, showVelocity, densityFieldColor, renderer]);
+
   useEffect(() => {
     if (renderer) {
-      setColorMode(renderer.colorMode);
+      setColorMode(renderer.colorMode as "particle" | "custom" | "velocity" | "rotate");
       setCustomColor(renderer.customColor);
       setRotationSpeed(renderer.getRotationSpeed());
       setShowDensity(renderer.showDensity);
@@ -162,4 +231,4 @@ export function RenderControls({ renderer, fluid }: RenderControlsProps) {
       )}
     </div>
   );
-}
+});

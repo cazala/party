@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { System } from "@cazala/party";
 import { SessionManager } from "../../utils/SessionManager";
+import { SystemControlsRef } from "../SystemControls";
 import "./Modal.css";
 
 interface SaveSessionModalProps {
@@ -8,6 +9,7 @@ interface SaveSessionModalProps {
   onClose: () => void;
   system: System | null;
   renderer?: any;
+  systemControlsRef?: React.RefObject<SystemControlsRef>;
   onSaveSuccess?: (sessionName: string) => void;
 }
 
@@ -16,6 +18,7 @@ export function SaveSessionModal({
   onClose,
   system,
   renderer,
+  systemControlsRef,
   onSaveSuccess,
 }: SaveSessionModalProps) {
   const [sessionName, setSessionName] = useState("");
@@ -117,11 +120,15 @@ export function SaveSessionModal({
     setError("");
 
     try {
+      // Get system controls state
+      const systemControlsState = systemControlsRef?.current?.getSystemControlsState();
+      
       const result = SessionManager.saveSession(
         system,
         trimmedName,
         showOverwriteWarning,
-        renderer
+        renderer,
+        systemControlsState
       );
 
       if (result.success) {

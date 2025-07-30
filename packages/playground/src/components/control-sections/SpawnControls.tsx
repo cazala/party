@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { calculateMassFromSize } from "../../utils/particle";
 import { ColorSelector } from "../ColorSelector";
 import { Particle } from "@cazala/party";
@@ -36,12 +36,17 @@ interface SpawnControlsProps {
   currentlyGrabbedParticle: Particle | null;
 }
 
-export function SpawnControls({
+export interface SpawnControlsRef {
+  getState: () => SpawnConfig;
+  setState: (state: Partial<SpawnConfig>) => void;
+}
+
+export const SpawnControls = forwardRef<SpawnControlsRef, SpawnControlsProps>(({
   onSpawnConfigChange,
   initialSize = DEFAULT_SPAWN_PARTICLE_SIZE,
   initialColors = [],
   currentlyGrabbedParticle,
-}: SpawnControlsProps) {
+}, ref) => {
   const [particleSize, setParticleSize] = useState(initialSize);
   const [particleMass, setParticleMass] = useState(
     calculateMassFromSize(initialSize)
@@ -55,6 +60,32 @@ export function SpawnControls({
   const [isPinned, setIsPinned] = useState(DEFAULT_SPAWN_PINNED);
   const [shapeSides, setShapeSides] = useState(DEFAULT_SPAWN_SHAPE_SIDES);
   const [shapeLength, setShapeLength] = useState(DEFAULT_SPAWN_SHAPE_LENGTH);
+
+  // Expose state management methods
+  useImperativeHandle(ref, () => ({
+    getState: () => ({
+      defaultSize: particleSize,
+      defaultMass: particleMass,
+      colors,
+      spawnMode,
+      streamRate,
+      drawStepSize,
+      pinned: isPinned,
+      shapeSides,
+      shapeLength,
+    }),
+    setState: (state) => {
+      if (state.defaultSize !== undefined) setParticleSize(state.defaultSize);
+      if (state.defaultMass !== undefined) setParticleMass(state.defaultMass);
+      if (state.colors !== undefined) setColors(state.colors);
+      if (state.spawnMode !== undefined) setSpawnMode(state.spawnMode);
+      if (state.streamRate !== undefined) setStreamRate(state.streamRate);
+      if (state.drawStepSize !== undefined) setDrawStepSize(state.drawStepSize);
+      if (state.pinned !== undefined) setIsPinned(state.pinned);
+      if (state.shapeSides !== undefined) setShapeSides(state.shapeSides);
+      if (state.shapeLength !== undefined) setShapeLength(state.shapeLength);
+    },
+  }), [particleSize, particleMass, colors, spawnMode, streamRate, drawStepSize, isPinned, shapeSides, shapeLength]);
 
   // Update particle size when initialSize prop changes (from Init section)
   useEffect(() => {
@@ -281,4 +312,4 @@ export function SpawnControls({
       )}
     </div>
   );
-}
+});

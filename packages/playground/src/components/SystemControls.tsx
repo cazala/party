@@ -6,13 +6,13 @@ import {
   Fluid,
   Particle,
 } from "@cazala/party";
-import { InitControls } from "./control-sections/InitControls";
-import { SpawnControls, SpawnConfig } from "./control-sections/SpawnControls";
-import { InteractionControls } from "./control-sections/InteractionControls";
-import { RenderControls } from "./control-sections/RenderControls";
-import { PerformanceControls } from "./control-sections/PerformanceControls";
+import { InitControls, InitControlsRef } from "./control-sections/InitControls";
+import { SpawnControls, SpawnConfig, SpawnControlsRef } from "./control-sections/SpawnControls";
+import { InteractionControls, InteractionControlsRef } from "./control-sections/InteractionControls";
+import { RenderControls, RenderControlsRef } from "./control-sections/RenderControls";
+import { PerformanceControls, PerformanceControlsRef } from "./control-sections/PerformanceControls";
 import { CollapsibleSection } from "./CollapsibleSection";
-import { useState } from "react";
+import { useState, useRef, useImperativeHandle, forwardRef } from "react";
 
 interface InitVelocityConfig {
   speed: number;
@@ -61,7 +61,12 @@ interface SystemControlsProps {
   currentlyGrabbedParticle: Particle | null;
 }
 
-export function SystemControls({
+export interface SystemControlsRef {
+  getSystemControlsState: () => any;
+  setSystemControlsState: (state: any) => void;
+}
+
+export const SystemControls = forwardRef<SystemControlsRef, SystemControlsProps>(({
   system,
   renderer,
   spatialGrid,
@@ -71,9 +76,44 @@ export function SystemControls({
   onSpawnConfigChange,
   getCurrentCamera,
   currentlyGrabbedParticle,
-}: SystemControlsProps) {
+}, ref) => {
   const [particleSize, setParticleSize] = useState(10);
   const [initColors, setInitColors] = useState<string[]>([]);
+  
+  // Refs for control components
+  const initControlsRef = useRef<InitControlsRef>(null);
+  const spawnControlsRef = useRef<SpawnControlsRef>(null);
+  const interactionControlsRef = useRef<InteractionControlsRef>(null);
+  const renderControlsRef = useRef<RenderControlsRef>(null);
+  const performanceControlsRef = useRef<PerformanceControlsRef>(null);
+
+  // Expose state management methods
+  useImperativeHandle(ref, () => ({
+    getSystemControlsState: () => ({
+      init: initControlsRef.current?.getState(),
+      spawn: spawnControlsRef.current?.getState(),
+      interaction: interactionControlsRef.current?.getState(),
+      render: renderControlsRef.current?.getState(),
+      performance: performanceControlsRef.current?.getState(),
+    }),
+    setSystemControlsState: (state) => {
+      if (state.init && initControlsRef.current) {
+        initControlsRef.current.setState(state.init);
+      }
+      if (state.spawn && spawnControlsRef.current) {
+        spawnControlsRef.current.setState(state.spawn);
+      }
+      if (state.interaction && interactionControlsRef.current) {
+        interactionControlsRef.current.setState(state.interaction);
+      }
+      if (state.render && renderControlsRef.current) {
+        renderControlsRef.current.setState(state.render);
+      }
+      if (state.performance && performanceControlsRef.current) {
+        performanceControlsRef.current.setState(state.performance);
+      }
+    },
+  }), []);
 
   const handleParticleSizeChange = (size: number) => {
     setParticleSize(size);
@@ -90,6 +130,7 @@ export function SystemControls({
 
       <CollapsibleSection title="Init">
         <InitControls
+          ref={initControlsRef}
           onInitParticles={onInitParticles}
           onGetInitConfig={onGetInitConfig}
           onParticleSizeChange={handleParticleSizeChange}
@@ -100,6 +141,7 @@ export function SystemControls({
 
       <CollapsibleSection title="Spawn" tooltip="Click to spawn particles">
         <SpawnControls
+          ref={spawnControlsRef}
           onSpawnConfigChange={onSpawnConfigChange}
           initialSize={particleSize}
           initialColors={initColors}
@@ -111,11 +153,12 @@ export function SystemControls({
         title="Interaction"
         tooltip="Right click to interact with particles"
       >
-        <InteractionControls interaction={interaction} />
+        <InteractionControls ref={interactionControlsRef} interaction={interaction} />
       </CollapsibleSection>
 
       <CollapsibleSection title="Render">
         <RenderControls
+          ref={renderControlsRef}
           renderer={renderer}
           fluid={
             (system?.forces.find((force) => force instanceof Fluid) as Fluid) ||
@@ -126,6 +169,7 @@ export function SystemControls({
 
       <CollapsibleSection title="Performance">
         <PerformanceControls
+          ref={performanceControlsRef}
           system={system}
           spatialGrid={spatialGrid}
           renderer={renderer}
@@ -133,4 +177,4 @@ export function SystemControls({
       </CollapsibleSection>
     </div>
   );
-}
+});

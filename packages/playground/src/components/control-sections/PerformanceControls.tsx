@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import {
   SpatialGrid,
   Canvas2DRenderer,
@@ -12,15 +12,48 @@ interface PerformanceControlsProps {
   renderer: Canvas2DRenderer | null;
 }
 
-export function PerformanceControls({
+export interface PerformanceControlsRef {
+  getState: () => {
+    cellSize: number;
+    showSpatialGrid: boolean;
+  };
+  setState: (state: Partial<{
+    cellSize: number;
+    showSpatialGrid: boolean;
+  }>) => void;
+}
+
+export const PerformanceControls = forwardRef<PerformanceControlsRef, PerformanceControlsProps>(({
   system,
   spatialGrid,
   renderer,
-}: PerformanceControlsProps) {
+}, ref) => {
   const [cellSize, setCellSize] = useState(DEFAULT_SPATIAL_GRID_CELL_SIZE);
   const [showSpatialGrid, setShowSpatialGrid] = useState(false);
   const [fps, setFps] = useState(0);
   const [particleCount, setParticleCount] = useState(0);
+
+  // Expose state management methods
+  useImperativeHandle(ref, () => ({
+    getState: () => ({
+      cellSize,
+      showSpatialGrid,
+    }),
+    setState: (state) => {
+      if (state.cellSize !== undefined) {
+        setCellSize(state.cellSize);
+        if (spatialGrid) {
+          spatialGrid.setCellSize(state.cellSize);
+        }
+      }
+      if (state.showSpatialGrid !== undefined) {
+        setShowSpatialGrid(state.showSpatialGrid);
+        if (renderer) {
+          renderer.setShowSpatialGrid(state.showSpatialGrid);
+        }
+      }
+    },
+  }), [cellSize, showSpatialGrid, spatialGrid, renderer]);
 
   useEffect(() => {
     if (renderer) {
@@ -124,4 +157,4 @@ export function PerformanceControls({
       )}
     </div>
   );
-}
+});

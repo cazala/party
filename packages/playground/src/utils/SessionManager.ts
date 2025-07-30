@@ -17,7 +17,8 @@ export class SessionManager {
     system: System,
     name: string,
     overwrite: boolean = false,
-    renderer?: any
+    renderer?: any,
+    systemControlsState?: any
   ): { success: boolean; error?: string } {
     try {
       // Get system config
@@ -73,6 +74,7 @@ export class SessionManager {
           jointCount: joints.length,
           version: VERSION,
         },
+        systemControls: systemControlsState,
       };
 
       // Get existing sessions
@@ -113,8 +115,9 @@ export class SessionManager {
     bounds?: Bounds,
     spatialGrid?: SpatialGrid,
     zoomStateRef?: any,
-    undoRedo?: UseUndoRedoReturn
-  ): { success: boolean; error?: string } {
+    undoRedo?: UseUndoRedoReturn,
+    onSystemControlsRestore?: (systemControls: any) => void
+  ): { success: boolean; error?: string; systemControls?: any } {
     try {
       const sessions = this.getAllSessions();
       const session = sessions.find((s) => s.name === name);
@@ -207,7 +210,12 @@ export class SessionManager {
         }
       }
 
-      return { success: true };
+      // Restore system controls state if available and callback provided
+      if (session.systemControls && onSystemControlsRestore) {
+        onSystemControlsRestore(session.systemControls);
+      }
+
+      return { success: true, systemControls: session.systemControls };
     } catch (error) {
       console.error("Failed to load session:", error);
       return {

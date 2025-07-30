@@ -3,6 +3,7 @@ import { SpatialGrid, Bounds, Canvas2DRenderer, System } from "@cazala/party";
 import { SessionManager } from "../../utils/SessionManager";
 import { SessionMetadata } from "../../types/session";
 import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
+import { SystemControlsRef } from "../SystemControls";
 import "./Modal.css";
 
 interface LoadSessionModalProps {
@@ -14,6 +15,7 @@ interface LoadSessionModalProps {
   spatialGrid?: SpatialGrid;
   zoomStateRef?: any;
   undoRedo?: UseUndoRedoReturn;
+  systemControlsRef?: React.RefObject<SystemControlsRef>;
   onLoadSuccess?: (sessionName: string) => void;
 }
 
@@ -26,6 +28,7 @@ export function LoadSessionModal({
   spatialGrid,
   zoomStateRef,
   undoRedo,
+  systemControlsRef,
   onLoadSuccess,
 }: LoadSessionModalProps) {
   const [sessions, setSessions] = useState<SessionMetadata[]>([]);
@@ -116,7 +119,13 @@ export function LoadSessionModal({
         bounds,
         spatialGrid,
         zoomStateRef,
-        undoRedo
+        undoRedo,
+        (systemControls) => {
+          // Restore system controls state if available
+          if (systemControls && systemControlsRef?.current) {
+            systemControlsRef.current.setSystemControlsState(systemControls);
+          }
+        }
       );
 
       if (result.success) {

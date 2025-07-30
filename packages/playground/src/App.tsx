@@ -2,7 +2,7 @@ import { usePlayground } from "./hooks/usePlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useToolMode } from "./hooks/useToolMode";
 import { useEffect, useRef, useState } from "react";
-import { SystemControls } from "./components/SystemControls";
+import { SystemControls, SystemControlsRef } from "./components/SystemControls";
 import { ForcesControls } from "./components/ForcesControls";
 import { TopBar } from "./components/TopBar";
 import { HelpModal } from "./components/HelpModal";
@@ -19,6 +19,7 @@ const TOPBAR_HEIGHT = 60;
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const systemControlsRef = useRef<SystemControlsRef>(null);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
@@ -118,6 +119,7 @@ function App() {
       <div className="app-content">
         <div className="left-sidebar">
           <SystemControls
+            ref={systemControlsRef}
             system={system}
             renderer={renderer}
             spatialGrid={spatialGrid}
@@ -198,6 +200,7 @@ function App() {
         onClose={() => setIsSaveModalOpen(false)}
         system={system}
         renderer={renderer}
+        systemControlsRef={systemControlsRef}
         onSaveSuccess={(sessionName) => {
           console.log(`Session "${sessionName}" saved successfully`);
         }}
@@ -212,6 +215,7 @@ function App() {
         spatialGrid={spatialGrid!}
         zoomStateRef={zoomStateRef}
         undoRedo={undoRedo}
+        systemControlsRef={systemControlsRef}
         onLoadSuccess={(sessionName) => {
           console.log(`Session "${sessionName}" loaded successfully`);
           // Trigger UI refresh to update controls with loaded configuration
