@@ -8,6 +8,7 @@ import {
 import { Bounds } from "@cazala/party";
 import { SpatialGrid } from "@cazala/party";
 import { UseUndoRedoReturn } from "../hooks/useUndoRedo";
+import { getViewportWorldBounds, calculateCameraToShowWorldBounds, applyCameraSettings } from "./sceneBounds";
 
 const STORAGE_KEY = "playground-sessions";
 const VERSION = "1.0.0";
@@ -48,7 +49,7 @@ export class SessionManager {
         joints.push(...jointsForce.serializeJoints());
       }
 
-      // Get camera and zoom data from renderer
+      // Get camera and zoom data from renderer (kept for backward compatibility)
       const camera = renderer
         ? {
             x: renderer.getCamera().x,
@@ -61,6 +62,17 @@ export class SessionManager {
             zoom: 1,
           };
 
+      // Calculate viewport world bounds for viewport-independent loading
+      const viewportWorldBounds = renderer ? getViewportWorldBounds(system, renderer) : null;
+      
+      const scene = viewportWorldBounds ? {
+        viewportWorldBounds,
+        originalViewport: {
+          width: system.width,
+          height: system.height
+        }
+      } : undefined;
+
       // Create session object
       const session: SavedSession = {
         name,
@@ -69,6 +81,7 @@ export class SessionManager {
         particles,
         joints,
         camera,
+        scene,
         metadata: {
           particleCount: particles.length,
           jointCount: joints.length,
@@ -185,28 +198,28 @@ export class SessionManager {
 
       // Restore camera and zoom data if renderer is provided
       if (renderer) {
-        const camera = session.camera || { x: 0, y: 0, zoom: 1 }; // Backward compatibility
-        renderer.setCamera(camera.x, camera.y);
-        renderer.setZoom(camera.zoom);
-
-        // Also update bounds and spatial grid if provided
-        if (bounds) {
-          bounds.setCamera(camera.x, camera.y, camera.zoom);
-        }
-        if (spatialGrid) {
-          spatialGrid.setCamera(camera.x, camera.y, camera.zoom);
-        }
-
-        // Update zoom state to match loaded camera position
-        if (zoomStateRef && zoomStateRef.current) {
-          zoomStateRef.current.targetZoom = camera.zoom;
-          zoomStateRef.current.targetCameraX = camera.x;
-          zoomStateRef.current.targetCameraY = camera.y;
-          zoomStateRef.current.isAnimating = false;
-          if (zoomStateRef.current.animationId) {
-            cancelAnimationFrame(zoomStateRef.current.animationId);
-            zoomStateRef.current.animationId = null;
-          }
+        // Use new viewport-relative positioning if available, otherwise fall back to old camera data
+        if (session.scene && session.scene.viewportWorldBounds) {
+          // Calculate camera position to show the same world area that was visible when saved
+          const { cameraX, cameraY, zoom } = calculateCameraToShowWorldBounds(
+            session.scene.viewportWorldBounds,
+            system.width,
+            system.height
+          );
+          
+          console.log(`Loading session with viewport-independent positioning:
+            Original viewport: ${session.scene.originalViewport.width}x${session.scene.originalViewport.height}
+            Current viewport: ${system.width}x${system.height}
+            Saved world area: ${session.scene.viewportWorldBounds.worldWidth.toFixed(1)}x${session.scene.viewportWorldBounds.worldHeight.toFixed(1)}
+            World bounds: (${session.scene.viewportWorldBounds.worldMinX.toFixed(1)}, ${session.scene.viewportWorldBounds.worldMinY.toFixed(1)}) to (${session.scene.viewportWorldBounds.worldMaxX.toFixed(1)}, ${session.scene.viewportWorldBounds.worldMaxY.toFixed(1)})
+            Calculated camera: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)}) zoom: ${zoom.toFixed(2)}`);
+          
+          applyCameraSettings(renderer, cameraX, cameraY, zoom, bounds, spatialGrid, zoomStateRef);
+        } else {
+          // Backward compatibility: use old absolute camera positioning
+          const camera = session.camera || { x: 0, y: 0, zoom: 1 };
+          console.log(`Loading session with backward compatibility camera positioning: (${camera.x.toFixed(1)}, ${camera.y.toFixed(1)}) zoom: ${camera.zoom.toFixed(2)}`);
+          applyCameraSettings(renderer, camera.x, camera.y, camera.zoom, bounds, spatialGrid, zoomStateRef);
         }
       }
 
@@ -242,6 +255,7 @@ export class SessionManager {
       particleCount: session.metadata.particleCount,
       jointCount: session.metadata.jointCount || 0, // Backward compatibility
       camera: session.camera || { x: 0, y: 0, zoom: 1 }, // Backward compatibility
+      hasSceneBounds: !!session.scene?.viewportWorldBounds, // Indicate if this session has viewport world bounds info
     }));
   }
 

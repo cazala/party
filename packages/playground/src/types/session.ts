@@ -32,6 +32,25 @@ export interface SavedSession {
     y: number;
     zoom: number;
   };
+  // Viewport-independent camera information for consistent loading across different screen sizes
+  scene?: {
+    // World coordinates that were visible in the viewport when saved
+    viewportWorldBounds: {
+      worldMinX: number;
+      worldMaxX: number;
+      worldMinY: number;
+      worldMaxY: number;
+      worldWidth: number;
+      worldHeight: number;
+      worldCenterX: number;
+      worldCenterY: number;
+    };
+    // Original viewport dimensions when saved
+    originalViewport: {
+      width: number;
+      height: number;
+    };
+  };
   metadata: {
     particleCount: number;
     jointCount: number;
@@ -95,4 +114,6 @@ export interface SessionMetadata {
     y: number;
     zoom: number;
   };
+  // Optional scene info for better preview (available in newer sessions)
+  hasSceneBounds?: boolean;
 }
