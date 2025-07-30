@@ -206,6 +206,63 @@ export class Joint {
   }
 
   /**
+   * Serialize joint to a plain object for storage
+   */
+  serialize(): {
+    id: string;
+    particleAId: number;
+    particleBId: number;
+    restLength: number;
+    stiffness: number;
+    tolerance: number;
+    isBroken: boolean;
+  } {
+    return {
+      id: this.id,
+      particleAId: this.particleA.id,
+      particleBId: this.particleB.id,
+      restLength: this.restLength,
+      stiffness: this.stiffness,
+      tolerance: this.tolerance,
+      isBroken: this.isBroken,
+    };
+  }
+
+  /**
+   * Create a joint from serialized data and particle references
+   */
+  static deserialize(
+    data: {
+      id: string;
+      particleAId: number;
+      particleBId: number;
+      restLength: number;
+      stiffness: number;
+      tolerance: number;
+      isBroken: boolean;
+    },
+    particleA: Particle,
+    particleB: Particle
+  ): Joint {
+    const joint = new Joint({
+      id: data.id,
+      particleA,
+      particleB,
+      restLength: data.restLength,
+      stiffness: data.stiffness,
+      tolerance: data.tolerance,
+    });
+    
+    // Restore broken state
+    (joint as any).isBroken = data.isBroken;
+    if (data.isBroken) {
+      joint.isValid = false;
+    }
+    
+    return joint;
+  }
+
+  /**
    * Create a copy of this joint
    */
   clone(): Joint {
@@ -380,6 +437,58 @@ export class Joints implements Force {
       }
     }
     return false;
+  }
+
+  /**
+   * Serialize all joints to a plain object array for storage
+   */
+  serializeJoints(): Array<{
+    id: string;
+    particleAId: number;
+    particleBId: number;
+    restLength: number;
+    stiffness: number;
+    tolerance: number;
+    isBroken: boolean;
+  }> {
+    return Array.from(this.joints.values()).map(joint => joint.serialize());
+  }
+
+  /**
+   * Deserialize joints from stored data and restore them using particle references
+   */
+  deserializeJoints(
+    serializedJoints: Array<{
+      id: string;
+      particleAId: number;
+      particleBId: number;
+      restLength: number;
+      stiffness: number;
+      tolerance: number;
+      isBroken: boolean;
+    }>,
+    particles: Particle[]
+  ): void {
+    // Clear existing joints
+    this.joints.clear();
+    
+    // Create a particle lookup map for efficient access
+    const particleMap = new Map<number, Particle>();
+    for (const particle of particles) {
+      particleMap.set(particle.id, particle);
+    }
+    
+    // Recreate joints from serialized data
+    for (const jointData of serializedJoints) {
+      const particleA = particleMap.get(jointData.particleAId);
+      const particleB = particleMap.get(jointData.particleBId);
+      
+      // Only recreate joint if both particles exist
+      if (particleA && particleB) {
+        const joint = Joint.deserialize(jointData, particleA, particleB);
+        this.joints.set(joint.id, joint);
+      }
+    }
   }
 
   /**

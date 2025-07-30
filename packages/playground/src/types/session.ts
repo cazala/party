@@ -11,11 +11,22 @@ export interface SerializedParticle {
   pinned?: boolean;
 }
 
+export interface SerializedJoint {
+  id: string;
+  particleAId: number;
+  particleBId: number;
+  restLength: number;
+  stiffness: number;
+  tolerance: number;
+  isBroken: boolean;
+}
+
 export interface SavedSession {
   name: string;
   timestamp: number;
   config: Config;
   particles: SerializedParticle[];
+  joints: SerializedJoint[];
   camera: {
     x: number;
     y: number;
@@ -23,6 +34,7 @@ export interface SavedSession {
   };
   metadata: {
     particleCount: number;
+    jointCount: number;
     version: string;
   };
 }
@@ -31,6 +43,7 @@ export interface SessionMetadata {
   name: string;
   timestamp: number;
   particleCount: number;
+  jointCount: number;
   camera: {
     x: number;
     y: number;

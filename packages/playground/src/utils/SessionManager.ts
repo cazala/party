@@ -2,6 +2,7 @@ import { System, Particle, Vector2D, Canvas2DRenderer } from "@cazala/party";
 import {
   SavedSession,
   SerializedParticle,
+  SerializedJoint,
   SessionMetadata,
 } from "../types/session";
 import { Bounds } from "@cazala/party";
@@ -39,6 +40,13 @@ export class SessionManager {
         })
       );
 
+      // Serialize joints
+      const joints: SerializedJoint[] = [];
+      const jointsForce = system.forces.find(force => force.constructor.name === 'Joints') as any;
+      if (jointsForce && jointsForce.serializeJoints) {
+        joints.push(...jointsForce.serializeJoints());
+      }
+
       // Get camera and zoom data from renderer
       const camera = renderer
         ? {
@@ -58,9 +66,11 @@ export class SessionManager {
         timestamp: Date.now(),
         config,
         particles,
+        joints,
         camera,
         metadata: {
           particleCount: particles.length,
+          jointCount: joints.length,
           version: VERSION,
         },
       };
@@ -153,6 +163,14 @@ export class SessionManager {
       // Add particles to system
       system.addParticles(loadedParticles);
 
+      // Load joints if they exist in the session (backward compatibility)
+      if (session.joints) {
+        const jointsForce = system.forces.find(force => force.constructor.name === 'Joints') as any;
+        if (jointsForce && jointsForce.deserializeJoints) {
+          jointsForce.deserializeJoints(session.joints, loadedParticles);
+        }
+      }
+
       // Import system config
       system.import(session.config);
 
@@ -208,6 +226,7 @@ export class SessionManager {
       name: session.name,
       timestamp: session.timestamp,
       particleCount: session.metadata.particleCount,
+      jointCount: session.metadata.jointCount || 0, // Backward compatibility
       camera: session.camera || { x: 0, y: 0, zoom: 1 }, // Backward compatibility
     }));
   }

@@ -56,6 +56,9 @@ export interface SerializedJoint {
   particleAId: number;
   particleBId: number;
   restLength: number;
+  stiffness: number;
+  tolerance: number;
+  isBroken: boolean;
 }
 
 /**
@@ -198,6 +201,9 @@ export function useUndoRedo(
       particleAId: joint.particleA.id,
       particleBId: joint.particleB.id,
       restLength: joint.restLength,
+      stiffness: joint.stiffness,
+      tolerance: joint.tolerance,
+      isBroken: joint.isBrokenByStress(),
     };
   }, []);
 
@@ -215,12 +221,22 @@ export function useUndoRedo(
 
       if (!particleA || !particleB) return null;
 
-      return new Joint({
+      const joint = new Joint({
         id: serialized.id,
         particleA,
         particleB,
         restLength: serialized.restLength,
+        stiffness: serialized.stiffness,
+        tolerance: serialized.tolerance,
       });
+      
+      // Restore broken state if needed
+      if (serialized.isBroken) {
+        (joint as any).isBroken = true;
+        joint.isValid = false;
+      }
+      
+      return joint;
     },
     [getSystem]
   );
