@@ -1,29 +1,24 @@
 # Party
 
-A comprehensive particle physics simulation system with interactive playground, built with TypeScript and modern web technologies.
-
-## Overview
-
-Party is a particle system library designed for creating interactive simulations, games, and visual effects. It features a modular force system, spatial optimization, and comprehensive rendering capabilities.
+A comprehensive particle physics simulation system with interactive playground, built with TypeScript.
 
 ### Key Features
 
 - High performance spatial grid optimization for efficient collision detection
 - Modular architecture with pluggable force system and lifecycle management
-- Real-time interaction with mouse/touch controls and immediate visual feedback
-- Advanced rendering with multiple color modes, trails, glow effects, and visual overlays
-- Comprehensive forces including physics, flocking, fluid dynamics, collisions, and more
+- Real-time interaction with mouse/touch controls
+- Rendering with multiple color modes, trails, glow effects, and visual overlays
+- Comprehensive forces including physics, flocking, fluid dynamics, collisions, constraints, sensors, and more
 - Session management for saving and loading complete simulation states
-- Undo/redo system with full operation history
-- Responsive design that works on desktop and mobile devices
+- Undo/redo system
 
 ## Packages
 
 This is a monorepo containing two main packages:
 
-### [@cazala/party](./packages/core) - Core Physics Engine
+### [@cazala/party](./packages/core) - Core Particle System
 
-The heart of the system - a TypeScript particle physics library featuring:
+The heart of the system - a TypeScript particle system library featuring:
 
 - **Particle System**: Individual entities with position, velocity, mass, and color
 - **Forces**: Pluggable architecture supporting gravity, collisions, flocking, fluid dynamics, and more
@@ -35,11 +30,11 @@ The heart of the system - a TypeScript particle physics library featuring:
 
 A React-based web application that provides:
 
-- **Visual Interface**: Intuitive controls for all physics parameters
+- **Visual Interface**: Controls for all simulation parameters
 - **Multiple Tools**: Spawn, grab, joint, pin, and remove modes
 - **Real-time Editing**: Immediate parameter adjustment during simulation
-- **Session Management**: Save and load complete simulation configurations
-- **Help System**: Comprehensive documentation and keyboard shortcuts
+- **Session Management**: Save and load complete configurations
+- **Hotkeys**: Keyboard shortcuts
 
 ## Quick Start
 
@@ -89,7 +84,7 @@ system.play();
 The playground provides a complete interactive environment:
 
 ```bash
-pnpm dev
+npm dev
 ```
 
 Visit `http://localhost:3000` to access the playground interface.

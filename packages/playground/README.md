@@ -6,13 +6,11 @@ Interactive web playground for experimenting with particle system simulations. B
 
 - Interactive canvas with real-time particle manipulation using mouse/touch controls
 - Multiple tools: spawn, grab, joint, pin, and remove modes
-- Real-time controls for adjusting physics parameters while simulation runs
+- Real-time controls for adjusting psimulation parameters while it runs runs
 - Session management for saving and loading complete simulation states
 - Undo/redo system
 - Visual effects including trails, glow, density fields, and velocity visualization
 - Keyboard shortcuts for efficient workflow
-- Responsive design that works on desktop and mobile devices
-- Educational tool for learning physics concepts and particle behaviors
 
 ## Getting Started
 
