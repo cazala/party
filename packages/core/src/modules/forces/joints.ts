@@ -40,6 +40,7 @@ export class Joint {
   public stiffness: number;
   public tolerance: number;
   public isValid: boolean = true;
+  private isBroken: boolean = false;
 
   constructor(options: JointOptions) {
     this.id =
@@ -62,8 +63,16 @@ export class Joint {
 
   /**
    * Check if the joint is still valid (both particles exist and have positive mass)
+   * Once broken due to stress, joints remain permanently broken
    */
   validate(): boolean {
+    // If joint was broken due to stress, it stays broken permanently
+    if (this.isBroken) {
+      this.isValid = false;
+      return false;
+    }
+    
+    // Otherwise, validate based on particle existence
     this.isValid = this.particleA.mass > 0 && this.particleB.mass > 0;
     return this.isValid;
   }
@@ -82,6 +91,7 @@ export class Joint {
     if (this.tolerance < 1.0) {
       const stress = Math.abs(this.getStressRatio());
       if (stress > this.tolerance) {
+        this.isBroken = true;
         this.isValid = false;
         return;
       }
@@ -189,10 +199,17 @@ export class Joint {
   }
 
   /**
+   * Check if the joint has been permanently broken due to stress
+   */
+  isBrokenByStress(): boolean {
+    return this.isBroken;
+  }
+
+  /**
    * Create a copy of this joint
    */
   clone(): Joint {
-    return new Joint({
+    const clonedJoint = new Joint({
       particleA: this.particleA,
       particleB: this.particleB,
       restLength: this.restLength,
@@ -200,6 +217,12 @@ export class Joint {
       tolerance: this.tolerance,
       id: this.id,
     });
+    
+    // Preserve broken state using private access
+    (clonedJoint as any).isBroken = this.isBroken;
+    clonedJoint.isValid = this.isValid;
+    
+    return clonedJoint;
   }
 }
 
