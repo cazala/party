@@ -8,7 +8,7 @@ A TypeScript particle physics engine featuring advanced force systems, spatial o
 - Modular force system with pluggable architecture and lifecycle management
 - Real-time simulation capable of 60+ FPS with thousands of particles
 - Advanced Canvas2D rendering with trails, glow effects, and density visualization
-- Comprehensive physics including gravity, collisions, flocking, fluid dynamics, elastic joints, and more
+- Comprehensive physics including gravity, collisions, flocking, fluid dynamics, breakable elastic joints, and more
 - Spatial optimization with efficient collision detection and neighbor finding
 - Interactive user-controlled forces and particle manipulation
 - Serializable system configurations for export/import
@@ -247,7 +247,7 @@ const sensors = new Sensors({
 
 ### Joints
 
-Distance constraints between particles with configurable elasticity:
+Distance constraints between particles with configurable elasticity and stress-based breaking:
 
 ```typescript
 import { Joints } from "@cazala/party";
@@ -263,11 +263,14 @@ joints.createJoint({
   particleB: particle2,
   restLength: 50, // Optional: custom rest length
   stiffness: 1.0, // Optional: joint stiffness (0.0 = elastic, 1.0 = rigid)
+  tolerance: 1.0, // Optional: stress tolerance (0.0 = break easily, 1.0 = never break)
 });
 
-// Global stiffness control
+// Global stiffness and tolerance control
 joints.setGlobalStiffness(0.5); // Apply to all existing joints
+joints.setGlobalTolerance(0.8); // Apply to all existing joints
 const currentStiffness = joints.getGlobalStiffness();
+const currentTolerance = joints.getGlobalTolerance();
 ```
 
 **Joint Stiffness Values:**
@@ -275,6 +278,12 @@ const currentStiffness = joints.getGlobalStiffness();
 - `0.5` - Semi-elastic joint
 - `0.1` - Very elastic joint
 - `0.0` - No constraint (effectively disabled)
+
+**Joint Tolerance Values:**
+- `1.0` - Never break under stress (default behavior)
+- `0.5` - Break when stress exceeds 50% of maximum expected
+- `0.1` - Break easily under small stress
+- `0.0` - Break immediately with any disturbance
 
 ### Interaction
 
@@ -388,6 +397,7 @@ system.import({
   joints: {
     enabled: true,
     stiffness: 0.8, // Set global joint stiffness
+    tolerance: 0.6, // Set global joint tolerance
     enableCollisions: true,
   },
 });

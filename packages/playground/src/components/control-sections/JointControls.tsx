@@ -11,6 +11,7 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
   const [enabled, setEnabled] = useState(true);
   const [jointCount, setJointCount] = useState(0);
   const [stiffness, setStiffness] = useState(1.0);
+  const [tolerance, setTolerance] = useState(1.0);
 
   // Update local state when joints changes
   useEffect(() => {
@@ -18,6 +19,7 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
       setEnabled(joints.enabled);
       setJointCount(joints.getJointCount());
       setStiffness(joints.getGlobalStiffness());
+      setTolerance(joints.getGlobalTolerance());
     }
   }, [joints]);
 
@@ -43,6 +45,13 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
     setStiffness(value);
     if (joints) {
       joints.setGlobalStiffness(value);
+    }
+  };
+
+  const handleToleranceChange = (value: number) => {
+    setTolerance(value);
+    if (joints) {
+      joints.setGlobalTolerance(value);
     }
   };
 
@@ -85,6 +94,24 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
           step="0.01"
           value={stiffness}
           onChange={(e) => handleStiffnessChange(parseFloat(e.target.value))}
+          className="slider"
+          disabled={!enabled}
+          style={{
+            width: "100%",
+            marginTop: "4px",
+          }}
+        />
+      </div>
+
+      <div className="control-group">
+        <label>Tolerance: {tolerance.toFixed(2)}</label>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={tolerance}
+          onChange={(e) => handleToleranceChange(parseFloat(e.target.value))}
           className="slider"
           disabled={!enabled}
           style={{

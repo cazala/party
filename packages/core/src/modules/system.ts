@@ -62,6 +62,7 @@ import {
   Joints,
   DEFAULT_JOINTS_ENABLED,
   DEFAULT_JOINT_STIFFNESS,
+  DEFAULT_JOINT_TOLERANCE,
 } from "./forces/joints";
 
 /**
@@ -241,6 +242,8 @@ export interface Config {
     enabled?: boolean;
     /** Joint stiffness (0.0 = elastic, 1.0 = rigid) */
     stiffness?: number;
+    /** Joint tolerance (0.0 = break easily, 1.0 = never break) */
+    tolerance?: number;
     /** Bounce factor for joint stress responses */
     restitution?: number;
     /** Whether joints interact with particle collisions */
@@ -673,6 +676,7 @@ export class System {
         config.joints = {
           enabled: force.enabled,
           stiffness: force.getGlobalStiffness(),
+          tolerance: force.getGlobalTolerance(),
           enableCollisions: force.enableCollisions,
         };
       }
@@ -788,6 +792,9 @@ export class System {
         force.setEnabled(config.joints.enabled ?? DEFAULT_JOINTS_ENABLED);
         force.setGlobalStiffness(
           config.joints.stiffness ?? DEFAULT_JOINT_STIFFNESS
+        );
+        force.setGlobalTolerance(
+          config.joints.tolerance ?? DEFAULT_JOINT_TOLERANCE
         );
         if (config.joints.enableCollisions !== undefined) {
           force.setEnableCollisions(config.joints.enableCollisions);

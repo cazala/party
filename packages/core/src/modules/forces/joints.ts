@@ -7,12 +7,18 @@ import { SpatialGrid } from "../spatial-grid";
 export const DEFAULT_JOINTS_ENABLED = true;
 export const DEFAULT_JOINT_COLLISIONS_ENABLED = true;
 export const DEFAULT_JOINT_STIFFNESS = 1.0;
+export const DEFAULT_JOINT_TOLERANCE = 1.0;
 
 export interface JointOptions {
   particleA: Particle;
   particleB: Particle;
+  /** Optional custom rest length. If not provided, uses current distance between particles */
   restLength?: number;
+  /** Joint stiffness (0.0 = elastic, 1.0 = rigid). Defaults to DEFAULT_JOINT_STIFFNESS */
   stiffness?: number;
+  /** Joint tolerance (0.0 = break easily, 1.0 = never break). Defaults to DEFAULT_JOINT_TOLERANCE */
+  tolerance?: number;
+  /** Optional custom joint ID. If not provided, generates unique ID */
   id?: string;
 }
 
@@ -24,6 +30,7 @@ export interface JointsOptions {
 /**
  * Represents a constraint between two particles.
  * Supports both rigid and elastic joints based on stiffness parameter.
+ * Joints can break under stress based on tolerance parameter.
  */
 export class Joint {
   public id: string;
@@ -31,6 +38,7 @@ export class Joint {
   public particleB: Particle;
   public restLength: number;
   public stiffness: number;
+  public tolerance: number;
   public isValid: boolean = true;
 
   constructor(options: JointOptions) {
@@ -40,6 +48,7 @@ export class Joint {
     this.particleA = options.particleA;
     this.particleB = options.particleB;
     this.stiffness = options.stiffness ?? DEFAULT_JOINT_STIFFNESS;
+    this.tolerance = options.tolerance ?? DEFAULT_JOINT_TOLERANCE;
 
     // Calculate rest length as current distance if not provided
     if (options.restLength !== undefined) {
@@ -62,11 +71,21 @@ export class Joint {
   /**
    * Apply joint constraint forces to the connected particles.
    * Uses stiffness parameter to control elasticity (1.0 = rigid, 0.0 = no constraint).
+   * Joints break when stress exceeds tolerance (1.0 = never break, 0.0 = break easily).
    */
   applyConstraint(): void {
     if (!this.validate()) return;
 
     if (this.stiffness === 0) return;
+
+    // Check stress-based breaking before applying constraint
+    if (this.tolerance < 1.0) {
+      const stress = Math.abs(this.getStressRatio());
+      if (stress > this.tolerance) {
+        this.isValid = false;
+        return;
+      }
+    }
 
     // Skip if both particles are pinned (but allow pinned-dynamic pairs)
     if (this.particleA.pinned && this.particleB.pinned) return;
@@ -178,6 +197,7 @@ export class Joint {
       particleB: this.particleB,
       restLength: this.restLength,
       stiffness: this.stiffness,
+      tolerance: this.tolerance,
       id: this.id,
     });
   }
@@ -186,12 +206,14 @@ export class Joint {
 /**
  * Manages a collection of joints and applies their constraints.
  * Supports both rigid and elastic joints with configurable stiffness.
+ * Joints can break under stress based on configurable tolerance.
  */
 export class Joints implements Force {
   public enabled: boolean;
   public joints: Map<string, Joint> = new Map();
   public enableCollisions: boolean;
   private globalStiffness: number = DEFAULT_JOINT_STIFFNESS;
+  private globalTolerance: number = DEFAULT_JOINT_TOLERANCE;
 
   // Track grabbed particles and their previous positions for velocity calculation
   private grabbedParticlePositions: Map<number, Vector2D> = new Map();
@@ -229,13 +251,32 @@ export class Joints implements Force {
   }
 
   /**
+   * Set global tolerance for all existing joints (0.0 = break easily, 1.0 = never break)
+   */
+  setGlobalTolerance(tolerance: number): void {
+    this.globalTolerance = Math.max(0, Math.min(1, tolerance)); // Clamp between 0 and 1
+    // Apply to all existing joints
+    for (const joint of this.joints.values()) {
+      joint.tolerance = this.globalTolerance;
+    }
+  }
+
+  /**
+   * Get current global tolerance setting
+   */
+  getGlobalTolerance(): number {
+    return this.globalTolerance;
+  }
+
+  /**
    * Create a new joint between two particles
    */
   createJoint(options: JointOptions): Joint {
-    // Use global stiffness if not specified in options
+    // Use global stiffness and tolerance if not specified in options
     const jointOptions = {
       ...options,
       stiffness: options.stiffness ?? this.globalStiffness,
+      tolerance: options.tolerance ?? this.globalTolerance,
     };
     const joint = new Joint(jointOptions);
     this.joints.set(joint.id, joint);
