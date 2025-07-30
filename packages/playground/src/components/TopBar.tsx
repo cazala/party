@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RefreshCw, Save, FolderOpen } from "lucide-react";
+import { RefreshCw, Save, FolderOpen, Maximize } from "lucide-react";
 import { System } from "@cazala/party";
 import { ToolMode } from "../hooks/useToolMode";
 
@@ -14,6 +14,8 @@ interface TopBarProps {
   onLoad?: () => void;
   toolMode?: ToolMode;
   onToolModeChange?: (mode: ToolMode) => void;
+  onToggleFullscreen?: () => void;
+  style?: React.CSSProperties;
 }
 
 export function TopBar({
@@ -27,6 +29,8 @@ export function TopBar({
   onLoad,
   toolMode = "spawn",
   onToolModeChange,
+  onToggleFullscreen,
+  style,
 }: TopBarProps) {
   const [isPlaying, setIsPlaying] = useState(true);
 
@@ -97,7 +101,7 @@ export function TopBar({
   };
 
   return (
-    <div className="top-bar">
+    <div className="top-bar" style={style}>
       <div className="top-bar-content">
         <div className="title">
           <h1>Party 🎉</h1>
@@ -257,6 +261,16 @@ export function TopBar({
           </div>
         )}
         <div className="topbar-right">
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              className="fullscreen-button"
+              title="Toggle fullscreen"
+              aria-label="Toggle fullscreen"
+            >
+              <Maximize width="16" height="16" />
+            </button>
+          )}
           {onShowHotkeys && (
             <button
               onClick={onShowHotkeys}

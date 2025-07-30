@@ -110,7 +110,8 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.topbar-right .help-button {
+.topbar-right .help-button,
+.topbar-right .fullscreen-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -124,6 +125,7 @@
   color: var(--color-text-secondary);
   border: 1px solid rgba(255, 255, 255, 0.2);
   outline: none;
+  margin-left: 8px;
 }
 
 .play-pause-button:hover,
@@ -135,7 +137,8 @@
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-.topbar-right .help-button:hover {
+.topbar-right .help-button:hover,
+.topbar-right .fullscreen-button:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
   color: var(--color-text-primary);
@@ -197,12 +200,14 @@
     margin-left: 12px;
   }
 
-  .topbar-right .help-button {
+  .topbar-right .help-button,
+  .topbar-right .fullscreen-button {
     width: 32px;
     height: 32px;
   }
 
-  .topbar-right .help-button svg {
+  .topbar-right .help-button svg,
+  .topbar-right .fullscreen-button svg {
     width: 14px;
     height: 14px;
   }

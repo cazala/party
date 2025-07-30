@@ -1,6 +1,7 @@
 import { usePlayground } from "./hooks/usePlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useToolMode } from "./hooks/useToolMode";
+import { useFullscreen } from "./hooks/useFullscreen";
 import { useEffect, useRef, useState } from "react";
 import { SystemControls, SystemControlsRef } from "./components/SystemControls";
 import { ForcesControls } from "./components/ForcesControls";
@@ -8,6 +9,7 @@ import { TopBar } from "./components/TopBar";
 import { HelpModal } from "./components/HelpModal";
 import { SaveSessionModal } from "./components/modals/SaveSessionModal";
 import { LoadSessionModal } from "./components/modals/LoadSessionModal";
+import { applyCameraSettings } from "./utils/sceneBounds";
 import "./styles/index.css";
 import "./components/Controls.css";
 import "./components/TopBar.css";
@@ -48,6 +50,10 @@ function App() {
     setSpawnConfig,
     currentlyGrabbedParticle,
   } = usePlayground(canvasRef, toolMode);
+
+  const { isFullscreen, toggleFullscreen } = useFullscreen({
+    onToggle: resetParticles,
+  });
   const size = useWindowSize();
 
   useEffect(() => {
@@ -65,8 +71,10 @@ function App() {
     )
       return;
     system.setSize(
-      size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH,
-      size.height - TOPBAR_HEIGHT
+      isFullscreen
+        ? size.width
+        : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH,
+      isFullscreen ? size.height : size.height - TOPBAR_HEIGHT
     );
   }, [
     system,
@@ -80,6 +88,7 @@ function App() {
     joints,
     renderer,
     size,
+    isFullscreen,
   ]);
 
   useEffect(() => {
@@ -115,9 +124,24 @@ function App() {
         onLoad={() => setIsLoadModalOpen(true)}
         toolMode={toolMode}
         onToolModeChange={setToolMode}
+        onToggleFullscreen={toggleFullscreen}
+        style={{
+          display: isFullscreen ? "none" : "block",
+        }}
       />
-      <div className="app-content">
-        <div className="left-sidebar">
+      <div
+        className="app-content"
+        style={{
+          marginTop: isFullscreen ? "0" : "60px",
+          height: isFullscreen ? "100vh" : "calc(100vh - 60px)",
+        }}
+      >
+        <div
+          className="left-sidebar"
+          style={{
+            display: isFullscreen ? "none" : "block",
+          }}
+        >
           <SystemControls
             ref={systemControlsRef}
             system={system}
@@ -170,11 +194,20 @@ function App() {
                 ? `grab-tool${!!currentlyGrabbedParticle ? " grabbing" : ""}`
                 : ""
             }
-            width={size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH}
-            height={size.height - TOPBAR_HEIGHT}
+            width={
+              isFullscreen
+                ? size.width
+                : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH
+            }
+            height={isFullscreen ? size.height : size.height - TOPBAR_HEIGHT}
           />
         </div>
-        <div className="right-sidebar">
+        <div
+          className="right-sidebar"
+          style={{
+            display: isFullscreen ? "none" : "block",
+          }}
+        >
           <ForcesControls
             system={system}
             physics={physics}
