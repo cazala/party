@@ -142,13 +142,22 @@ export function calculateCameraToShowWorldBounds(
   const minZoom = 0.001; // Prevent extreme zoom out
   const finalZoom = Math.max(zoom, minZoom);
   
-  // Calculate camera position to show the same world area
-  // We want savedWorldBounds.worldMinX to appear at screen coordinate 0
-  // Camera formula: worldX = (-cameraX + screenX) / zoom
-  // Solving for cameraX: cameraX = -worldX * zoom + screenX
-  // For worldMinX to appear at screenX = 0: cameraX = -worldMinX * zoom
-  const cameraX = -savedWorldBounds.worldMinX * finalZoom;
-  const cameraY = -savedWorldBounds.worldMinY * finalZoom;
+  // Calculate camera position to center the saved world area in the current viewport
+  // First, position the world area at the top-left (as before)
+  const baseX = -savedWorldBounds.worldMinX * finalZoom;
+  const baseY = -savedWorldBounds.worldMinY * finalZoom;
+  
+  // Then add offsets to center the content within the current viewport
+  // The scaled world area dimensions in screen coordinates
+  const scaledWorldWidth = effectiveWorldWidth * finalZoom;
+  const scaledWorldHeight = effectiveWorldHeight * finalZoom;
+  
+  // Calculate centering offsets
+  const centerOffsetX = (currentViewportWidth - scaledWorldWidth) / 2;
+  const centerOffsetY = (currentViewportHeight - scaledWorldHeight) / 2;
+  
+  const cameraX = baseX + centerOffsetX;
+  const cameraY = baseY + centerOffsetY;
   
   return { cameraX, cameraY, zoom: finalZoom };
 }
