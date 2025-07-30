@@ -1,4 +1,4 @@
-import { System, Particle, Vector2D, Canvas2DRenderer } from "@cazala/party";
+import { System, Particle, Vector2D, Canvas2DRenderer, setIdCounter } from "@cazala/party";
 import {
   SavedSession,
   SerializedParticle,
@@ -141,9 +141,10 @@ export class SessionManager {
         force.clear?.();
       }
 
-      // Load particles
+      // Load particles with preserved IDs
       const loadedParticles = session.particles.map((serialized) => {
         const particle = new Particle({
+          id: serialized.id, // Preserve original ID for joint references
           position: new Vector2D(serialized.position.x, serialized.position.y),
           velocity: new Vector2D(serialized.velocity.x, serialized.velocity.y),
           acceleration: new Vector2D(
@@ -156,9 +157,14 @@ export class SessionManager {
           pinned: serialized.pinned,
         });
 
-        // Preserve original ID if needed for consistency
         return particle;
       });
+
+      // Update ID counter to prevent conflicts with future particles
+      if (session.particles.length > 0) {
+        const maxId = Math.max(...session.particles.map(p => p.id));
+        setIdCounter(maxId + 1);
+      }
 
       // Add particles to system
       system.addParticles(loadedParticles);
