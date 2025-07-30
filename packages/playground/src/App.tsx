@@ -52,7 +52,11 @@ function App() {
   } = usePlayground(canvasRef, toolMode);
 
   const { isFullscreen, toggleFullscreen } = useFullscreen({
-    onToggle: resetParticles,
+    system: system || undefined,
+    renderer: renderer || undefined,
+    bounds: bounds || undefined,
+    spatialGrid: spatialGrid || undefined,
+    zoomStateRef,
   });
   const size = useWindowSize();
 
