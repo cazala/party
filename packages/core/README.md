@@ -217,9 +217,18 @@ const fluid = new Fluid({
   influenceRadius: 30, // Particle interaction distance
   targetDensity: 1.0, // Desired fluid density
   pressureMultiplier: 0.1, // Pressure force strength
-  wobbleFactor: 0.02, // Random movement for instability
+  viscosity: 1.0, // Fluid viscosity for internal friction
+  nearPressureMultiplier: 10.0, // Near pressure force strength for particles in close proximity
+  nearThreshold: 30, // Distance threshold (in pixels) for switching to near pressure
 });
 ```
+
+**Near Pressure System:**
+The fluid simulation features a dual-pressure system for enhanced particle interaction:
+
+- **Regular pressure**: Applied to particles at normal distances based on density differences
+- **Near pressure**: Applied when particles are closer than `nearThreshold`, using a spiky kernel for stronger short-range forces
+- This prevents particle overlap and creates more realistic fluid behavior, especially in dense configurations
 
 ### Sensors
 
@@ -274,12 +283,14 @@ const currentTolerance = joints.getGlobalTolerance();
 ```
 
 **Joint Stiffness Values:**
+
 - `1.0` - Rigid constraint (default behavior)
 - `0.5` - Semi-elastic joint
 - `0.1` - Very elastic joint
 - `0.0` - No constraint (effectively disabled)
 
 **Joint Tolerance Values:**
+
 - `1.0` - Never break under stress (default behavior)
 - `0.5` - Break when stress exceeds 50% of maximum expected
 - `0.1` - Break easily under small stress
@@ -394,6 +405,12 @@ system.import({
     enabled: true,
     cohesionWeight: 0.2,
   },
+  fluid: {
+    enabled: true,
+    pressureMultiplier: 0.2,
+    nearPressureMultiplier: 15.0,
+    nearThreshold: 25,
+  },
   joints: {
     enabled: true,
     stiffness: 0.8, // Set global joint stiffness
@@ -402,7 +419,3 @@ system.import({
   },
 });
 ```
-
-## License
-
-MIT © cazala

@@ -180,7 +180,9 @@ Delete particles from simulation:
 
 - **SPH Settings**: Influence radius, target density
 - **Pressure**: Force multiplier for fluid behavior
-- **Viscosity**: Resistance and wobble factors
+- **Near Pressure**: Enhanced short-range particle interaction
+- **Near Threshold**: Distance for switching to near pressure mode
+- **Viscosity**: Internal friction for realistic fluid behavior
 
 #### Sensors
 
@@ -270,6 +272,7 @@ The playground is excellent for exploring physics concepts:
 
 - **SPH Method**: Smoothed Particle Hydrodynamics
 - **Pressure Systems**: Density-based force generation
+- **Near Pressure**: Dual-pressure system with spiky kernels for close-range interactions
 - **Viscosity**: Inter-particle friction effects
 
 ### Complex Systems

@@ -30,7 +30,6 @@ import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
-  DEFAULT_WOBBLE_FACTOR,
   DEFAULT_TRAIL_ENABLED,
   DEFAULT_TRAIL_DECAY,
   DEFAULT_TRAIL_DIFFUSE,
@@ -44,6 +43,9 @@ import {
   DEFAULT_FLEE_ANGLE,
   DEFAULT_JOINTS_ENABLED,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
+  DEFAULT_VISCOSITY,
+  DEFAULT_NEAR_THRESHOLD,
+  DEFAULT_NEAR_PRESSURE_MULTIPLIER,
 } from "@cazala/party";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
@@ -134,7 +136,9 @@ export function ForcesControls({
       fluid.influenceRadius = DEFAULT_INFLUENCE_RADIUS;
       fluid.targetDensity = DEFAULT_TARGET_DENSITY;
       fluid.pressureMultiplier = DEFAULT_PRESSURE_MULTIPLIER;
-      fluid.wobbleFactor = DEFAULT_WOBBLE_FACTOR;
+      fluid.viscosity = DEFAULT_VISCOSITY;
+      fluid.nearPressureMultiplier = DEFAULT_NEAR_PRESSURE_MULTIPLIER;
+      fluid.nearThreshold = DEFAULT_NEAR_THRESHOLD;
     }
 
     // Reset sensors

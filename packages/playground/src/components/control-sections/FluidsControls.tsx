@@ -4,8 +4,10 @@ import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
-  DEFAULT_WOBBLE_FACTOR,
-} from "@cazala/party/modules/forces/fluid";
+  DEFAULT_VISCOSITY,
+  DEFAULT_NEAR_PRESSURE_MULTIPLIER,
+  DEFAULT_NEAR_THRESHOLD,
+} from "@cazala/party";
 
 interface FluidsControlsProps {
   fluid: Fluid | null;
@@ -21,7 +23,11 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
   const [pressureMultiplier, setPressureMultiplier] = useState(
     DEFAULT_PRESSURE_MULTIPLIER
   );
-  const [wobbleFactor, setWobbleFactor] = useState(DEFAULT_WOBBLE_FACTOR);
+  const [viscosity, setViscosity] = useState(DEFAULT_VISCOSITY);
+  const [nearPressureMultiplier, setNearPressureMultiplier] = useState(
+    DEFAULT_NEAR_PRESSURE_MULTIPLIER
+  );
+  const [nearThreshold, setNearThreshold] = useState(DEFAULT_NEAR_THRESHOLD);
 
   useEffect(() => {
     if (fluid) {
@@ -29,7 +35,9 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
       setInfluenceRadius(fluid.influenceRadius);
       setTargetDensity(fluid.targetDensity);
       setPressureMultiplier(fluid.pressureMultiplier);
-      setWobbleFactor(fluid.wobbleFactor);
+      setViscosity(fluid.viscosity);
+      setNearPressureMultiplier(fluid.nearPressureMultiplier);
+      setNearThreshold(fluid.nearThreshold);
     }
   }, [fluid]);
 
@@ -56,9 +64,17 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
         setPressureMultiplier(value as number);
         fluid.pressureMultiplier = value as number;
         break;
-      case "wobbleFactor":
-        setWobbleFactor(value as number);
-        fluid.wobbleFactor = value as number;
+      case "viscosity":
+        setViscosity(value as number);
+        fluid.viscosity = value as number;
+        break;
+      case "nearPressureMultiplier":
+        setNearPressureMultiplier(value as number);
+        fluid.nearPressureMultiplier = value as number;
+        break;
+      case "nearThreshold":
+        setNearThreshold(value as number);
+        fluid.nearThreshold = value as number;
         break;
     }
   };
@@ -136,16 +152,53 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
 
       <div className="control-group">
         <label>
-          Wobble: {wobbleFactor.toFixed(2)}
+          Viscosity: {viscosity.toFixed(2)}
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.01"
-            value={wobbleFactor}
+            max="10"
+            step="0.1"
+            value={viscosity}
             disabled={!fluidEnabled}
             onChange={(e) =>
-              handleFluidChange("wobbleFactor", parseFloat(e.target.value))
+              handleFluidChange("viscosity", parseFloat(e.target.value))
+            }
+            className={`slider ${!fluidEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+      <div className="control-group">
+        <label>
+          Near Threshold: {nearThreshold.toFixed(0)}px
+          <input
+            type="range"
+            min="0"
+            max="200"
+            step="1"
+            value={nearThreshold}
+            disabled={!fluidEnabled}
+            onChange={(e) =>
+              handleFluidChange("nearThreshold", parseFloat(e.target.value))
+            }
+            className={`slider ${!fluidEnabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+      <div className="control-group">
+        <label>
+          Near Pressure: {nearPressureMultiplier.toFixed(1)}
+          <input
+            type="range"
+            min="-50"
+            max="50"
+            step="0.5"
+            value={nearPressureMultiplier}
+            disabled={!fluidEnabled}
+            onChange={(e) =>
+              handleFluidChange(
+                "nearPressureMultiplier",
+                parseFloat(e.target.value)
+              )
             }
             className={`slider ${!fluidEnabled ? "disabled" : ""}`}
           />

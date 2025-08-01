@@ -39,7 +39,9 @@ import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
   DEFAULT_PRESSURE_MULTIPLIER,
-  DEFAULT_WOBBLE_FACTOR,
+  DEFAULT_VISCOSITY,
+  DEFAULT_NEAR_PRESSURE_MULTIPLIER,
+  DEFAULT_NEAR_THRESHOLD,
 } from "./forces/fluid";
 import {
   Sensors,
@@ -200,8 +202,12 @@ export interface Config {
     targetDensity?: number;
     /** Multiplier for pressure force strength */
     pressureMultiplier?: number;
-    /** Random movement factor for fluid instability */
-    wobbleFactor?: number;
+    /** Viscosity force strength for internal friction */
+    viscosity?: number;
+    /** Multiplier for near pressure force strength when particles are very close */
+    nearPressureMultiplier?: number;
+    /** Distance threshold for switching from regular to near pressure (in pixels) */
+    nearThreshold?: number;
     /** Resistance to movement through fluid medium */
     resistance?: number;
   };
@@ -653,8 +659,9 @@ export class System {
           influenceRadius: force.influenceRadius,
           targetDensity: force.targetDensity,
           pressureMultiplier: force.pressureMultiplier,
-          wobbleFactor: force.wobbleFactor,
-          resistance: force.resistance,
+          viscosity: force.viscosity,
+          nearPressureMultiplier: force.nearPressureMultiplier,
+          nearThreshold: force.nearThreshold,
         };
       } else if (force instanceof Sensors) {
         config.sensors = {
@@ -749,8 +756,12 @@ export class System {
           config.fluid.targetDensity ?? DEFAULT_TARGET_DENSITY;
         force.pressureMultiplier =
           config.fluid.pressureMultiplier ?? DEFAULT_PRESSURE_MULTIPLIER;
-        force.wobbleFactor = config.fluid.wobbleFactor ?? DEFAULT_WOBBLE_FACTOR;
-        force.resistance = config.fluid.resistance ?? 1; // Default resistance value
+        force.viscosity = config.fluid.viscosity ?? DEFAULT_VISCOSITY;
+        force.nearPressureMultiplier =
+          config.fluid.nearPressureMultiplier ??
+          DEFAULT_NEAR_PRESSURE_MULTIPLIER;
+        force.nearThreshold =
+          config.fluid.nearThreshold ?? DEFAULT_NEAR_THRESHOLD;
       } else if (force instanceof Sensors && config.sensors) {
         force.setEnableTrail(
           config.sensors.enableTrail ?? DEFAULT_TRAIL_ENABLED

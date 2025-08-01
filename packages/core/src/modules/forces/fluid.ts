@@ -4,11 +4,13 @@ import { Force } from "../system";
 import { Vector2D } from "../vector";
 
 // Default parameters for fluid simulation
+export const DEFAULT_FLUID_ENABLED = true;
 export const DEFAULT_INFLUENCE_RADIUS = 100;
 export const DEFAULT_TARGET_DENSITY = 0.5;
 export const DEFAULT_PRESSURE_MULTIPLIER = 2.5;
-export const DEFAULT_WOBBLE_FACTOR = 5;
-export const DEFAULT_FLUID_ENABLED = true;
+export const DEFAULT_VISCOSITY = 1;
+export const DEFAULT_NEAR_PRESSURE_MULTIPLIER = 10;
+export const DEFAULT_NEAR_THRESHOLD = 30;
 
 /**
  * Calculates the smoothing kernel function used for particle interactions.
@@ -26,6 +28,26 @@ export function calculateDensitySmoothingKernel(
   }
   const volume = (Math.PI * Math.pow(radius, 4)) / 6;
   return ((radius - distance) * (radius - distance)) / volume;
+}
+
+/**
+ * Calculates a spikier smoothing kernel function used for near-field particle interactions.
+ * This implements a higher-power kernel which provides sharper, more pronounced peaks
+ * and faster falloff compared to the standard poly6 kernel.
+ * @param radius - The influence radius of the kernel
+ * @param distance - The distance between particles
+ * @returns The spiky kernel weight value
+ */
+export function calculateNearDensitySmoothingKernel(
+  radius: number,
+  distance: number
+) {
+  if (distance >= radius) {
+    return 0;
+  }
+  const volume = (Math.PI * Math.pow(radius, 6)) / 15;
+  const factor = radius - distance;
+  return (factor * factor * factor * factor) / volume;
 }
 
 /**
@@ -86,6 +108,27 @@ export function calculateDensity(
 }
 
 /**
+ * Calculates the near fluid density at a given point using the spiky kernel.
+ * @param point - The position to calculate near density at
+ * @param radius - The influence radius for density calculation
+ * @param particles - Array of nearby particles to consider
+ * @returns The calculated near density value
+ */
+export function calculateNearDensity(
+  point: Vector2D,
+  radius: number,
+  particles: Particle[]
+) {
+  let density = 0;
+  for (const particle of particles) {
+    const distance = point.distance(particle.position);
+    const influence = calculateNearDensitySmoothingKernel(radius, distance);
+    density += influence * 1000 * particle.mass;
+  }
+  return density;
+}
+
+/**
  * Fluid force implementation using Smoothed Particle Hydrodynamics (SPH).
  * Creates pressure-based forces that simulate fluid behavior by maintaining
  * target density and applying pressure forces to particles.
@@ -99,13 +142,16 @@ export class Fluid implements Force {
   public targetDensity: number;
   /** Multiplier for pressure force strength */
   public pressureMultiplier: number;
-  /** The wobbliness of the fluid */
-  public wobbleFactor: number;
-  /** Makes the fluid more stable */
-  public resistance: number;
   /** Cache for calculated densities to avoid redundant computation */
   public densities: Map<number, number> = new Map();
-
+  /** Cache for calculated near densities */
+  public nearDensities: Map<number, number> = new Map();
+  /** Viscosity force strength */
+  public viscosity: number;
+  /** Multiplier for near density pressure calculations */
+  public nearPressureMultiplier: number;
+  /** Distance threshold for using near pressure instead of regular pressure */
+  public nearThreshold: number;
   /**
    * Creates a new Fluid force instance.
    * @param options - Configuration options for the fluid simulation
@@ -116,7 +162,9 @@ export class Fluid implements Force {
       influenceRadius?: number;
       targetDensity?: number;
       pressureMultiplier?: number;
-      wobbleFactor?: number;
+      viscosity?: number;
+      nearPressureMultiplier?: number;
+      nearThreshold?: number;
     } = {}
   ) {
     this.enabled = options.enabled ?? DEFAULT_FLUID_ENABLED;
@@ -124,8 +172,10 @@ export class Fluid implements Force {
     this.targetDensity = options.targetDensity ?? DEFAULT_TARGET_DENSITY;
     this.pressureMultiplier =
       options.pressureMultiplier ?? DEFAULT_PRESSURE_MULTIPLIER;
-    this.wobbleFactor = options.wobbleFactor ?? DEFAULT_WOBBLE_FACTOR;
-    this.resistance = 1;
+    this.viscosity = options.viscosity ?? DEFAULT_VISCOSITY;
+    this.nearPressureMultiplier =
+      options.nearPressureMultiplier ?? DEFAULT_NEAR_PRESSURE_MULTIPLIER;
+    this.nearThreshold = options.nearThreshold ?? DEFAULT_NEAR_THRESHOLD;
   }
 
   setEnabled(enabled: boolean): void {
@@ -134,6 +184,7 @@ export class Fluid implements Force {
 
   clearDensities(): void {
     this.densities.clear();
+    this.nearDensities.clear();
   }
 
   /**
@@ -148,7 +199,6 @@ export class Fluid implements Force {
       return;
     }
 
-    this.resistance = (Math.min(this.wobbleFactor, 10) / 10) * 0.049 + 0.95;
     for (const particle of particles) {
       const predictedPosition = particle.position
         .clone()
@@ -156,6 +206,10 @@ export class Fluid implements Force {
       this.densities.set(
         particle.id,
         calculateDensity(predictedPosition, this.influenceRadius, particles)
+      );
+      this.nearDensities.set(
+        particle.id,
+        calculateNearDensity(predictedPosition, this.influenceRadius, particles)
       );
     }
   }
@@ -185,12 +239,19 @@ export class Fluid implements Force {
       particles
     );
 
+    const viscosityForce = this.calculateViscosityForce(
+      particle.position,
+      particle.velocity,
+      particles
+    );
+
     // do A = F/d instead of F/m because this is a fluid
     const density = this.densities.get(particle.id);
     if (density) {
       const force = pressureForce.clone().divide(density);
-      particle.velocity.multiply(this.resistance);
-      force.multiply(1000000);
+      force
+        .multiply(1000000)
+        .add(viscosityForce.clone().multiply(1000).divide(density));
       force.limit(100);
       particle.velocity.add(force);
     }
@@ -223,10 +284,20 @@ export class Fluid implements Force {
       //   density,
       //   this.densities.get(particle.id)!
       // );
-      const pressure = this.convertDensityToPressure(density);
+      const pressureResult = this.convertDensityToPressure(
+        density,
+        this.nearDensities.get(particle.id)!
+      );
+
+      // Use near pressure when particles are too close, otherwise use regular pressure
+      const effectivePressure =
+        distance < this.nearThreshold
+          ? pressureResult.nearPressure
+          : pressureResult.pressure;
+
       const gradient =
         density > 0
-          ? direction.multiply(pressure * slope).divide(density)
+          ? direction.multiply(effectivePressure * slope).divide(density)
           : Vector2D.zero();
       pressureForce.add(gradient);
     }
@@ -234,22 +305,61 @@ export class Fluid implements Force {
     return pressureForce.multiply(-1);
   }
 
+  calculateViscosityForce(
+    point: Vector2D,
+    velocity: Vector2D,
+    particles: Particle[]
+  ) {
+    const viscosityForce = Vector2D.zero();
+    for (const particle of particles) {
+      const distance = point.distance(particle.position);
+      if (distance === 0) {
+        continue;
+      }
+
+      const influence = calculateViscositySmoothingKernel(
+        this.influenceRadius,
+        distance
+      );
+      viscosityForce.add(
+        particle.velocity.clone().subtract(velocity).multiply(influence)
+      );
+    }
+    return viscosityForce.multiply(this.viscosity);
+  }
   /**
    * Converts fluid density to pressure using a linear relationship.
    * Higher density creates positive pressure (repulsion), lower density
    * creates negative pressure (attraction).
    * @param density - The current density value
-   * @returns The corresponding pressure value
+   * @param nearDensity - The current near density value
+   * @returns Object containing both pressure and nearPressure values
    */
-  convertDensityToPressure(density: number) {
+  convertDensityToPressure(density: number, nearDensity: number) {
     const densityDifference = density - this.targetDensity;
     const pressure = densityDifference * this.pressureMultiplier;
-    return pressure;
+    const nearPressure = nearDensity * this.nearPressureMultiplier;
+    return { pressure, nearPressure };
   }
 
-  calculateSharedPressure(densityA: number, densityB: number) {
-    const pressureA = this.convertDensityToPressure(densityA);
-    const pressureB = this.convertDensityToPressure(densityB);
-    return (pressureA + pressureB) / 2;
+  calculateSharedPressure(
+    densityA: number,
+    densityB: number,
+    nearDensityA: number,
+    nearDensityB: number
+  ) {
+    const pressureResultA = this.convertDensityToPressure(
+      densityA,
+      nearDensityA
+    );
+    const pressureResultB = this.convertDensityToPressure(
+      densityB,
+      nearDensityB
+    );
+    return {
+      pressure: (pressureResultA.pressure + pressureResultB.pressure) / 2,
+      nearPressure:
+        (pressureResultA.nearPressure + pressureResultB.nearPressure) / 2,
+    };
   }
 }

@@ -1187,7 +1187,9 @@ export class Canvas2DRenderer extends Renderer {
       particles
     );
 
-    const pressure = fluid.convertDensityToPressure(density);
+    // Calculate near density for pressure calculation
+    const nearDensity = 0; // We don't have near density calculated here, so use 0 as fallback
+    const pressureResult = fluid.convertDensityToPressure(density, nearDensity);
 
     // Use same color palette as spatial grid
     const baseColor = "#dee7f0";
@@ -1200,7 +1202,8 @@ export class Canvas2DRenderer extends Renderer {
 
     const longestText = Math.max(
       this.ctx.measureText(`Density: ${density.toFixed(2)}`).width,
-      this.ctx.measureText(`Pressure: ${pressure.toFixed(2)}`).width,
+      this.ctx.measureText(`Pressure: ${pressureResult.pressure.toFixed(2)}`)
+        .width,
       this.ctx.measureText(`Particles: ${particles.length}`).width
     );
 
@@ -1215,7 +1218,11 @@ export class Canvas2DRenderer extends Renderer {
     // Draw text
     this.ctx.fillStyle = baseColor;
     this.ctx.fillText(`Density: ${density.toFixed(2)}`, 15, 15);
-    this.ctx.fillText(`Pressure: ${pressure.toFixed(2)}`, 15, 30);
+    this.ctx.fillText(
+      `Pressure: ${pressureResult.pressure.toFixed(2)}`,
+      15,
+      30
+    );
     this.ctx.fillText(`Particles: ${particles.length}`, 15, 45);
 
     this.ctx.restore();

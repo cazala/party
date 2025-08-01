@@ -9,7 +9,7 @@ import { TopBar } from "./components/TopBar";
 import { HelpModal } from "./components/HelpModal";
 import { SaveSessionModal } from "./components/modals/SaveSessionModal";
 import { LoadSessionModal } from "./components/modals/LoadSessionModal";
-import { applyCameraSettings } from "./utils/sceneBounds";
+
 import "./styles/index.css";
 import "./components/Controls.css";
 import "./components/TopBar.css";
