@@ -517,7 +517,7 @@ export class Collisions implements Force {
   }
 
   /**
-   * Collision detection for particle-joint interaction
+   * Collision detection for particle-joint interaction with continuous collision detection
    */
   private checkParticleJointCollision(
     particle: Particle,
@@ -533,7 +533,89 @@ export class Collisions implements Force {
     );
     const currentDistance = particle.position.distance(currentClosestPoint);
 
-    return currentDistance < radius && currentDistance > 0.001;
+    // Basic collision check
+    if (currentDistance < radius && currentDistance > 0.001) {
+      return true;
+    }
+
+    // Continuous collision detection for fast-moving particles
+    if (particle.velocity.magnitude() > radius) {
+      // Calculate where the particle was in the previous frame
+      const previousPosition = particle.position
+        .clone()
+        .subtract(particle.velocity.clone().multiply(1 / 60)); // Assuming 60fps
+
+      const previousClosestPoint = this.getClosestPointOnLineSegment(
+        previousPosition,
+        joint.particleA.position,
+        joint.particleB.position
+      );
+      const previousDistance = previousPosition.distance(previousClosestPoint);
+
+      // Check if particle crossed through the joint (was outside, now inside or vice versa)
+      if (
+        (previousDistance > radius && currentDistance < radius) ||
+        (previousDistance < radius && currentDistance > radius)
+      ) {
+        return true;
+      }
+
+      // Check if particle path intersects with joint segment
+      if (this.checkLineSegmentIntersection(
+        previousPosition,
+        particle.position,
+        joint.particleA.position,
+        joint.particleB.position,
+        radius
+      )) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a moving particle (represented by a line segment) intersects with a joint segment
+   */
+  private checkLineSegmentIntersection(
+    particleStart: Vector2D,
+    particleEnd: Vector2D,
+    jointStart: Vector2D,
+    jointEnd: Vector2D,
+    particleRadius: number
+  ): boolean {
+    // Calculate the distance between the particle path and joint segment
+    const minDistance = this.getDistanceBetweenLineSegments(
+      particleStart,
+      particleEnd,
+      jointStart,
+      jointEnd
+    );
+
+    return minDistance < particleRadius;
+  }
+
+  /**
+   * Calculate minimum distance between two line segments
+   */
+  private getDistanceBetweenLineSegments(
+    line1Start: Vector2D,
+    line1End: Vector2D,
+    line2Start: Vector2D,
+    line2End: Vector2D
+  ): number {
+    // Check all possible cases: segment to segment, point to segment
+    const distances = [
+      // Distance from line1 endpoints to line2 segment
+      line1Start.distance(this.getClosestPointOnLineSegment(line1Start, line2Start, line2End)),
+      line1End.distance(this.getClosestPointOnLineSegment(line1End, line2Start, line2End)),
+      // Distance from line2 endpoints to line1 segment
+      line2Start.distance(this.getClosestPointOnLineSegment(line2Start, line1Start, line1End)),
+      line2End.distance(this.getClosestPointOnLineSegment(line2End, line1Start, line1End))
+    ];
+
+    return Math.min(...distances);
   }
 
   /**
@@ -694,8 +776,8 @@ export class Collisions implements Force {
       return;
     }
 
-    // Calculate collision normal (from joint line to particle center)
-    const collisionNormal = particle.position.clone().subtract(closestPoint);
+    // STEP 1: Calculate collision normal and ensure it points away from joint
+    let collisionNormal = particle.position.clone().subtract(closestPoint);
 
     if (collisionNormal.magnitude() === 0) {
       // Particle is exactly on the line - use perpendicular to line as normal
@@ -704,22 +786,57 @@ export class Collisions implements Force {
         .subtract(joint.particleA.position);
       collisionNormal.x = -lineVector.y;
       collisionNormal.y = lineVector.x;
+      
+      // Make sure normal points in a consistent direction
+      if (collisionNormal.magnitude() === 0) {
+        collisionNormal.set(1, 0); // Default direction if line has zero length
+      }
     }
 
     collisionNormal.normalize();
 
-    // Calculate impact point weights based on distance along joint
+    // STEP 2: POSITION CORRECTION FIRST - Ensure complete separation before velocity response
+    const currentDistance = particle.position.distance(closestPoint);
+    const overlap = particle.size - currentDistance;
+    
+    if (overlap > 0) {
+      // Calculate impact weights for position correction
+      const weights = this.calculateImpactWeights(closestPoint, joint);
+      
+      // Apply aggressive position correction to guarantee separation
+      this.applyEmergencyJointSeparation(
+        particle,
+        joint,
+        weights,
+        collisionNormal,
+        overlap
+      );
+      
+      // Recalculate closest point and collision normal after position correction
+      const newClosestPoint = this.getClosestPointOnLineSegment(
+        particle.position,
+        joint.particleA.position,
+        joint.particleB.position
+      );
+      
+      collisionNormal = particle.position.clone().subtract(newClosestPoint);
+      if (collisionNormal.magnitude() > 0) {
+        collisionNormal.normalize();
+      }
+    }
+
+    // STEP 3: Calculate impact point weights based on distance along joint
     const weights = this.calculateImpactWeights(closestPoint, joint);
 
     // Calculate effective mass of joint system at impact point
     const effectiveJointMass = this.calculateEffectiveJointMass(joint, weights);
 
-    // Apply collision response with restitution and mass transfer
-
+    // STEP 4: Apply velocity response only after position is corrected
+    
     // Calculate relative velocity in collision normal direction
     const relativeVelocity = particle.velocity.dot(collisionNormal);
 
-    // Don't resolve if velocities are separating
+    // Don't resolve if velocities are separating (particle moving away from joint)
     if (relativeVelocity > 0) return;
 
     // Calculate collision impulse considering both particle and joint masses
@@ -745,12 +862,8 @@ export class Collisions implements Force {
     // Transfer force to joint particles based on impact location and masses
     this.transferForceToJoint(joint, weights, collisionNormal, impulse);
 
-    // Position correction to prevent particle from staying inside the joint
-    const overlap = particle.size - particle.position.distance(closestPoint);
-    if (overlap > 0) {
-      const correction = collisionNormal.clone().multiply(overlap);
-      particle.position.add(correction);
-    }
+    // STEP 5: Final velocity validation - ensure particle is not moving toward joint
+    this.validatePostCollisionVelocity(particle, collisionNormal);
   }
 
   /**
@@ -795,10 +908,11 @@ export class Collisions implements Force {
       this.applyJointFriction(particle, collisionNormal, this.physics.friction);
     }
 
-    // Position correction to prevent particle from staying inside the joint
+    // Position correction to prevent particle from staying inside the joint (static joint version)
     const overlap = particle.size - particle.position.distance(closestPoint);
     if (overlap > 0) {
-      const correction = collisionNormal.clone().multiply(overlap);
+      // For static joints, only move the particle (with extra padding to ensure separation)
+      const correction = collisionNormal.clone().multiply(overlap * 1.1); // 10% padding
       particle.position.add(correction);
     }
   }
@@ -888,6 +1002,92 @@ export class Collisions implements Force {
       joint.particleB.velocity.add(forceB);
     }
   }
+
+  /**
+   * Apply aggressive emergency separation to guarantee no overlap (used before velocity response)
+   */
+  private applyEmergencyJointSeparation(
+    particle: Particle,
+    joint: Joint,
+    weights: { weightA: number; weightB: number },
+    collisionNormal: Vector2D,
+    overlap: number
+  ): void {
+    // Calculate effective mass of the joint system at impact point
+    const effectiveJointMass = this.calculateEffectiveJointMass(joint, weights);
+    const totalMass = particle.mass + effectiveJointMass;
+
+    // Use aggressive separation - minimum separation is 2x particle radius
+    const minimumSeparation = Math.max(overlap * 2.0, particle.size * 0.1);
+
+    if (totalMass === 0 || effectiveJointMass === 0) {
+      // Edge case - push particle out with aggressive separation
+      const correction = collisionNormal.clone().multiply(minimumSeparation);
+      particle.position.add(correction);
+      return;
+    }
+
+    // Calculate separation ratio based on masses (lighter objects move more)
+    const particleSeparationRatio = effectiveJointMass / totalMass;
+    const jointSeparationRatio = particle.mass / totalMass;
+
+    // Move particle away from joint (aggressive separation)
+    const particleCorrection = collisionNormal
+      .clone()
+      .multiply(minimumSeparation * particleSeparationRatio);
+    particle.position.add(particleCorrection);
+
+    // Move joint particles away from collision point (distributed by weights and mobility)
+    const jointCorrection = minimumSeparation * jointSeparationRatio;
+
+    if (
+      !joint.particleA.pinned &&
+      !joint.particleA.grabbed &&
+      weights.weightA > 0
+    ) {
+      const correctionA = collisionNormal
+        .clone()
+        .multiply(-jointCorrection * weights.weightA);
+      joint.particleA.position.add(correctionA);
+    }
+
+    if (
+      !joint.particleB.pinned &&
+      !joint.particleB.grabbed &&
+      weights.weightB > 0
+    ) {
+      const correctionB = collisionNormal
+        .clone()
+        .multiply(-jointCorrection * weights.weightB);
+      joint.particleB.position.add(correctionB);
+    }
+  }
+
+  /**
+   * Validate and correct particle velocity after collision to ensure it's moving away from joint
+   */
+  private validatePostCollisionVelocity(
+    particle: Particle,
+    collisionNormal: Vector2D
+  ): void {
+    const velocityTowardJoint = -particle.velocity.dot(collisionNormal);
+    
+    // If particle is still moving toward joint, force it to move away
+    if (velocityTowardJoint > 0) {
+      // Remove the component of velocity toward the joint
+      const velocityTowardJointVector = collisionNormal
+        .clone()
+        .multiply(-velocityTowardJoint);
+      particle.velocity.add(velocityTowardJointVector);
+      
+      // Add minimum bounce velocity away from joint
+      const minBounceVelocity = collisionNormal
+        .clone()
+        .multiply(particle.size * 2); // Minimum velocity away from joint
+      particle.velocity.add(minBounceVelocity);
+    }
+  }
+
 
   /**
    * Apply friction to the tangential velocity component of a particle in joint collision
