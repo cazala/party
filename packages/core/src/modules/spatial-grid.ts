@@ -1,6 +1,21 @@
 import { Particle } from "./particle";
 import { Vector2D } from "./vector";
 
+// Generic joint interface for spatial grid operations
+interface SpatialJoint {
+  id: string;
+  particleA: Particle;
+  particleB: Particle;
+  isValid: boolean;
+}
+
+interface BoundingBox {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 export interface SpatialGridOptions {
   width: number;
   height: number;
@@ -14,6 +29,8 @@ export class SpatialGrid {
   private cols!: number;
   private rows!: number;
   private grid!: Particle[][][];
+  // Joint spatial grid for optimization
+  private jointGrid!: SpatialJoint[][][];
   // Dynamic bounds that match current camera view
   private minX!: number;
   private minY!: number;
@@ -72,10 +89,13 @@ export class SpatialGrid {
 
   private initializeGrid(): void {
     this.grid = [];
+    this.jointGrid = [];
     for (let row = 0; row < this.rows; row++) {
       this.grid[row] = [];
+      this.jointGrid[row] = [];
       for (let col = 0; col < this.cols; col++) {
         this.grid[row][col] = [];
+        this.jointGrid[row][col] = [];
       }
     }
   }
@@ -84,6 +104,7 @@ export class SpatialGrid {
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
         this.grid[row][col] = [];
+        this.jointGrid[row][col] = [];
       }
     }
   }
@@ -187,5 +208,131 @@ export class SpatialGrid {
       }
     }
     return allParticles;
+  }
+
+  // Joint spatial optimization methods
+
+  /**
+   * Calculate the bounding box of a joint (line segment)
+   */
+  private getJointBoundingBox(joint: SpatialJoint): BoundingBox {
+    const minX = Math.min(joint.particleA.position.x, joint.particleB.position.x);
+    const maxX = Math.max(joint.particleA.position.x, joint.particleB.position.x);
+    const minY = Math.min(joint.particleA.position.y, joint.particleB.position.y);
+    const maxY = Math.max(joint.particleA.position.y, joint.particleB.position.y);
+    
+    return { minX, minY, maxX, maxY };
+  }
+
+  /**
+   * Insert a joint into the spatial grid based on its bounding box
+   */
+  insertJoint(joint: SpatialJoint): void {
+    if (!joint.isValid) return;
+
+    const boundingBox = this.getJointBoundingBox(joint);
+    
+    // Convert world coordinates to grid coordinates
+    const minCol = Math.max(0, Math.floor((boundingBox.minX - this.minX) / this.cellSize));
+    const maxCol = Math.min(this.cols - 1, Math.floor((boundingBox.maxX - this.minX) / this.cellSize));
+    const minRow = Math.max(0, Math.floor((boundingBox.minY - this.minY) / this.cellSize));
+    const maxRow = Math.min(this.rows - 1, Math.floor((boundingBox.maxY - this.minY) / this.cellSize));
+
+    // Insert joint into all cells it overlaps
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        this.jointGrid[row][col].push(joint);
+      }
+    }
+  }
+
+  /**
+   * Get all joints that could potentially intersect with the given joint
+   * Uses spatial grid to avoid checking all joints
+   */
+  getNearbyJoints(joint: SpatialJoint): SpatialJoint[] {
+    if (!joint.isValid) return [];
+
+    const nearbyJoints = new Set<SpatialJoint>();
+    const boundingBox = this.getJointBoundingBox(joint);
+    
+    // Convert world coordinates to grid coordinates
+    const minCol = Math.max(0, Math.floor((boundingBox.minX - this.minX) / this.cellSize));
+    const maxCol = Math.min(this.cols - 1, Math.floor((boundingBox.maxX - this.minX) / this.cellSize));
+    const minRow = Math.max(0, Math.floor((boundingBox.minY - this.minY) / this.cellSize));
+    const maxRow = Math.min(this.rows - 1, Math.floor((boundingBox.maxY - this.minY) / this.cellSize));
+
+    // Collect joints from all overlapping cells
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        const cellJoints = this.jointGrid[row][col];
+        for (const candidateJoint of cellJoints) {
+          if (candidateJoint !== joint && candidateJoint.isValid) {
+            nearbyJoints.add(candidateJoint);
+          }
+        }
+      }
+    }
+
+    return Array.from(nearbyJoints);
+  }
+
+  /**
+   * Get joints within a specific region (bounding box)
+   */
+  getJointsInRegion(bounds: BoundingBox): SpatialJoint[] {
+    const jointsInRegion = new Set<SpatialJoint>();
+    
+    // Convert world coordinates to grid coordinates
+    const minCol = Math.max(0, Math.floor((bounds.minX - this.minX) / this.cellSize));
+    const maxCol = Math.min(this.cols - 1, Math.floor((bounds.maxX - this.minX) / this.cellSize));
+    const minRow = Math.max(0, Math.floor((bounds.minY - this.minY) / this.cellSize));
+    const maxRow = Math.min(this.rows - 1, Math.floor((bounds.maxY - this.minY) / this.cellSize));
+
+    // Collect joints from all cells in the region
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        const cellJoints = this.jointGrid[row][col];
+        for (const joint of cellJoints) {
+          if (joint.isValid) {
+            jointsInRegion.add(joint);
+          }
+        }
+      }
+    }
+
+    return Array.from(jointsInRegion);
+  }
+
+  /**
+   * Clear all joints from the spatial grid (called each frame before re-inserting)
+   */
+  clearJoints(): void {
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        this.jointGrid[row][col] = [];
+      }
+    }
+  }
+
+  /**
+   * Check if two bounding boxes overlap (for pre-filtering intersection tests)
+   */
+  private boundingBoxesOverlap(box1: BoundingBox, box2: BoundingBox): boolean {
+    return !(box1.maxX < box2.minX || box2.maxX < box1.minX || 
+             box1.maxY < box2.minY || box2.maxY < box1.minY);
+  }
+
+  /**
+   * Get joints that could intersect with the given joint, pre-filtered by bounding box
+   */
+  getNearbyJointsWithBoundingBoxFilter(joint: SpatialJoint): SpatialJoint[] {
+    const nearbyJoints = this.getNearbyJoints(joint);
+    const jointBoundingBox = this.getJointBoundingBox(joint);
+    
+    return nearbyJoints.filter(candidateJoint => {
+      const candidateBoundingBox = this.getJointBoundingBox(candidateJoint);
+      return this.boundingBoxesOverlap(jointBoundingBox, candidateBoundingBox);
+    });
   }
 }

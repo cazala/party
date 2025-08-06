@@ -118,18 +118,18 @@ export class Collisions implements Force {
     )
       return;
 
+    // Track which particles have already been processed as part of rigid body groups
+
     // Update velocities for constrained particles to match actual movement
     for (const particle of particles) {
       if (!particle.pinned && this.joints.hasJoint(particle.id)) {
         const prePhysicsPosition = prePhysicsPositions.get(particle.id);
         if (prePhysicsPosition) {
-          // Calculate total actual movement from start to end
           const totalMovement = particle.position
             .clone()
             .subtract(prePhysicsPosition);
           const actualVelocity = totalMovement.divide(deltaTime);
 
-          // Blend between current velocity and actual movement based on momentum preservation
           particle.velocity = particle.velocity
             .clone()
             .multiply(1 - this.momentum)
@@ -145,6 +145,11 @@ export class Collisions implements Force {
 
     // Check if particles are colliding (overlapping)
     if (distance >= combinedRadius) {
+      return;
+    }
+
+    // Skip collision if particles are part of the same rigid body group
+    if (this.joints && this.joints.areInSameRigidBody(particle1, particle2)) {
       return;
     }
 
@@ -451,12 +456,33 @@ export class Collisions implements Force {
   }
 
   /**
-   * Check if a particle is involved in a joint (can't collide with your own joints)
+   * Check if a particle is involved in a joint or part of the same rigid body group
+   * (particles from the same rigid body group shouldn't collide with each other's joints)
    */
   private isParticleInvolvedInJoint(particle: Particle, joint: Joint): boolean {
-    return (
-      joint.particleA.id === particle.id || joint.particleB.id === particle.id
-    );
+    // Direct involvement check
+    if (
+      joint.particleA.id === particle.id ||
+      joint.particleB.id === particle.id
+    ) {
+      return true;
+    }
+
+    // Check if particle is part of the same rigid body group as either joint particle
+    if (this.joints) {
+      const isInSameGroupAsA = this.joints.areInSameRigidBody(
+        particle,
+        joint.particleA
+      );
+      const isInSameGroupAsB = this.joints.areInSameRigidBody(
+        particle,
+        joint.particleB
+      );
+
+      return isInSameGroupAsA || isInSameGroupAsB;
+    }
+
+    return false;
   }
 
   /**

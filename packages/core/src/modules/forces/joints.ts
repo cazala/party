@@ -71,7 +71,7 @@ export class Joint {
       this.isValid = false;
       return false;
     }
-    
+
     // Otherwise, validate based on particle existence
     this.isValid = this.particleA.mass > 0 && this.particleB.mass > 0;
     return this.isValid;
@@ -252,13 +252,13 @@ export class Joint {
       stiffness: data.stiffness,
       tolerance: data.tolerance,
     });
-    
+
     // Restore broken state
     (joint as any).isBroken = data.isBroken;
     if (data.isBroken) {
       joint.isValid = false;
     }
-    
+
     return joint;
   }
 
@@ -274,11 +274,11 @@ export class Joint {
       tolerance: this.tolerance,
       id: this.id,
     });
-    
+
     // Preserve broken state using private access
     (clonedJoint as any).isBroken = this.isBroken;
     clonedJoint.isValid = this.isValid;
-    
+
     return clonedJoint;
   }
 }
@@ -297,6 +297,11 @@ export class Joints implements Force {
 
   // Track grabbed particles and their previous positions for velocity calculation
   private grabbedParticlePositions: Map<number, Vector2D> = new Map();
+  
+  // Rigid body group caching for performance optimization
+  private rigidBodyGroupCache: Map<number, Set<Particle>> = new Map();
+  private cacheValidationTime: number = 0;
+  private readonly CACHE_INVALIDATION_INTERVAL = 100; // ms
 
   constructor(options: JointsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_JOINTS_ENABLED;
@@ -360,6 +365,10 @@ export class Joints implements Force {
     };
     const joint = new Joint(jointOptions);
     this.joints.set(joint.id, joint);
+    
+    // Invalidate cache since joint structure changed
+    this.invalidateRigidBodyGroupCache();
+    
     return joint;
   }
 
@@ -367,14 +376,24 @@ export class Joints implements Force {
    * Remove a joint by ID
    */
   removeJoint(jointId: string): boolean {
-    return this.joints.delete(jointId);
+    const removed = this.joints.delete(jointId);
+    if (removed) {
+      // Invalidate cache since joint structure changed
+      this.invalidateRigidBodyGroupCache();
+    }
+    return removed;
   }
 
   /**
    * Remove a joint by reference
    */
   removeJointByReference(joint: Joint): boolean {
-    return this.joints.delete(joint.id);
+    const removed = this.joints.delete(joint.id);
+    if (removed) {
+      // Invalidate cache since joint structure changed
+      this.invalidateRigidBodyGroupCache();
+    }
+    return removed;
   }
 
   /**
@@ -407,6 +426,12 @@ export class Joints implements Force {
   removeJointsForParticle(particle: Particle): number {
     const jointsToRemove = this.getJointsForParticle(particle);
     jointsToRemove.forEach((joint) => this.joints.delete(joint.id));
+    
+    if (jointsToRemove.length > 0) {
+      // Invalidate cache since joint structure changed
+      this.invalidateRigidBodyGroupCache();
+    }
+    
     return jointsToRemove.length;
   }
 
@@ -415,6 +440,8 @@ export class Joints implements Force {
    */
   clear(): void {
     this.joints.clear();
+    // Invalidate cache since all joints are cleared
+    this.invalidateRigidBodyGroupCache();
   }
 
   /**
@@ -440,6 +467,262 @@ export class Joints implements Force {
   }
 
   /**
+   * Clear the rigid body group cache (called when joints are modified)
+   */
+  private invalidateRigidBodyGroupCache(): void {
+    this.rigidBodyGroupCache.clear();
+    this.cacheValidationTime = Date.now();
+  }
+
+  /**
+   * Check if the rigid body group cache needs invalidation
+   */
+  private shouldInvalidateCache(): boolean {
+    return Date.now() - this.cacheValidationTime > this.CACHE_INVALIDATION_INTERVAL;
+  }
+
+  /**
+   * Get all particles that form a rigid body group with the given particle.
+   * Uses graph traversal to find all transitively connected particles through rigid joints.
+   * Results are cached for performance.
+   */
+  getRigidBodyGroup(
+    particle: Particle,
+    rigidityThreshold: number = 0.8
+  ): Set<Particle> {
+    // Check cache invalidation
+    if (this.shouldInvalidateCache()) {
+      this.invalidateRigidBodyGroupCache();
+    }
+
+    // Check cache first
+    const cacheKey = particle.id;
+    if (this.rigidBodyGroupCache.has(cacheKey)) {
+      return this.rigidBodyGroupCache.get(cacheKey)!;
+    }
+
+    // Cache miss - compute rigid body group
+    const rigidGroup = new Set<Particle>();
+    const visited = new Set<number>();
+    const queue: Particle[] = [particle];
+
+    while (queue.length > 0) {
+      const currentParticle = queue.shift()!;
+
+      if (visited.has(currentParticle.id)) {
+        continue;
+      }
+
+      visited.add(currentParticle.id);
+      rigidGroup.add(currentParticle);
+
+      // Find all rigid joints connected to this particle
+      const connectedJoints = this.getJointsForParticle(currentParticle);
+
+      for (const joint of connectedJoints) {
+        // Only consider joints that are rigid enough to be part of a rigid body
+        if (joint.stiffness >= rigidityThreshold && joint.isValid) {
+          const otherParticle =
+            joint.particleA.id === currentParticle.id
+              ? joint.particleB
+              : joint.particleA;
+
+          if (!visited.has(otherParticle.id)) {
+            queue.push(otherParticle);
+          }
+        }
+      }
+    }
+
+    // Cache the result for all particles in this group
+    for (const groupParticle of rigidGroup) {
+      this.rigidBodyGroupCache.set(groupParticle.id, rigidGroup);
+    }
+
+    return rigidGroup;
+  }
+
+  /**
+   * Check if two particles belong to the same rigid body group
+   */
+  areInSameRigidBody(
+    particle1: Particle,
+    particle2: Particle,
+    rigidityThreshold: number = 0.8
+  ): boolean {
+    // Quick check: if particles are directly connected by a rigid joint
+    const directJoints = this.getJointsForParticle(particle1);
+    for (const joint of directJoints) {
+      if (joint.stiffness >= rigidityThreshold && joint.isValid) {
+        const otherParticle =
+          joint.particleA.id === particle1.id
+            ? joint.particleB
+            : joint.particleA;
+        if (otherParticle.id === particle2.id) {
+          return true;
+        }
+      }
+    }
+
+    // If not directly connected, check if they're in the same rigid body group
+    const group1 = this.getRigidBodyGroup(particle1, rigidityThreshold);
+    return group1.has(particle2);
+  }
+
+  /**
+   * Get all rigid body groups in the current joint system
+   */
+  getAllRigidBodyGroups(rigidityThreshold: number = 0.8): Set<Particle>[] {
+    const allGroups: Set<Particle>[] = [];
+    const processedParticles = new Set<number>();
+
+    // Get all unique particles from joints
+    const allParticles = new Set<Particle>();
+    for (const joint of this.joints.values()) {
+      if (joint.isValid && joint.stiffness >= rigidityThreshold) {
+        allParticles.add(joint.particleA);
+        allParticles.add(joint.particleB);
+      }
+    }
+
+    // Find rigid body groups for each unprocessed particle
+    for (const particle of allParticles) {
+      if (!processedParticles.has(particle.id)) {
+        const group = this.getRigidBodyGroup(particle, rigidityThreshold);
+
+        // Mark all particles in this group as processed
+        for (const groupParticle of group) {
+          processedParticles.add(groupParticle.id);
+        }
+
+        // Only add groups with more than one particle (actual rigid bodies)
+        if (group.size > 1) {
+          allGroups.push(group);
+        }
+      }
+    }
+
+    return allGroups;
+  }
+
+  /**
+   * Check if two line segments (joints) intersect
+   */
+  private doJointsIntersect(joint1: Joint, joint2: Joint): boolean {
+    // Don't check intersection if joints share a particle
+    if (
+      joint1.particleA.id === joint2.particleA.id ||
+      joint1.particleA.id === joint2.particleB.id ||
+      joint1.particleB.id === joint2.particleA.id ||
+      joint1.particleB.id === joint2.particleB.id
+    ) {
+      return false;
+    }
+
+    // Check if the two line segments intersect
+    return this.lineSegmentsIntersect(
+      joint1.particleA.position,
+      joint1.particleB.position,
+      joint2.particleA.position,
+      joint2.particleB.position
+    );
+  }
+
+  /**
+   * Check if two line segments intersect (geometric intersection test)
+   */
+  private lineSegmentsIntersect(
+    p1: Vector2D,
+    q1: Vector2D,
+    p2: Vector2D,
+    q2: Vector2D
+  ): boolean {
+    const orientation = (p: Vector2D, q: Vector2D, r: Vector2D): number => {
+      const val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+      if (Math.abs(val) < 1e-10) return 0; // Collinear
+      return val > 0 ? 1 : 2; // Clockwise or Counterclockwise
+    };
+
+    const onSegment = (p: Vector2D, q: Vector2D, r: Vector2D): boolean => {
+      return (
+        q.x <= Math.max(p.x, r.x) &&
+        q.x >= Math.min(p.x, r.x) &&
+        q.y <= Math.max(p.y, r.y) &&
+        q.y >= Math.min(p.y, r.y)
+      );
+    };
+
+    const o1 = orientation(p1, q1, p2);
+    const o2 = orientation(p1, q1, q2);
+    const o3 = orientation(p2, q2, p1);
+    const o4 = orientation(p2, q2, q1);
+
+    // General case
+    if (o1 !== o2 && o3 !== o4) {
+      return true;
+    }
+
+    // Special cases (collinear points)
+    if (o1 === 0 && onSegment(p1, p2, q1)) return true;
+    if (o2 === 0 && onSegment(p1, q2, q1)) return true;
+    if (o3 === 0 && onSegment(p2, p1, q2)) return true;
+    if (o4 === 0 && onSegment(p2, q1, q2)) return true;
+
+    return false;
+  }
+
+  /**
+   * Find all joint crossings in the system using spatial grid optimization
+   */
+  private findJointCrossings(spatialGrid: SpatialGrid): Array<{ joint1: Joint; joint2: Joint }> {
+    const crossings: Array<{ joint1: Joint; joint2: Joint }> = [];
+    const validJoints = Array.from(this.joints.values()).filter((j) => j.isValid);
+
+    // Clear and populate the spatial grid with joints
+    spatialGrid.clearJoints();
+    for (const joint of validJoints) {
+      spatialGrid.insertJoint(joint);
+    }
+
+    // Track processed pairs to avoid duplicates
+    const processedPairs = new Set<string>();
+
+    // For each joint, only check against nearby joints from spatial grid
+    for (const joint1 of validJoints) {
+      const nearbyJoints = spatialGrid.getNearbyJointsWithBoundingBoxFilter(joint1);
+
+      for (const joint2 of nearbyJoints) {
+        // Create a unique pair identifier to avoid duplicate checks
+        const pairId = joint1.id < joint2.id ? `${joint1.id}-${joint2.id}` : `${joint2.id}-${joint1.id}`;
+        if (processedPairs.has(pairId)) {
+          continue;
+        }
+        processedPairs.add(pairId);
+
+        // Skip if joints are from the same rigid body group
+        if (
+          this.areInSameRigidBody(joint1.particleA, joint2.particleA) ||
+          this.areInSameRigidBody(joint1.particleA, joint2.particleB) ||
+          this.areInSameRigidBody(joint1.particleB, joint2.particleA) ||
+          this.areInSameRigidBody(joint1.particleB, joint2.particleB)
+        ) {
+          continue;
+        }
+
+        // Cast back to actual Joint type for intersection test
+        const actualJoint1 = joint1 as Joint;
+        const actualJoint2 = joint2 as Joint;
+        
+        if (this.doJointsIntersect(actualJoint1, actualJoint2)) {
+          crossings.push({ joint1: actualJoint1, joint2: actualJoint2 });
+        }
+      }
+    }
+
+    return crossings;
+  }
+
+  /**
    * Serialize all joints to a plain object array for storage
    */
   serializeJoints(): Array<{
@@ -451,7 +734,7 @@ export class Joints implements Force {
     tolerance: number;
     isBroken: boolean;
   }> {
-    return Array.from(this.joints.values()).map(joint => joint.serialize());
+    return Array.from(this.joints.values()).map((joint) => joint.serialize());
   }
 
   /**
@@ -472,17 +755,20 @@ export class Joints implements Force {
     // Clear existing joints
     this.joints.clear();
     
+    // Invalidate cache since joint structure is being rebuilt
+    this.invalidateRigidBodyGroupCache();
+
     // Create a particle lookup map for efficient access
     const particleMap = new Map<number, Particle>();
     for (const particle of particles) {
       particleMap.set(particle.id, particle);
     }
-    
+
     // Recreate joints from serialized data
     for (const jointData of serializedJoints) {
       const particleA = particleMap.get(jointData.particleAId);
       const particleB = particleMap.get(jointData.particleBId);
-      
+
       // Only recreate joint if both particles exist
       if (particleA && particleB) {
         const joint = Joint.deserialize(jointData, particleA, particleB);
@@ -514,6 +800,11 @@ export class Joints implements Force {
     }
 
     invalidJoints.forEach((id) => this.joints.delete(id));
+    
+    // Invalidate cache if any joints were removed
+    if (invalidJoints.length > 0) {
+      this.invalidateRigidBodyGroupCache();
+    }
 
     // Clean up grabbed particle positions for particles that no longer exist or are no longer grabbed
     for (const [particleId] of this.grabbedParticlePositions) {
@@ -526,13 +817,239 @@ export class Joints implements Force {
 
   /**
    * Force interface: apply joint constraints after physics integration
+   * Uses exhaustive iterative solving to prevent joint crossings
    */
-  constraints(_particles: Particle[], _spatialGrid: SpatialGrid): void {
+  constraints(_particles: Particle[], spatialGrid: SpatialGrid): void {
     if (!this.enabled) return;
 
-    // Apply all joint constraints
-    for (const joint of this.joints.values()) {
-      joint.applyConstraint();
+    // Exhaustive constraint solving with joint crossing resolution
+    this.solveConstraintsExhaustively(spatialGrid);
+  }
+
+  /**
+   * Exhaustively solve all constraints until no violations remain
+   * This prevents rigid body penetration by detecting and resolving joint crossings
+   */
+  private solveConstraintsExhaustively(spatialGrid: SpatialGrid): void {
+    const maxIterations = 10; // Maximum iterations to prevent infinite loops
+    const maxCrossingResolutionAttempts = 5; // Max attempts to resolve each crossing
+
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
+      // Step 1: Apply standard joint constraints
+      let hasConstraintViolations = false;
+      for (const joint of this.joints.values()) {
+        if (joint.isValid && joint.stiffness > 0) {
+          joint.applyConstraint();
+          const finalDistance = joint.getCurrentLength();
+
+          // Check if constraint is still violated
+          const displacement = Math.abs(finalDistance - joint.restLength);
+          if (displacement > 0.001) {
+            hasConstraintViolations = true;
+          }
+        }
+      }
+
+      // Step 2: Check for joint crossings (particles inside other rigid bodies)
+      const crossings = this.findJointCrossings(spatialGrid);
+
+      if (crossings.length === 0 && !hasConstraintViolations) {
+        // All constraints satisfied and no crossings - we're done!
+        break;
+      }
+
+      // Step 3: Resolve joint crossings
+      if (crossings.length > 0) {
+        this.resolveJointCrossings(crossings, maxCrossingResolutionAttempts);
+      }
+
+      // If this is the last iteration and we still have violations,
+      // apply emergency separation
+      if (iteration === maxIterations - 1 && crossings.length > 0) {
+        this.applyEmergencySeparation(crossings);
+      }
     }
+  }
+
+  /**
+   * Resolve joint crossings by repositioning rigid body groups
+   */
+  private resolveJointCrossings(
+    crossings: Array<{ joint1: Joint; joint2: Joint }>,
+    maxAttempts: number
+  ): void {
+    for (const crossing of crossings) {
+      this.resolveSingleJointCrossing(
+        crossing.joint1,
+        crossing.joint2,
+        maxAttempts
+      );
+    }
+  }
+
+  /**
+   * Resolve a single joint crossing by moving rigid bodies apart
+   */
+  private resolveSingleJointCrossing(
+    joint1: Joint,
+    joint2: Joint,
+    maxAttempts: number
+  ): void {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (!this.doJointsIntersect(joint1, joint2)) {
+        // Crossing resolved
+        break;
+      }
+
+      // Calculate separation vector between the midpoints of the two joints
+      const midpoint1 = new Vector2D(
+        (joint1.particleA.position.x + joint1.particleB.position.x) / 2,
+        (joint1.particleA.position.y + joint1.particleB.position.y) / 2
+      );
+      const midpoint2 = new Vector2D(
+        (joint2.particleA.position.x + joint2.particleB.position.x) / 2,
+        (joint2.particleA.position.y + joint2.particleB.position.y) / 2
+      );
+
+      let separationVector = midpoint1.clone().subtract(midpoint2);
+
+      // If midpoints are too close, use a random separation direction
+      if (separationVector.magnitude() < 0.001) {
+        const angle = Math.random() * Math.PI * 2;
+        separationVector = new Vector2D(Math.cos(angle), Math.sin(angle));
+      } else {
+        separationVector.normalize();
+      }
+
+      // Get rigid body groups for both joints
+      const group1 = this.getRigidBodyGroup(joint1.particleA);
+      const group2 = this.getRigidBodyGroup(joint2.particleA);
+
+      // Calculate effective masses
+      const mass1 = this.calculateGroupMass(group1);
+      const mass2 = this.calculateGroupMass(group2);
+      const totalMass = mass1 + mass2;
+
+      // Separation distance based on joint lengths
+      const separationDistance = (joint1.restLength + joint2.restLength) * 0.1;
+
+      // Apply separation based on inverse mass ratio
+      const separation1 = separationVector
+        .clone()
+        .multiply(separationDistance * (mass2 / totalMass));
+      const separation2 = separationVector
+        .clone()
+        .multiply(-separationDistance * (mass1 / totalMass));
+
+      // Move rigid body groups
+      this.moveRigidBodyGroup(group1, separation1);
+      this.moveRigidBodyGroup(group2, separation2);
+    }
+  }
+
+  /**
+   * Calculate total mass of a rigid body group
+   */
+  private calculateGroupMass(group: Set<Particle>): number {
+    let totalMass = 0;
+    for (const particle of group) {
+      totalMass += particle.mass;
+    }
+    return totalMass > 0 ? totalMass : 1; // Avoid division by zero
+  }
+
+  /**
+   * Move an entire rigid body group by a displacement vector
+   */
+  private moveRigidBodyGroup(
+    group: Set<Particle>,
+    displacement: Vector2D
+  ): void {
+    for (const particle of group) {
+      if (!particle.pinned && !particle.grabbed) {
+        particle.position.add(displacement);
+      }
+    }
+  }
+
+  /**
+   * Apply emergency separation when normal resolution fails
+   */
+  private applyEmergencySeparation(
+    crossings: Array<{ joint1: Joint; joint2: Joint }>
+  ): void {
+    // Identify all rigid body groups involved in crossings
+    const involvedGroups = new Set<Set<Particle>>();
+
+    for (const crossing of crossings) {
+      involvedGroups.add(this.getRigidBodyGroup(crossing.joint1.particleA));
+      involvedGroups.add(this.getRigidBodyGroup(crossing.joint2.particleA));
+    }
+
+    // Apply strong separation forces between all involved groups
+    const groupArray = Array.from(involvedGroups);
+    for (let i = 0; i < groupArray.length; i++) {
+      for (let j = i + 1; j < groupArray.length; j++) {
+        this.separateRigidBodyGroups(groupArray[i], groupArray[j], 2.0); // Strong separation
+      }
+    }
+  }
+
+  /**
+   * Separate two rigid body groups by a specified strength
+   */
+  private separateRigidBodyGroups(
+    group1: Set<Particle>,
+    group2: Set<Particle>,
+    strength: number
+  ): void {
+    // Calculate centroids of both groups
+    const centroid1 = this.calculateGroupCentroid(group1);
+    const centroid2 = this.calculateGroupCentroid(group2);
+
+    let separationVector = centroid1.clone().subtract(centroid2);
+
+    if (separationVector.magnitude() < 0.001) {
+      // If centroids are too close, use random direction
+      const angle = Math.random() * Math.PI * 2;
+      separationVector = new Vector2D(Math.cos(angle), Math.sin(angle));
+    } else {
+      separationVector.normalize();
+    }
+
+    // Calculate masses
+    const mass1 = this.calculateGroupMass(group1);
+    const mass2 = this.calculateGroupMass(group2);
+    const totalMass = mass1 + mass2;
+
+    // Apply separation
+    const separation1 = separationVector
+      .clone()
+      .multiply(strength * (mass2 / totalMass));
+    const separation2 = separationVector
+      .clone()
+      .multiply(-strength * (mass1 / totalMass));
+
+    this.moveRigidBodyGroup(group1, separation1);
+    this.moveRigidBodyGroup(group2, separation2);
+  }
+
+  /**
+   * Calculate the centroid (center of mass) of a rigid body group
+   */
+  private calculateGroupCentroid(group: Set<Particle>): Vector2D {
+    let totalMass = 0;
+    let weightedPosition = new Vector2D(0, 0);
+
+    for (const particle of group) {
+      weightedPosition.add(particle.position.clone().multiply(particle.mass));
+      totalMass += particle.mass;
+    }
+
+    if (totalMass > 0) {
+      weightedPosition.divide(totalMass);
+    }
+
+    return weightedPosition;
   }
 }
