@@ -2,23 +2,31 @@ import { Vector2D } from "../vector";
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
-import {
-  lineSegmentsIntersect,
-  calculateCentroid,
-  calculateTotalMass
-} from "../geometry";
+import { lineSegmentsIntersect, calculateCentroid } from "../geometry";
+
+// Mass clamping constants to prevent collision instabilities (same as collisions.ts)
+const MIN_COLLISION_MASS = 2;
+const MAX_COLLISION_MASS = 10.0;
+
+/**
+ * Clamp mass values for collision calculations to prevent instabilities
+ * while preserving original mass for other physics calculations
+ */
+function clampMassForCollision(mass: number): number {
+  return Math.max(MIN_COLLISION_MASS, Math.min(MAX_COLLISION_MASS, mass));
+}
 import { RigidBody } from "../rigid-body";
 
 /**
  * JOINTS SYSTEM RESPONSIBILITIES:
- * 
+ *
  * This module handles STRUCTURAL constraints and rigid body mechanics:
  * - Joint constraint solving (maintaining distance constraints)
  * - Rigid body group management and queries
  * - Joint intersection detection and resolution
  * - Exhaustive constraint solving to prevent structural violations
  * - Spatial separation of intersecting rigid bodies
- * 
+ *
  * NOTE: This module does NOT handle dynamic collision physics.
  * Particle bouncing, momentum transfer, and collision responses are handled by the Collisions module.
  */
@@ -305,11 +313,11 @@ export class Joint {
 
 /**
  * Joint constraint system for structural mechanics.
- * 
+ *
  * Manages distance constraints between particles and maintains structural integrity.
  * Provides rigid body services to other modules while keeping structural
  * constraint solving separate from dynamic collision physics.
- * 
+ *
  * Supports both rigid and elastic joints with configurable stiffness.
  * Joints can break under stress based on configurable tolerance.
  */
@@ -322,7 +330,7 @@ export class Joints implements Force, RigidBody {
 
   // Track grabbed particles and their previous positions for velocity calculation
   private grabbedParticlePositions: Map<number, Vector2D> = new Map();
-  
+
   // Rigid body group caching for performance optimization
   private rigidBodyGroupCache: Map<number, Set<Particle>> = new Map();
   private cacheValidationTime: number = 0;
@@ -390,10 +398,10 @@ export class Joints implements Force, RigidBody {
     };
     const joint = new Joint(jointOptions);
     this.joints.set(joint.id, joint);
-    
+
     // Invalidate cache since joint structure changed
     this.invalidateRigidBodyGroupCache();
-    
+
     return joint;
   }
 
@@ -451,12 +459,12 @@ export class Joints implements Force, RigidBody {
   removeJointsForParticle(particle: Particle): number {
     const jointsToRemove = this.getJointsForParticle(particle);
     jointsToRemove.forEach((joint) => this.joints.delete(joint.id));
-    
+
     if (jointsToRemove.length > 0) {
       // Invalidate cache since joint structure changed
       this.invalidateRigidBodyGroupCache();
     }
-    
+
     return jointsToRemove.length;
   }
 
@@ -503,7 +511,9 @@ export class Joints implements Force, RigidBody {
    * Check if the rigid body group cache needs invalidation
    */
   private shouldInvalidateCache(): boolean {
-    return Date.now() - this.cacheValidationTime > this.CACHE_INVALIDATION_INTERVAL;
+    return (
+      Date.now() - this.cacheValidationTime > this.CACHE_INVALIDATION_INTERVAL
+    );
   }
 
   /**
@@ -653,13 +663,16 @@ export class Joints implements Force, RigidBody {
     );
   }
 
-
   /**
    * Find all joint crossings in the system using spatial grid optimization
    */
-  private findJointCrossings(spatialGrid: SpatialGrid): Array<{ joint1: Joint; joint2: Joint }> {
+  private findJointCrossings(
+    spatialGrid: SpatialGrid
+  ): Array<{ joint1: Joint; joint2: Joint }> {
     const crossings: Array<{ joint1: Joint; joint2: Joint }> = [];
-    const validJoints = Array.from(this.joints.values()).filter((j) => j.isValid);
+    const validJoints = Array.from(this.joints.values()).filter(
+      (j) => j.isValid
+    );
 
     // Clear and populate the spatial grid with joints
     spatialGrid.clearJoints();
@@ -672,11 +685,15 @@ export class Joints implements Force, RigidBody {
 
     // For each joint, only check against nearby joints from spatial grid
     for (const joint1 of validJoints) {
-      const nearbyJoints = spatialGrid.getNearbyJointsWithBoundingBoxFilter(joint1);
+      const nearbyJoints =
+        spatialGrid.getNearbyJointsWithBoundingBoxFilter(joint1);
 
       for (const joint2 of nearbyJoints) {
         // Create a unique pair identifier to avoid duplicate checks
-        const pairId = joint1.id < joint2.id ? `${joint1.id}-${joint2.id}` : `${joint2.id}-${joint1.id}`;
+        const pairId =
+          joint1.id < joint2.id
+            ? `${joint1.id}-${joint2.id}`
+            : `${joint2.id}-${joint1.id}`;
         if (processedPairs.has(pairId)) {
           continue;
         }
@@ -695,7 +712,7 @@ export class Joints implements Force, RigidBody {
         // Cast back to actual Joint type for intersection test
         const actualJoint1 = joint1 as Joint;
         const actualJoint2 = joint2 as Joint;
-        
+
         if (this.doJointsIntersect(actualJoint1, actualJoint2)) {
           crossings.push({ joint1: actualJoint1, joint2: actualJoint2 });
         }
@@ -737,7 +754,7 @@ export class Joints implements Force, RigidBody {
   ): void {
     // Clear existing joints
     this.joints.clear();
-    
+
     // Invalidate cache since joint structure is being rebuilt
     this.invalidateRigidBodyGroupCache();
 
@@ -783,7 +800,7 @@ export class Joints implements Force, RigidBody {
     }
 
     invalidJoints.forEach((id) => this.joints.delete(id));
-    
+
     // Invalidate cache if any joints were removed
     if (invalidJoints.length > 0) {
       this.invalidateRigidBodyGroupCache();
@@ -908,13 +925,16 @@ export class Joints implements Force, RigidBody {
       const group1 = this.getRigidBodyGroup(joint1.particleA);
       const group2 = this.getRigidBodyGroup(joint2.particleA);
 
-      // Calculate effective masses
+      // Calculate effective masses with minimum total mass to prevent extreme ratios
       const mass1 = this.calculateGroupMass(group1);
       const mass2 = this.calculateGroupMass(group2);
-      const totalMass = mass1 + mass2;
+      const totalMass = Math.max(mass1 + mass2, MIN_COLLISION_MASS * 2);
 
-      // Separation distance based on joint lengths
-      const separationDistance = (joint1.restLength + joint2.restLength) * 0.1;
+      // Separation distance based on joint lengths with minimum to prevent tiny separations
+      const separationDistance = Math.max(
+        (joint1.restLength + joint2.restLength) * 0.1,
+        1.0
+      );
 
       // Apply separation based on inverse mass ratio
       const separation1 = separationVector
@@ -931,10 +951,14 @@ export class Joints implements Force, RigidBody {
   }
 
   /**
-   * Calculate total mass of a rigid body group
+   * Calculate total mass of a rigid body group using clamped masses for stability
    */
   private calculateGroupMass(group: Set<Particle>): number {
-    return calculateTotalMass(group);
+    let totalMass = 0;
+    for (const particle of group) {
+      totalMass += clampMassForCollision(particle.mass);
+    }
+    return totalMass > 0 ? totalMass : MIN_COLLISION_MASS; // Ensure minimum mass
   }
 
   /**
@@ -996,10 +1020,10 @@ export class Joints implements Force, RigidBody {
       separationVector.normalize();
     }
 
-    // Calculate masses
+    // Calculate masses with minimum total mass to prevent extreme ratios
     const mass1 = this.calculateGroupMass(group1);
     const mass2 = this.calculateGroupMass(group2);
-    const totalMass = mass1 + mass2;
+    const totalMass = Math.max(mass1 + mass2, MIN_COLLISION_MASS * 2);
 
     // Apply separation
     const separation1 = separationVector

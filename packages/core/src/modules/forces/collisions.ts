@@ -7,7 +7,7 @@ import { Joints, Joint } from "./joints";
 import { Physics } from "./physics";
 import {
   getClosestPointOnLineSegment,
-  checkLineSegmentIntersection
+  checkLineSegmentIntersection,
 } from "../geometry";
 import { RigidBody } from "../rigid-body";
 
@@ -16,6 +16,18 @@ export const DEFAULT_COLLISIONS_ENABLED = true;
 export const DEFAULT_COLLISIONS_EAT = false;
 export const DEFAULT_COLLISIONS_RESTITUTION = 0.95;
 export const DEFAULT_MOMENTUM_PRESERVATION = 0.7;
+
+// Mass clamping constants to prevent collision instabilities
+const MIN_COLLISION_MASS = 1;
+const MAX_COLLISION_MASS = 10.0;
+
+/**
+ * Clamp mass values for collision calculations to prevent instabilities
+ * while preserving original mass for other physics calculations
+ */
+function clampMassForCollision(mass: number): number {
+  return Math.max(MIN_COLLISION_MASS, Math.min(MAX_COLLISION_MASS, mass));
+}
 
 export type CollisionsEvents = {
   collision: { particle1: Particle; particle2: Particle; enabled: boolean };
@@ -474,18 +486,13 @@ export class Collisions implements Force, RigidBody {
     }
 
     // Check if particle is part of the same rigid body group as either joint particle
-    const isInSameGroupAsA = this.joints?.areInSameRigidBody(
-      particle,
-      joint.particleA
-    ) ?? false;
-    const isInSameGroupAsB = this.joints?.areInSameRigidBody(
-      particle,
-      joint.particleB
-    ) ?? false;
+    const isInSameGroupAsA =
+      this.joints?.areInSameRigidBody(particle, joint.particleA) ?? false;
+    const isInSameGroupAsB =
+      this.joints?.areInSameRigidBody(particle, joint.particleB) ?? false;
 
     return isInSameGroupAsA || isInSameGroupAsB;
   }
-
 
   /**
    * Collision detection for particle-joint interaction with continuous collision detection
@@ -532,21 +539,21 @@ export class Collisions implements Force, RigidBody {
       }
 
       // Check if particle path intersects with joint segment
-      if (checkLineSegmentIntersection(
-        previousPosition,
-        particle.position,
-        joint.particleA.position,
-        joint.particleB.position,
-        radius
-      )) {
+      if (
+        checkLineSegmentIntersection(
+          previousPosition,
+          particle.position,
+          joint.particleA.position,
+          joint.particleB.position,
+          radius
+        )
+      ) {
         return true;
       }
     }
 
     return false;
   }
-
-
 
   /**
    * Handle collision where grabbed particle pushes joint particles away
@@ -716,7 +723,7 @@ export class Collisions implements Force, RigidBody {
         .subtract(joint.particleA.position);
       collisionNormal.x = -lineVector.y;
       collisionNormal.y = lineVector.x;
-      
+
       // Make sure normal points in a consistent direction
       if (collisionNormal.magnitude() === 0) {
         collisionNormal.set(1, 0); // Default direction if line has zero length
@@ -728,11 +735,11 @@ export class Collisions implements Force, RigidBody {
     // STEP 2: POSITION CORRECTION FIRST - Ensure complete separation before velocity response
     const currentDistance = particle.position.distance(closestPoint);
     const overlap = particle.size - currentDistance;
-    
+
     if (overlap > 0) {
       // Calculate impact weights for position correction
       const weights = this.calculateImpactWeights(closestPoint, joint);
-      
+
       // Apply aggressive position correction to guarantee separation
       this.applyEmergencyJointSeparation(
         particle,
@@ -741,14 +748,14 @@ export class Collisions implements Force, RigidBody {
         collisionNormal,
         overlap
       );
-      
+
       // Recalculate closest point and collision normal after position correction
       const newClosestPoint = getClosestPointOnLineSegment(
         particle.position,
         joint.particleA.position,
         joint.particleB.position
       );
-      
+
       collisionNormal = particle.position.clone().subtract(newClosestPoint);
       if (collisionNormal.magnitude() > 0) {
         collisionNormal.normalize();
@@ -762,7 +769,7 @@ export class Collisions implements Force, RigidBody {
     const effectiveJointMass = this.calculateEffectiveJointMass(joint, weights);
 
     // STEP 4: Apply velocity response only after position is corrected
-    
+
     // Calculate relative velocity in collision normal direction
     const relativeVelocity = particle.velocity.dot(collisionNormal);
 
@@ -770,18 +777,20 @@ export class Collisions implements Force, RigidBody {
     if (relativeVelocity > 0) return;
 
     // Calculate collision impulse considering both particle and joint masses
-    const totalMass = particle.mass + effectiveJointMass;
+    // Use clamped masses to prevent instabilities
+    const clampedParticleMass = clampMassForCollision(particle.mass);
+    const totalMass = Math.max(clampedParticleMass + effectiveJointMass, MIN_COLLISION_MASS * 2);
     const impulse =
       (-(1 + this.restitution) *
         relativeVelocity *
-        particle.mass *
+        clampedParticleMass *
         effectiveJointMass) /
       totalMass;
 
     // Apply impulse to hitting particle (reduced by mass ratio)
     const particleImpulse = collisionNormal
       .clone()
-      .multiply(impulse / particle.mass);
+      .multiply(impulse / clampedParticleMass);
     particle.velocity.add(particleImpulse);
 
     // Apply friction to tangential velocity component
@@ -888,15 +897,19 @@ export class Collisions implements Force, RigidBody {
     let effectiveMass = 0;
 
     // Add mass contribution from each joint particle based on impact weights
+    // Use clamped masses to prevent instabilities
     if (!joint.particleA.pinned && !joint.particleA.grabbed) {
-      effectiveMass += joint.particleA.mass * weights.weightA;
+      effectiveMass +=
+        clampMassForCollision(joint.particleA.mass) * weights.weightA;
     }
 
     if (!joint.particleB.pinned && !joint.particleB.grabbed) {
-      effectiveMass += joint.particleB.mass * weights.weightB;
+      effectiveMass +=
+        clampMassForCollision(joint.particleB.mass) * weights.weightB;
     }
 
-    return effectiveMass;
+    // Ensure minimum effective mass for stability even with small weights
+    return Math.max(effectiveMass, MIN_COLLISION_MASS * 0.5);
   }
 
   /**
@@ -916,7 +929,10 @@ export class Collisions implements Force, RigidBody {
     ) {
       const forceA = collisionNormal
         .clone()
-        .multiply((-totalImpulse * weights.weightA) / joint.particleA.mass);
+        .multiply(
+          (-totalImpulse * weights.weightA) /
+            clampMassForCollision(joint.particleA.mass)
+        );
       joint.particleA.velocity.add(forceA);
     }
 
@@ -928,7 +944,10 @@ export class Collisions implements Force, RigidBody {
     ) {
       const forceB = collisionNormal
         .clone()
-        .multiply((-totalImpulse * weights.weightB) / joint.particleB.mass);
+        .multiply(
+          (-totalImpulse * weights.weightB) /
+            clampMassForCollision(joint.particleB.mass)
+        );
       joint.particleB.velocity.add(forceB);
     }
   }
@@ -945,7 +964,8 @@ export class Collisions implements Force, RigidBody {
   ): void {
     // Calculate effective mass of the joint system at impact point
     const effectiveJointMass = this.calculateEffectiveJointMass(joint, weights);
-    const totalMass = particle.mass + effectiveJointMass;
+    const clampedParticleMass = clampMassForCollision(particle.mass);
+    const totalMass = clampedParticleMass + effectiveJointMass;
 
     // Use aggressive separation - minimum separation is 2x particle radius
     const minimumSeparation = Math.max(overlap * 2.0, particle.size * 0.1);
@@ -959,7 +979,7 @@ export class Collisions implements Force, RigidBody {
 
     // Calculate separation ratio based on masses (lighter objects move more)
     const particleSeparationRatio = effectiveJointMass / totalMass;
-    const jointSeparationRatio = particle.mass / totalMass;
+    const jointSeparationRatio = clampedParticleMass / totalMass;
 
     // Move particle away from joint (aggressive separation)
     const particleCorrection = collisionNormal
@@ -1001,7 +1021,7 @@ export class Collisions implements Force, RigidBody {
     collisionNormal: Vector2D
   ): void {
     const velocityTowardJoint = -particle.velocity.dot(collisionNormal);
-    
+
     // If particle is still moving toward joint, force it to move away
     if (velocityTowardJoint > 0) {
       // Remove the component of velocity toward the joint
@@ -1009,7 +1029,7 @@ export class Collisions implements Force, RigidBody {
         .clone()
         .multiply(-velocityTowardJoint);
       particle.velocity.add(velocityTowardJointVector);
-      
+
       // Add minimum bounce velocity away from joint
       const minBounceVelocity = collisionNormal
         .clone()
@@ -1017,7 +1037,6 @@ export class Collisions implements Force, RigidBody {
       particle.velocity.add(minBounceVelocity);
     }
   }
-
 
   /**
    * Apply friction to the tangential velocity component of a particle in joint collision
