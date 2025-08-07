@@ -5,6 +5,11 @@ import { SpatialGrid } from "../spatial-grid";
 import mitt, { Emitter } from "mitt";
 import { Joints, Joint } from "./joints";
 import { Physics } from "./physics";
+import {
+  getClosestPointOnLineSegment,
+  checkLineSegmentIntersection
+} from "../geometry";
+import { RigidBody } from "../rigid-body";
 
 // Default constants for Collisions
 export const DEFAULT_COLLISIONS_ENABLED = true;
@@ -25,7 +30,7 @@ export interface CollisionsOptions {
   physics?: Physics;
 }
 
-export class Collisions implements Force {
+export class Collisions implements Force, RigidBody {
   public enabled: boolean;
   public eat: boolean;
   public restitution: number;
@@ -122,7 +127,7 @@ export class Collisions implements Force {
 
     // Update velocities for constrained particles to match actual movement
     for (const particle of particles) {
-      if (!particle.pinned && this.joints.hasJoint(particle.id)) {
+      if (!particle.pinned && this.joints?.hasJoint(particle.id)) {
         const prePhysicsPosition = prePhysicsPositions.get(particle.id);
         if (prePhysicsPosition) {
           const totalMovement = particle.position
@@ -149,7 +154,7 @@ export class Collisions implements Force {
     }
 
     // Skip collision if particles are part of the same rigid body group
-    if (this.joints && this.joints.areInSameRigidBody(particle1, particle2)) {
+    if (this.joints?.areInSameRigidBody(particle1, particle2)) {
       return;
     }
 
@@ -427,7 +432,7 @@ export class Collisions implements Force {
       // Check collision with joint
       if (this.checkParticleJointCollision(particle, joint)) {
         // Get the closest point on the joint line segment to the particle
-        const closestPoint = this.getClosestPointOnLineSegment(
+        const closestPoint = getClosestPointOnLineSegment(
           particle.position,
           joint.particleA.position,
           joint.particleB.position
@@ -469,52 +474,18 @@ export class Collisions implements Force {
     }
 
     // Check if particle is part of the same rigid body group as either joint particle
-    if (this.joints) {
-      const isInSameGroupAsA = this.joints.areInSameRigidBody(
-        particle,
-        joint.particleA
-      );
-      const isInSameGroupAsB = this.joints.areInSameRigidBody(
-        particle,
-        joint.particleB
-      );
+    const isInSameGroupAsA = this.joints?.areInSameRigidBody(
+      particle,
+      joint.particleA
+    ) ?? false;
+    const isInSameGroupAsB = this.joints?.areInSameRigidBody(
+      particle,
+      joint.particleB
+    ) ?? false;
 
-      return isInSameGroupAsA || isInSameGroupAsB;
-    }
-
-    return false;
+    return isInSameGroupAsA || isInSameGroupAsB;
   }
 
-  /**
-   * Find the closest point on a line segment to a given point
-   */
-  private getClosestPointOnLineSegment(
-    point: Vector2D,
-    lineStart: Vector2D,
-    lineEnd: Vector2D
-  ): Vector2D {
-    // Vector from line start to line end
-    const lineVector = lineEnd.clone().subtract(lineStart);
-
-    // Vector from line start to point
-    const pointVector = point.clone().subtract(lineStart);
-
-    // Project point onto line (parameterized as t)
-    const lineLength = lineVector.magnitude();
-
-    if (lineLength === 0) {
-      // Line has zero length, return the start point
-      return lineStart.clone();
-    }
-
-    const t = pointVector.dot(lineVector) / (lineLength * lineLength);
-
-    // Clamp t to [0, 1] to stay within line segment bounds
-    const clampedT = Math.max(0, Math.min(1, t));
-
-    // Calculate the closest point
-    return lineStart.clone().add(lineVector.multiply(clampedT));
-  }
 
   /**
    * Collision detection for particle-joint interaction with continuous collision detection
@@ -526,7 +497,7 @@ export class Collisions implements Force {
     const radius = particle.size;
 
     // Check current position
-    const currentClosestPoint = this.getClosestPointOnLineSegment(
+    const currentClosestPoint = getClosestPointOnLineSegment(
       particle.position,
       joint.particleA.position,
       joint.particleB.position
@@ -545,7 +516,7 @@ export class Collisions implements Force {
         .clone()
         .subtract(particle.velocity.clone().multiply(1 / 60)); // Assuming 60fps
 
-      const previousClosestPoint = this.getClosestPointOnLineSegment(
+      const previousClosestPoint = getClosestPointOnLineSegment(
         previousPosition,
         joint.particleA.position,
         joint.particleB.position
@@ -561,7 +532,7 @@ export class Collisions implements Force {
       }
 
       // Check if particle path intersects with joint segment
-      if (this.checkLineSegmentIntersection(
+      if (checkLineSegmentIntersection(
         previousPosition,
         particle.position,
         joint.particleA.position,
@@ -575,48 +546,7 @@ export class Collisions implements Force {
     return false;
   }
 
-  /**
-   * Check if a moving particle (represented by a line segment) intersects with a joint segment
-   */
-  private checkLineSegmentIntersection(
-    particleStart: Vector2D,
-    particleEnd: Vector2D,
-    jointStart: Vector2D,
-    jointEnd: Vector2D,
-    particleRadius: number
-  ): boolean {
-    // Calculate the distance between the particle path and joint segment
-    const minDistance = this.getDistanceBetweenLineSegments(
-      particleStart,
-      particleEnd,
-      jointStart,
-      jointEnd
-    );
 
-    return minDistance < particleRadius;
-  }
-
-  /**
-   * Calculate minimum distance between two line segments
-   */
-  private getDistanceBetweenLineSegments(
-    line1Start: Vector2D,
-    line1End: Vector2D,
-    line2Start: Vector2D,
-    line2End: Vector2D
-  ): number {
-    // Check all possible cases: segment to segment, point to segment
-    const distances = [
-      // Distance from line1 endpoints to line2 segment
-      line1Start.distance(this.getClosestPointOnLineSegment(line1Start, line2Start, line2End)),
-      line1End.distance(this.getClosestPointOnLineSegment(line1End, line2Start, line2End)),
-      // Distance from line2 endpoints to line1 segment
-      line2Start.distance(this.getClosestPointOnLineSegment(line2Start, line1Start, line1End)),
-      line2End.distance(this.getClosestPointOnLineSegment(line2End, line1Start, line1End))
-    ];
-
-    return Math.min(...distances);
-  }
 
   /**
    * Handle collision where grabbed particle pushes joint particles away
@@ -813,7 +743,7 @@ export class Collisions implements Force {
       );
       
       // Recalculate closest point and collision normal after position correction
-      const newClosestPoint = this.getClosestPointOnLineSegment(
+      const newClosestPoint = getClosestPointOnLineSegment(
         particle.position,
         joint.particleA.position,
         joint.particleB.position
@@ -1109,6 +1039,22 @@ export class Collisions implements Force {
     // Apply friction to reduce tangential velocity
     const frictionForce = tangentialVelocity.clone().multiply(-friction);
     particle.velocity.add(frictionForce);
+  }
+
+  /**
+   * RigidBody interface implementation
+   * Check if two particles belong to the same rigid body group
+   */
+  areInSameRigidBody(particle1: Particle, particle2: Particle): boolean {
+    return this.joints?.areInSameRigidBody(particle1, particle2) ?? false;
+  }
+
+  /**
+   * RigidBody interface implementation
+   * Check if a particle has any rigid body connections
+   */
+  hasRigidBodyConnections(particleId: number): boolean {
+    return this.joints?.hasJoint(particleId) ?? false;
   }
 }
 

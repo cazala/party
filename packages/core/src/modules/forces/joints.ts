@@ -2,6 +2,26 @@ import { Vector2D } from "../vector";
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
+import {
+  lineSegmentsIntersect,
+  calculateCentroid,
+  calculateTotalMass
+} from "../geometry";
+import { RigidBody } from "../rigid-body";
+
+/**
+ * JOINTS SYSTEM RESPONSIBILITIES:
+ * 
+ * This module handles STRUCTURAL constraints and rigid body mechanics:
+ * - Joint constraint solving (maintaining distance constraints)
+ * - Rigid body group management and queries
+ * - Joint intersection detection and resolution
+ * - Exhaustive constraint solving to prevent structural violations
+ * - Spatial separation of intersecting rigid bodies
+ * 
+ * NOTE: This module does NOT handle dynamic collision physics.
+ * Particle bouncing, momentum transfer, and collision responses are handled by the Collisions module.
+ */
 
 // Default constants for Joints
 export const DEFAULT_JOINTS_ENABLED = true;
@@ -284,11 +304,16 @@ export class Joint {
 }
 
 /**
- * Manages a collection of joints and applies their constraints.
+ * Joint constraint system for structural mechanics.
+ * 
+ * Manages distance constraints between particles and maintains structural integrity.
+ * Provides rigid body services to other modules while keeping structural
+ * constraint solving separate from dynamic collision physics.
+ * 
  * Supports both rigid and elastic joints with configurable stiffness.
  * Joints can break under stress based on configurable tolerance.
  */
-export class Joints implements Force {
+export class Joints implements Force, RigidBody {
   public enabled: boolean;
   public joints: Map<string, Joint> = new Map();
   public enableCollisions: boolean;
@@ -620,7 +645,7 @@ export class Joints implements Force {
     }
 
     // Check if the two line segments intersect
-    return this.lineSegmentsIntersect(
+    return lineSegmentsIntersect(
       joint1.particleA.position,
       joint1.particleB.position,
       joint2.particleA.position,
@@ -628,48 +653,6 @@ export class Joints implements Force {
     );
   }
 
-  /**
-   * Check if two line segments intersect (geometric intersection test)
-   */
-  private lineSegmentsIntersect(
-    p1: Vector2D,
-    q1: Vector2D,
-    p2: Vector2D,
-    q2: Vector2D
-  ): boolean {
-    const orientation = (p: Vector2D, q: Vector2D, r: Vector2D): number => {
-      const val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
-      if (Math.abs(val) < 1e-10) return 0; // Collinear
-      return val > 0 ? 1 : 2; // Clockwise or Counterclockwise
-    };
-
-    const onSegment = (p: Vector2D, q: Vector2D, r: Vector2D): boolean => {
-      return (
-        q.x <= Math.max(p.x, r.x) &&
-        q.x >= Math.min(p.x, r.x) &&
-        q.y <= Math.max(p.y, r.y) &&
-        q.y >= Math.min(p.y, r.y)
-      );
-    };
-
-    const o1 = orientation(p1, q1, p2);
-    const o2 = orientation(p1, q1, q2);
-    const o3 = orientation(p2, q2, p1);
-    const o4 = orientation(p2, q2, q1);
-
-    // General case
-    if (o1 !== o2 && o3 !== o4) {
-      return true;
-    }
-
-    // Special cases (collinear points)
-    if (o1 === 0 && onSegment(p1, p2, q1)) return true;
-    if (o2 === 0 && onSegment(p1, q2, q1)) return true;
-    if (o3 === 0 && onSegment(p2, p1, q2)) return true;
-    if (o4 === 0 && onSegment(p2, q1, q2)) return true;
-
-    return false;
-  }
 
   /**
    * Find all joint crossings in the system using spatial grid optimization
@@ -951,11 +934,7 @@ export class Joints implements Force {
    * Calculate total mass of a rigid body group
    */
   private calculateGroupMass(group: Set<Particle>): number {
-    let totalMass = 0;
-    for (const particle of group) {
-      totalMass += particle.mass;
-    }
-    return totalMass > 0 ? totalMass : 1; // Avoid division by zero
+    return calculateTotalMass(group);
   }
 
   /**
@@ -1038,18 +1017,14 @@ export class Joints implements Force {
    * Calculate the centroid (center of mass) of a rigid body group
    */
   private calculateGroupCentroid(group: Set<Particle>): Vector2D {
-    let totalMass = 0;
-    let weightedPosition = new Vector2D(0, 0);
+    return calculateCentroid(group);
+  }
 
-    for (const particle of group) {
-      weightedPosition.add(particle.position.clone().multiply(particle.mass));
-      totalMass += particle.mass;
-    }
-
-    if (totalMass > 0) {
-      weightedPosition.divide(totalMass);
-    }
-
-    return weightedPosition;
+  /**
+   * RigidBody interface implementation
+   * Check if a particle has any rigid body connections
+   */
+  hasRigidBodyConnections(particleId: number): boolean {
+    return this.hasJoint(particleId);
   }
 }
