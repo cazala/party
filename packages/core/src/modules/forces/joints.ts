@@ -8,6 +8,10 @@ import { lineSegmentsIntersect, calculateCentroid } from "../geometry";
 const MIN_COLLISION_MASS = 2;
 const MAX_COLLISION_MASS = 10.0;
 
+// Joint-joint collision constants (matching particle-joint approach)
+const JOINT_RESTITUTION = 0.5; // Restitution coefficient for joint-joint collisions
+const MAX_POSITION_CHANGE_PER_FRAME = 3.0; // Emergency position change limit
+
 /**
  * Clamp mass values for collision calculations to prevent instabilities
  * while preserving original mass for other physics calculations
@@ -888,7 +892,7 @@ export class Joints implements Force, RigidBody {
   }
 
   /**
-   * Resolve a single joint crossing by moving rigid bodies apart
+   * Resolve a single joint crossing using impulse-based collision response (like particle-joint)
    */
   private resolveSingleJointCrossing(
     joint1: Joint,
@@ -901,50 +905,80 @@ export class Joints implements Force, RigidBody {
         break;
       }
 
-      // Calculate separation vector between the midpoints of the two joints
-      const midpoint1 = new Vector2D(
-        (joint1.particleA.position.x + joint1.particleB.position.x) / 2,
-        (joint1.particleA.position.y + joint1.particleB.position.y) / 2
-      );
-      const midpoint2 = new Vector2D(
-        (joint2.particleA.position.x + joint2.particleB.position.x) / 2,
-        (joint2.particleA.position.y + joint2.particleB.position.y) / 2
-      );
+      // Apply impulse-based collision response between the two joints
+      this.resolveJointJointCollision(joint1, joint2);
+    }
+  }
 
-      let separationVector = midpoint1.clone().subtract(midpoint2);
+  /**
+   * Resolve joint-joint collision using impulse-based response (modeled after particle-joint)
+   */
+  private resolveJointJointCollision(joint1: Joint, joint2: Joint): void {
+    // Calculate midpoints of both joints
+    const midpoint1 = new Vector2D(
+      (joint1.particleA.position.x + joint1.particleB.position.x) / 2,
+      (joint1.particleA.position.y + joint1.particleB.position.y) / 2
+    );
+    const midpoint2 = new Vector2D(
+      (joint2.particleA.position.x + joint2.particleB.position.x) / 2,
+      (joint2.particleA.position.y + joint2.particleB.position.y) / 2
+    );
 
-      // If midpoints are too close, use a random separation direction
-      if (separationVector.magnitude() < 0.001) {
-        const angle = Math.random() * Math.PI * 2;
-        separationVector = new Vector2D(Math.cos(angle), Math.sin(angle));
-      } else {
-        separationVector.normalize();
-      }
+    // Calculate collision normal (from joint2 to joint1)
+    let collisionNormal = midpoint1.clone().subtract(midpoint2);
 
-      // Get rigid body groups for both joints
-      const group1 = this.getRigidBodyGroup(joint1.particleA);
-      const group2 = this.getRigidBodyGroup(joint2.particleA);
+    if (collisionNormal.magnitude() < 0.001) {
+      // If midpoints are too close, use random separation direction
+      const angle = Math.random() * Math.PI * 2;
+      collisionNormal = new Vector2D(Math.cos(angle), Math.sin(angle));
+    } else {
+      collisionNormal.normalize();
+    }
 
-      // Calculate effective masses with minimum total mass to prevent extreme ratios
-      const mass1 = this.calculateGroupMass(group1);
-      const mass2 = this.calculateGroupMass(group2);
-      const totalMass = Math.max(mass1 + mass2, MIN_COLLISION_MASS * 2);
+    // Get rigid body groups
+    const group1 = this.getRigidBodyGroup(joint1.particleA);
+    const group2 = this.getRigidBodyGroup(joint2.particleA);
 
-      // Separation distance based on joint lengths with minimum to prevent tiny separations
-      const separationDistance = Math.max(
-        (joint1.restLength + joint2.restLength) * 0.1,
-        1.0
-      );
+    // Calculate group masses and velocities
+    const mass1 = this.calculateGroupMass(group1);
+    const mass2 = this.calculateGroupMass(group2);
+    const totalMass = Math.max(mass1 + mass2, MIN_COLLISION_MASS * 2);
 
-      // Apply separation based on inverse mass ratio
-      const separation1 = separationVector
+    // Calculate average velocities of both groups
+    const velocity1 = this.calculateGroupVelocity(group1);
+    const velocity2 = this.calculateGroupVelocity(group2);
+
+    // Calculate relative velocity in collision normal direction
+    const relativeVelocity = velocity1
+      .clone()
+      .subtract(velocity2)
+      .dot(collisionNormal);
+
+    // Don't resolve if groups are separating
+    if (relativeVelocity > 0) return;
+
+    // Calculate collision impulse (same formula as particle-joint)
+    const impulse =
+      (-(1 + JOINT_RESTITUTION) * relativeVelocity * mass1 * mass2) / totalMass;
+
+    // Apply impulse to both groups through velocity changes
+    const impulse1 = collisionNormal.clone().multiply(impulse / mass1);
+    const impulse2 = collisionNormal.clone().multiply(-impulse / mass2);
+
+    // Apply velocity changes to all particles in both groups
+    this.applyVelocityToGroup(group1, impulse1);
+    this.applyVelocityToGroup(group2, impulse2);
+
+    // Emergency position separation if still intersecting
+    if (this.doJointsIntersect(joint1, joint2)) {
+      const minSeparation = (joint1.restLength + joint2.restLength) * 0.1;
+      const separation1 = collisionNormal
         .clone()
-        .multiply(separationDistance * (mass2 / totalMass));
-      const separation2 = separationVector
+        .multiply(minSeparation * (mass2 / totalMass));
+      const separation2 = collisionNormal
         .clone()
-        .multiply(-separationDistance * (mass1 / totalMass));
+        .multiply(-minSeparation * (mass1 / totalMass));
 
-      // Move rigid body groups
       this.moveRigidBodyGroup(group1, separation1);
       this.moveRigidBodyGroup(group2, separation2);
     }
@@ -962,12 +996,50 @@ export class Joints implements Force, RigidBody {
   }
 
   /**
-   * Move an entire rigid body group by a displacement vector
+   * Calculate average velocity of a rigid body group
+   */
+  private calculateGroupVelocity(group: Set<Particle>): Vector2D {
+    if (group.size === 0) return new Vector2D(0, 0);
+
+    let totalVelocity = new Vector2D(0, 0);
+    let totalMass = 0;
+
+    for (const particle of group) {
+      const mass = clampMassForCollision(particle.mass);
+      totalVelocity.add(particle.velocity.clone().multiply(mass));
+      totalMass += mass;
+    }
+
+    return totalMass > 0 ? totalVelocity.divide(totalMass) : new Vector2D(0, 0);
+  }
+
+  /**
+   * Apply velocity change to all particles in a rigid body group
+   */
+  private applyVelocityToGroup(
+    group: Set<Particle>,
+    velocityChange: Vector2D
+  ): void {
+    for (const particle of group) {
+      if (!particle.pinned && !particle.grabbed) {
+        particle.velocity.add(velocityChange);
+      }
+    }
+  }
+
+  /**
+   * Move an entire rigid body group by a displacement vector with clamped maximum change
    */
   private moveRigidBodyGroup(
     group: Set<Particle>,
     displacement: Vector2D
   ): void {
+    // Clamp displacement magnitude to prevent violent movements (emergency only)
+    const displacementMagnitude = displacement.magnitude();
+    if (displacementMagnitude > MAX_POSITION_CHANGE_PER_FRAME) {
+      displacement.normalize().multiply(MAX_POSITION_CHANGE_PER_FRAME);
+    }
+
     for (const particle of group) {
       if (!particle.pinned && !particle.grabbed) {
         particle.position.add(displacement);
