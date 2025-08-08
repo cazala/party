@@ -851,6 +851,44 @@ export function useInteractions({
     [findParticleAtPosition]
   );
 
+  /**
+   * Handle grab-to-joint transition - switch to joint mode with grabbed particle as selected
+   */
+  const handleGrabToJoint = useCallback(() => {
+    const mouseState = mouseStateRef.current;
+    
+    if (!mouseState.isGrabbing || !mouseState.grabbedParticle) {
+      return false; // No particle being grabbed
+    }
+
+    // Set the grabbed particle as the selected particle for joint creation
+    mouseState.selectedParticle = mouseState.grabbedParticle;
+    mouseState.isCreatingJoint = true;
+
+    // Release the grab state
+    mouseState.grabbedParticle.grabbed = false;
+    mouseState.grabbedParticle = null;
+    mouseState.isGrabbing = false;
+
+    // Update cursor state for styling
+    setCurrentlyGrabbedParticle(null);
+
+    // Reset grab-related state
+    mouseState.grabOffset = { x: 0, y: 0 };
+    mouseState.grabPreviousPos = { x: 0, y: 0 };
+    mouseState.grabLastMoveTime = 0;
+    mouseState.grabVelocity = { x: 0, y: 0 };
+
+    // Update visual feedback
+    const renderer = getRenderer();
+    if (renderer && mouseState.selectedParticle) {
+      renderer.setSelectedParticle(mouseState.selectedParticle);
+      renderer.setHighlightedParticle(null); // Clear any existing highlight
+    }
+
+    return true; // Successfully switched to joint mode
+  }, [getRenderer]);
+
   // Helper function to update velocity preview
   const updateVelocityPreview = useCallback(() => {
     const mouseState = mouseStateRef.current;
@@ -1951,5 +1989,6 @@ export function useInteractions({
     cleanup,
     setupKeyboardListeners,
     currentlyGrabbedParticle,
+    handleGrabToJoint,
   };
 }

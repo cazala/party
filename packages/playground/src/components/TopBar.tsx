@@ -27,6 +27,8 @@ interface TopBarProps {
   onToolModeChange?: (mode: ToolMode) => void;
   onToggleFullscreen?: () => void;
   style?: React.CSSProperties;
+  currentlyGrabbedParticle?: any;
+  onGrabToJoint?: () => boolean;
 }
 
 export function TopBar({
@@ -42,6 +44,8 @@ export function TopBar({
   onToolModeChange,
   onToggleFullscreen,
   style,
+  currentlyGrabbedParticle,
+  onGrabToJoint,
 }: TopBarProps) {
   const [isPlaying, setIsPlaying] = useState(true);
 
@@ -72,7 +76,15 @@ export function TopBar({
             break;
           case "s":
             e.preventDefault();
-            onToolModeChange("joint");
+            // Special handling for CMD+S during grab: switch to joint mode with grabbed particle
+            if (currentlyGrabbedParticle && onGrabToJoint) {
+              const success = onGrabToJoint();
+              if (success) {
+                onToolModeChange("joint");
+              }
+            } else {
+              onToolModeChange("joint");
+            }
             break;
           case "d":
             e.preventDefault();
@@ -91,7 +103,7 @@ export function TopBar({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onToolModeChange]);
+  }, [onToolModeChange, currentlyGrabbedParticle, onGrabToJoint]);
 
   const handlePlayPause = () => {
     if (isPlaying) {
