@@ -6,10 +6,10 @@ import { lineSegmentsIntersect, calculateCentroid } from "../geometry";
 
 // Mass clamping constants to prevent collision instabilities (same as collisions.ts)
 const MIN_COLLISION_MASS = 2;
-const MAX_COLLISION_MASS = 10.0;
+const MAX_COLLISION_MASS = 5.0;
 
 // Joint-joint collision constants (matching particle-joint approach)
-const JOINT_RESTITUTION = 0.5; // Restitution coefficient for joint-joint collisions
+const JOINT_RESTITUTION = 0.1; // Restitution coefficient for joint-joint collisions
 const MAX_POSITION_CHANGE_PER_FRAME = 3.0; // Emergency position change limit
 
 /**
