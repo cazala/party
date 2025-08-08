@@ -63,7 +63,6 @@ import {
 import {
   Joints,
   DEFAULT_JOINTS_ENABLED,
-  DEFAULT_JOINT_STIFFNESS,
   DEFAULT_JOINT_TOLERANCE,
 } from "./forces/joints";
 
@@ -682,7 +681,6 @@ export class System {
       } else if (force instanceof Joints) {
         config.joints = {
           enabled: force.enabled,
-          stiffness: force.getGlobalStiffness(),
           tolerance: force.getGlobalTolerance(),
           enableCollisions: force.enableCollisions,
         };
@@ -801,9 +799,6 @@ export class System {
         force.setFleeAngle(config.sensors.fleeAngle ?? DEFAULT_FLEE_ANGLE);
       } else if (force instanceof Joints && config.joints) {
         force.setEnabled(config.joints.enabled ?? DEFAULT_JOINTS_ENABLED);
-        force.setGlobalStiffness(
-          config.joints.stiffness ?? DEFAULT_JOINT_STIFFNESS
-        );
         force.setGlobalTolerance(
           config.joints.tolerance ?? DEFAULT_JOINT_TOLERANCE
         );

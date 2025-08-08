@@ -38,7 +38,6 @@ import { RigidBody } from "../rigid-body";
 // Default constants for Joints
 export const DEFAULT_JOINTS_ENABLED = true;
 export const DEFAULT_JOINT_COLLISIONS_ENABLED = true;
-export const DEFAULT_JOINT_STIFFNESS = 1.0;
 export const DEFAULT_JOINT_TOLERANCE = 1.0;
 
 export interface JointOptions {
@@ -46,8 +45,6 @@ export interface JointOptions {
   particleB: Particle;
   /** Optional custom rest length. If not provided, uses current distance between particles */
   restLength?: number;
-  /** Joint stiffness (0.0 = elastic, 1.0 = rigid). Defaults to DEFAULT_JOINT_STIFFNESS */
-  stiffness?: number;
   /** Joint tolerance (0.0 = break easily, 1.0 = never break). Defaults to DEFAULT_JOINT_TOLERANCE */
   tolerance?: number;
   /** Optional custom joint ID. If not provided, generates unique ID */
@@ -69,7 +66,6 @@ export class Joint {
   public particleA: Particle;
   public particleB: Particle;
   public restLength: number;
-  public stiffness: number;
   public tolerance: number;
   public isValid: boolean = true;
   private isBroken: boolean = false;
@@ -80,7 +76,6 @@ export class Joint {
       `joint_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     this.particleA = options.particleA;
     this.particleB = options.particleB;
-    this.stiffness = options.stiffness ?? DEFAULT_JOINT_STIFFNESS;
     this.tolerance = options.tolerance ?? DEFAULT_JOINT_TOLERANCE;
 
     // Calculate rest length as current distance if not provided
@@ -111,13 +106,11 @@ export class Joint {
 
   /**
    * Apply joint constraint forces to the connected particles.
-   * Uses stiffness parameter to control elasticity (1.0 = rigid, 0.0 = no constraint).
    * Joints break when stress exceeds tolerance (1.0 = never break, 0.0 = break easily).
    */
   applyConstraint(): void {
     if (!this.validate()) return;
 
-    if (this.stiffness === 0) return;
 
     // Check stress-based breaking before applying constraint
     if (this.tolerance < 1.0) {
@@ -151,7 +144,7 @@ export class Joint {
   }
 
   /**
-   * Apply joint constraint by adjusting particle positions based on stiffness
+   * Apply joint constraint by adjusting particle positions
    */
   private applyJointConstraint(
     currentDistance: number,
@@ -163,8 +156,8 @@ export class Joint {
     // If already at correct distance, do nothing
     if (Math.abs(displacement) < 0.001) return;
 
-    // Calculate correction needed based on stiffness
-    const correction = displacement * this.stiffness * 0.5; // Split correction between both particles
+    // Calculate correction needed - fully rigid joints
+    const correction = displacement * 0.5; // Split correction between both particles
 
     // Calculate position adjustments
     const correctionX = correction * directionX;
@@ -204,7 +197,7 @@ export class Joint {
         this.particleB.position.y - this.restLength * directionY;
     }
 
-    // Joints maintain distance constraint based on stiffness (1.0 = rigid, 0.0 = no constraint)
+    // Joints maintain rigid distance constraints
   }
 
   /**
@@ -245,7 +238,6 @@ export class Joint {
     particleAId: number;
     particleBId: number;
     restLength: number;
-    stiffness: number;
     tolerance: number;
     isBroken: boolean;
   } {
@@ -254,7 +246,6 @@ export class Joint {
       particleAId: this.particleA.id,
       particleBId: this.particleB.id,
       restLength: this.restLength,
-      stiffness: this.stiffness,
       tolerance: this.tolerance,
       isBroken: this.isBroken,
     };
@@ -269,7 +260,6 @@ export class Joint {
       particleAId: number;
       particleBId: number;
       restLength: number;
-      stiffness: number;
       tolerance: number;
       isBroken: boolean;
     },
@@ -281,7 +271,6 @@ export class Joint {
       particleA,
       particleB,
       restLength: data.restLength,
-      stiffness: data.stiffness,
       tolerance: data.tolerance,
     });
 
@@ -302,7 +291,6 @@ export class Joint {
       particleA: this.particleA,
       particleB: this.particleB,
       restLength: this.restLength,
-      stiffness: this.stiffness,
       tolerance: this.tolerance,
       id: this.id,
     });
@@ -329,7 +317,6 @@ export class Joints implements Force, RigidBody {
   public enabled: boolean;
   public joints: Map<string, Joint> = new Map();
   public enableCollisions: boolean;
-  private globalStiffness: number = DEFAULT_JOINT_STIFFNESS;
   private globalTolerance: number = DEFAULT_JOINT_TOLERANCE;
 
   // Track grabbed particles and their previous positions for velocity calculation
@@ -354,23 +341,6 @@ export class Joints implements Force, RigidBody {
     this.enableCollisions = enableCollisions;
   }
 
-  /**
-   * Set global stiffness for all existing joints
-   */
-  setGlobalStiffness(stiffness: number): void {
-    this.globalStiffness = Math.max(0, Math.min(1, stiffness)); // Clamp between 0 and 1
-    // Apply to all existing joints
-    for (const joint of this.joints.values()) {
-      joint.stiffness = this.globalStiffness;
-    }
-  }
-
-  /**
-   * Get current global stiffness setting
-   */
-  getGlobalStiffness(): number {
-    return this.globalStiffness;
-  }
 
   /**
    * Set global tolerance for all existing joints (0.0 = break easily, 1.0 = never break)
@@ -394,10 +364,9 @@ export class Joints implements Force, RigidBody {
    * Create a new joint between two particles
    */
   createJoint(options: JointOptions): Joint {
-    // Use global stiffness and tolerance if not specified in options
+    // Use global tolerance if not specified in options
     const jointOptions = {
       ...options,
-      stiffness: options.stiffness ?? this.globalStiffness,
       tolerance: options.tolerance ?? this.globalTolerance,
     };
     const joint = new Joint(jointOptions);
@@ -526,8 +495,7 @@ export class Joints implements Force, RigidBody {
    * Results are cached for performance.
    */
   getRigidBodyGroup(
-    particle: Particle,
-    rigidityThreshold: number = 0.8
+    particle: Particle
   ): Set<Particle> {
     // Check cache invalidation
     if (this.shouldInvalidateCache()) {
@@ -559,8 +527,8 @@ export class Joints implements Force, RigidBody {
       const connectedJoints = this.getJointsForParticle(currentParticle);
 
       for (const joint of connectedJoints) {
-        // Only consider joints that are rigid enough to be part of a rigid body
-        if (joint.stiffness >= rigidityThreshold && joint.isValid) {
+        // Only consider valid joints for rigid body connections
+        if (joint.isValid) {
           const otherParticle =
             joint.particleA.id === currentParticle.id
               ? joint.particleB
@@ -586,13 +554,12 @@ export class Joints implements Force, RigidBody {
    */
   areInSameRigidBody(
     particle1: Particle,
-    particle2: Particle,
-    rigidityThreshold: number = 0.8
+    particle2: Particle
   ): boolean {
-    // Quick check: if particles are directly connected by a rigid joint
+    // Quick check: if particles are directly connected by a joint
     const directJoints = this.getJointsForParticle(particle1);
     for (const joint of directJoints) {
-      if (joint.stiffness >= rigidityThreshold && joint.isValid) {
+      if (joint.isValid) {
         const otherParticle =
           joint.particleA.id === particle1.id
             ? joint.particleB
@@ -604,21 +571,21 @@ export class Joints implements Force, RigidBody {
     }
 
     // If not directly connected, check if they're in the same rigid body group
-    const group1 = this.getRigidBodyGroup(particle1, rigidityThreshold);
+    const group1 = this.getRigidBodyGroup(particle1);
     return group1.has(particle2);
   }
 
   /**
    * Get all rigid body groups in the current joint system
    */
-  getAllRigidBodyGroups(rigidityThreshold: number = 0.8): Set<Particle>[] {
+  getAllRigidBodyGroups(): Set<Particle>[] {
     const allGroups: Set<Particle>[] = [];
     const processedParticles = new Set<number>();
 
     // Get all unique particles from joints
     const allParticles = new Set<Particle>();
     for (const joint of this.joints.values()) {
-      if (joint.isValid && joint.stiffness >= rigidityThreshold) {
+      if (joint.isValid) {
         allParticles.add(joint.particleA);
         allParticles.add(joint.particleB);
       }
@@ -627,7 +594,7 @@ export class Joints implements Force, RigidBody {
     // Find rigid body groups for each unprocessed particle
     for (const particle of allParticles) {
       if (!processedParticles.has(particle.id)) {
-        const group = this.getRigidBodyGroup(particle, rigidityThreshold);
+        const group = this.getRigidBodyGroup(particle);
 
         // Mark all particles in this group as processed
         for (const groupParticle of group) {
@@ -734,7 +701,6 @@ export class Joints implements Force, RigidBody {
     particleAId: number;
     particleBId: number;
     restLength: number;
-    stiffness: number;
     tolerance: number;
     isBroken: boolean;
   }> {
@@ -750,7 +716,6 @@ export class Joints implements Force, RigidBody {
       particleAId: number;
       particleBId: number;
       restLength: number;
-      stiffness: number;
       tolerance: number;
       isBroken: boolean;
     }>,
@@ -842,7 +807,7 @@ export class Joints implements Force, RigidBody {
       // Step 1: Apply standard joint constraints
       let hasConstraintViolations = false;
       for (const joint of this.joints.values()) {
-        if (joint.isValid && joint.stiffness > 0) {
+        if (joint.isValid) {
           joint.applyConstraint();
           const finalDistance = joint.getCurrentLength();
 

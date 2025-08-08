@@ -130,8 +130,7 @@ export class Collisions implements Force, RigidBody {
   ): void {
     if (
       !this.joints ||
-      deltaTime <= 0 ||
-      this.joints.getGlobalStiffness() === 0
+      deltaTime <= 0
     )
       return;
 

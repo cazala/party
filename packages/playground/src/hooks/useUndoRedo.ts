@@ -56,7 +56,6 @@ export interface SerializedJoint {
   particleAId: number;
   particleBId: number;
   restLength: number;
-  stiffness: number;
   tolerance: number;
   isBroken: boolean;
 }
@@ -201,7 +200,6 @@ export function useUndoRedo(
       particleAId: joint.particleA.id,
       particleBId: joint.particleB.id,
       restLength: joint.restLength,
-      stiffness: joint.stiffness,
       tolerance: joint.tolerance,
       isBroken: joint.isBrokenByStress(),
     };
@@ -226,7 +224,6 @@ export function useUndoRedo(
         particleA,
         particleB,
         restLength: serialized.restLength,
-        stiffness: serialized.stiffness,
         tolerance: serialized.tolerance,
       });
       
