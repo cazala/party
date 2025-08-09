@@ -217,7 +217,12 @@ export function usePlayground(
   });
 
   // Extract interaction state and handlers for tool switching
-  const { currentlyGrabbedParticle, handleGrabToJoint, handleJointToSpawn, isCreatingJoint } = interactions;
+  const {
+    currentlyGrabbedParticle,
+    handleGrabToJoint,
+    handleJointToSpawn,
+    isCreatingJoint,
+  } = interactions;
 
   // Attach / detach low-level DOM listeners once – they call back into the
   // `spawner` helpers defined above.
@@ -277,7 +282,7 @@ export function usePlayground(
     const bounds = new Bounds({ physics: physics });
     boundsRef.current = bounds;
 
-    const behavior = new Behavior({ enabled: true }); // Playground default: on
+    const behavior = new Behavior({ enabled: false }); // Playground default: on
     behaviorRef.current = behavior;
 
     const joints = new Joints({ enabled: true }); // Playground default: on

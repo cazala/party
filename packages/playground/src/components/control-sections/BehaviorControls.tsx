@@ -17,7 +17,7 @@ interface BehaviorControlsProps {
 }
 
 export function BehaviorControls({ behavior }: BehaviorControlsProps) {
-  const [behaviorEnabled, setBehaviorEnabled] = useState(true); // Playground default: on
+  const [behaviorEnabled, setBehaviorEnabled] = useState(false); // Playground default: off
   const [wanderWeight, setWanderWeight] = useState(
     DEFAULT_BEHAVIOR_WANDER_WEIGHT
   );
@@ -105,7 +105,7 @@ export function BehaviorControls({ behavior }: BehaviorControlsProps) {
 
   return (
     <div className="control-section">
-      {/* <div className="control-group">
+      <div className="control-group">
         <label>
           <input
             type="checkbox"
@@ -113,9 +113,9 @@ export function BehaviorControls({ behavior }: BehaviorControlsProps) {
             onChange={(e) => handleBehaviorChange("enabled", e.target.checked)}
             className="checkbox"
           />
-          Enable
+          Enable Behavior
         </label>
-      </div> */}
+      </div>
 
       <div className="control-group">
         <label>
