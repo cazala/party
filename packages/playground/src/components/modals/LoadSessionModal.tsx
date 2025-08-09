@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SpatialGrid, Bounds, Canvas2DRenderer, System } from "@cazala/party";
+import { SpatialGrid, Boundary, Canvas2DRenderer, System } from "@cazala/party";
 import { SessionManager } from "../../utils/SessionManager";
 import { SessionMetadata } from "../../types/session";
 import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
@@ -11,7 +11,7 @@ interface LoadSessionModalProps {
   onClose: () => void;
   system: System | null;
   renderer?: Canvas2DRenderer;
-  bounds?: Bounds;
+  boundary?: Boundary;
   spatialGrid?: SpatialGrid;
   zoomStateRef?: any;
   undoRedo?: UseUndoRedoReturn;
@@ -24,7 +24,7 @@ export function LoadSessionModal({
   onClose,
   system,
   renderer,
-  bounds,
+  boundary,
   spatialGrid,
   zoomStateRef,
   undoRedo,
@@ -116,7 +116,7 @@ export function LoadSessionModal({
         system,
         sessionName,
         renderer,
-        bounds,
+        boundary,
         spatialGrid,
         zoomStateRef,
         undoRedo,

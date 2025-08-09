@@ -5,7 +5,7 @@ import {
   Particle,
   System,
   Vector2D,
-  Bounds,
+  Boundary,
   Behavior,
   Collisions,
   Fluid,
@@ -50,7 +50,7 @@ export function usePlayground(
   // Individual force/utility refs – kept outside of React state because the
   // physics engine mutates them on every tick.
   const physicsRef = useRef<Physics | null>(null);
-  const boundsRef = useRef<Bounds | null>(null);
+  const boundsRef = useRef<Boundary | null>(null);
   const behaviorRef = useRef<Behavior | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
   const fluidRef = useRef<Fluid | null>(null);
@@ -86,11 +86,11 @@ export function usePlayground(
 
   const animateZoom = useCallback(() => {
     const renderer = rendererRef.current;
-    const bounds = boundsRef.current;
+    const boundary = boundsRef.current;
     const spatialGrid = spatialGridRef.current;
     const zoomState = zoomStateRef.current;
 
-    if (!renderer || !bounds || !spatialGrid) return;
+    if (!renderer || !boundary || !spatialGrid) return;
 
     const currentZoom = renderer.getZoom();
     const camera = renderer.getCamera();
@@ -111,7 +111,7 @@ export function usePlayground(
       // Animation complete - set exact target values
       renderer.setZoom(zoomState.targetZoom);
       renderer.setCamera(zoomState.targetCameraX, zoomState.targetCameraY);
-      bounds.setCamera(
+      boundary.setCamera(
         zoomState.targetCameraX,
         zoomState.targetCameraY,
         zoomState.targetZoom
@@ -137,7 +137,7 @@ export function usePlayground(
 
     renderer.setZoom(newZoom);
     renderer.setCamera(newCameraX, newCameraY);
-    bounds.setCamera(newCameraX, newCameraY, newZoom);
+    boundary.setCamera(newCameraX, newCameraY, newZoom);
     spatialGrid.setCamera(newCameraX, newCameraY, newZoom);
 
     // Continue animation
@@ -279,8 +279,8 @@ export function usePlayground(
     });
     physicsRef.current = physics;
 
-    const bounds = new Bounds({ physics: physics });
-    boundsRef.current = bounds;
+    const boundary = new Boundary({ physics: physics });
+    boundsRef.current = boundary;
 
     const behavior = new Behavior({ enabled: false }); // Playground default: on
     behaviorRef.current = behavior;
@@ -318,7 +318,7 @@ export function usePlayground(
     sensors.setRenderer(renderer);
 
     system.addForce(physics);
-    system.addForce(bounds);
+    system.addForce(boundary);
     system.addForce(behavior);
     system.addForce(collisions);
     system.addForce(fluid);
@@ -330,8 +330,8 @@ export function usePlayground(
       renderer.render(system);
     });
 
-    // Initialize bounds with initial camera position and zoom
-    bounds.setCamera(0, 0, 1);
+    // Initialize boundary with initial camera position and zoom
+    boundary.setCamera(0, 0, 1);
 
     system.play();
 
@@ -606,7 +606,7 @@ export function usePlayground(
     // Live engine handles ------------------------------------------------------
     system: systemRef.current,
     physics: physicsRef.current,
-    bounds: boundsRef.current,
+    boundary: boundsRef.current,
     behavior: behaviorRef.current,
     collisions: collisionsRef.current,
     fluid: fluidRef.current,

@@ -31,7 +31,7 @@ function App() {
   const {
     system,
     physics,
-    bounds,
+    boundary,
     behavior,
     collisions,
     fluid,
@@ -57,7 +57,7 @@ function App() {
   const { isFullscreen, toggleFullscreen } = useFullscreen({
     system: system || undefined,
     renderer: renderer || undefined,
-    bounds: bounds || undefined,
+    boundary: boundary || undefined,
     spatialGrid: spatialGrid || undefined,
     zoomStateRef,
   });
@@ -67,7 +67,7 @@ function App() {
     if (
       !system ||
       !physics ||
-      !bounds ||
+      !boundary ||
       !behavior ||
       !collisions ||
       !fluid ||
@@ -86,7 +86,7 @@ function App() {
   }, [
     system,
     physics,
-    bounds,
+    boundary,
     behavior,
     collisions,
     fluid,
@@ -223,7 +223,7 @@ function App() {
             system={system}
             physics={physics}
             behavior={behavior}
-            bounds={bounds}
+            boundary={boundary}
             collisions={collisions}
             fluid={fluid}
             sensors={sensors}
@@ -255,7 +255,7 @@ function App() {
         onClose={() => setIsLoadModalOpen(false)}
         system={system}
         renderer={renderer!}
-        bounds={bounds!}
+        boundary={boundary!}
         spatialGrid={spatialGrid!}
         zoomStateRef={zoomStateRef}
         undoRedo={undoRedo}

@@ -4,39 +4,39 @@ import { SpatialGrid } from "../spatial-grid";
 import { Vector2D } from "../vector";
 import { Physics } from "./physics";
 
-// Default constants for Bounds behavior
-export const DEFAULT_BOUNDS_BOUNCE = 0.4;
-export const DEFAULT_BOUNDS_MIN_BOUNCE_VELOCITY = 50; // Below this speed, bounce is reduced further
-export const DEFAULT_BOUNDS_REPEL_DISTANCE = 0; // No repel distance by default
-export const DEFAULT_BOUNDS_REPEL_STRENGTH = 0; // No repel strength by default
-export const DEFAULT_BOUNDS_MODE = "bounce"; // Default boundary mode
+// Default constants for Boundary behavior
+export const DEFAULT_BOUNDARY_BOUNCE = 0.4;
+export const DEFAULT_BOUNDARY_MIN_BOUNCE_VELOCITY = 50; // Below this speed, bounce is reduced further
+export const DEFAULT_BOUNDARY_REPEL_DISTANCE = 0; // No repel distance by default
+export const DEFAULT_BOUNDARY_REPEL_STRENGTH = 0; // No repel strength by default
+export const DEFAULT_BOUNDARY_MODE = "bounce"; // Default boundary mode
 
-export type BoundsMode = "bounce" | "kill" | "warp";
+export type BoundaryMode = "bounce" | "kill" | "warp";
 
-export interface BoundingBoxOptions {
+export interface BoundaryOptions {
   bounce?: number;
   minBounceVelocity?: number;
   repelDistance?: number;
   repelStrength?: number;
-  mode?: BoundsMode;
+  mode?: BoundaryMode;
   physics?: Physics; // Reference to physics module for friction
 }
 
-export class Bounds implements Force {
+export class Boundary implements Force {
   public bounce: number;
   public repelDistance: number;
   public repelStrength: number;
-  public mode: BoundsMode;
+  public mode: BoundaryMode;
   private cameraX: number = 0;
   private cameraY: number = 0;
   private zoom: number = 1;
   private physics?: Physics;
 
-  constructor(options: BoundingBoxOptions = {}) {
-    this.bounce = options.bounce || DEFAULT_BOUNDS_BOUNCE;
-    this.repelDistance = options.repelDistance || DEFAULT_BOUNDS_REPEL_DISTANCE;
-    this.repelStrength = options.repelStrength || DEFAULT_BOUNDS_REPEL_STRENGTH;
-    this.mode = options.mode || DEFAULT_BOUNDS_MODE;
+  constructor(options: BoundaryOptions = {}) {
+    this.bounce = options.bounce || DEFAULT_BOUNDARY_BOUNCE;
+    this.repelDistance = options.repelDistance || DEFAULT_BOUNDARY_REPEL_DISTANCE;
+    this.repelStrength = options.repelStrength || DEFAULT_BOUNDARY_REPEL_STRENGTH;
+    this.mode = options.mode || DEFAULT_BOUNDARY_MODE;
     this.physics = options.physics;
   }
 
@@ -58,7 +58,7 @@ export class Bounds implements Force {
     this.repelStrength = strength;
   }
 
-  setMode(mode: BoundsMode): void {
+  setMode(mode: BoundaryMode): void {
     this.mode = mode;
   }
 

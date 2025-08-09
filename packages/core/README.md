@@ -22,7 +22,7 @@ npm install @cazala/party
 ## Quick Start
 
 ```typescript
-import { System, Particle, Vector2D, Physics, Bounds } from "@cazala/party";
+import { System, Particle, Vector2D, Physics, Boundary } from "@cazala/party";
 
 // Create a particle system
 const system = new System({ width: 800, height: 600 });
@@ -53,7 +53,7 @@ system.addForce(
 
 // Add boundary constraints
 system.addForce(
-  new Bounds({
+  new Boundary({
     mode: "bounce",
     bounce: 0.8,
     friction: 0.1,
@@ -151,14 +151,14 @@ const physics = new Physics({
 });
 ```
 
-### Bounds
+### Boundary
 
 Boundary interactions for keeping particles within limits:
 
 ```typescript
-import { Bounds } from "@cazala/party";
+import { Boundary } from "@cazala/party";
 
-const bounds = new Bounds({
+const boundary = new Boundary({
   mode: "bounce", // 'bounce', 'kill', or 'warp'
   bounce: 0.8, // Energy retention on bounce
   repelDistance: 50, // Distance to start repel force

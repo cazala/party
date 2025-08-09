@@ -1,60 +1,60 @@
 import { useState, useEffect } from "react";
-import { Bounds, BoundsMode } from "@cazala/party";
+import { Boundary, BoundaryMode } from "@cazala/party";
 import {
-  DEFAULT_BOUNDS_BOUNCE,
-  DEFAULT_BOUNDS_REPEL_DISTANCE,
-  DEFAULT_BOUNDS_REPEL_STRENGTH,
-  DEFAULT_BOUNDS_MODE,
-} from "@cazala/party/modules/forces/bounds";
+  DEFAULT_BOUNDARY_BOUNCE,
+  DEFAULT_BOUNDARY_REPEL_DISTANCE,
+  DEFAULT_BOUNDARY_REPEL_STRENGTH,
+  DEFAULT_BOUNDARY_MODE,
+} from "@cazala/party/modules/forces/boundary";
 
-interface BoundsControlsProps {
-  bounds: Bounds | null;
+interface BoundaryControlsProps {
+  boundary: Boundary | null;
 }
 
-export function BoundsControls({ bounds }: BoundsControlsProps) {
-  const [bounce, setBounce] = useState(DEFAULT_BOUNDS_BOUNCE);
+export function BoundaryControls({ boundary }: BoundaryControlsProps) {
+  const [bounce, setBounce] = useState(DEFAULT_BOUNDARY_BOUNCE);
   const [repelDistance, setRepelDistance] = useState(
-    DEFAULT_BOUNDS_REPEL_DISTANCE
+    DEFAULT_BOUNDARY_REPEL_DISTANCE
   );
   const [repelStrength, setRepelStrength] = useState(
-    DEFAULT_BOUNDS_REPEL_STRENGTH
+    DEFAULT_BOUNDARY_REPEL_STRENGTH
   );
-  const [mode, setMode] = useState<BoundsMode>(DEFAULT_BOUNDS_MODE);
+  const [mode, setMode] = useState<BoundaryMode>(DEFAULT_BOUNDARY_MODE);
 
   useEffect(() => {
-    if (bounds) {
-      setBounce(bounds.bounce);
-      setRepelDistance(bounds.repelDistance);
-      setRepelStrength(bounds.repelStrength);
-      setMode(bounds.mode);
+    if (boundary) {
+      setBounce(boundary.bounce);
+      setRepelDistance(boundary.repelDistance);
+      setRepelStrength(boundary.repelStrength);
+      setMode(boundary.mode);
     }
-  }, [bounds]);
+  }, [boundary]);
 
   const handleBounceChange = (value: number) => {
     setBounce(value);
-    if (bounds) {
-      bounds.bounce = value;
+    if (boundary) {
+      boundary.bounce = value;
     }
   };
 
   const handleRepelDistanceChange = (value: number) => {
     setRepelDistance(value);
-    if (bounds) {
-      bounds.setRepelDistance(value);
+    if (boundary) {
+      boundary.setRepelDistance(value);
     }
   };
 
   const handleRepelStrengthChange = (value: number) => {
     setRepelStrength(value);
-    if (bounds) {
-      bounds.setRepelStrength(value);
+    if (boundary) {
+      boundary.setRepelStrength(value);
     }
   };
 
-  const handleModeChange = (newMode: BoundsMode) => {
+  const handleModeChange = (newMode: BoundaryMode) => {
     setMode(newMode);
-    if (bounds) {
-      bounds.setMode(newMode);
+    if (boundary) {
+      boundary.setMode(newMode);
     }
   };
 
@@ -65,7 +65,7 @@ export function BoundsControls({ bounds }: BoundsControlsProps) {
           Mode
           <select
             value={mode}
-            onChange={(e) => handleModeChange(e.target.value as BoundsMode)}
+            onChange={(e) => handleModeChange(e.target.value as BoundaryMode)}
             className="form-select"
           >
             <option value="bounce">Bounce</option>

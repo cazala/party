@@ -5,7 +5,7 @@ import {
   SerializedJoint,
   SessionMetadata,
 } from "../types/session";
-import { Bounds } from "@cazala/party";
+import { Boundary } from "@cazala/party";
 import { SpatialGrid } from "@cazala/party";
 import { UseUndoRedoReturn } from "../hooks/useUndoRedo";
 import { getViewportWorldBounds, calculateCameraToShowWorldBounds, applyCameraSettings } from "./sceneBounds";
@@ -125,7 +125,7 @@ export class SessionManager {
     system: System,
     name: string,
     renderer?: Canvas2DRenderer,
-    bounds?: Bounds,
+    boundary?: Boundary,
     spatialGrid?: SpatialGrid,
     zoomStateRef?: any,
     undoRedo?: UseUndoRedoReturn,
@@ -214,12 +214,12 @@ export class SessionManager {
             World bounds: (${session.scene.viewportWorldBounds.worldMinX.toFixed(1)}, ${session.scene.viewportWorldBounds.worldMinY.toFixed(1)}) to (${session.scene.viewportWorldBounds.worldMaxX.toFixed(1)}, ${session.scene.viewportWorldBounds.worldMaxY.toFixed(1)})
             Calculated camera: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)}) zoom: ${zoom.toFixed(2)}`);
           
-          applyCameraSettings(renderer, cameraX, cameraY, zoom, bounds, spatialGrid, zoomStateRef);
+          applyCameraSettings(renderer, cameraX, cameraY, zoom, boundary, spatialGrid, zoomStateRef);
         } else {
           // Backward compatibility: use old absolute camera positioning
           const camera = session.camera || { x: 0, y: 0, zoom: 1 };
           console.log(`Loading session with backward compatibility camera positioning: (${camera.x.toFixed(1)}, ${camera.y.toFixed(1)}) zoom: ${camera.zoom.toFixed(2)}`);
-          applyCameraSettings(renderer, camera.x, camera.y, camera.zoom, bounds, spatialGrid, zoomStateRef);
+          applyCameraSettings(renderer, camera.x, camera.y, camera.zoom, boundary, spatialGrid, zoomStateRef);
         }
       }
 

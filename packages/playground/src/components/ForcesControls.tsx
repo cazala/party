@@ -3,7 +3,7 @@ import { RotateCcw, Download, Upload } from "lucide-react";
 import {
   Physics,
   Behavior,
-  Bounds,
+  Boundary,
   Collisions,
   Fluid,
   Sensors,
@@ -21,10 +21,10 @@ import {
   DEFAULT_BEHAVIOR_SEPARATION_RANGE,
   DEFAULT_BEHAVIOR_VIEW_RADIUS,
   DEFAULT_BEHAVIOR_VIEW_ANGLE,
-  DEFAULT_BOUNDS_BOUNCE,
-  DEFAULT_BOUNDS_REPEL_DISTANCE,
-  DEFAULT_BOUNDS_REPEL_STRENGTH,
-  DEFAULT_BOUNDS_MODE,
+  DEFAULT_BOUNDARY_BOUNCE,
+  DEFAULT_BOUNDARY_REPEL_DISTANCE,
+  DEFAULT_BOUNDARY_REPEL_STRENGTH,
+  DEFAULT_BOUNDARY_MODE,
   DEFAULT_COLLISIONS_ENABLED,
   DEFAULT_COLLISIONS_EAT,
   DEFAULT_INFLUENCE_RADIUS,
@@ -49,7 +49,7 @@ import {
 } from "@cazala/party";
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
-import { BoundsControls } from "./control-sections/BoundsControls";
+import { BoundaryControls } from "./control-sections/BoundaryControls";
 import { CollisionControls } from "./control-sections/CollisionControls";
 import { FluidsControls } from "./control-sections/FluidsControls";
 import { SensorsControls } from "./control-sections/SensorsControls";
@@ -62,7 +62,7 @@ interface ForcesControlsProps {
   system: System | null;
   physics: Physics | null;
   behavior: Behavior | null;
-  bounds: Bounds | null;
+  boundary: Boundary | null;
   collisions: Collisions | null;
   fluid: Fluid | null;
   sensors: Sensors | null;
@@ -75,7 +75,7 @@ export function ForcesControls({
   system,
   physics,
   behavior,
-  bounds,
+  boundary,
   collisions,
   fluid,
   sensors,
@@ -102,12 +102,12 @@ export function ForcesControls({
       physics.setFriction(0);
     }
 
-    // Reset bounds
-    if (bounds) {
-      bounds.bounce = DEFAULT_BOUNDS_BOUNCE;
-      bounds.setRepelDistance(DEFAULT_BOUNDS_REPEL_DISTANCE);
-      bounds.setRepelStrength(DEFAULT_BOUNDS_REPEL_STRENGTH);
-      bounds.setMode(DEFAULT_BOUNDS_MODE);
+    // Reset boundary
+    if (boundary) {
+      boundary.bounce = DEFAULT_BOUNDARY_BOUNCE;
+      boundary.setRepelDistance(DEFAULT_BOUNDARY_REPEL_DISTANCE);
+      boundary.setRepelStrength(DEFAULT_BOUNDARY_REPEL_STRENGTH);
+      boundary.setMode(DEFAULT_BOUNDARY_MODE);
     }
 
     // Reset collisions
@@ -268,8 +268,8 @@ export function ForcesControls({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Bounds">
-        <BoundsControls key={`bounds-${refreshKey}`} bounds={bounds} />
+      <CollapsibleSection title="Boundary">
+        <BoundaryControls key={`boundary-${refreshKey}`} boundary={boundary} />
       </CollapsibleSection>
 
       <CollapsibleSection title="Behavior">

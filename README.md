@@ -55,7 +55,7 @@ npm dev
 ### Using the Core Library
 
 ```typescript
-import { System, Particle, Physics, Bounds } from "@cazala/party";
+import { System, Particle, Physics, Boundary } from "@cazala/party";
 
 // Create a particle system
 const system = new System({ width: 800, height: 600 });
@@ -73,7 +73,7 @@ for (let i = 0; i < 100; i++) {
 
 // Add forces
 system.addForce(new Physics({ gravity: { strength: 0.1 } }));
-system.addForce(new Bounds({ mode: "bounce" }));
+system.addForce(new Boundary({ mode: "bounce" }));
 
 // Start the simulation
 system.play();
@@ -128,7 +128,7 @@ The force system uses a four-phase lifecycle:
 Available forces include:
 
 - **Physics**: Gravity, inertia, friction
-- **Bounds**: Boundary interactions (bounce, kill, warp)
+- **Boundary**: Boundary interactions (bounce, kill, warp)
 - **Collisions**: Particle-particle collision detection and response
 - **Behavior**: Flocking behaviors (cohesion, alignment, separation, wander)
 - **Fluid**: Smoothed Particle Hydrodynamics (SPH) implementation

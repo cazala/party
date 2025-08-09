@@ -10,12 +10,12 @@ import {
   DEFAULT_FRICTION,
 } from "./forces/physics";
 import {
-  Bounds,
-  DEFAULT_BOUNDS_BOUNCE,
-  DEFAULT_BOUNDS_MODE,
-  DEFAULT_BOUNDS_REPEL_DISTANCE,
-  DEFAULT_BOUNDS_REPEL_STRENGTH,
-} from "./forces/bounds";
+  Boundary,
+  DEFAULT_BOUNDARY_BOUNCE,
+  DEFAULT_BOUNDARY_MODE,
+  DEFAULT_BOUNDARY_REPEL_DISTANCE,
+  DEFAULT_BOUNDARY_REPEL_STRENGTH,
+} from "./forces/boundary";
 import {
   Collisions,
   DEFAULT_COLLISIONS_ENABLED,
@@ -154,7 +154,7 @@ export interface Config {
   };
 
   /** Boundary behavior settings */
-  bounds?: {
+  boundary?: {
     /** Bounce coefficient when particles hit boundaries (0-1) */
     bounce?: number;
     /** Friction applied during boundary interactions (0-1) */
@@ -305,7 +305,7 @@ export interface SystemOptions {
  *
  * // Add forces
  * system.addForce(new Physics());
- * system.addForce(new Bounds());
+ * system.addForce(new Boundary());
  *
  * // Start simulation
  * system.play();
@@ -641,8 +641,8 @@ export class System {
           inertia: force.inertia,
           friction: force.friction,
         };
-      } else if (force instanceof Bounds) {
-        config.bounds = {
+      } else if (force instanceof Boundary) {
+        config.boundary = {
           bounce: force.bounce,
           mode: force.mode,
           repelDistance: force.repelDistance,
@@ -725,14 +725,14 @@ export class System {
           force.setInertia(config.physics.inertia ?? DEFAULT_INERTIA);
           force.setFriction(config.physics.friction ?? DEFAULT_FRICTION);
         }
-      } else if (force instanceof Bounds && config.bounds) {
-        force.bounce = config.bounds.bounce ?? DEFAULT_BOUNDS_BOUNCE;
-        force.setMode(config.bounds.mode ?? DEFAULT_BOUNDS_MODE);
+      } else if (force instanceof Boundary && config.boundary) {
+        force.bounce = config.boundary.bounce ?? DEFAULT_BOUNDARY_BOUNCE;
+        force.setMode(config.boundary.mode ?? DEFAULT_BOUNDARY_MODE);
         force.setRepelDistance(
-          config.bounds.repelDistance ?? DEFAULT_BOUNDS_REPEL_DISTANCE
+          config.boundary.repelDistance ?? DEFAULT_BOUNDARY_REPEL_DISTANCE
         );
         force.setRepelStrength(
-          config.bounds.repelStrength ?? DEFAULT_BOUNDS_REPEL_STRENGTH
+          config.boundary.repelStrength ?? DEFAULT_BOUNDARY_REPEL_STRENGTH
         );
       } else if (force instanceof Collisions && config.collisions) {
         force.setEnabled(

@@ -54,7 +54,7 @@ The playground uses a three-panel layout:
 │  (280px)    │    (expandable)     │   (320px)       │
 │             │                     │                 │
 │ • Init      │  • Particles        │ • Physics       │
-│ • Spawn     │  • Interactive      │ • Bounds        │
+│ • Spawn     │  • Interactive      │ • Boundary      │
 │ • Tools     │  • Real-time        │ • Collisions    │
 │ • Render    │  • Zoom/Pan         │ • Behavior      │
 │ • Settings  │                     │ • Fluid         │
@@ -156,7 +156,7 @@ Delete particles from simulation:
 - **Inertia**: Momentum preservation (0-1)
 - **Friction**: Global velocity damping
 
-#### Bounds
+#### Boundary
 
 - **Mode**: Bounce, Kill, or Warp at boundaries
 - **Bounce**: Energy retention on collision

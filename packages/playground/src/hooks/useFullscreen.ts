@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { System, Canvas2DRenderer, Bounds, SpatialGrid } from "@cazala/party";
+import { System, Canvas2DRenderer, Boundary, SpatialGrid } from "@cazala/party";
 import {
   getViewportWorldBounds,
   calculateCameraToShowWorldBounds,
@@ -9,7 +9,7 @@ import {
 interface UseFullscreenOptions {
   system?: System;
   renderer?: Canvas2DRenderer;
-  bounds?: Bounds;
+  boundary?: Boundary;
   spatialGrid?: SpatialGrid;
   zoomStateRef?: any;
   onToggle?: (value: boolean) => void;
@@ -17,7 +17,7 @@ interface UseFullscreenOptions {
 
 export const useFullscreen = (options: UseFullscreenOptions = {}) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const { system, renderer, bounds, spatialGrid, zoomStateRef, onToggle } =
+  const { system, renderer, boundary, spatialGrid, zoomStateRef, onToggle } =
     options;
 
   const toggleFullscreen = async () => {
@@ -87,7 +87,7 @@ export const useFullscreen = (options: UseFullscreenOptions = {}) => {
           cameraX,
           cameraY,
           zoom,
-          bounds,
+          boundary,
           spatialGrid,
           zoomStateRef
         );
@@ -157,7 +157,7 @@ export const useFullscreen = (options: UseFullscreenOptions = {}) => {
               cameraX,
               cameraY,
               zoom,
-              bounds,
+              boundary,
               spatialGrid,
               zoomStateRef
             );
@@ -179,7 +179,7 @@ export const useFullscreen = (options: UseFullscreenOptions = {}) => {
     onToggle,
     system,
     renderer,
-    bounds,
+    boundary,
     spatialGrid,
     zoomStateRef,
   ]);

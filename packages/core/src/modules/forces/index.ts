@@ -1,4 +1,4 @@
-export * from "./bounds";
+export * from "./boundary";
 export * from "./physics";
 export * from "./behavior";
 export * from "./collisions";

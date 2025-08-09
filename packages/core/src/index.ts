@@ -30,9 +30,18 @@ export {
   DEFAULT_COLOR_PALETTE,
 } from "./modules/spawner";
 export {
-  Bounds as BoundingBox,
-  type BoundingBoxOptions,
-} from "./modules/forces/bounds";
+  Boundary,
+  type BoundaryOptions,
+  type BoundaryMode,
+  DEFAULT_BOUNDARY_BOUNCE,
+  DEFAULT_BOUNDARY_MIN_BOUNCE_VELOCITY,
+  DEFAULT_BOUNDARY_REPEL_DISTANCE,
+  DEFAULT_BOUNDARY_REPEL_STRENGTH,
+  DEFAULT_BOUNDARY_MODE,
+  // Legacy aliases for backward compatibility
+  Boundary as BoundingBox,
+  type BoundaryOptions as BoundingBoxOptions,
+} from "./modules/forces/boundary";
 export {
   Renderer,
   Canvas2DRenderer,
