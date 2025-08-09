@@ -6,6 +6,7 @@ import {
   DEFAULT_COLLISIONS_EAT,
   DEFAULT_COLLISIONS_RESTITUTION,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
+  DEFAULT_JOINT_CROSSING_RESOLUTION,
   DEFAULT_MOMENTUM_PRESERVATION,
 } from "@cazala/party";
 import { Tooltip } from "../Tooltip";
@@ -26,6 +27,9 @@ export function CollisionControls({
   const [jointCollisionsEnabled, setJointCollisionsEnabled] = useState(
     DEFAULT_JOINT_COLLISIONS_ENABLED
   );
+  const [jointCrossingResolutionEnabled, setJointCrossingResolutionEnabled] = useState(
+    DEFAULT_JOINT_CROSSING_RESOLUTION
+  );
   const [restitution, setRestitution] = useState(
     DEFAULT_COLLISIONS_RESTITUTION
   );
@@ -45,6 +49,7 @@ export function CollisionControls({
   useEffect(() => {
     if (joints) {
       setJointCollisionsEnabled(joints.enableCollisions);
+      setJointCrossingResolutionEnabled(joints.enableCrossingResolution);
     }
   }, [joints]);
 
@@ -60,6 +65,13 @@ export function CollisionControls({
     setJointCollisionsEnabled(enabled);
     if (joints) {
       joints.setEnableCollisions(enabled);
+    }
+  };
+
+  const handleJointCrossingResolutionEnabledChange = (enabled: boolean) => {
+    setJointCrossingResolutionEnabled(enabled);
+    if (joints) {
+      joints.setEnableCrossingResolution(enabled);
     }
   };
 
@@ -95,7 +107,7 @@ export function CollisionControls({
               handleParticleCollisionsEnabledChange(e.target.checked)
             }
           />
-          Enable Particles
+          Particle vs Particle
           <Tooltip content="Enable collisions between particles" />
         </label>
       </div>
@@ -110,8 +122,23 @@ export function CollisionControls({
             }
             className="checkbox"
           />
-          Enable Joints
+          Particle vs Joint
           <Tooltip content="Enable collisions between particles and joints" />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={jointCrossingResolutionEnabled}
+            onChange={(e) =>
+              handleJointCrossingResolutionEnabledChange(e.target.checked)
+            }
+            className="checkbox"
+          />
+          Joint vs Joint
+          <Tooltip content="Enable crossing resolution between joints to prevent structural overlaps" />
         </label>
       </div>
 

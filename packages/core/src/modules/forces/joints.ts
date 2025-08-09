@@ -39,6 +39,7 @@ import { RigidBody } from "../rigid-body";
 export const DEFAULT_JOINTS_ENABLED = true;
 export const DEFAULT_JOINT_COLLISIONS_ENABLED = true;
 export const DEFAULT_JOINT_TOLERANCE = 1.0;
+export const DEFAULT_JOINT_CROSSING_RESOLUTION = true;
 
 export interface JointOptions {
   particleA: Particle;
@@ -54,6 +55,7 @@ export interface JointOptions {
 export interface JointsOptions {
   enabled?: boolean;
   enableCollisions?: boolean;
+  enableCrossingResolution?: boolean;
 }
 
 /**
@@ -110,7 +112,6 @@ export class Joint {
    */
   applyConstraint(): void {
     if (!this.validate()) return;
-
 
     // Check stress-based breaking before applying constraint
     if (this.tolerance < 1.0) {
@@ -317,6 +318,7 @@ export class Joints implements Force, RigidBody {
   public enabled: boolean;
   public joints: Map<string, Joint> = new Map();
   public enableCollisions: boolean;
+  public enableCrossingResolution: boolean;
   private globalTolerance: number = DEFAULT_JOINT_TOLERANCE;
 
   // Track grabbed particles and their previous positions for velocity calculation
@@ -331,6 +333,8 @@ export class Joints implements Force, RigidBody {
     this.enabled = options.enabled ?? DEFAULT_JOINTS_ENABLED;
     this.enableCollisions =
       options.enableCollisions ?? DEFAULT_JOINT_COLLISIONS_ENABLED;
+    this.enableCrossingResolution =
+      options.enableCrossingResolution ?? DEFAULT_JOINT_CROSSING_RESOLUTION;
   }
 
   setEnabled(enabled: boolean): void {
@@ -341,6 +345,9 @@ export class Joints implements Force, RigidBody {
     this.enableCollisions = enableCollisions;
   }
 
+  setEnableCrossingResolution(enableCrossingResolution: boolean): void {
+    this.enableCrossingResolution = enableCrossingResolution;
+  }
 
   /**
    * Set global tolerance for all existing joints (0.0 = break easily, 1.0 = never break)
@@ -494,9 +501,7 @@ export class Joints implements Force, RigidBody {
    * Uses graph traversal to find all transitively connected particles through rigid joints.
    * Results are cached for performance.
    */
-  getRigidBodyGroup(
-    particle: Particle
-  ): Set<Particle> {
+  getRigidBodyGroup(particle: Particle): Set<Particle> {
     // Check cache invalidation
     if (this.shouldInvalidateCache()) {
       this.invalidateRigidBodyGroupCache();
@@ -552,10 +557,7 @@ export class Joints implements Force, RigidBody {
   /**
    * Check if two particles belong to the same rigid body group
    */
-  areInSameRigidBody(
-    particle1: Particle,
-    particle2: Particle
-  ): boolean {
+  areInSameRigidBody(particle1: Particle, particle2: Particle): boolean {
     // Quick check: if particles are directly connected by a joint
     const directJoints = this.getJointsForParticle(particle1);
     for (const joint of directJoints) {
@@ -817,6 +819,10 @@ export class Joints implements Force, RigidBody {
             hasConstraintViolations = true;
           }
         }
+      }
+
+      if (!this.enableCrossingResolution) {
+        continue;
       }
 
       // Step 2: Check for joint crossings (particles inside other rigid bodies)
