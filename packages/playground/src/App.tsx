@@ -50,6 +50,8 @@ function App() {
     setSpawnConfig,
     currentlyGrabbedParticle,
     handleGrabToJoint,
+    isCreatingJoint,
+    handleJointToSpawn,
   } = usePlayground(canvasRef, toolMode);
 
   const { isFullscreen, toggleFullscreen } = useFullscreen({
@@ -132,6 +134,8 @@ function App() {
         onToggleFullscreen={toggleFullscreen}
         currentlyGrabbedParticle={currentlyGrabbedParticle}
         onGrabToJoint={handleGrabToJoint}
+        isCreatingJoint={isCreatingJoint}
+        onJointToSpawn={handleJointToSpawn}
         style={{
           display: isFullscreen ? "none" : "block",
         }}

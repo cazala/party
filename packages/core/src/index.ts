@@ -10,6 +10,7 @@ export {
   type Force,
   type SystemOptions,
   type Config,
+  type SystemEvents,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
 } from "./modules/system";
 export { SpatialGrid, type SpatialGridOptions } from "./modules/spatial-grid";

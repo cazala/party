@@ -29,6 +29,8 @@ interface TopBarProps {
   style?: React.CSSProperties;
   currentlyGrabbedParticle?: any;
   onGrabToJoint?: () => boolean;
+  isCreatingJoint?: boolean;
+  onJointToSpawn?: () => boolean;
 }
 
 export function TopBar({
@@ -46,6 +48,8 @@ export function TopBar({
   style,
   currentlyGrabbedParticle,
   onGrabToJoint,
+  isCreatingJoint,
+  onJointToSpawn,
 }: TopBarProps) {
   const [isPlaying, setIsPlaying] = useState(true);
 
@@ -72,7 +76,15 @@ export function TopBar({
         switch (e.key.toLowerCase()) {
           case "a":
             e.preventDefault();
-            onToolModeChange("spawn");
+            // Special handling for CMD+A during joint creation: switch to spawn mode with pending joint
+            if (isCreatingJoint && onJointToSpawn) {
+              const success = onJointToSpawn();
+              if (success) {
+                onToolModeChange("spawn");
+              }
+            } else {
+              onToolModeChange("spawn");
+            }
             break;
           case "s":
             e.preventDefault();
@@ -103,7 +115,7 @@ export function TopBar({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onToolModeChange, currentlyGrabbedParticle, onGrabToJoint]);
+  }, [onToolModeChange, currentlyGrabbedParticle, onGrabToJoint, isCreatingJoint, onJointToSpawn]);
 
   const handlePlayPause = () => {
     if (isPlaying) {

@@ -216,8 +216,8 @@ export function usePlayground(
     undoRedo: undoRedoRef,
   });
 
-  // Extract grab state and handler for cursor styling and tool switching
-  const { currentlyGrabbedParticle, handleGrabToJoint } = interactions;
+  // Extract interaction state and handlers for tool switching
+  const { currentlyGrabbedParticle, handleGrabToJoint, handleJointToSpawn, isCreatingJoint } = interactions;
 
   // Attach / detach low-level DOM listeners once – they call back into the
   // `spawner` helpers defined above.
@@ -630,5 +630,8 @@ export function usePlayground(
     currentlyGrabbedParticle,
     // Grab-to-joint handler
     handleGrabToJoint,
+    // Joint creation state and handler
+    isCreatingJoint,
+    handleJointToSpawn,
   };
 }

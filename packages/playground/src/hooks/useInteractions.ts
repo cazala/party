@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import type React from "react";
 import {
   System,
@@ -154,6 +154,8 @@ interface MouseState {
   highlightedParticle: Particle | null;
   /** Whether currently creating a joint */
   isCreatingJoint: boolean;
+  /** Whether waiting for next spawned particle to auto-complete joint */
+  pendingJointSpawn: boolean;
   /** Joints created during current session for undo */
   createdJoints: string[];
 
@@ -261,6 +263,7 @@ export function useInteractions({
     selectedParticle: null,
     highlightedParticle: null,
     isCreatingJoint: false,
+    pendingJointSpawn: false,
     createdJoints: [],
     grabbedParticle: null,
     isGrabbing: false,
@@ -791,6 +794,57 @@ export function useInteractions({
   }, [getRenderer]);
 
   /**
+   * Handle automatic joint creation when a particle is added
+   */
+  const handleAutoJointCreation = useCallback(
+    (newParticle: Particle) => {
+      const mouseState = mouseStateRef.current;
+      const renderer = getRenderer();
+      
+      // Only proceed if we're in joint mode and have a selected particle
+      if (
+        toolMode !== "joint" ||
+        !mouseState.selectedParticle ||
+        !mouseState.isCreatingJoint ||
+        !renderer
+      ) {
+        return;
+      }
+
+      // Calculate distance between selected particle and new particle
+      const dx = newParticle.position.x - mouseState.selectedParticle.position.x;
+      const dy = newParticle.position.y - mouseState.selectedParticle.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Convert screen-space threshold to world-space
+      const screenThreshold = 100; // pixels
+      const worldThreshold = screenThreshold / renderer.getZoom();
+
+      // If new particle is close enough, automatically create a joint
+      if (distance <= worldThreshold) {
+        // Check if joint already exists
+        if (!hasJointBetween(mouseState.selectedParticle, newParticle)) {
+          const joint = createJoint(mouseState.selectedParticle, newParticle);
+          if (joint) {
+            mouseState.createdJoints.push(joint.id);
+
+            // Record joint creation for undo
+            undoRedo.current?.recordJointCreate(joint, getIdCounter());
+
+            // Update selected particle to the newly added particle for chaining
+            mouseState.selectedParticle = newParticle;
+
+            // Update visual feedback
+            renderer.setSelectedParticle(newParticle);
+            renderer.setHighlightedParticle(null);
+          }
+        }
+      }
+    },
+    [toolMode, getRenderer, hasJointBetween, createJoint]
+  );
+
+  /**
    * Handle grab tool click - start grabbing a particle
    */
   const handleGrabClick = useCallback(
@@ -888,6 +942,82 @@ export function useInteractions({
 
     return true; // Successfully switched to joint mode
   }, [getRenderer]);
+
+  /**
+   * Handle joint-to-spawn transition - switch to spawn mode while maintaining joint creation state
+   */
+  const handleJointToSpawn = useCallback(() => {
+    const mouseState = mouseStateRef.current;
+    
+    if (!mouseState.isCreatingJoint || !mouseState.selectedParticle) {
+      return false; // No joint creation in progress
+    }
+
+    // Enable pending joint spawn mode - maintain joint creation state but prepare for spawning
+    mouseState.pendingJointSpawn = true;
+    
+    // Keep selectedParticle and isCreatingJoint true so joint preview continues to show
+    // Joint preview will be maintained by existing updateJointPreview logic
+
+    return true; // Successfully switched to spawn mode with pending joint
+  }, []);
+
+  // Auto-joint creation when particles are spawned during pending joint state
+  useEffect(() => {
+    const system = getSystem();
+    if (!system) return;
+
+    const handleParticleAdded = ({ particle }: { particle: Particle }) => {
+      const mouseState = mouseStateRef.current;
+      
+      // Only auto-create joint if we're in pending joint spawn mode
+      if (!mouseState.pendingJointSpawn || !mouseState.selectedParticle || !mouseState.isCreatingJoint) {
+        return;
+      }
+
+      // Check if joint already exists to avoid duplicates
+      if (hasJointBetween(mouseState.selectedParticle, particle)) {
+        return;
+      }
+
+      // Create the joint
+      const joint = createJoint(mouseState.selectedParticle, particle);
+      if (joint) {
+        mouseState.createdJoints.push(joint.id);
+        
+        // Record joint creation for undo
+        undoRedo.current?.recordJointCreate(joint, getIdCounter());
+      }
+
+      // Clear joint creation state after auto-joint is created
+      mouseState.selectedParticle = null;
+      mouseState.isCreatingJoint = false;
+      mouseState.pendingJointSpawn = false;
+      
+      // Clear visual feedback
+      const renderer = getRenderer();
+      if (renderer) {
+        renderer.setSelectedParticle(null);
+        renderer.setJointPreview(null);
+      }
+    };
+
+    system.events.on('particle-added', handleParticleAdded);
+
+    return () => {
+      system.events.off('particle-added', handleParticleAdded);
+    };
+  }, [getSystem, getRenderer, hasJointBetween, createJoint, undoRedo]);
+
+  // Handle tool mode changes - detect joint-to-spawn transitions
+  useEffect(() => {
+    const mouseState = mouseStateRef.current;
+    
+    // If we switched from joint mode to spawn mode while creating a joint, activate pending joint spawn
+    if (toolMode === "spawn" && mouseState.isCreatingJoint && mouseState.selectedParticle && !mouseState.pendingJointSpawn) {
+      mouseState.pendingJointSpawn = true;
+    }
+  }, [toolMode]);
 
   // Helper function to update velocity preview
   const updateVelocityPreview = useCallback(() => {
@@ -1027,6 +1157,7 @@ export function useInteractions({
         if (mouseState.selectedParticle && mouseState.isCreatingJoint) {
           mouseState.selectedParticle = null;
           mouseState.isCreatingJoint = false;
+          mouseState.pendingJointSpawn = false;
 
           // Clear visual previews
           const renderer = getRenderer();
@@ -1465,13 +1596,16 @@ export function useInteractions({
       }
 
       // Handle joint mode preview and particle highlighting
-      if (toolMode === "joint") {
+      // Also handle joint preview when in spawn mode with pending joint
+      if (toolMode === "joint" || (mouseState.isCreatingJoint && mouseState.pendingJointSpawn)) {
         mouseState.currentPos = worldPos;
 
-        // Update particle highlighting
-        const hoveredParticle = findParticleAtPosition(worldPos);
-        mouseState.highlightedParticle = hoveredParticle;
-        renderer.setHighlightedParticle(hoveredParticle);
+        // Update particle highlighting (only in joint mode)
+        if (toolMode === "joint") {
+          const hoveredParticle = findParticleAtPosition(worldPos);
+          mouseState.highlightedParticle = hoveredParticle;
+          renderer.setHighlightedParticle(hoveredParticle);
+        }
 
         // Update selected particle rendering
         if (mouseState.selectedParticle) {
@@ -1904,6 +2038,7 @@ export function useInteractions({
     mouseState.selectedParticle = null;
     mouseState.highlightedParticle = null;
     mouseState.isCreatingJoint = false;
+    mouseState.pendingJointSpawn = false;
     renderer.setJointPreview(null);
     renderer.setHighlightedParticle(null);
     renderer.setSelectedParticle(null);
@@ -1979,6 +2114,24 @@ export function useInteractions({
     [getCanvas, onZoom]
   );
 
+  // Set up particle-added event listener for auto-joint creation
+  useEffect(() => {
+    const system = getSystem();
+    if (!system) return;
+
+    const handleParticleAdded = (event: { particle: Particle }) => {
+      handleAutoJointCreation(event.particle);
+    };
+
+    // Listen for particle-added events
+    system.events.on("particle-added", handleParticleAdded);
+
+    // Cleanup
+    return () => {
+      system.events.off("particle-added", handleParticleAdded);
+    };
+  }, [getSystem, handleAutoJointCreation]);
+
   return {
     onMouseDown,
     onMouseMove,
@@ -1990,5 +2143,9 @@ export function useInteractions({
     setupKeyboardListeners,
     currentlyGrabbedParticle,
     handleGrabToJoint,
+    handleJointToSpawn,
+    get isCreatingJoint() {
+      return mouseStateRef.current.isCreatingJoint;
+    },
   };
 }

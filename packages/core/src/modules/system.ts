@@ -1,6 +1,7 @@
 import { Particle } from "./particle";
 import { SpatialGrid } from "./spatial-grid";
 import { Vector2D } from "./vector";
+import mitt, { Emitter } from "mitt";
 import {
   Physics,
   DEFAULT_GRAVITY_STRENGTH,
@@ -65,6 +66,13 @@ import {
   DEFAULT_JOINTS_ENABLED,
   DEFAULT_JOINT_TOLERANCE,
 } from "./forces/joints";
+
+/**
+ * Events emitted by the particle system
+ */
+export type SystemEvents = {
+  "particle-added": { particle: Particle };
+};
 
 /**
  * Interface defining the lifecycle methods for a physics force.
@@ -332,6 +340,9 @@ export class System {
   /** Optional callback function called after each frame update */
   private renderCallback?: (system: System) => void;
 
+  /** Event emitter for system events */
+  public events: Emitter<SystemEvents>;
+
   /**
    * Creates a new particle system.
    *
@@ -349,6 +360,8 @@ export class System {
       height: this.height,
       cellSize: options.cellSize ?? DEFAULT_SPATIAL_GRID_CELL_SIZE,
     });
+
+    this.events = mitt<SystemEvents>();
   }
 
   /**
@@ -358,6 +371,7 @@ export class System {
    */
   addParticle(particle: Particle): void {
     this.particles.push(particle);
+    this.events.emit("particle-added", { particle });
   }
 
   /**
