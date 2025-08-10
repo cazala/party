@@ -10,6 +10,7 @@ import {
   Hand,
   Pin,
   Eraser,
+  Zap,
 } from "lucide-react";
 import { System } from "@cazala/party";
 import { ToolMode } from "../hooks/useToolMode";
@@ -108,6 +109,10 @@ export function TopBar({
           case "g":
             e.preventDefault();
             onToolModeChange("remove");
+            break;
+          case "h":
+            e.preventDefault();
+            onToolModeChange("emitter");
             break;
         }
       }
@@ -236,6 +241,15 @@ export function TopBar({
               >
                 <Eraser width="12" height="12" />
                 <span>Remove</span>
+              </button>
+              <button
+                onClick={() => onToolModeChange("emitter")}
+                className={`tool-mode-button tool-mode-sixth ${
+                  toolMode === "emitter" ? "tool-mode-active" : ""
+                }`}
+              >
+                <Zap width="12" height="12" />
+                <span>Emitter</span>
               </button>
             </div>
           </div>

@@ -48,6 +48,7 @@ function App() {
     resetParticles,
     spawnParticles,
     setSpawnConfig,
+    setEmitterConfig,
     currentlyGrabbedParticle,
     handleGrabToJoint,
     isCreatingJoint,
@@ -184,6 +185,7 @@ function App() {
                 : undefined,
             })}
             onSpawnConfigChange={setSpawnConfig}
+            onEmitterConfigChange={setEmitterConfig}
             getCurrentCamera={
               renderer
                 ? () => ({

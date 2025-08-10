@@ -50,3 +50,23 @@ export {
   PINNED_PARTICLE_COLOR,
 } from "./modules/render";
 export * from "./modules/forces";
+export {
+  Emitter,
+  type SerializedEmitter,
+  type EmitterOptions,
+  DEFAULT_EMITTER_RATE,
+  DEFAULT_EMITTER_DIRECTION,
+  DEFAULT_EMITTER_SPEED,
+  DEFAULT_EMITTER_AMPLITUDE,
+  DEFAULT_EMITTER_PARTICLE_SIZE,
+  DEFAULT_EMITTER_PARTICLE_MASS,
+  DEFAULT_EMITTER_COLORS,
+  // Lifetime defaults
+  DEFAULT_EMITTER_INFINITE,
+  DEFAULT_EMITTER_DURATION,
+  DEFAULT_EMITTER_END_SIZE_MULTIPLIER,
+  DEFAULT_EMITTER_END_ALPHA,
+  DEFAULT_EMITTER_END_COLORS,
+  DEFAULT_EMITTER_END_SPEED_MULTIPLIER,
+} from "./modules/emitter";
+export { Emitters } from "./modules/emitters";

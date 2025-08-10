@@ -22,6 +22,7 @@ import {
 } from "@cazala/party";
 import { useInteractions } from "./useInteractions";
 import { SpawnConfig } from "../components/control-sections/SpawnControls";
+import { EmitterConfig } from "../components/control-sections/EmitterControls";
 import { ToolMode } from "./useToolMode";
 import { useUndoRedo } from "./useUndoRedo";
 import { calculateMassFromSize } from "../utils/particle";
@@ -71,6 +72,24 @@ export function usePlayground(
     pinned: false,
     shapeSides: 3,
     shapeLength: 50,
+  });
+
+  // Emitter configuration state
+  const [emitterConfig, setEmitterConfig] = useState<EmitterConfig>({
+    particleSize: 10,
+    particleMass: calculateMassFromSize(10),
+    rate: 10, // particles per second
+    direction: 0, // angle in radians (pointing right)
+    speed: 100, // scalar velocity
+    amplitude: Math.PI * 2, // 360 degrees in radians (full spread)
+    colors: [], // Empty array means use default palette
+    // Lifetime properties
+    infinite: true, // particles live forever by default
+    duration: 5000, // 5 seconds when not infinite
+    endSizeMultiplier: 1, // no size change by default
+    endAlpha: 1, // no alpha change by default
+    endColors: [], // no end color change by default
+    endSpeedMultiplier: 1, // no speed change by default
   });
 
   // ---------------------------------------------------------------------------
@@ -194,7 +213,8 @@ export function usePlayground(
   // ---------------------------------------------------------------------------
   const undoRedo = useUndoRedo(
     () => systemRef.current,
-    () => jointsRef.current
+    () => jointsRef.current,
+    () => systemRef.current?.emitters || null
   );
   const undoRedoRef = useRef(undoRedo);
   undoRedoRef.current = undoRedo;
@@ -210,7 +230,9 @@ export function usePlayground(
     getCanvas: () => canvasRef.current,
     getInteraction: () => interactionRef.current,
     getJoints: () => jointsRef.current,
+    getEmitters: () => systemRef.current?.emitters || null,
     getSpawnConfig: () => spawnConfig,
+    getEmitterConfig: () => emitterConfig,
     onZoom: handleZoom,
     toolMode,
     undoRedo: undoRedoRef,
@@ -410,7 +432,8 @@ export function usePlayground(
       },
       innerRadius: number = 50,
       squareSize: number = 200,
-      cornerRadius: number = 0
+      cornerRadius: number = 0,
+      particleMass?: number
     ) => {
       if (!systemRef.current) return;
 
@@ -454,7 +477,7 @@ export function usePlayground(
 
       // Common particle options
       const particleOptions = {
-        mass: currentSpawnConfig.defaultMass,
+        mass: particleMass ?? currentSpawnConfig.defaultMass,
         size: particleSize,
         acceleration: new Vector2D(0, 0),
         pinned: currentSpawnConfig.pinned,
@@ -631,6 +654,9 @@ export function usePlayground(
     // Spawn config
     spawnConfig,
     setSpawnConfig,
+    // Emitter config
+    emitterConfig,
+    setEmitterConfig,
     // Grab state for cursor styling
     currentlyGrabbedParticle,
     // Grab-to-joint handler

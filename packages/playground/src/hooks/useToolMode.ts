@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-export type ToolMode = "spawn" | "remove" | "joint" | "grab" | "pin";
+export type ToolMode = "spawn" | "remove" | "joint" | "grab" | "pin" | "emitter";
 
 export interface UseToolModeReturn {
   toolMode: ToolMode;
@@ -11,6 +11,7 @@ export interface UseToolModeReturn {
   isJointMode: boolean;
   isGrabMode: boolean;
   isPinMode: boolean;
+  isEmitterMode: boolean;
 }
 
 export function useToolMode(
@@ -20,10 +21,11 @@ export function useToolMode(
 
   const toggleToolMode = useCallback(() => {
     setToolMode((current) => {
-      if (current === "spawn") return "remove";
-      if (current === "remove") return "joint";
+      if (current === "spawn") return "joint";
       if (current === "joint") return "grab";
       if (current === "grab") return "pin";
+      if (current === "pin") return "remove";
+      if (current === "remove") return "emitter";
       return "spawn";
     });
   }, []);
@@ -37,5 +39,6 @@ export function useToolMode(
     isJointMode: toolMode === "joint",
     isGrabMode: toolMode === "grab",
     isPinMode: toolMode === "pin",
+    isEmitterMode: toolMode === "emitter",
   };
 }

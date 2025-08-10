@@ -6,6 +6,9 @@ import {
   setIdCounter,
   Joints,
   Joint,
+  Emitters,
+  Emitter,
+  type SerializedEmitter,
 } from "@cazala/party";
 
 /**
@@ -83,11 +86,14 @@ export interface UndoAction {
     | "SHAPE_SPAWN"
     | "JOINT_CREATE"
     | "JOINT_REMOVE"
-    | "PIN_TOGGLE";
+    | "PIN_TOGGLE"
+    | "EMITTER_ADD"
+    | "EMITTER_REMOVE";
   timestamp: number;
   particles?: SerializedParticle[]; // For remove/clear: particles to restore. For spawn: particles that were spawned
   joints?: SerializedJoint[]; // For joint operations: joints to create/remove
   pinChanges?: PinStateChange[]; // For pin operations: pin state changes
+  emitters?: SerializedEmitter[]; // For emitter operations: emitters to create/remove
   systemStateBefore?: SerializedParticle[]; // Legacy field, no longer used but kept for compatibility
   idCounter?: number; // ID counter state at the time of the action
 }
@@ -123,6 +129,8 @@ export interface UseUndoRedoReturn {
     wasGrabbedBefore: boolean,
     idCounter: number
   ) => void; // Record pin state toggle
+  recordEmitterAdd: (emitter: Emitter, idCounter: number) => void; // Record emitter addition
+  recordEmitterRemove: (emitter: Emitter, idCounter: number) => void; // Record emitter removal
   clearHistory: () => void; // Clear all undo/redo history
 }
 
@@ -133,11 +141,13 @@ const MAX_HISTORY_SIZE = 50;
  *
  * @param getSystem Function that returns the current particle system instance
  * @param getJoints Function that returns the current joints system instance
+ * @param getEmitters Function that returns the current emitters system instance
  * @returns Object containing undo/redo state and control functions
  */
 export function useUndoRedo(
   getSystem: () => System | null,
-  getJoints?: () => Joints | null
+  getJoints?: () => Joints | null,
+  getEmitters?: () => Emitters | null
 ): UseUndoRedoReturn {
   const [actionHistory, setActionHistory] = useState<UndoAction[]>([]);
   const [redoHistory, setRedoHistory] = useState<UndoAction[]>([]);
@@ -436,6 +446,38 @@ export function useUndoRedo(
   );
 
   /**
+   * Records the addition of an emitter for undo/redo
+   */
+  const recordEmitterAdd = useCallback(
+    (emitter: Emitter, idCounter: number) => {
+      const action: UndoAction = {
+        type: "EMITTER_ADD",
+        timestamp: Date.now(),
+        emitters: [emitter.serialize()],
+        idCounter,
+      };
+      addToHistory(action);
+    },
+    [addToHistory]
+  );
+
+  /**
+   * Records the removal of an emitter for undo/redo
+   */
+  const recordEmitterRemove = useCallback(
+    (emitter: Emitter, idCounter: number) => {
+      const action: UndoAction = {
+        type: "EMITTER_REMOVE",
+        timestamp: Date.now(),
+        emitters: [emitter.serialize()],
+        idCounter,
+      };
+      addToHistory(action);
+    },
+    [addToHistory]
+  );
+
+  /**
    * Undoes the last action in the history
    * For spawn operations: Removes the spawned particles
    * For remove/clear operations: Restores the removed particles
@@ -549,6 +591,27 @@ export function useUndoRedo(
                 particle.pinned = pinChange.wasStaticBefore;
                 particle.grabbed = pinChange.wasGrabbedBefore;
               }
+            });
+          }
+          break;
+
+        case "EMITTER_ADD":
+          // Remove the added emitter
+          const emittersSystem1 = getEmitters?.();
+          if (emittersSystem1 && lastAction.emitters) {
+            lastAction.emitters.forEach((serializedEmitter) => {
+              emittersSystem1.removeEmitter(serializedEmitter.id);
+            });
+          }
+          break;
+
+        case "EMITTER_REMOVE":
+          // Restore the removed emitter
+          const emittersSystem2 = getEmitters?.();
+          if (emittersSystem2 && lastAction.emitters) {
+            lastAction.emitters.forEach((serializedEmitter) => {
+              const emitter = Emitter.deserialize(serializedEmitter);
+              emittersSystem2.addEmitter(emitter);
             });
           }
           break;
@@ -708,6 +771,27 @@ export function useUndoRedo(
             });
           }
           break;
+
+        case "EMITTER_ADD":
+          // Re-add the emitter
+          const emittersSystem3 = getEmitters?.();
+          if (emittersSystem3 && actionToRedo.emitters) {
+            actionToRedo.emitters.forEach((serializedEmitter) => {
+              const emitter = Emitter.deserialize(serializedEmitter);
+              emittersSystem3.addEmitter(emitter);
+            });
+          }
+          break;
+
+        case "EMITTER_REMOVE":
+          // Re-remove the emitter
+          const emittersSystem4 = getEmitters?.();
+          if (emittersSystem4 && actionToRedo.emitters) {
+            actionToRedo.emitters.forEach((serializedEmitter) => {
+              emittersSystem4.removeEmitter(serializedEmitter.id);
+            });
+          }
+          break;
       }
 
       // Return the redo history without the last action
@@ -740,6 +824,8 @@ export function useUndoRedo(
       recordJointCreate,
       recordJointRemove,
       recordPinToggle,
+      recordEmitterAdd,
+      recordEmitterRemove,
       clearHistory,
     }),
     [
@@ -757,6 +843,8 @@ export function useUndoRedo(
       recordJointCreate,
       recordJointRemove,
       recordPinToggle,
+      recordEmitterAdd,
+      recordEmitterRemove,
       clearHistory,
     ]
   );

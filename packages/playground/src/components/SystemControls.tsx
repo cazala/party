@@ -8,6 +8,7 @@ import {
 } from "@cazala/party";
 import { InitControls, InitControlsRef } from "./control-sections/InitControls";
 import { SpawnControls, SpawnConfig, SpawnControlsRef } from "./control-sections/SpawnControls";
+import { EmitterControls, EmitterConfig, EmitterControlsRef } from "./control-sections/EmitterControls";
 import { InteractionControls, InteractionControlsRef } from "./control-sections/InteractionControls";
 import { RenderControls, RenderControlsRef } from "./control-sections/RenderControls";
 import { PerformanceControls, PerformanceControlsRef } from "./control-sections/PerformanceControls";
@@ -41,7 +42,8 @@ interface SystemControlsProps {
     velocityConfig?: InitVelocityConfig,
     innerRadius?: number,
     squareSize?: number,
-    cornerRadius?: number
+    cornerRadius?: number,
+    particleMass?: number
   ) => void;
   onGetInitConfig?: () => {
     numParticles: number;
@@ -55,8 +57,10 @@ interface SystemControlsProps {
     innerRadius?: number;
     squareSize?: number;
     cornerRadius?: number;
+    particleMass?: number;
   };
   onSpawnConfigChange?: (config: SpawnConfig) => void;
+  onEmitterConfigChange?: (config: EmitterConfig) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
   currentlyGrabbedParticle: Particle | null;
 }
@@ -74,6 +78,7 @@ export const SystemControls = forwardRef<SystemControlsRef, SystemControlsProps>
   onInitParticles,
   onGetInitConfig,
   onSpawnConfigChange,
+  onEmitterConfigChange,
   getCurrentCamera,
   currentlyGrabbedParticle,
 }, ref) => {
@@ -83,6 +88,7 @@ export const SystemControls = forwardRef<SystemControlsRef, SystemControlsProps>
   // Refs for control components
   const initControlsRef = useRef<InitControlsRef>(null);
   const spawnControlsRef = useRef<SpawnControlsRef>(null);
+  const emitterControlsRef = useRef<EmitterControlsRef>(null);
   const interactionControlsRef = useRef<InteractionControlsRef>(null);
   const renderControlsRef = useRef<RenderControlsRef>(null);
   const performanceControlsRef = useRef<PerformanceControlsRef>(null);
@@ -92,6 +98,7 @@ export const SystemControls = forwardRef<SystemControlsRef, SystemControlsProps>
     getSystemControlsState: () => ({
       init: initControlsRef.current?.getState(),
       spawn: spawnControlsRef.current?.getState(),
+      emitter: emitterControlsRef.current?.getState(),
       interaction: interactionControlsRef.current?.getState(),
       render: renderControlsRef.current?.getState(),
       performance: performanceControlsRef.current?.getState(),
@@ -102,6 +109,9 @@ export const SystemControls = forwardRef<SystemControlsRef, SystemControlsProps>
       }
       if (state.spawn && spawnControlsRef.current) {
         spawnControlsRef.current.setState(state.spawn);
+      }
+      if (state.emitter && emitterControlsRef.current) {
+        emitterControlsRef.current.setState(state.emitter);
       }
       if (state.interaction && interactionControlsRef.current) {
         interactionControlsRef.current.setState(state.interaction);
@@ -146,6 +156,15 @@ export const SystemControls = forwardRef<SystemControlsRef, SystemControlsProps>
           initialSize={particleSize}
           initialColors={initColors}
           currentlyGrabbedParticle={currentlyGrabbedParticle}
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Emitters" tooltip="Place emitters that spawn particles continuously">
+        <EmitterControls
+          ref={emitterControlsRef}
+          onEmitterConfigChange={onEmitterConfigChange}
+          initialSize={particleSize}
+          initialColors={initColors}
         />
       </CollapsibleSection>
 

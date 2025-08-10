@@ -9,7 +9,7 @@ Interactive web playground for experimenting with particle system simulations. B
 - Real-time controls for adjusting psimulation parameters while it runs runs
 - Session management for saving and loading complete simulation states
 - Undo/redo system
-- Visual effects including trails, glow, density fields, and velocity visualization
+- Visual effects including trails, glow, density fields, velocity visualization, and particle lifetime effects
 - Keyboard shortcuts for efficient workflow
 
 ## Getting Started
@@ -55,9 +55,9 @@ The playground uses a three-panel layout:
 │             │                     │                 │
 │ • Init      │  • Particles        │ • Physics       │
 │ • Spawn     │  • Interactive      │ • Boundary      │
-│ • Tools     │  • Real-time        │ • Collisions    │
+│ • Emitters  │  • Real-time        │ • Collisions    │
 │ • Render    │  • Zoom/Pan         │ • Behavior      │
-│ • Settings  │                     │ • Fluid         │
+│ •   │                     │ • Fluid         │
 │             │                     │ • Sensors       │
 │             │                     │ • Joints        │
 └─────────────┴─────────────────────┴─────────────────┘
@@ -147,6 +147,18 @@ Delete particles from simulation:
 - **Visual Effects**: Trails, glow, blur effects
 - **Debug Overlays**: Spatial grid, density field, velocity arrows
 - **Performance**: FPS display and particle count
+
+#### Emitter Configuration
+
+- **Basic Properties**: Particle size, mass, rate, direction, speed, and spread
+- **Colors**: Color palette for emitted particles
+- **Infinite Particles**: Toggle for unlimited vs limited particle lifetime
+- **Lifetime Controls** (when infinite is disabled):
+  - **Duration**: Particle lifetime in milliseconds (0.1s - 10s)
+  - **Size Multiplier**: Final size scaling over lifetime (-5x to 5x)
+  - **Alpha**: Final transparency for fade effects (0.0 to 1.0)
+  - **End Colors**: Color transition targets (multiple colors supported)
+  - **Speed Multiplier**: Acceleration/deceleration over lifetime (-5x to 5x)
 
 ### Physics Controls (Right Panel)
 
@@ -251,6 +263,7 @@ Saved sessions include:
 - Complete physics configuration
 - Visual settings and camera position
 - Active tool mode and spawn settings
+- Emitter configurations with lifetime settings
 
 ## Educational Use
 

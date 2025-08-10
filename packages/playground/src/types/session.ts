@@ -101,6 +101,22 @@ export interface SavedSession {
       cellSize: number;
       showSpatialGrid: boolean;
     };
+    emitter?: {
+      particleSize: number;
+      particleMass: number;
+      rate: number;
+      direction: number;
+      speed: number;
+      amplitude: number;
+      colors: string[];
+      // Lifetime properties
+      infinite: boolean;
+      duration?: number;
+      endSizeMultiplier?: number;
+      endAlpha?: number;
+      endColors?: string[];
+      endSpeedMultiplier?: number;
+    };
   };
 }
 

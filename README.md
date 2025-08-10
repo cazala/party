@@ -7,8 +7,8 @@ A comprehensive particle physics simulation system with interactive playground, 
 - High performance spatial grid optimization for efficient collision detection
 - Modular architecture with pluggable force system and lifecycle management
 - Real-time interaction with mouse/touch controls
-- Rendering with multiple color modes, trails, glow effects, and visual overlays
-- Comprehensive forces including physics, flocking, fluid dynamics, collisions, constraints, sensors, and more
+- Rendering with multiple color modes, trails, glow effects, visual overlays, and particle lifetime effects
+- Comprehensive forces including physics, flocking, fluid dynamics, collisions, constraints, sensors, emitters, and more
 - Session management for saving and loading complete simulation states
 - Undo/redo system
 
@@ -135,6 +135,7 @@ Available forces include:
 - **Sensors**: Environmental sensing with trail-following behaviors
 - **Joints**: Distance constraints between particles
 - **Interaction**: User-controlled attraction/repulsion forces
+- **Emitters**: Continuous particle emission with lifetime management
 
 ## Development
 

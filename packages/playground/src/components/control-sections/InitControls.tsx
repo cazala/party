@@ -6,6 +6,7 @@ import {
   useRef,
 } from "react";
 import { ColorSelector } from "../ColorSelector";
+import { calculateMassFromSize } from "../../utils/particle";
 
 const DEFAULT_SPAWN_NUM_PARTICLES = 100;
 const DEFAULT_SPAWN_SHAPE = "grid";
@@ -42,7 +43,8 @@ interface InitControlsProps {
     velocityConfig?: InitVelocityConfig,
     innerRadius?: number,
     squareSize?: number,
-    cornerRadius?: number
+    cornerRadius?: number,
+    particleMass?: number
   ) => void;
   onGetInitConfig?: () => {
     numParticles: number;
@@ -56,6 +58,7 @@ interface InitControlsProps {
     innerRadius?: number;
     squareSize?: number;
     cornerRadius?: number;
+    particleMass?: number;
   };
   onParticleSizeChange?: (size: number) => void;
   onColorsChange?: (colors: string[]) => void;
@@ -68,6 +71,7 @@ export interface InitControlsRef {
     spawnShape: "grid" | "random" | "circle" | "donut" | "square";
     spacing: number;
     particleSize: number;
+    particleMass: number;
     radius: number;
     innerRadius: number;
     squareSize: number;
@@ -81,6 +85,7 @@ export interface InitControlsRef {
       spawnShape: "grid" | "random" | "circle" | "donut" | "square";
       spacing: number;
       particleSize: number;
+      particleMass: number;
       radius: number;
       innerRadius: number;
       squareSize: number;
@@ -112,6 +117,9 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
     const [particleSize, setParticleSize] = useState(
       DEFAULT_SPAWN_PARTICLE_SIZE
     );
+    const [particleMass, setParticleMass] = useState(
+      calculateMassFromSize(DEFAULT_SPAWN_PARTICLE_SIZE)
+    );
     const [radius, setRadius] = useState(DEFAULT_SPAWN_RADIUS);
     const [innerRadius, setInnerRadius] = useState(DEFAULT_INNER_RADIUS);
     const [squareSize, setSquareSize] = useState(DEFAULT_SQUARE_SIZE);
@@ -134,6 +142,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           spawnShape,
           spacing,
           particleSize,
+          particleMass,
           radius,
           innerRadius,
           squareSize,
@@ -149,6 +158,8 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           if (state.spacing !== undefined) setSpacing(state.spacing);
           if (state.particleSize !== undefined)
             setParticleSize(state.particleSize);
+          if (state.particleMass !== undefined)
+            setParticleMass(state.particleMass);
           if (state.radius !== undefined) setRadius(state.radius);
           if (state.innerRadius !== undefined)
             setInnerRadius(state.innerRadius);
@@ -166,6 +177,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
         spawnShape,
         spacing,
         particleSize,
+        particleMass,
         radius,
         innerRadius,
         squareSize,
@@ -197,7 +209,8 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           velocityConfig,
           innerRadius,
           squareSize,
-          cornerRadius
+          cornerRadius,
+          particleMass
         );
       }
     }, [
@@ -206,6 +219,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       spawnShape,
       spacing,
       particleSize,
+      particleMass,
       radius,
       innerRadius,
       squareSize,
@@ -222,6 +236,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           shape: spawnShape,
           spacing,
           particleSize,
+          particleMass,
           radius,
           colors: colors.length > 0 ? colors : undefined,
           velocityConfig,
@@ -238,6 +253,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       spawnShape,
       spacing,
       particleSize,
+      particleMass,
       radius,
       innerRadius,
       squareSize,
@@ -255,11 +271,13 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       newRadius?: number,
       newInnerRadius?: number,
       newSquareSize?: number,
-      newCornerRadius?: number
+      newCornerRadius?: number,
+      newParticleMass?: number
     ) => {
       const particles = newNumParticles ?? numParticles;
       const shape = newShape ?? spawnShape;
       const size = newParticleSize ?? particleSize;
+      const mass = newParticleMass ?? particleMass;
       const space = Math.max(newSpacing ?? spacing, size * 2);
       const rad = newRadius ?? radius;
       const innerRad = newInnerRadius ?? innerRadius;
@@ -270,6 +288,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       if (newShape !== undefined) setSpawnShape(newShape);
       if (newSpacing !== undefined) setSpacing(space);
       if (newParticleSize !== undefined) setParticleSize(newParticleSize);
+      if (newParticleMass !== undefined) setParticleMass(newParticleMass);
       if (newRadius !== undefined) setRadius(newRadius);
       if (newInnerRadius !== undefined) setInnerRadius(newInnerRadius);
       if (newSquareSize !== undefined) setSquareSize(newSquareSize);
@@ -286,7 +305,8 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           velocityConfig,
           innerRad,
           sqSize,
-          cornRad
+          cornRad,
+          mass
         );
       }
     };
@@ -298,7 +318,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
             Number of Particles: {numParticles}
             <input
               type="range"
-              min="1"
+              min="0"
               max="5000"
               step="1"
               value={numParticles}
@@ -320,14 +340,48 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
               onChange={(e) => {
                 const newSize = parseInt(e.target.value);
                 const newSpacing = Math.max(spacing, newSize * 2);
+                const newMass = calculateMassFromSize(newSize);
                 handleSpawnChange(
                   undefined,
                   undefined,
                   newSpacing !== spacing ? newSpacing : undefined,
-                  newSize
+                  newSize,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  newMass
                 );
                 // Notify parent component about particle size change
                 onParticleSizeChange?.(newSize);
+              }}
+              className="slider"
+            />
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
+            Particle Mass: {particleMass.toFixed(1)}
+            <input
+              type="range"
+              min="0.1"
+              max="100"
+              step="0.1"
+              value={particleMass}
+              onChange={(e) => {
+                const newMass = parseFloat(e.target.value);
+                handleSpawnChange(
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  newMass
+                );
               }}
               className="slider"
             />

@@ -204,12 +204,12 @@ export const SpawnControls = forwardRef<SpawnControlsRef, SpawnControlsProps>(
       <div className="control-section">
         <div className="control-group">
           <label>
-            Particle Size: {particleSize.toFixed(1)}
+            Particle Size: {particleSize.toFixed(0)}
             <input
               type="range"
               min="3"
               max="50"
-              step="0.5"
+              step="1"
               value={particleSize}
               onChange={(e) => handleSizeChange(parseFloat(e.target.value))}
               className="slider"
@@ -219,7 +219,7 @@ export const SpawnControls = forwardRef<SpawnControlsRef, SpawnControlsProps>(
 
         <div className="control-group">
           <label>
-            Particle Mass: {particleMass.toFixed(2)}
+            Particle Mass: {particleMass.toFixed(1)}
             <input
               type="range"
               min="0.1"

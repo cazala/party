@@ -10,6 +10,8 @@ import {
   Particle,
   PINNED_PARTICLE_COLOR,
   Spawner,
+  Emitters,
+  Emitter,
 } from "@cazala/party";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
@@ -22,6 +24,7 @@ import {
 } from "../utils/particle";
 import { calculateVelocity } from "../utils/velocity";
 import { SpawnConfig } from "../components/control-sections/SpawnControls";
+import { EmitterConfig } from "../components/control-sections/EmitterControls";
 import { ToolMode } from "./useToolMode";
 import { UseUndoRedoReturn } from "./useUndoRedo";
 
@@ -211,8 +214,12 @@ interface UseSpawnerProps {
   getInteraction: () => Interaction | null;
   /** Function to get the joints system instance */
   getJoints: () => Joints | null;
+  /** Function to get the emitters system instance */
+  getEmitters: () => Emitters | null;
   /** Function to get the current spawn configuration */
   getSpawnConfig: () => SpawnConfig;
+  /** Function to get the current emitter configuration */
+  getEmitterConfig: () => EmitterConfig;
   /** Optional callback for zoom events */
   onZoom?: (deltaY: number, centerX: number, centerY: number) => void;
   /** Current tool mode */
@@ -227,7 +234,9 @@ export function useInteractions({
   getCanvas,
   getInteraction,
   getJoints,
+  getEmitters,
   getSpawnConfig,
+  getEmitterConfig,
   onZoom,
   toolMode,
   undoRedo,
@@ -906,6 +915,45 @@ export function useInteractions({
   );
 
   /**
+   * Handle emitter tool click - place an emitter at the clicked position
+   */
+  const handleEmitterClick = useCallback(
+    (worldPos: { x: number; y: number }) => {
+      const emitters = getEmitters();
+      const emitterConfig = getEmitterConfig();
+      
+      if (!emitters) return;
+
+      // Create new emitter at clicked position with current configuration
+      const emitter = new Emitter({
+        position: new Vector2D(worldPos.x, worldPos.y),
+        rate: emitterConfig.rate,
+        direction: emitterConfig.direction,
+        speed: emitterConfig.speed,
+        amplitude: emitterConfig.amplitude,
+        particleSize: emitterConfig.particleSize,
+        particleMass: emitterConfig.particleMass,
+        colors: emitterConfig.colors,
+        enabled: true,
+        // Lifetime properties
+        infinite: emitterConfig.infinite,
+        duration: emitterConfig.duration,
+        endSizeMultiplier: emitterConfig.endSizeMultiplier,
+        endAlpha: emitterConfig.endAlpha,
+        endColors: emitterConfig.endColors,
+        endSpeedMultiplier: emitterConfig.endSpeedMultiplier,
+      });
+
+      // Add emitter to the system
+      emitters.addEmitter(emitter);
+
+      // Record emitter addition for undo
+      undoRedo.current?.recordEmitterAdd(emitter, getIdCounter());
+    },
+    [getEmitters, getEmitterConfig]
+  );
+
+  /**
    * Handle grab-to-joint transition - switch to joint mode with grabbed particle as selected
    */
   const handleGrabToJoint = useCallback(() => {
@@ -1362,8 +1410,21 @@ export function useInteractions({
         particle.mass = 0;
         particle.size = 0; // Immediate visual feedback
       });
+
+      // Also check for emitters to remove
+      const emitters = getEmitters();
+      if (emitters) {
+        const emitterAtPosition = emitters.findEmitterAt(new Vector2D(worldPos.x, worldPos.y));
+        if (emitterAtPosition) {
+          // Record emitter removal for undo
+          undoRedo.current?.recordEmitterRemove(emitterAtPosition, getIdCounter());
+          
+          // Remove emitter
+          emitters.removeEmitter(emitterAtPosition.id);
+        }
+      }
     },
-    [getSystem, getRenderer, getJoints]
+    [getSystem, getRenderer, getJoints, getEmitters]
   );
 
   const handleRemovalClick = useCallback(
@@ -1438,6 +1499,13 @@ export function useInteractions({
       if (toolMode === "pin") {
         const pos = getWorldPosition(e);
         handlePinClick(pos);
+        return;
+      }
+
+      // Handle emitter mode
+      if (toolMode === "emitter") {
+        const pos = getWorldPosition(e);
+        handleEmitterClick(pos);
         return;
       }
 

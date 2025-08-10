@@ -782,6 +782,9 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.save();
 
     const renderColor = this.getParticleColor(particle);
+    
+    // Apply particle alpha for lifetime effects
+    this.ctx.globalAlpha = particle.alpha || 1;
 
     // Only add glow effect if trails are disabled
     const trailsEnabled = this.sensors && this.sensors.enableTrail;
@@ -809,7 +812,7 @@ export class Canvas2DRenderer extends Renderer {
       // Add inner bright core for more glow effect
       this.ctx.shadowBlur = 0;
       this.ctx.fillStyle = renderColor;
-      this.ctx.globalAlpha = 0.8;
+      this.ctx.globalAlpha = (particle.alpha || 1) * 0.8; // Preserve particle alpha
       this.ctx.fill();
     }
 
@@ -1550,6 +1553,7 @@ export class Canvas2DRenderer extends Renderer {
 
     this.ctx.restore();
   }
+
 }
 
 export function createCanvas2DRenderer(

@@ -1,7 +1,7 @@
 import { Particle } from "./particle";
 import { SpatialGrid } from "./spatial-grid";
 import { Vector2D } from "./vector";
-import mitt, { Emitter } from "mitt";
+import mitt, { Emitter as MittEmitter } from "mitt";
 import {
   Physics,
   DEFAULT_GRAVITY_STRENGTH,
@@ -66,6 +66,8 @@ import {
   DEFAULT_JOINTS_ENABLED,
   DEFAULT_JOINT_TOLERANCE,
 } from "./forces/joints";
+import { Emitters } from "./emitters";
+import { SerializedEmitter } from "./emitter";
 
 /**
  * Events emitted by the particle system
@@ -264,6 +266,14 @@ export interface Config {
     /** Friction applied to connected particles */
     friction?: number;
   };
+
+  /** Particle emitters settings */
+  emitters?: {
+    /** Whether emitters are enabled globally */
+    enabled?: boolean;
+    /** Array of emitter configurations */
+    emitterConfigs?: SerializedEmitter[];
+  };
 }
 
 /** Default cell size for spatial grid optimization */
@@ -316,6 +326,8 @@ export class System {
   public particles: Particle[] = [];
   /** Array of all active forces */
   public forces: Force[] = [];
+  /** Particle emitters manager */
+  public emitters: Emitters;
   /** Spatial grid for efficient neighbor queries and collision detection */
   public spatialGrid: SpatialGrid;
   /** Width of the simulation area */
@@ -341,7 +353,7 @@ export class System {
   private renderCallback?: (system: System) => void;
 
   /** Event emitter for system events */
-  public events: Emitter<SystemEvents>;
+  public events: MittEmitter<SystemEvents>;
 
   /**
    * Creates a new particle system.
@@ -361,6 +373,7 @@ export class System {
       cellSize: options.cellSize ?? DEFAULT_SPATIAL_GRID_CELL_SIZE,
     });
 
+    this.emitters = new Emitters();
     this.events = mitt<SystemEvents>();
   }
 
@@ -478,6 +491,9 @@ export class System {
         particle.velocity.x = 0;
         particle.velocity.y = 0;
       }
+      
+      // Update particle lifetime properties (size, alpha, color, speed interpolation)
+      particle.interpolateProperties(deltaTime);
     }
 
     // Apply constraints
@@ -490,8 +506,11 @@ export class System {
       force.after?.(this.particles, deltaTime, this.spatialGrid);
     }
 
-    // Remove eaten particles (marked with mass = 0)
-    this.particles = this.particles.filter((particle) => particle.mass > 0);
+    // Update emitters (spawn new particles)
+    this.emitters.update(deltaTime, this);
+
+    // Remove dead particles (marked with mass = 0 or exceeded lifetime)
+    this.particles = this.particles.filter((particle) => particle.mass > 0 && !particle.isDead());
   }
 
   /**
@@ -545,6 +564,7 @@ export class System {
       this.animationId = null;
     }
     this.particles = [];
+    this.emitters.clear();
     this.lastTime = 0;
     // Clear FPS tracking data
     this.fpsFrameTimes = [];
@@ -557,6 +577,7 @@ export class System {
 
   clear(): void {
     this.particles = [];
+    this.emitters.clear();
     this.spatialGrid.clear();
     // Clear FPS tracking data to prevent memory accumulation
     this.fpsFrameTimes = [];
@@ -701,7 +722,11 @@ export class System {
       }
     }
 
-    // No system settings to export currently
+    // Export emitters configuration
+    config.emitters = {
+      enabled: this.emitters.getEnabled(),
+      emitterConfigs: this.emitters.serialize(),
+    };
 
     return config;
   }
@@ -822,6 +847,12 @@ export class System {
       }
     }
 
-    // No system settings to import currently
+    // Import emitters configuration
+    if (config.emitters) {
+      this.emitters.setEnabled(config.emitters.enabled ?? true);
+      if (config.emitters.emitterConfigs) {
+        this.emitters.deserialize(config.emitters.emitterConfigs);
+      }
+    }
   }
 }

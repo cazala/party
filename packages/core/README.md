@@ -7,8 +7,8 @@ A TypeScript particle physics engine featuring advanced force systems, spatial o
 - High performance spatial grid optimization for O(1) neighbor queries
 - Modular force system with pluggable architecture and lifecycle management
 - Real-time simulation capable of 60+ FPS with thousands of particles
-- Advanced Canvas2D rendering with trails, glow effects, and density visualization
-- Comprehensive physics including gravity, collisions, flocking, fluid dynamics, breakable elastic joints, and more
+- Advanced Canvas2D rendering with trails, glow effects, density visualization, and particle lifetime effects
+- Comprehensive physics including gravity, collisions, flocking, fluid dynamics, breakable elastic joints, particle emitters, and more
 - Spatial optimization with efficient collision detection and neighbor finding
 - Interactive user-controlled forces and particle manipulation
 - Serializable system configurations for export/import
@@ -105,6 +105,13 @@ const particle = new Particle({
   size: 8,
   color: "#ff6b35",
   pinned: false, // Whether particle is affected by forces
+  
+  // Lifetime properties (optional)
+  duration: 5000, // Particle lifetime in milliseconds (undefined = infinite)
+  endSizeMultiplier: 0.1, // Final size multiplier (interpolated over lifetime)
+  endAlpha: 0, // Final alpha value for fade out effect
+  endColor: ["#ff0000", "#00ff00"], // Array of possible end colors (random selection)
+  endSpeedMultiplier: 2.0, // Final speed multiplier (accelerate/decelerate over time)
 });
 
 // Apply forces to particles
@@ -112,6 +119,11 @@ particle.applyForce(new Vector2D(0, -9.8));
 
 // Update physics (called automatically by System)
 particle.update(deltaTime);
+
+// Check if particle has exceeded its lifetime
+if (particle.isDead()) {
+  system.removeParticle(particle);
+}
 ```
 
 ### Forces
@@ -315,6 +327,57 @@ interaction.attract(); // or interaction.repel()
 interaction.setActive(true); // Enable/disable
 ```
 
+### Emitters
+
+Particle emitters continuously spawn particles at a specified rate with configurable properties:
+
+```typescript
+import { Emitter } from "@cazala/party";
+
+const emitter = new Emitter({
+  position: new Vector2D(400, 300), // Emitter position
+  rate: 20, // Particles per second
+  direction: 0, // Emission direction in radians (0 = right)
+  speed: 150, // Initial particle speed
+  amplitude: Math.PI / 4, // Spread angle in radians (π/4 = 45°)
+  particleSize: 6,
+  particleMass: 1.2,
+  colors: ["#ff6b35", "#f7931e", "#ffd700"], // Particle colors (random selection)
+  
+  // Particle lifetime configuration
+  infinite: false, // If false, particles have limited lifetime
+  duration: 3000, // Particle lifetime in milliseconds
+  endSizeMultiplier: 0.2, // Particles shrink over time
+  endAlpha: 0, // Particles fade out completely
+  endColors: ["#8B4513", "#654321"], // End colors for color transitions
+  endSpeedMultiplier: 0.1, // Particles slow down over time (friction-like)
+});
+
+// Add emitter to system
+system.emitters.addEmitter(emitter);
+
+// Control emitter
+emitter.setEnabled(true);
+emitter.setRate(50); // Change emission rate
+emitter.setPosition(newX, newY);
+emitter.setDirection(Math.PI / 2); // Point upward
+
+// Manage emitters collection
+const emitterId = system.emitters.addEmitter(emitter);
+const foundEmitter = system.emitters.getEmitter(emitterId);
+system.emitters.removeEmitter(emitterId);
+system.emitters.setEnabled(false); // Disable all emitters
+```
+
+**Particle Lifetime Effects:**
+
+Emitted particles can have dynamic properties that change over their lifetime:
+
+- **Size Changes**: `endSizeMultiplier` controls final size (1.0 = no change, 0.1 = shrink, 2.0 = grow)
+- **Fade Effects**: `endAlpha` creates fade in/out effects (1.0 = opaque, 0.0 = transparent)
+- **Color Transitions**: `endColors` array provides possible end colors for smooth transitions
+- **Speed Modulation**: `endSpeedMultiplier` can simulate friction (< 1.0) or acceleration (> 1.0)
+
 ## Rendering
 
 The library includes a comprehensive Canvas2D renderer:
@@ -416,6 +479,13 @@ system.import({
     stiffness: 0.8, // Set global joint stiffness
     tolerance: 0.6, // Set global joint tolerance
     enableCollisions: true,
+  },
+  emitters: {
+    enabled: true,
+    emitterConfigs: [
+      // Emitter configurations are automatically serialized
+      // and restored as part of the system export/import
+    ],
   },
 });
 ```

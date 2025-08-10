@@ -25,6 +25,18 @@ export interface ParticleOptions {
   pinned?: boolean;
   /** Whether the particle is currently being grabbed by user interaction */
   grabbed?: boolean;
+  
+  // Lifetime properties
+  /** Lifetime in milliseconds (undefined = infinite) */
+  duration?: number;
+  /** Final size multiplier (default: 1, no change) */
+  endSizeMultiplier?: number;
+  /** Final alpha value (0-1, default: 1, no change) */
+  endAlpha?: number;
+  /** Array of possible end colors (empty = no color change) */
+  endColor?: string[];
+  /** Final speed multiplier (default: 1, no change) */
+  endSpeedMultiplier?: number;
 }
 
 /** Global counter for generating unique particle IDs */
@@ -76,6 +88,30 @@ export class Particle {
   public pinned?: boolean;
   /** Whether this particle is currently being grabbed by user interaction */
   public grabbed?: boolean;
+  
+  // Lifetime properties
+  /** When this particle was created (timestamp in milliseconds) */
+  public creationTime: number;
+  /** Lifetime in milliseconds (null = infinite) */
+  public duration: number | null;
+  /** Initial size for interpolation calculations */
+  public initialSize: number;
+  /** Initial alpha value (always starts at 1) */
+  public initialAlpha: number;
+  /** Initial color for interpolation calculations */
+  public initialColor: string;
+  /** Initial speed magnitude for interpolation calculations */
+  public initialSpeed: number;
+  /** Final size multiplier */
+  public endSizeMultiplier: number;
+  /** Final alpha value */
+  public endAlpha: number;
+  /** Target end color (randomly chosen from array, if provided) */
+  public endColor?: string;
+  /** Final speed multiplier */
+  public endSpeedMultiplier: number;
+  /** Current alpha value (used for rendering) */
+  public alpha: number;
 
   /**
    * Creates a new particle with the specified options.
@@ -92,6 +128,24 @@ export class Particle {
     this.color = options.color || "#ffffff";
     this.pinned = options.pinned || false;
     this.grabbed = options.grabbed || false;
+    
+    // Initialize lifetime properties
+    this.creationTime = Date.now();
+    this.duration = options.duration || null;
+    this.initialSize = this.size;
+    this.initialAlpha = 1;
+    this.initialColor = this.color;
+    this.initialSpeed = this.velocity.magnitude();
+    this.endSizeMultiplier = options.endSizeMultiplier ?? 1;
+    this.endAlpha = options.endAlpha ?? 1;
+    this.endSpeedMultiplier = options.endSpeedMultiplier ?? 1;
+    this.alpha = 1;
+    
+    // Choose random end color from array if provided
+    if (options.endColor && options.endColor.length > 0) {
+      const randomIndex = Math.floor(Math.random() * options.endColor.length);
+      this.endColor = options.endColor[randomIndex];
+    }
   }
 
   /**
@@ -149,6 +203,123 @@ export class Particle {
     this.pinned = options.pinned || false;
   }
 
+  // === Lifecycle Management Methods ===
+
+  /**
+   * Gets the age of this particle in milliseconds.
+   * 
+   * @returns Time since creation in milliseconds
+   */
+  getAge(): number {
+    return Date.now() - this.creationTime;
+  }
+
+  /**
+   * Gets the lifetime progress of this particle as a value from 0 to 1.
+   * 
+   * @returns Progress from 0 (just created) to 1 (end of lifetime). Returns 0 for infinite particles.
+   */
+  getLifetimeProgress(): number {
+    if (this.duration === null) return 0; // Infinite particles don't progress
+    const age = this.getAge();
+    return Math.min(age / this.duration, 1);
+  }
+
+  /**
+   * Checks if this particle should be destroyed (has exceeded its lifetime).
+   * 
+   * @returns True if the particle has exceeded its duration
+   */
+  isDead(): boolean {
+    if (this.duration === null) return false; // Infinite particles never die
+    return this.getAge() >= this.duration;
+  }
+
+  /**
+   * Interpolates particle properties over its lifetime.
+   * This method should be called each frame to update animated properties.
+   * 
+   * @param deltaTime - Time elapsed since last update in milliseconds (unused but kept for consistency)
+   */
+  interpolateProperties(deltaTime: number): void {
+    if (this.duration === null) return; // No interpolation for infinite particles
+
+    const progress = this.getLifetimeProgress();
+    
+    // Interpolate size
+    if (this.endSizeMultiplier !== 1) {
+      this.size = this.initialSize * this.lerp(1, this.endSizeMultiplier, progress);
+    }
+    
+    // Interpolate alpha
+    if (this.endAlpha !== 1) {
+      this.alpha = this.lerp(this.initialAlpha, this.endAlpha, progress);
+    }
+    
+    // Interpolate color
+    if (this.endColor && this.endColor !== this.initialColor) {
+      this.color = this.lerpColor(this.initialColor, this.endColor, progress);
+    }
+    
+    // Interpolate speed
+    if (this.endSpeedMultiplier !== 1) {
+      const currentSpeed = this.velocity.magnitude();
+      if (currentSpeed > 0) {
+        const targetSpeed = this.initialSpeed * this.lerp(1, this.endSpeedMultiplier, progress);
+        const speedRatio = targetSpeed / currentSpeed;
+        this.velocity.multiply(speedRatio);
+      }
+    }
+  }
+
+  /**
+   * Linear interpolation between two values.
+   * 
+   * @param start - Starting value
+   * @param end - Ending value
+   * @param t - Interpolation factor (0-1)
+   * @returns Interpolated value
+   */
+  private lerp(start: number, end: number, t: number): number {
+    return start + (end - start) * t;
+  }
+
+  /**
+   * Linear interpolation between two colors in hex format.
+   * 
+   * @param startColor - Starting color in hex format (#rrggbb)
+   * @param endColor - Ending color in hex format (#rrggbb)
+   * @param t - Interpolation factor (0-1)
+   * @returns Interpolated color in hex format
+   */
+  private lerpColor(startColor: string, endColor: string, t: number): string {
+    // Parse hex colors
+    const parseHex = (hex: string) => {
+      const clean = hex.replace('#', '');
+      return {
+        r: parseInt(clean.substr(0, 2), 16),
+        g: parseInt(clean.substr(2, 2), 16),
+        b: parseInt(clean.substr(4, 2), 16)
+      };
+    };
+
+    const start = parseHex(startColor);
+    const end = parseHex(endColor);
+
+    // Interpolate each channel
+    const r = Math.round(this.lerp(start.r, end.r, t));
+    const g = Math.round(this.lerp(start.g, end.g, t));
+    const b = Math.round(this.lerp(start.b, end.b, t));
+
+    // Convert back to hex
+    const toHex = (n: number) => {
+      const hex = Math.max(0, Math.min(255, n)).toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    };
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
   /**
    * Creates a deep copy of this particle.
    * 
@@ -158,7 +329,7 @@ export class Particle {
    * @returns A new Particle instance with identical properties
    */
   clone(): Particle {
-    return new Particle({
+    const cloned = new Particle({
       id: this.id, // Preserve the original ID
       position: this.position.clone(),
       velocity: this.velocity.clone(),
@@ -167,7 +338,25 @@ export class Particle {
       size: this.size,
       color: this.color,
       pinned: this.pinned,
+      grabbed: this.grabbed,
+      // Include lifetime properties
+      duration: this.duration,
+      endSizeMultiplier: this.endSizeMultiplier,
+      endAlpha: this.endAlpha,
+      endColor: this.endColor ? [this.endColor] : undefined,
+      endSpeedMultiplier: this.endSpeedMultiplier,
     });
+    
+    // Copy over computed lifetime state
+    cloned.creationTime = this.creationTime;
+    cloned.initialSize = this.initialSize;
+    cloned.initialAlpha = this.initialAlpha;
+    cloned.initialColor = this.initialColor;
+    cloned.initialSpeed = this.initialSpeed;
+    cloned.alpha = this.alpha;
+    cloned.endColor = this.endColor;
+    
+    return cloned;
   }
 }
 
