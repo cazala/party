@@ -9,6 +9,7 @@ export interface SerializedParticle {
   size: number;
   color: string;
   pinned?: boolean;
+  zIndex?: number;
 }
 
 export interface SerializedJoint {
@@ -109,6 +110,7 @@ export interface SavedSession {
       speed: number;
       amplitude: number;
       colors: string[];
+      zIndex: number;
       // Lifetime properties
       infinite: boolean;
       duration?: number;

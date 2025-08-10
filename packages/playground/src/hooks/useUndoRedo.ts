@@ -48,6 +48,7 @@ export interface SerializedParticle {
   color: string;
   pinned?: boolean;
   grabbed?: boolean;
+  zIndex?: number;
 }
 
 /**
@@ -170,6 +171,7 @@ export function useUndoRedo(
         color: particle.color,
         pinned: particle.pinned,
         grabbed: particle.grabbed,
+        zIndex: particle.zIndex,
       };
     },
     []
@@ -194,6 +196,7 @@ export function useUndoRedo(
         color: serialized.color,
         pinned: serialized.pinned || false,
         grabbed: serialized.grabbed || false,
+        zIndex: serialized.zIndex ?? 0, // Default to 0 for backward compatibility
       });
 
       return particle;

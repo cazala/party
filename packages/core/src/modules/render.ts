@@ -628,8 +628,11 @@ export class Canvas2DRenderer extends Renderer {
     this.renderJoints(system);
 
     // Calculate min/max speeds for velocity color mode
+    
+    // Sort particles by z-index for proper layering (lower z-index renders first)
+    const sortedParticles = [...system.particles].sort((a, b) => a.zIndex - b.zIndex);
 
-    for (const particle of system.particles) {
+    for (const particle of sortedParticles) {
       this.renderParticle(particle);
     }
 

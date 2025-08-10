@@ -16,6 +16,7 @@ export interface SerializedEmitter {
   particleMass: number;
   colors: string[];
   enabled: boolean;
+  zIndex: number;
   
   // Lifetime properties
   infinite: boolean; // whether particles live forever
@@ -40,6 +41,7 @@ export interface EmitterOptions {
   particleMass?: number;
   colors?: string[];
   enabled?: boolean;
+  zIndex?: number;
   
   // Lifetime properties
   infinite?: boolean; // whether particles live forever
@@ -87,6 +89,7 @@ export class Emitter {
   public particleMass: number;
   public colors: string[];
   public enabled: boolean;
+  public zIndex: number;
   
   // Lifetime properties
   public infinite: boolean;
@@ -115,6 +118,7 @@ export class Emitter {
     this.particleMass = options.particleMass ?? DEFAULT_EMITTER_PARTICLE_MASS;
     this.colors = options.colors ?? [...DEFAULT_EMITTER_COLORS];
     this.enabled = options.enabled ?? true;
+    this.zIndex = options.zIndex ?? 0;
     
     // Initialize lifetime properties
     this.infinite = options.infinite ?? DEFAULT_EMITTER_INFINITE;
@@ -195,6 +199,7 @@ export class Emitter {
       mass: this.particleMass,
       size: this.particleSize,
       color: color,
+      zIndex: this.zIndex,
       // Apply lifetime properties
       duration: this.infinite ? undefined : this.duration,
       endSizeMultiplier: this.endSizeMultiplier,
@@ -261,6 +266,7 @@ export class Emitter {
       particleMass: this.particleMass,
       colors: [...this.colors],
       enabled: this.enabled,
+      zIndex: this.zIndex,
       // Include lifetime properties
       infinite: this.infinite,
       duration: this.duration,
@@ -289,6 +295,7 @@ export class Emitter {
       particleMass: data.particleMass,
       colors: [...data.colors],
       enabled: data.enabled,
+      zIndex: data.zIndex ?? 0, // Default to 0 for backward compatibility
       // Include lifetime properties with fallbacks for backward compatibility
       infinite: data.infinite ?? DEFAULT_EMITTER_INFINITE,
       duration: data.duration ?? DEFAULT_EMITTER_DURATION,

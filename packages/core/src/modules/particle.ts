@@ -25,6 +25,8 @@ export interface ParticleOptions {
   pinned?: boolean;
   /** Whether the particle is currently being grabbed by user interaction */
   grabbed?: boolean;
+  /** Rendering depth for layer ordering (default: 0, higher values render on top) */
+  zIndex?: number;
   
   // Lifetime properties
   /** Lifetime in milliseconds (undefined = infinite) */
@@ -88,6 +90,8 @@ export class Particle {
   public pinned?: boolean;
   /** Whether this particle is currently being grabbed by user interaction */
   public grabbed?: boolean;
+  /** Rendering depth for layer ordering (default: 0, higher values render on top) */
+  public zIndex: number;
   
   // Lifetime properties
   /** When this particle was created (timestamp in milliseconds) */
@@ -128,6 +132,7 @@ export class Particle {
     this.color = options.color || "#ffffff";
     this.pinned = options.pinned || false;
     this.grabbed = options.grabbed || false;
+    this.zIndex = options.zIndex ?? 0;
     
     // Initialize lifetime properties
     this.creationTime = Date.now();
@@ -339,6 +344,7 @@ export class Particle {
       color: this.color,
       pinned: this.pinned,
       grabbed: this.grabbed,
+      zIndex: this.zIndex,
       // Include lifetime properties
       duration: this.duration,
       endSizeMultiplier: this.endSizeMultiplier,

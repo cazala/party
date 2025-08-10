@@ -83,6 +83,7 @@ export function usePlayground(
     speed: 100, // scalar velocity
     amplitude: Math.PI * 2, // 360 degrees in radians (full spread)
     colors: [], // Empty array means use default palette
+    zIndex: 0, // default render depth
     // Lifetime properties
     infinite: true, // particles live forever by default
     duration: 5000, // 5 seconds when not infinite

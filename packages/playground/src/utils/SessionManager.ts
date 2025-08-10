@@ -39,6 +39,7 @@ export class SessionManager {
           size: particle.size,
           color: particle.color,
           pinned: particle.pinned,
+          zIndex: particle.zIndex,
         })
       );
 
@@ -171,6 +172,7 @@ export class SessionManager {
           size: serialized.size,
           color: serialized.color,
           pinned: serialized.pinned,
+          zIndex: serialized.zIndex ?? 0, // Default to 0 for backward compatibility
         });
 
         return particle;

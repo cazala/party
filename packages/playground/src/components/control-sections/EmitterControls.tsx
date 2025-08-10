@@ -23,6 +23,7 @@ export interface EmitterConfig {
   speed: number; // scalar velocity
   amplitude: number; // spread angle in radians
   colors: string[]; // Array of colors to use for spawning
+  zIndex: number; // rendering depth (0-10)
 
   // Lifetime properties
   infinite: boolean; // whether particles live forever
@@ -65,6 +66,7 @@ export const EmitterControls = forwardRef<
     const [speed, setSpeed] = useState(DEFAULT_EMITTER_SPEED);
     const [amplitude, setAmplitude] = useState(DEFAULT_EMITTER_AMPLITUDE);
     const [colors, setColors] = useState<string[]>(initialColors);
+    const [zIndex, setZIndex] = useState(0);
 
     // Lifetime state
     const [infinite, setInfinite] = useState(DEFAULT_EMITTER_INFINITE);
@@ -92,6 +94,7 @@ export const EmitterControls = forwardRef<
           speed,
           amplitude,
           colors,
+          zIndex,
           infinite,
           duration,
           endSizeMultiplier,
@@ -109,6 +112,7 @@ export const EmitterControls = forwardRef<
           if (state.speed !== undefined) setSpeed(state.speed);
           if (state.amplitude !== undefined) setAmplitude(state.amplitude);
           if (state.colors !== undefined) setColors(state.colors);
+          if (state.zIndex !== undefined) setZIndex(state.zIndex);
           if (state.infinite !== undefined) setInfinite(state.infinite);
           if (state.duration !== undefined) setDuration(state.duration);
           if (state.endSizeMultiplier !== undefined)
@@ -127,6 +131,7 @@ export const EmitterControls = forwardRef<
         speed,
         amplitude,
         colors,
+        zIndex,
         infinite,
         duration,
         endSizeMultiplier,
@@ -157,6 +162,7 @@ export const EmitterControls = forwardRef<
         speed,
         amplitude,
         colors,
+        zIndex,
         infinite,
         duration,
         endSizeMultiplier,
@@ -173,6 +179,7 @@ export const EmitterControls = forwardRef<
       speed,
       amplitude,
       colors,
+      zIndex,
       infinite,
       duration,
       endSizeMultiplier,
@@ -306,6 +313,21 @@ export const EmitterControls = forwardRef<
               onChange={(e) =>
                 handleAmplitudeChange(parseFloat(e.target.value))
               }
+              className="slider"
+            />
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
+            Z-Index: {zIndex}
+            <input
+              type="range"
+              min="0"
+              max="10"
+              step="1"
+              value={zIndex}
+              onChange={(e) => setZIndex(parseInt(e.target.value))}
               className="slider"
             />
           </label>

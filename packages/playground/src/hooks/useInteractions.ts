@@ -935,6 +935,7 @@ export function useInteractions({
         particleMass: emitterConfig.particleMass,
         colors: emitterConfig.colors,
         enabled: true,
+        zIndex: emitterConfig.zIndex,
         // Lifetime properties
         infinite: emitterConfig.infinite,
         duration: emitterConfig.duration,
