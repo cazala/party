@@ -7,7 +7,7 @@ import {
   DEFAULT_EMITTER_SPEED,
   DEFAULT_EMITTER_AMPLITUDE,
   DEFAULT_EMITTER_PARTICLE_SIZE,
-  DEFAULT_EMITTER_INFINITE,
+  DEFAULT_EMITTER_LIFETIME,
   DEFAULT_EMITTER_DURATION,
   DEFAULT_EMITTER_END_SIZE_MULTIPLIER,
   DEFAULT_EMITTER_END_ALPHA,
@@ -26,7 +26,7 @@ export interface EmitterConfig {
   zIndex: number; // rendering depth (0-10)
 
   // Lifetime properties
-  infinite: boolean; // whether particles live forever
+  lifetime: boolean; // whether particles have a limited lifetime
   duration?: number; // particle lifetime in ms
   endSizeMultiplier?: number; // final size multiplier
   endAlpha?: number; // final alpha value
@@ -69,7 +69,7 @@ export const EmitterControls = forwardRef<
     const [zIndex, setZIndex] = useState(0);
 
     // Lifetime state
-    const [infinite, setInfinite] = useState(DEFAULT_EMITTER_INFINITE);
+    const [lifetime, setLifetime] = useState(DEFAULT_EMITTER_LIFETIME);
     const [duration, setDuration] = useState(DEFAULT_EMITTER_DURATION);
     const [endSizeMultiplier, setEndSizeMultiplier] = useState(
       DEFAULT_EMITTER_END_SIZE_MULTIPLIER
@@ -95,7 +95,7 @@ export const EmitterControls = forwardRef<
           amplitude,
           colors,
           zIndex,
-          infinite,
+          lifetime,
           duration,
           endSizeMultiplier,
           endAlpha,
@@ -113,7 +113,10 @@ export const EmitterControls = forwardRef<
           if (state.amplitude !== undefined) setAmplitude(state.amplitude);
           if (state.colors !== undefined) setColors(state.colors);
           if (state.zIndex !== undefined) setZIndex(state.zIndex);
-          if (state.infinite !== undefined) setInfinite(state.infinite);
+          if (state.lifetime !== undefined) setLifetime(state.lifetime);
+          // Backward compatibility for old 'infinite' property
+          if ((state as any).infinite !== undefined)
+            setLifetime(!(state as any).infinite);
           if (state.duration !== undefined) setDuration(state.duration);
           if (state.endSizeMultiplier !== undefined)
             setEndSizeMultiplier(state.endSizeMultiplier);
@@ -132,7 +135,7 @@ export const EmitterControls = forwardRef<
         amplitude,
         colors,
         zIndex,
-        infinite,
+        lifetime,
         duration,
         endSizeMultiplier,
         endAlpha,
@@ -163,7 +166,7 @@ export const EmitterControls = forwardRef<
         amplitude,
         colors,
         zIndex,
-        infinite,
+        lifetime,
         duration,
         endSizeMultiplier,
         endAlpha,
@@ -180,7 +183,7 @@ export const EmitterControls = forwardRef<
       amplitude,
       colors,
       zIndex,
-      infinite,
+      lifetime,
       duration,
       endSizeMultiplier,
       endAlpha,
@@ -338,15 +341,15 @@ export const EmitterControls = forwardRef<
           <label>
             <input
               type="checkbox"
-              checked={infinite}
-              onChange={(e) => setInfinite(e.target.checked)}
+              checked={lifetime}
+              onChange={(e) => setLifetime(e.target.checked)}
               className="checkbox"
             />
-            Infinite particles
+            Lifetime
           </label>
         </div>
 
-        {!infinite && (
+        {lifetime && (
           <>
             <div className="control-group">
               <label>
@@ -382,6 +385,23 @@ export const EmitterControls = forwardRef<
 
             <div className="control-group">
               <label>
+                Speed multiplier: {endSpeedMultiplier!.toFixed(1)}x
+                <input
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={endSpeedMultiplier!}
+                  onChange={(e) =>
+                    setEndSpeedMultiplier(parseFloat(e.target.value))
+                  }
+                  className="slider"
+                />
+              </label>
+            </div>
+
+            <div className="control-group">
+              <label>
                 Alpha over lifetime: {endAlpha!.toFixed(2)}
                 <input
                   type="range"
@@ -400,23 +420,6 @@ export const EmitterControls = forwardRef<
               onColorsChange={setEndColors}
               label="Color over lifetime"
             />
-
-            <div className="control-group">
-              <label>
-                Speed multiplier: {endSpeedMultiplier!.toFixed(1)}x
-                <input
-                  type="range"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  value={endSpeedMultiplier!}
-                  onChange={(e) =>
-                    setEndSpeedMultiplier(parseFloat(e.target.value))
-                  }
-                  className="slider"
-                />
-              </label>
-            </div>
           </>
         )}
       </div>

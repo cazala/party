@@ -85,7 +85,7 @@ export function usePlayground(
     colors: [], // Empty array means use default palette
     zIndex: 0, // default render depth
     // Lifetime properties
-    infinite: true, // particles live forever by default
+    lifetime: false, // particles have unlimited lifetime by default
     duration: 5000, // 5 seconds when not infinite
     endSizeMultiplier: 1, // no size change by default
     endAlpha: 1, // no alpha change by default

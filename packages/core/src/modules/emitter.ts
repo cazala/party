@@ -19,7 +19,7 @@ export interface SerializedEmitter {
   zIndex: number;
   
   // Lifetime properties
-  infinite: boolean; // whether particles live forever
+  lifetime: boolean; // whether particles have a limited lifetime
   duration?: number; // particle lifetime in ms
   endSizeMultiplier?: number; // final size multiplier
   endAlpha?: number; // final alpha value
@@ -44,7 +44,7 @@ export interface EmitterOptions {
   zIndex?: number;
   
   // Lifetime properties
-  infinite?: boolean; // whether particles live forever
+  lifetime?: boolean; // whether particles have a limited lifetime
   duration?: number; // particle lifetime in ms
   endSizeMultiplier?: number; // final size multiplier
   endAlpha?: number; // final alpha value
@@ -64,7 +64,7 @@ export const DEFAULT_EMITTER_PARTICLE_MASS = 1;
 export const DEFAULT_EMITTER_COLORS: string[] = []; // Empty means use default palette
 
 // Lifetime defaults
-export const DEFAULT_EMITTER_INFINITE = true; // particles live forever by default
+export const DEFAULT_EMITTER_LIFETIME = false; // particles have unlimited lifetime by default
 export const DEFAULT_EMITTER_DURATION = 5000; // 5 seconds when not infinite
 export const DEFAULT_EMITTER_END_SIZE_MULTIPLIER = 1; // no size change
 export const DEFAULT_EMITTER_END_ALPHA = 1; // no alpha change
@@ -92,7 +92,7 @@ export class Emitter {
   public zIndex: number;
   
   // Lifetime properties
-  public infinite: boolean;
+  public lifetime: boolean;
   public duration?: number;
   public endSizeMultiplier: number;
   public endAlpha: number;
@@ -121,7 +121,7 @@ export class Emitter {
     this.zIndex = options.zIndex ?? 0;
     
     // Initialize lifetime properties
-    this.infinite = options.infinite ?? DEFAULT_EMITTER_INFINITE;
+    this.lifetime = options.lifetime ?? DEFAULT_EMITTER_LIFETIME;
     this.duration = options.duration ?? DEFAULT_EMITTER_DURATION;
     this.endSizeMultiplier = options.endSizeMultiplier ?? DEFAULT_EMITTER_END_SIZE_MULTIPLIER;
     this.endAlpha = options.endAlpha ?? DEFAULT_EMITTER_END_ALPHA;
@@ -201,7 +201,7 @@ export class Emitter {
       color: color,
       zIndex: this.zIndex,
       // Apply lifetime properties
-      duration: this.infinite ? undefined : this.duration,
+      duration: this.lifetime ? this.duration : undefined,
       endSizeMultiplier: this.endSizeMultiplier,
       endAlpha: this.endAlpha,
       endColor: this.endColors.length > 0 ? [...this.endColors] : undefined,
@@ -268,7 +268,7 @@ export class Emitter {
       enabled: this.enabled,
       zIndex: this.zIndex,
       // Include lifetime properties
-      infinite: this.infinite,
+      lifetime: this.lifetime,
       duration: this.duration,
       endSizeMultiplier: this.endSizeMultiplier,
       endAlpha: this.endAlpha,
@@ -297,7 +297,7 @@ export class Emitter {
       enabled: data.enabled,
       zIndex: data.zIndex ?? 0, // Default to 0 for backward compatibility
       // Include lifetime properties with fallbacks for backward compatibility
-      infinite: data.infinite ?? DEFAULT_EMITTER_INFINITE,
+      lifetime: data.lifetime ?? ((data as any).infinite !== undefined ? !(data as any).infinite : DEFAULT_EMITTER_LIFETIME),
       duration: data.duration ?? DEFAULT_EMITTER_DURATION,
       endSizeMultiplier: data.endSizeMultiplier ?? DEFAULT_EMITTER_END_SIZE_MULTIPLIER,
       endAlpha: data.endAlpha ?? DEFAULT_EMITTER_END_ALPHA,

@@ -937,7 +937,7 @@ export function useInteractions({
         enabled: true,
         zIndex: emitterConfig.zIndex,
         // Lifetime properties
-        infinite: emitterConfig.infinite,
+        lifetime: emitterConfig.lifetime,
         duration: emitterConfig.duration,
         endSizeMultiplier: emitterConfig.endSizeMultiplier,
         endAlpha: emitterConfig.endAlpha,

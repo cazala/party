@@ -112,7 +112,7 @@ export interface SavedSession {
       colors: string[];
       zIndex: number;
       // Lifetime properties
-      infinite: boolean;
+      lifetime: boolean;
       duration?: number;
       endSizeMultiplier?: number;
       endAlpha?: number;

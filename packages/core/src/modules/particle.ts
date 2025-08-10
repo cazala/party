@@ -246,7 +246,7 @@ export class Particle {
    * 
    * @param deltaTime - Time elapsed since last update in milliseconds (unused but kept for consistency)
    */
-  interpolateProperties(deltaTime: number): void {
+  interpolateProperties(_deltaTime: number): void {
     if (this.duration === null) return; // No interpolation for infinite particles
 
     const progress = this.getLifetimeProgress();
@@ -346,7 +346,7 @@ export class Particle {
       grabbed: this.grabbed,
       zIndex: this.zIndex,
       // Include lifetime properties
-      duration: this.duration,
+      duration: this.duration ?? undefined,
       endSizeMultiplier: this.endSizeMultiplier,
       endAlpha: this.endAlpha,
       endColor: this.endColor ? [this.endColor] : undefined,

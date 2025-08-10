@@ -234,22 +234,22 @@ export function TopBar({
                 <span>Pin</span>
               </button>
               <button
-                onClick={() => onToolModeChange("remove")}
-                className={`tool-mode-button tool-mode-fifth ${
-                  toolMode === "remove" ? "tool-mode-active" : ""
-                }`}
-              >
-                <Eraser width="12" height="12" />
-                <span>Remove</span>
-              </button>
-              <button
                 onClick={() => onToolModeChange("emitter")}
-                className={`tool-mode-button tool-mode-sixth ${
+                className={`tool-mode-button tool-mode-fifth ${
                   toolMode === "emitter" ? "tool-mode-active" : ""
                 }`}
               >
                 <Zap width="12" height="12" />
                 <span>Emitter</span>
+              </button>
+              <button
+                onClick={() => onToolModeChange("remove")}
+                className={`tool-mode-button tool-mode-sixth ${
+                  toolMode === "remove" ? "tool-mode-active" : ""
+                }`}
+              >
+                <Eraser width="12" height="12" />
+                <span>Remove</span>
               </button>
             </div>
           </div>
