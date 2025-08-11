@@ -531,6 +531,8 @@ export class Canvas2DRenderer extends Renderer {
   private cameraX: number = 0;
   private cameraY: number = 0;
 
+  // Z-index optimization (cache variables removed due to stale reference issues)
+
   setPreviewParticle(
     particle: Particle | null,
     isDragMode: boolean = false
@@ -606,6 +608,32 @@ export class Canvas2DRenderer extends Renderer {
     };
   }
 
+  /**
+   * Checks if particles need z-index sorting by asking the system
+   * This is much more efficient than looping through all particles
+   */
+  private checkIfSortingNeeded(system: System): boolean {
+    return system.needsZIndexSorting();
+  }
+
+  /**
+   * Gets particles in render order, with optimized sorting
+   */
+  private getParticlesInRenderOrder(system: System): Particle[] {
+    const needsSorting = this.checkIfSortingNeeded(system);
+    const particles = system.particles;
+
+    // If no sorting needed, return particles as-is (avoid array allocation)
+    if (!needsSorting) {
+      return particles;
+    }
+
+    // Need to sort - create new array and sort by z-index
+    const sortedParticles = [...particles].sort((a, b) => a.zIndex - b.zIndex);
+
+    return sortedParticles;
+  }
+
   render(system: System): void {
     this.clear();
 
@@ -628,11 +656,11 @@ export class Canvas2DRenderer extends Renderer {
     this.renderJoints(system);
 
     // Calculate min/max speeds for velocity color mode
-    
-    // Sort particles by z-index for proper layering (lower z-index renders first)
-    const sortedParticles = [...system.particles].sort((a, b) => a.zIndex - b.zIndex);
 
-    for (const particle of sortedParticles) {
+    // Get particles in render order with optimized z-index sorting
+    const particlesToRender = this.getParticlesInRenderOrder(system);
+
+    for (const particle of particlesToRender) {
       this.renderParticle(particle);
     }
 
@@ -782,10 +810,13 @@ export class Canvas2DRenderer extends Renderer {
   private renderParticle(particle: Particle): void {
     if (this.showDensity) return;
 
+    // Optimization: skip rendering completely transparent or very small particles
+    if ((particle.alpha || 1) <= 0 || particle.size <= 0.1) return;
+
     this.ctx.save();
 
     const renderColor = this.getParticleColor(particle);
-    
+
     // Apply particle alpha for lifetime effects
     this.ctx.globalAlpha = particle.alpha || 1;
 
@@ -1556,7 +1587,6 @@ export class Canvas2DRenderer extends Renderer {
 
     this.ctx.restore();
   }
-
 }
 
 export function createCanvas2DRenderer(

@@ -17,7 +17,7 @@ export interface SerializedEmitter {
   colors: string[];
   enabled: boolean;
   zIndex: number;
-  
+
   // Lifetime properties
   lifetime: boolean; // whether particles have a limited lifetime
   duration?: number; // particle lifetime in ms
@@ -42,7 +42,7 @@ export interface EmitterOptions {
   colors?: string[];
   enabled?: boolean;
   zIndex?: number;
-  
+
   // Lifetime properties
   lifetime?: boolean; // whether particles have a limited lifetime
   duration?: number; // particle lifetime in ms
@@ -73,7 +73,7 @@ export const DEFAULT_EMITTER_END_SPEED_MULTIPLIER = 1; // no speed change
 
 /**
  * Emitter class that spawns particles continuously at a specified rate
- * 
+ *
  * An emitter is an independent entity that creates particles over time with
  * configurable properties like direction, speed, and spread. It's not a force
  * but rather a particle source that integrates with the simulation.
@@ -90,7 +90,7 @@ export class Emitter {
   public colors: string[];
   public enabled: boolean;
   public zIndex: number;
-  
+
   // Lifetime properties
   public lifetime: boolean;
   public duration?: number;
@@ -104,7 +104,7 @@ export class Emitter {
 
   /**
    * Creates a new emitter instance
-   * 
+   *
    * @param options Configuration options for the emitter
    */
   constructor(options: EmitterOptions = {}) {
@@ -119,19 +119,21 @@ export class Emitter {
     this.colors = options.colors ?? [...DEFAULT_EMITTER_COLORS];
     this.enabled = options.enabled ?? true;
     this.zIndex = options.zIndex ?? 0;
-    
+
     // Initialize lifetime properties
     this.lifetime = options.lifetime ?? DEFAULT_EMITTER_LIFETIME;
     this.duration = options.duration ?? DEFAULT_EMITTER_DURATION;
-    this.endSizeMultiplier = options.endSizeMultiplier ?? DEFAULT_EMITTER_END_SIZE_MULTIPLIER;
+    this.endSizeMultiplier =
+      options.endSizeMultiplier ?? DEFAULT_EMITTER_END_SIZE_MULTIPLIER;
     this.endAlpha = options.endAlpha ?? DEFAULT_EMITTER_END_ALPHA;
     this.endColors = options.endColors ?? [...DEFAULT_EMITTER_END_COLORS];
-    this.endSpeedMultiplier = options.endSpeedMultiplier ?? DEFAULT_EMITTER_END_SPEED_MULTIPLIER;
+    this.endSpeedMultiplier =
+      options.endSpeedMultiplier ?? DEFAULT_EMITTER_END_SPEED_MULTIPLIER;
   }
 
   /**
    * Updates the emitter, potentially spawning new particles
-   * 
+   *
    * @param deltaTime Time elapsed since last update in seconds
    * @param system The particle system to spawn particles into
    */
@@ -152,13 +154,13 @@ export class Emitter {
 
   /**
    * Spawns a single particle from this emitter
-   * 
+   *
    * @param system The particle system to spawn the particle into
    */
   private spawnParticle(system: System): void {
     // Calculate particle direction based on emitter direction and amplitude
     let particleDirection = this.direction;
-    
+
     if (this.amplitude > 0) {
       // Add random spread within amplitude range
       const randomSpread = (Math.random() - 0.5) * this.amplitude;
@@ -251,7 +253,7 @@ export class Emitter {
 
   /**
    * Serializes the emitter for session saving or undo/redo
-   * 
+   *
    * @returns Serialized emitter data
    */
   serialize(): SerializedEmitter {
@@ -279,7 +281,7 @@ export class Emitter {
 
   /**
    * Creates an emitter from serialized data
-   * 
+   *
    * @param data Serialized emitter data
    * @returns New emitter instance
    */
@@ -297,18 +299,22 @@ export class Emitter {
       enabled: data.enabled,
       zIndex: data.zIndex ?? 0, // Default to 0 for backward compatibility
       // Include lifetime properties with fallbacks for backward compatibility
-      lifetime: data.lifetime ?? ((data as any).infinite !== undefined ? !(data as any).infinite : DEFAULT_EMITTER_LIFETIME),
+      lifetime: data.lifetime ?? DEFAULT_EMITTER_LIFETIME,
       duration: data.duration ?? DEFAULT_EMITTER_DURATION,
-      endSizeMultiplier: data.endSizeMultiplier ?? DEFAULT_EMITTER_END_SIZE_MULTIPLIER,
+      endSizeMultiplier:
+        data.endSizeMultiplier ?? DEFAULT_EMITTER_END_SIZE_MULTIPLIER,
       endAlpha: data.endAlpha ?? DEFAULT_EMITTER_END_ALPHA,
-      endColors: data.endColors ? [...data.endColors] : [...DEFAULT_EMITTER_END_COLORS],
-      endSpeedMultiplier: data.endSpeedMultiplier ?? DEFAULT_EMITTER_END_SPEED_MULTIPLIER,
+      endColors: data.endColors
+        ? [...data.endColors]
+        : [...DEFAULT_EMITTER_END_COLORS],
+      endSpeedMultiplier:
+        data.endSpeedMultiplier ?? DEFAULT_EMITTER_END_SPEED_MULTIPLIER,
     });
   }
 
   /**
    * Creates a copy of this emitter
-   * 
+   *
    * @returns Cloned emitter instance
    */
   clone(): Emitter {

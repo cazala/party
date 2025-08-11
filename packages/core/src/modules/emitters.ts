@@ -29,8 +29,14 @@ export class Emitters {
   update(deltaTime: number, system: System): void {
     if (!this.enabled) return;
 
+    // Early exit optimization: skip processing if no emitters exist
+    if (this.emitters.size === 0) return;
+
     for (const emitter of this.emitters.values()) {
-      emitter.update(deltaTime, system);
+      // Additional optimization: skip disabled emitters to avoid function call overhead
+      if (emitter.enabled) {
+        emitter.update(deltaTime, system);
+      }
     }
   }
 

@@ -352,6 +352,10 @@ export class System {
   /** Optional callback function called after each frame update */
   private renderCallback?: (system: System) => void;
 
+  /** Z-index tracking for efficient sorting optimization */
+  private zIndexCounts: Map<number, number> = new Map();
+  private uniqueZIndexCount: number = 0;
+
   /** Event emitter for system events */
   public events: MittEmitter<SystemEvents>;
 
@@ -384,6 +388,7 @@ export class System {
    */
   addParticle(particle: Particle): void {
     this.particles.push(particle);
+    this.trackZIndex(particle.zIndex);
     this.events.emit("particle-added", { particle });
   }
 
@@ -393,8 +398,13 @@ export class System {
    * @param particles - Array of particles to add
    */
   addParticles(particles: Particle[]): void {
+    // Batch add particles for better performance
+    this.particles.push(...particles);
+    
+    // Track z-indices for all added particles
     for (const particle of particles) {
-      this.addParticle(particle);
+      this.trackZIndex(particle.zIndex);
+      this.events.emit("particle-added", { particle });
     }
   }
 
@@ -418,6 +428,7 @@ export class System {
     const index = this.particles.indexOf(particle);
     if (index > -1) {
       this.particles.splice(index, 1);
+      this.untrackZIndex(particle.zIndex);
     }
   }
 
@@ -493,7 +504,10 @@ export class System {
       }
       
       // Update particle lifetime properties (size, alpha, color, speed interpolation)
-      particle.interpolateProperties(deltaTime);
+      // Only call interpolation for particles with finite lifetime to avoid function call overhead
+      if (particle.duration !== null) {
+        particle.interpolateProperties(deltaTime);
+      }
     }
 
     // Apply constraints
@@ -510,7 +524,37 @@ export class System {
     this.emitters.update(deltaTime, this);
 
     // Remove dead particles (marked with mass = 0 or exceeded lifetime)
-    this.particles = this.particles.filter((particle) => particle.mass > 0 && !particle.isDead());
+    // Optimization: only filter if there are actually dead particles to avoid array allocation
+    let foundDeadParticle = false;
+    for (let i = 0; i < this.particles.length; i++) {
+      const particle = this.particles[i];
+      if (particle.mass <= 0 || particle.isDead()) {
+        foundDeadParticle = true;
+        break;
+      }
+    }
+    
+    if (foundDeadParticle) {
+      // Track which particles are being removed for z-index tracking
+      const removedParticles: Particle[] = [];
+      const keptParticles: Particle[] = [];
+      
+      for (const particle of this.particles) {
+        if (particle.mass > 0 && !particle.isDead()) {
+          keptParticles.push(particle);
+        } else {
+          removedParticles.push(particle);
+        }
+      }
+      
+      // Update particles array and z-index tracking
+      this.particles = keptParticles;
+      
+      // Untrack z-indices for removed particles
+      for (const particle of removedParticles) {
+        this.untrackZIndex(particle.zIndex);
+      }
+    }
   }
 
   /**
@@ -577,6 +621,7 @@ export class System {
 
   clear(): void {
     this.particles = [];
+    this.clearZIndexTracking();
     this.emitters.clear();
     this.spatialGrid.clear();
     // Clear FPS tracking data to prevent memory accumulation
@@ -855,4 +900,49 @@ export class System {
       }
     }
   }
+
+  /**
+   * Z-index tracking methods for efficient sorting optimization
+   */
+
+  /**
+   * Tracks a z-index value when a particle is added
+   */
+  private trackZIndex(zIndex: number): void {
+    const currentCount = this.zIndexCounts.get(zIndex) || 0;
+    this.zIndexCounts.set(zIndex, currentCount + 1);
+    
+    if (currentCount === 0) {
+      this.uniqueZIndexCount++;
+    }
+  }
+
+  /**
+   * Untracks a z-index value when a particle is removed
+   */
+  private untrackZIndex(zIndex: number): void {
+    const currentCount = this.zIndexCounts.get(zIndex) || 0;
+    if (currentCount > 1) {
+      this.zIndexCounts.set(zIndex, currentCount - 1);
+    } else if (currentCount === 1) {
+      this.zIndexCounts.delete(zIndex);
+      this.uniqueZIndexCount--;
+    }
+  }
+
+  /**
+   * Clears all z-index tracking
+   */
+  private clearZIndexTracking(): void {
+    this.zIndexCounts.clear();
+    this.uniqueZIndexCount = 0;
+  }
+
+  /**
+   * Returns whether sorting is needed based on z-index diversity
+   */
+  public needsZIndexSorting(): boolean {
+    return this.uniqueZIndexCount > 1;
+  }
+
 }

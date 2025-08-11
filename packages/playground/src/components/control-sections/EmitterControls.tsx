@@ -114,9 +114,6 @@ export const EmitterControls = forwardRef<
           if (state.colors !== undefined) setColors(state.colors);
           if (state.zIndex !== undefined) setZIndex(state.zIndex);
           if (state.lifetime !== undefined) setLifetime(state.lifetime);
-          // Backward compatibility for old 'infinite' property
-          if ((state as any).infinite !== undefined)
-            setLifetime(!(state as any).infinite);
           if (state.duration !== undefined) setDuration(state.duration);
           if (state.endSizeMultiplier !== undefined)
             setEndSizeMultiplier(state.endSizeMultiplier);

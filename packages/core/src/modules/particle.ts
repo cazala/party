@@ -249,6 +249,14 @@ export class Particle {
   interpolateProperties(_deltaTime: number): void {
     if (this.duration === null) return; // No interpolation for infinite particles
 
+    // Quick check: if no interpolatable properties are set, skip all work
+    if (this.endSizeMultiplier === 1 && 
+        this.endAlpha === 1 && 
+        this.endSpeedMultiplier === 1 && 
+        (!this.endColor || this.endColor === this.initialColor)) {
+      return; // No properties to interpolate
+    }
+
     const progress = this.getLifetimeProgress();
     
     // Interpolate size
