@@ -9,7 +9,7 @@ Interactive web playground for experimenting with particle system simulations. B
 - Real-time controls for adjusting psimulation parameters while it runs runs
 - Session management for saving and loading complete simulation states
 - Undo/redo system
-- Visual effects including trails, glow, density fields, velocity visualization, and particle lifetime effects
+- Visual effects including trails, configurable glow effects, density fields, velocity visualization, and particle lifetime effects
 - Keyboard shortcuts for efficient workflow
 
 ## Getting Started
@@ -144,9 +144,12 @@ Delete particles from simulation:
 #### Rendering Options
 
 - **Color Mode**: Particle, Custom, Velocity-based, Rotating Hue
-- **Visual Effects**: Trails, glow, blur effects
+- **Glow Effects**: Enable/disable particle shadow-based glow effects (disabled by default for better performance)
+- **Visual Effects**: Trails, blur effects, and other visual enhancements
 - **Debug Overlays**: Spatial grid, density field, velocity arrows
 - **Performance**: FPS display and particle count
+
+**Performance Note**: Glow effects use Canvas2D shadow operations which are computationally expensive. Disabling glow effects can significantly improve frame rates, especially with many particles. When trails are enabled, glow effects are automatically bypassed to prevent conflicts.
 
 #### Emitter Configuration
 

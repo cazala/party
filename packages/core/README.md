@@ -7,7 +7,7 @@ A TypeScript particle physics engine featuring advanced force systems, spatial o
 - High performance spatial grid optimization for O(1) neighbor queries
 - Modular force system with pluggable architecture and lifecycle management
 - Real-time simulation capable of 60+ FPS with thousands of particles
-- Advanced Canvas2D rendering with trails, glow effects, density visualization, and particle lifetime effects
+- Advanced Canvas2D rendering with trails, configurable glow effects, density visualization, and particle lifetime effects
 - Comprehensive physics including gravity, collisions, flocking, fluid dynamics, breakable elastic joints, particle emitters, and more
 - Spatial optimization with efficient collision detection and neighbor finding
 - Interactive user-controlled forces and particle manipulation
@@ -380,23 +380,28 @@ Emitted particles can have dynamic properties that change over their lifetime:
 
 ## Rendering
 
-The library includes a comprehensive Canvas2D renderer:
+The library includes a comprehensive Canvas2D renderer with performance-optimized visual effects:
 
 ```typescript
 import { Canvas2DRenderer, createCanvas2DRenderer } from "@cazala/party";
 
-const renderer = createCanvas2DRenderer({
-  canvas: canvasElement,
-  width: 800,
-  height: 600,
+const renderer = createCanvas2DRenderer(canvasElement, {
+  clearColor: "#000000",
+  glowEffects: false, // Disabled by default for better performance
+  colorMode: "particle",
+  customColor: "#ffffff",
+  maxSpeed: 400,
+  rotationSpeed: 1.0,
 });
 
 // Rendering features
-renderer.setColorMode("velocity"); // 'particle', 'custom', 'velocity', 'hue'
+renderer.setColorMode("velocity"); // 'particle', 'custom', 'velocity', 'rotate'
 renderer.setCustomColor("#ff6b35");
-renderer.setTrailEnabled(true);
-renderer.setTrailDecay(0.05);
-renderer.setGlowEnabled(true);
+
+// Performance-optimized glow effects (disabled by default for better FPS)
+renderer.setGlowEffects(false); // Enable/disable particle glow effects
+// Note: Glow effects use expensive Canvas2D shadow operations that can impact performance
+// When trails are enabled, glow effects are automatically bypassed regardless of this setting
 
 // Visual overlays
 renderer.setShowSpatialGrid(true);
@@ -407,6 +412,23 @@ renderer.setShowVelocityField(true);
 renderer.setZoom(1.5);
 renderer.setCamera(centerX, centerY);
 ```
+
+### Glow Effects and Performance
+
+The renderer includes configurable glow effects that create visual appeal but come with performance costs:
+
+```typescript
+// Enable/disable glow effects (disabled by default)
+renderer.setGlowEffects(true);
+const isGlowEnabled = renderer.getGlowEffects();
+```
+
+**Performance Impact:**
+- **With glow effects**: Each particle is rendered with Canvas2D shadow operations, creating a beautiful glow but significantly impacting frame rates
+- **Without glow effects**: Particles use simple fill operations, maximizing performance for large particle counts
+- **Automatic optimization**: When trails are enabled, glow effects are automatically bypassed to prevent visual conflicts and performance degradation
+
+**Recommendation:** Keep glow effects disabled for better performance, especially with 1000+ particles. Enable only when visual quality is prioritized over frame rate.
 
 ## Spatial Grid Optimization
 
