@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { SystemControls, SystemControlsRef } from "./components/SystemControls";
 import { ForcesControls } from "./components/ForcesControls";
 import { TopBar } from "./components/TopBar";
+import { ToolBar } from "./components/ToolBar";
 import { HelpModal } from "./components/HelpModal";
 import { SaveSessionModal } from "./components/modals/SaveSessionModal";
 import { LoadSessionModal } from "./components/modals/LoadSessionModal";
@@ -13,11 +14,13 @@ import { LoadSessionModal } from "./components/modals/LoadSessionModal";
 import "./styles/index.css";
 import "./components/Controls.css";
 import "./components/TopBar.css";
+import "./components/ToolBar.css";
 import "./App.css";
 
 const LEFT_SIDEBAR_WIDTH = 280;
 const RIGHT_SIDEBAR_WIDTH = 320;
 const TOPBAR_HEIGHT = 60;
+const TOOLBAR_HEIGHT = 60;
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -82,7 +85,7 @@ function App() {
       isFullscreen
         ? size.width
         : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH,
-      isFullscreen ? size.height : size.height - TOPBAR_HEIGHT
+      isFullscreen ? size.height : size.height - TOPBAR_HEIGHT - TOOLBAR_HEIGHT
     );
   }, [
     system,
@@ -130,13 +133,7 @@ function App() {
         onShowHotkeys={() => setIsHelpModalOpen(true)}
         onSave={() => setIsSaveModalOpen(true)}
         onLoad={() => setIsLoadModalOpen(true)}
-        toolMode={toolMode}
-        onToolModeChange={setToolMode}
         onToggleFullscreen={toggleFullscreen}
-        currentlyGrabbedParticle={currentlyGrabbedParticle}
-        onGrabToJoint={handleGrabToJoint}
-        isCreatingJoint={isCreatingJoint}
-        onJointToSpawn={handleJointToSpawn}
         style={{
           display: isFullscreen ? "none" : "block",
         }}
@@ -212,7 +209,18 @@ function App() {
                 ? size.width
                 : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH
             }
-            height={isFullscreen ? size.height : size.height - TOPBAR_HEIGHT}
+            height={isFullscreen ? size.height : size.height - TOPBAR_HEIGHT - TOOLBAR_HEIGHT}
+          />
+          <ToolBar
+            toolMode={toolMode}
+            onToolModeChange={setToolMode}
+            currentlyGrabbedParticle={currentlyGrabbedParticle}
+            onGrabToJoint={handleGrabToJoint}
+            isCreatingJoint={isCreatingJoint}
+            onJointToSpawn={handleJointToSpawn}
+            style={{
+              display: isFullscreen ? "none" : "block",
+            }}
           />
         </div>
         <div

@@ -5,15 +5,8 @@ import {
   FolderOpen,
   Maximize,
   Trash2,
-  Circle,
-  Link,
-  Hand,
-  Pin,
-  Eraser,
-  Zap,
 } from "lucide-react";
 import { System } from "@cazala/party";
-import { ToolMode } from "../hooks/useToolMode";
 
 interface TopBarProps {
   system: System | null;
@@ -24,14 +17,8 @@ interface TopBarProps {
   onShowHotkeys?: () => void;
   onSave?: () => void;
   onLoad?: () => void;
-  toolMode?: ToolMode;
-  onToolModeChange?: (mode: ToolMode) => void;
   onToggleFullscreen?: () => void;
   style?: React.CSSProperties;
-  currentlyGrabbedParticle?: any;
-  onGrabToJoint?: () => boolean;
-  isCreatingJoint?: boolean;
-  onJointToSpawn?: () => boolean;
 }
 
 export function TopBar({
@@ -43,14 +30,8 @@ export function TopBar({
   onShowHotkeys,
   onSave,
   onLoad,
-  toolMode = "spawn",
-  onToolModeChange,
   onToggleFullscreen,
   style,
-  currentlyGrabbedParticle,
-  onGrabToJoint,
-  isCreatingJoint,
-  onJointToSpawn,
 }: TopBarProps) {
   const [isPlaying, setIsPlaying] = useState(true);
 
@@ -66,61 +47,6 @@ export function TopBar({
       return () => clearInterval(interval);
     }
   }, [system]);
-
-  // Add keyboard shortcuts for tool mode changes
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!onToolModeChange) return;
-
-      // Check for Cmd (Mac) or Ctrl (PC)
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
-        switch (e.key.toLowerCase()) {
-          case "a":
-            e.preventDefault();
-            // Special handling for CMD+A during joint creation: switch to spawn mode with pending joint
-            if (isCreatingJoint && onJointToSpawn) {
-              const success = onJointToSpawn();
-              if (success) {
-                onToolModeChange("spawn");
-              }
-            } else {
-              onToolModeChange("spawn");
-            }
-            break;
-          case "s":
-            e.preventDefault();
-            // Special handling for CMD+S during grab: switch to joint mode with grabbed particle
-            if (currentlyGrabbedParticle && onGrabToJoint) {
-              const success = onGrabToJoint();
-              if (success) {
-                onToolModeChange("joint");
-              }
-            } else {
-              onToolModeChange("joint");
-            }
-            break;
-          case "d":
-            e.preventDefault();
-            onToolModeChange("grab");
-            break;
-          case "f":
-            onToolModeChange("pin");
-            break;
-          case "g":
-            e.preventDefault();
-            onToolModeChange("remove");
-            break;
-          case "h":
-            e.preventDefault();
-            onToolModeChange("emitter");
-            break;
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onToolModeChange, currentlyGrabbedParticle, onGrabToJoint, isCreatingJoint, onJointToSpawn]);
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -194,66 +120,6 @@ export function TopBar({
             </button>
           )}
         </div>
-        {onToolModeChange && (
-          <div className="tool-group">
-            <div className="tool-mode-selector">
-              <button
-                onClick={() => onToolModeChange("spawn")}
-                className={`tool-mode-button tool-mode-first ${
-                  toolMode === "spawn" ? "tool-mode-active" : ""
-                }`}
-              >
-                <Circle width="12" height="12" />
-                <span>Spawn</span>
-              </button>
-              <button
-                onClick={() => onToolModeChange("joint")}
-                className={`tool-mode-button tool-mode-second ${
-                  toolMode === "joint" ? "tool-mode-active" : ""
-                }`}
-              >
-                <Link width="12" height="12" />
-                <span>Joint</span>
-              </button>
-              <button
-                onClick={() => onToolModeChange("grab")}
-                className={`tool-mode-button tool-mode-third ${
-                  toolMode === "grab" ? "tool-mode-active" : ""
-                }`}
-              >
-                <Hand width="12" height="12" />
-                <span>Grab</span>
-              </button>
-              <button
-                onClick={() => onToolModeChange("pin")}
-                className={`tool-mode-button tool-mode-fourth ${
-                  toolMode === "pin" ? "tool-mode-active" : ""
-                }`}
-              >
-                <Pin width="12" height="12" />
-                <span>Pin</span>
-              </button>
-              <button
-                onClick={() => onToolModeChange("emitter")}
-                className={`tool-mode-button tool-mode-fifth ${
-                  toolMode === "emitter" ? "tool-mode-active" : ""
-                }`}
-              >
-                <Zap width="12" height="12" />
-                <span>Emitter</span>
-              </button>
-              <button
-                onClick={() => onToolModeChange("remove")}
-                className={`tool-mode-button tool-mode-sixth ${
-                  toolMode === "remove" ? "tool-mode-active" : ""
-                }`}
-              >
-                <Eraser width="12" height="12" />
-                <span>Remove</span>
-              </button>
-            </div>
-          </div>
-        )}
         <div className="topbar-right">
           {onToggleFullscreen && (
             <button

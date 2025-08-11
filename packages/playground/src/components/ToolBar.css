@@ -1,0 +1,106 @@
+.toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--color-canvas);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  height: 60px;
+}
+
+.toolbar-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  height: 100%;
+}
+
+.tool-mode-selector {
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.tool-mode-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-secondary);
+  position: relative;
+}
+
+.tool-mode-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--color-text-primary);
+}
+
+.tool-mode-button.tool-mode-active {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--color-accent-white);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.tool-mode-first {
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.tool-mode-second {
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.tool-mode-third {
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.tool-mode-fourth {
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.tool-mode-fifth {
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Responsive design - Switch to icons when buttons get too cramped */
+@media (max-width: 1200px) {
+  .toolbar-content {
+    padding: 0 12px;
+  }
+
+  .tool-mode-button span {
+    display: none;
+  }
+
+  .tool-mode-button {
+    padding: 8px 10px;
+    min-width: 40px;
+    justify-content: center;
+  }
+}
+
+/* Very small screens - extra compact */
+@media (max-width: 600px) {
+  .toolbar-content {
+    padding: 0 8px;
+  }
+
+  .tool-mode-button {
+    padding: 6px 8px;
+    min-width: 36px;
+  }
+  
+  .tool-mode-selector {
+    gap: 2px;
+  }
+}
