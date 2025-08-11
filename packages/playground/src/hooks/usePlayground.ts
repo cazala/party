@@ -141,6 +141,16 @@ export function usePlayground(
         zoomState.targetCameraY,
         zoomState.targetZoom
       );
+      
+      // Update system camera for frustum culling
+      const system = systemRef.current;
+      if (system) {
+        system.updateCamera(
+          zoomState.targetCameraX,
+          zoomState.targetCameraY,
+          zoomState.targetZoom
+        );
+      }
 
       zoomState.isAnimating = false;
       if (zoomState.animationId) {
@@ -159,6 +169,12 @@ export function usePlayground(
     renderer.setCamera(newCameraX, newCameraY);
     boundary.setCamera(newCameraX, newCameraY, newZoom);
     spatialGrid.setCamera(newCameraX, newCameraY, newZoom);
+    
+    // Update system camera for frustum culling
+    const system = systemRef.current;
+    if (system) {
+      system.updateCamera(newCameraX, newCameraY, newZoom);
+    }
 
     // Continue animation
     zoomState.animationId = requestAnimationFrame(animateZoom);
@@ -353,8 +369,9 @@ export function usePlayground(
       renderer.render(system);
     });
 
-    // Initialize boundary with initial camera position and zoom
+    // Initialize boundary and system with initial camera position and zoom
     boundary.setCamera(0, 0, 1);
+    system.updateCamera(0, 0, 1);
 
     system.play();
 

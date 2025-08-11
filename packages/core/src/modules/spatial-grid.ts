@@ -40,6 +40,14 @@ export class SpatialGrid {
   private cameraX: number = 0;
   private cameraY: number = 0;
   private zoom: number = 1;
+  
+  // Object pooling for grid cell arrays
+  private arrayPool: Particle[][] = [];
+  private jointArrayPool: SpatialJoint[][] = [];
+  private maxPoolSize: number = 1000; // Limit pool size to prevent excessive memory usage
+  
+  // Track particles for incremental updates
+  private particlePositions: Map<number, { col: number; row: number }> = new Map();
 
   constructor(options: SpatialGridOptions) {
     this.width = options.width;
@@ -94,19 +102,94 @@ export class SpatialGrid {
       this.grid[row] = [];
       this.jointGrid[row] = [];
       for (let col = 0; col < this.cols; col++) {
-        this.grid[row][col] = [];
-        this.jointGrid[row][col] = [];
+        this.grid[row][col] = this.getPooledArray();
+        this.jointGrid[row][col] = this.getPooledJointArray();
       }
     }
   }
 
+  /**
+   * Get a pooled array for particles, or create new one if pool is empty
+   */
+  private getPooledArray(): Particle[] {
+    if (this.arrayPool.length > 0) {
+      return this.arrayPool.pop()!;
+    }
+    return [];
+  }
+
+  /**
+   * Get a pooled array for joints, or create new one if pool is empty
+   */
+  private getPooledJointArray(): SpatialJoint[] {
+    if (this.jointArrayPool.length > 0) {
+      return this.jointArrayPool.pop()!;
+    }
+    return [];
+  }
+
+  /**
+   * Return an array to the pool for reuse
+   */
+  private returnArrayToPool(array: Particle[]): void {
+    array.length = 0; // Clear the array
+    if (this.arrayPool.length < this.maxPoolSize) {
+      this.arrayPool.push(array);
+    }
+  }
+
+  /**
+   * Return a joint array to the pool for reuse
+   */
+  private returnJointArrayToPool(array: SpatialJoint[]): void {
+    array.length = 0; // Clear the array
+    if (this.jointArrayPool.length < this.maxPoolSize) {
+      this.jointArrayPool.push(array);
+    }
+  }
+
   clear(): void {
+    // Return arrays to pool and get fresh ones
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
-        this.grid[row][col] = [];
-        this.jointGrid[row][col] = [];
+        this.returnArrayToPool(this.grid[row][col]);
+        this.returnJointArrayToPool(this.jointGrid[row][col]);
+        this.grid[row][col] = this.getPooledArray();
+        this.jointGrid[row][col] = this.getPooledJointArray();
       }
     }
+    
+    // Clear particle position tracking
+    this.particlePositions.clear();
+  }
+
+  /**
+   * Incrementally clear only cells that contained particles
+   * Much more efficient than full clear for sparse grids
+   */
+  clearIncremental(_particles: Particle[]): void {
+    // Only clear cells that actually contained particles
+    const cellsToClean = new Set<string>();
+    
+    // Collect cells that need clearing from previous particle positions
+    for (const [, position] of this.particlePositions) {
+      const key = `${position.row}-${position.col}`;
+      cellsToClean.add(key);
+    }
+    
+    // Clear only those cells
+    for (const key of cellsToClean) {
+      const [row, col] = key.split('-').map(Number);
+      if (row >= 0 && row < this.rows && col >= 0 && col < this.cols) {
+        this.returnArrayToPool(this.grid[row][col]);
+        this.returnJointArrayToPool(this.jointGrid[row][col]);
+        this.grid[row][col] = this.getPooledArray();
+        this.jointGrid[row][col] = this.getPooledJointArray();
+      }
+    }
+    
+    // Clear particle position tracking
+    this.particlePositions.clear();
   }
 
   insert(particle: Particle): void {
@@ -118,7 +201,11 @@ export class SpatialGrid {
     const clampedCol = Math.max(0, Math.min(col, this.cols - 1));
     const clampedRow = Math.max(0, Math.min(row, this.rows - 1));
 
+    // Insert particle into grid
     this.grid[clampedRow][clampedCol].push(particle);
+    
+    // Track particle position for incremental updates
+    this.particlePositions.set(particle.id, { col: clampedCol, row: clampedRow });
   }
 
   getParticles(point: Vector2D, radius: number): Particle[] {
@@ -310,9 +397,86 @@ export class SpatialGrid {
   clearJoints(): void {
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
-        this.jointGrid[row][col] = [];
+        this.returnJointArrayToPool(this.jointGrid[row][col]);
+        this.jointGrid[row][col] = this.getPooledJointArray();
       }
     }
+  }
+
+  /**
+   * Get particles within the camera frustum (visible area) with optional padding
+   */
+  getVisibleParticles(particles: Particle[], padding: number = 50): Particle[] {
+    const visibleParticles: Particle[] = [];
+    
+    // Calculate visible bounds with padding
+    const leftBound = this.minX - padding;
+    const rightBound = this.maxX + padding;
+    const topBound = this.minY - padding;
+    const bottomBound = this.maxY + padding;
+    
+    for (const particle of particles) {
+      // Check if particle is within visible bounds (including its size)
+      if (particle.position.x + particle.size >= leftBound &&
+          particle.position.x - particle.size <= rightBound &&
+          particle.position.y + particle.size >= topBound &&
+          particle.position.y - particle.size <= bottomBound) {
+        visibleParticles.push(particle);
+      }
+    }
+    
+    return visibleParticles;
+  }
+
+  /**
+   * Check if a particle is within the camera frustum
+   */
+  isParticleVisible(particle: Particle, padding: number = 50): boolean {
+    const leftBound = this.minX - padding;
+    const rightBound = this.maxX + padding;
+    const topBound = this.minY - padding;
+    const bottomBound = this.maxY + padding;
+    
+    return (particle.position.x + particle.size >= leftBound &&
+            particle.position.x - particle.size <= rightBound &&
+            particle.position.y + particle.size >= topBound &&
+            particle.position.y - particle.size <= bottomBound);
+  }
+
+  /**
+   * Set the maximum pool size for array pooling
+   * @param maxSize Maximum number of arrays to keep in pool
+   */
+  setMaxPoolSize(maxSize: number): void {
+    this.maxPoolSize = Math.max(0, maxSize);
+    
+    // Trim pools if they exceed new max size
+    if (this.arrayPool.length > this.maxPoolSize) {
+      this.arrayPool.length = this.maxPoolSize;
+    }
+    if (this.jointArrayPool.length > this.maxPoolSize) {
+      this.jointArrayPool.length = this.maxPoolSize;
+    }
+  }
+
+  /**
+   * Get the current maximum pool size
+   * @returns Maximum pool size
+   */
+  getMaxPoolSize(): number {
+    return this.maxPoolSize;
+  }
+
+  /**
+   * Get current pool statistics for debugging/monitoring
+   * @returns Object with pool usage statistics
+   */
+  getPoolStats(): { arrayPool: number; jointArrayPool: number; maxPoolSize: number } {
+    return {
+      arrayPool: this.arrayPool.length,
+      jointArrayPool: this.jointArrayPool.length,
+      maxPoolSize: this.maxPoolSize
+    };
   }
 
   /**

@@ -291,6 +291,8 @@ export interface SystemOptions {
   height: number;
   /** Size of spatial grid cells for collision optimization (default: 100) */
   cellSize?: number;
+  /** Enable camera frustum culling for performance (default: false) */
+  enableFrustumCulling?: boolean;
 }
 
 /**
@@ -336,6 +338,8 @@ export class System {
   public height: number;
   /** Whether the simulation is currently running */
   public isPlaying: boolean = false;
+  /** Whether camera frustum culling is enabled */
+  public enableFrustumCulling: boolean = false;
 
   /** Timestamp of the last animation frame */
   private lastTime: number = 0;
@@ -370,6 +374,7 @@ export class System {
   constructor(options: SystemOptions) {
     this.width = options.width;
     this.height = options.height;
+    this.enableFrustumCulling = options.enableFrustumCulling ?? false;
 
     this.spatialGrid = new SpatialGrid({
       width: this.width,
@@ -400,7 +405,7 @@ export class System {
   addParticles(particles: Particle[]): void {
     // Batch add particles for better performance
     this.particles.push(...particles);
-    
+
     // Track z-indices for all added particles
     for (const particle of particles) {
       this.trackZIndex(particle.zIndex);
@@ -473,58 +478,172 @@ export class System {
    * @param deltaTime - Time elapsed since last update in milliseconds
    */
   update(deltaTime: number): void {
-    // Clear and repopulate spatial grid
-    this.spatialGrid.clear();
+    // Early exit if no particles
+    if (this.particles.length === 0) {
+      this.emitters.update(deltaTime, this);
+      return;
+    }
+
+    // Clear and repopulate spatial grid using incremental updates
+    this.spatialGrid.clearIncremental(this.particles);
+
+    // Filter particles for processing based on visibility (if frustum culling is enabled)
+    const particlesToProcess = this.enableFrustumCulling
+      ? this.spatialGrid.getVisibleParticles(this.particles, 100) // 100px padding
+      : this.particles;
 
     for (const particle of this.particles) {
       this.spatialGrid.insert(particle);
     }
 
+    // Filter out disabled forces to avoid unnecessary iterations
+    const enabledForces: Force[] = [];
     for (const force of this.forces) {
-      force.before?.(this.particles, deltaTime);
+      // Check if force has an enabled property and if it's enabled
+      if ("enabled" in force && typeof (force as any).enabled === "boolean") {
+        if ((force as any).enabled) {
+          enabledForces.push(force);
+        }
+      } else {
+        // If no enabled property, assume force is always active
+        enabledForces.push(force);
+      }
     }
 
-    // Apply forces and integrate physics
-    for (const particle of this.particles) {
-      for (const force of this.forces) {
-        force.apply(particle, this.spatialGrid);
-      }
-      if (!particle.pinned) {
-        particle.update(deltaTime);
-
-        // Reset velocity for grabbed particles after physics update
-        // (the grab tool will set the correct position)
-        if (particle.grabbed) {
+    // Early exit if no enabled forces and no physics needed
+    if (enabledForces.length === 0) {
+      // Still need to update particles for basic physics and lifetime
+      for (const particle of this.particles) {
+        if (!particle.pinned && !particle.grabbed) {
+          particle.update(deltaTime);
+        } else {
           particle.velocity.x = 0;
           particle.velocity.y = 0;
         }
-      } else {
-        particle.velocity.x = 0;
-        particle.velocity.y = 0;
+
+        if (particle.duration !== null) {
+          particle.interpolateProperties(deltaTime);
+        }
       }
-      
-      // Update particle lifetime properties (size, alpha, color, speed interpolation)
-      // Only call interpolation for particles with finite lifetime to avoid function call overhead
-      if (particle.duration !== null) {
-        particle.interpolateProperties(deltaTime);
+
+      this.emitters.update(deltaTime, this);
+      this.removeDeadParticles();
+      return;
+    }
+
+    // Run before phase for all enabled forces (use all particles for global calculations)
+    for (const force of enabledForces) {
+      force.before?.(this.particles, deltaTime);
+    }
+
+    // Optimized force application: process visible particles first, then off-screen ones
+    if (
+      this.enableFrustumCulling &&
+      particlesToProcess.length < this.particles.length
+    ) {
+      // Create set of visible particle IDs for efficient lookup
+      const visibleParticleIds = new Set(particlesToProcess.map((p) => p.id));
+
+      // Process visible particles with full force calculations
+      for (const particle of particlesToProcess) {
+        this.processParticleWithForces(particle, enabledForces, deltaTime);
+      }
+
+      // Process off-screen particles with minimal updates (just basic physics)
+      for (const particle of this.particles) {
+        if (!visibleParticleIds.has(particle.id)) {
+          this.processParticleBasicPhysics(particle, deltaTime);
+        }
+      }
+    } else {
+      // Process all particles normally
+      for (const particle of this.particles) {
+        this.processParticleWithForces(particle, enabledForces, deltaTime);
       }
     }
 
-    // Apply constraints
-    for (const force of this.forces) {
+    // Apply constraints phase
+    for (const force of enabledForces) {
       force.constraints?.(this.particles, this.spatialGrid);
     }
 
-    // Apply post-physics operations (momentum, etc.)
-    for (const force of this.forces) {
+    // Apply after phase
+    for (const force of enabledForces) {
       force.after?.(this.particles, deltaTime, this.spatialGrid);
     }
 
     // Update emitters (spawn new particles)
     this.emitters.update(deltaTime, this);
 
-    // Remove dead particles (marked with mass = 0 or exceeded lifetime)
-    // Optimization: only filter if there are actually dead particles to avoid array allocation
+    // Remove dead particles
+    this.removeDeadParticles();
+  }
+
+  /**
+   * Process a particle with all forces applied
+   */
+  private processParticleWithForces(
+    particle: Particle,
+    forces: Force[],
+    deltaTime: number
+  ): void {
+    // Apply all forces to this particle in sequence
+    for (const force of forces) {
+      force.apply(particle, this.spatialGrid);
+    }
+
+    // Update physics immediately after force application
+    if (!particle.pinned) {
+      particle.update(deltaTime);
+
+      // Reset velocity for grabbed particles after physics update
+      if (particle.grabbed) {
+        particle.velocity.x = 0;
+        particle.velocity.y = 0;
+      }
+    } else {
+      particle.velocity.x = 0;
+      particle.velocity.y = 0;
+    }
+
+    // Update particle lifetime properties
+    if (particle.duration !== null) {
+      particle.interpolateProperties(deltaTime);
+    }
+  }
+
+  /**
+   * Process a particle with only basic physics (for off-screen particles)
+   */
+  private processParticleBasicPhysics(
+    particle: Particle,
+    deltaTime: number
+  ): void {
+    // Update physics only (no forces applied)
+    if (!particle.pinned) {
+      particle.update(deltaTime);
+
+      // Reset velocity for grabbed particles
+      if (particle.grabbed) {
+        particle.velocity.x = 0;
+        particle.velocity.y = 0;
+      }
+    } else {
+      particle.velocity.x = 0;
+      particle.velocity.y = 0;
+    }
+
+    // Update particle lifetime properties
+    if (particle.duration !== null) {
+      particle.interpolateProperties(deltaTime);
+    }
+  }
+
+  /**
+   * Efficiently removes dead particles to avoid array reallocations
+   */
+  private removeDeadParticles(): void {
+    // Check if any particles need removal first
     let foundDeadParticle = false;
     for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i];
@@ -533,28 +652,26 @@ export class System {
         break;
       }
     }
-    
-    if (foundDeadParticle) {
-      // Track which particles are being removed for z-index tracking
-      const removedParticles: Particle[] = [];
-      const keptParticles: Particle[] = [];
-      
-      for (const particle of this.particles) {
-        if (particle.mass > 0 && !particle.isDead()) {
-          keptParticles.push(particle);
-        } else {
-          removedParticles.push(particle);
+
+    if (!foundDeadParticle) return;
+
+    // Use in-place filtering to avoid creating new arrays
+    let writeIndex = 0;
+    for (let readIndex = 0; readIndex < this.particles.length; readIndex++) {
+      const particle = this.particles[readIndex];
+      if (particle.mass > 0 && !particle.isDead()) {
+        if (writeIndex !== readIndex) {
+          this.particles[writeIndex] = particle;
         }
-      }
-      
-      // Update particles array and z-index tracking
-      this.particles = keptParticles;
-      
-      // Untrack z-indices for removed particles
-      for (const particle of removedParticles) {
+        writeIndex++;
+      } else {
+        // Particle is being removed, untrack z-index
         this.untrackZIndex(particle.zIndex);
       }
     }
+
+    // Truncate array to new length
+    this.particles.length = writeIndex;
   }
 
   /**
@@ -645,6 +762,48 @@ export class System {
     this.width = width;
     this.height = height;
     this.spatialGrid.setSize(width, height);
+  }
+
+  /**
+   * Enable or disable camera frustum culling for performance optimization
+   * @param enabled Whether to enable frustum culling
+   */
+  setFrustumCulling(enabled: boolean): void {
+    this.enableFrustumCulling = enabled;
+  }
+
+  /**
+   * Update camera information for frustum culling
+   * @param cameraX Camera X position
+   * @param cameraY Camera Y position
+   * @param zoom Camera zoom level
+   */
+  updateCamera(cameraX: number, cameraY: number, zoom: number): void {
+    this.spatialGrid.setCamera(cameraX, cameraY, zoom);
+  }
+
+  /**
+   * Get current frustum culling state
+   * @returns Whether frustum culling is enabled
+   */
+  getFrustumCulling(): boolean {
+    return this.enableFrustumCulling;
+  }
+
+  /**
+   * Set the maximum pool size for spatial grid arrays
+   * @param maxSize Maximum number of arrays to pool
+   */
+  setMaxPoolSize(maxSize: number): void {
+    this.spatialGrid.setMaxPoolSize(maxSize);
+  }
+
+  /**
+   * Get the current maximum pool size
+   * @returns Maximum pool size
+   */
+  getMaxPoolSize(): number {
+    return this.spatialGrid.getMaxPoolSize();
   }
 
   private animate = (): void => {
@@ -911,7 +1070,7 @@ export class System {
   private trackZIndex(zIndex: number): void {
     const currentCount = this.zIndexCounts.get(zIndex) || 0;
     this.zIndexCounts.set(zIndex, currentCount + 1);
-    
+
     if (currentCount === 0) {
       this.uniqueZIndexCount++;
     }
@@ -944,5 +1103,4 @@ export class System {
   public needsZIndexSorting(): boolean {
     return this.uniqueZIndexCount > 1;
   }
-
 }
