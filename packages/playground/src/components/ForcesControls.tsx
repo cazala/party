@@ -118,7 +118,7 @@ export function ForcesControls({
 
     // Reset behavior
     if (behavior) {
-      behavior.enabled = true; // Playground default: on
+      behavior.enabled = false; // Playground default: on
       behavior.wanderWeight = DEFAULT_BEHAVIOR_WANDER_WEIGHT;
       behavior.cohesionWeight = DEFAULT_BEHAVIOR_COHESION_WEIGHT;
       behavior.alignmentWeight = DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT;
