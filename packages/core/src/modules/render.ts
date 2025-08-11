@@ -11,6 +11,7 @@ export const DEFAULT_RENDER_COLOR_MODE = "particle";
 export const DEFAULT_RENDER_CUSTOM_COLOR = "#FFFFFF";
 export const DEFAULT_RENDER_MAX_SPEED = 400;
 export const DEFAULT_RENDER_ROTATION_SPEED = 1; // rotations per second
+export const DEFAULT_RENDER_GLOW_EFFECTS = false; // Enable glow effects by default
 export const PINNED_PARTICLE_COLOR = "#6b7280"; // Grey color for pinned particles
 
 export interface RenderOptions {
@@ -23,6 +24,7 @@ export interface RenderOptions {
   maxSpeed?: number;
   sensors?: Sensors | null;
   rotationSpeed?: number;
+  glowEffects?: boolean;
 }
 
 // Utility function to convert HSB to RGB
@@ -92,6 +94,7 @@ export abstract class Renderer {
   protected sensors: Sensors | null;
   public rotationSpeed: number;
   protected rotationStartTime: number;
+  public glowEffects: boolean;
 
   // Trail system properties
   protected trailImageData: ImageData | null = null;
@@ -113,6 +116,7 @@ export abstract class Renderer {
     this.trailImageData = null;
     this.rotationSpeed = options.rotationSpeed ?? DEFAULT_RENDER_ROTATION_SPEED;
     this.rotationStartTime = Date.now();
+    this.glowEffects = options.glowEffects ?? DEFAULT_RENDER_GLOW_EFFECTS;
 
     const ctx = this.canvas.getContext("2d");
     if (!ctx) {
@@ -820,10 +824,10 @@ export class Canvas2DRenderer extends Renderer {
     // Apply particle alpha for lifetime effects
     this.ctx.globalAlpha = particle.alpha || 1;
 
-    // Only add glow effect if trails are disabled
+    // Only add glow effect if trails are disabled and glow effects are enabled
     const trailsEnabled = this.sensors && this.sensors.enableTrail;
 
-    if (!trailsEnabled) {
+    if (!trailsEnabled && this.glowEffects) {
       // Add glow effect
       this.ctx.shadowColor = renderColor;
       this.ctx.shadowBlur = particle.size * 2;
@@ -842,7 +846,7 @@ export class Canvas2DRenderer extends Renderer {
     );
     this.ctx.fill();
 
-    if (!trailsEnabled) {
+    if (!trailsEnabled && this.glowEffects) {
       // Add inner bright core for more glow effect
       this.ctx.shadowBlur = 0;
       this.ctx.fillStyle = renderColor;
@@ -1586,6 +1590,22 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.stroke();
 
     this.ctx.restore();
+  }
+
+  /**
+   * Enable or disable particle glow effects
+   * @param enabled - Whether to enable glow effects
+   */
+  setGlowEffects(enabled: boolean): void {
+    this.glowEffects = enabled;
+  }
+
+  /**
+   * Get current glow effects setting
+   * @returns Whether glow effects are enabled
+   */
+  getGlowEffects(): boolean {
+    return this.glowEffects;
   }
 }
 

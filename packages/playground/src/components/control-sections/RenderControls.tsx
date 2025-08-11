@@ -4,6 +4,7 @@ import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
   DEFAULT_RENDER_ROTATION_SPEED,
+  DEFAULT_RENDER_GLOW_EFFECTS,
 } from "@cazala/party/modules/render";
 
 interface RenderControlsProps {
@@ -19,6 +20,7 @@ export interface RenderControlsRef {
     showDensity: boolean;
     showVelocity: boolean;
     densityFieldColor: string;
+    glowEffects: boolean;
   };
   setState: (state: Partial<{
     colorMode: "particle" | "custom" | "velocity" | "rotate";
@@ -27,6 +29,7 @@ export interface RenderControlsRef {
     showDensity: boolean;
     showVelocity: boolean;
     densityFieldColor: string;
+    glowEffects: boolean;
   }>) => void;
 }
 
@@ -39,6 +42,7 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
   const [showDensity, setShowDensity] = useState(true);
   const [showVelocity, setShowVelocity] = useState(true);
   const [densityFieldColor, setDensityFieldColor] = useState("#FF6B35");
+  const [glowEffects, setGlowEffects] = useState(DEFAULT_RENDER_GLOW_EFFECTS);
 
   // Expose state management methods
   useImperativeHandle(ref, () => ({
@@ -49,6 +53,7 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
       showDensity,
       showVelocity,
       densityFieldColor,
+      glowEffects,
     }),
     setState: (state) => {
       if (state.colorMode !== undefined) {
@@ -87,8 +92,14 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
           renderer.setDensityFieldColor(state.densityFieldColor);
         }
       }
+      if (state.glowEffects !== undefined) {
+        setGlowEffects(state.glowEffects);
+        if (renderer) {
+          renderer.setGlowEffects(state.glowEffects);
+        }
+      }
     },
-  }), [colorMode, customColor, rotationSpeed, showDensity, showVelocity, densityFieldColor, renderer]);
+  }), [colorMode, customColor, rotationSpeed, showDensity, showVelocity, densityFieldColor, glowEffects, renderer]);
 
   useEffect(() => {
     if (renderer) {
@@ -98,6 +109,7 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
       setShowDensity(renderer.showDensity);
       setShowVelocity(renderer.showVelocity);
       setDensityFieldColor(renderer.densityFieldColor);
+      setGlowEffects(renderer.getGlowEffects());
     }
   }, [renderer, fluid]);
 
@@ -142,6 +154,13 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
     setDensityFieldColor(color);
     if (renderer) {
       renderer.setDensityFieldColor(color);
+    }
+  };
+
+  const handleGlowEffectsChange = (enabled: boolean) => {
+    setGlowEffects(enabled);
+    if (renderer) {
+      renderer.setGlowEffects(enabled);
     }
   };
 
@@ -213,6 +232,18 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
             className="checkbox"
           />
           Show Density
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={glowEffects}
+            onChange={(e) => handleGlowEffectsChange(e.target.checked)}
+            className="checkbox"
+          />
+          Glow Effects
         </label>
       </div>
 
