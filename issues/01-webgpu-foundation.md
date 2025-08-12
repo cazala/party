@@ -26,8 +26,8 @@ Create the foundational WebGPU infrastructure to enable GPU-accelerated particle
 ### 4. Simple Test Force
 - [x] Implement basic physics force (gravity/friction) on WebGPU
 - [x] Add compute shader for particle position updates
-- [ ] Verify CPU/GPU result consistency
-- [ ] Create performance comparison metrics
+- [x] Verify CPU/GPU result consistency
+- [x] Create performance comparison metrics
 
 ## Acceptance Criteria
 - WebGPU backend can process particles with basic physics

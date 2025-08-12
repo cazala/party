@@ -70,3 +70,6 @@ export {
   DEFAULT_EMITTER_END_SPEED_MULTIPLIER,
 } from "./modules/emitter";
 export { Emitters } from "./modules/emitters";
+
+// WebGPU backend system (optional import)
+export * from "./webgpu";
