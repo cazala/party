@@ -14,7 +14,7 @@ Create the foundational WebGPU infrastructure to enable GPU-accelerated particle
 ### 2. Backend Abstraction Layer
 - [x] Create `ComputeBackend` interface with CPU and WebGPU implementations
 - [x] Modify `System` class to accept backend selection
-- [ ] Add backend performance metrics collection
+- [x] Add backend performance metrics collection
 - [ ] Implement graceful fallback when WebGPU unavailable
 
 ### 3. Basic Particle Data Structure
