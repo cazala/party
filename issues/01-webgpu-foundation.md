@@ -15,7 +15,7 @@ Create the foundational WebGPU infrastructure to enable GPU-accelerated particle
 - [x] Create `ComputeBackend` interface with CPU and WebGPU implementations
 - [x] Modify `System` class to accept backend selection
 - [x] Add backend performance metrics collection
-- [ ] Implement graceful fallback when WebGPU unavailable
+- [x] Implement graceful fallback when WebGPU unavailable
 
 ### 3. Basic Particle Data Structure
 - [ ] Design GPU-friendly particle data layout (Structure of Arrays)
