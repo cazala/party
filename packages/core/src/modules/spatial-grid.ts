@@ -46,6 +46,12 @@ export class SpatialGrid {
   private jointArrayPool: SpatialJoint[][] = [];
   private maxPoolSize: number = 1000; // Limit pool size to prevent excessive memory usage
   
+  // Pool statistics for hit rate monitoring
+  private poolStats = {
+    totalRequests: 0,
+    poolHits: 0,
+  };
+  
   // Track particles for incremental updates
   private particlePositions: Map<number, { col: number; row: number }> = new Map();
 
@@ -112,7 +118,9 @@ export class SpatialGrid {
    * Get a pooled array for particles, or create new one if pool is empty
    */
   private getPooledArray(): Particle[] {
+    this.poolStats.totalRequests++;
     if (this.arrayPool.length > 0) {
+      this.poolStats.poolHits++;
       return this.arrayPool.pop()!;
     }
     return [];
@@ -122,7 +130,9 @@ export class SpatialGrid {
    * Get a pooled array for joints, or create new one if pool is empty
    */
   private getPooledJointArray(): SpatialJoint[] {
+    this.poolStats.totalRequests++;
     if (this.jointArrayPool.length > 0) {
+      this.poolStats.poolHits++;
       return this.jointArrayPool.pop()!;
     }
     return [];
@@ -471,11 +481,16 @@ export class SpatialGrid {
    * Get current pool statistics for debugging/monitoring
    * @returns Object with pool usage statistics
    */
-  getPoolStats(): { arrayPool: number; jointArrayPool: number; maxPoolSize: number } {
+  getPoolStats(): { arrayPool: number; jointArrayPool: number; maxPoolSize: number; hitRate: number } {
+    const hitRate = this.poolStats.totalRequests > 0 
+      ? (this.poolStats.poolHits / this.poolStats.totalRequests) * 100 
+      : 0;
+      
     return {
       arrayPool: this.arrayPool.length,
       jointArrayPool: this.jointArrayPool.length,
-      maxPoolSize: this.maxPoolSize
+      maxPoolSize: this.maxPoolSize,
+      hitRate: Math.round(hitRate * 10) / 10 // Round to 1 decimal place
     };
   }
 

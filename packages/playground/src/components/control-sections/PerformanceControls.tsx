@@ -198,28 +198,6 @@ export const PerformanceControls = forwardRef<PerformanceControlsRef, Performanc
       {/* Performance Optimization Controls */}
       <div className="control-group">
         <label>
-          <input
-            type="checkbox"
-            checked={enableFrustumCulling}
-            onChange={(e) => handleFrustumCullingChange(e.target.checked)}
-            style={{ marginRight: "8px" }}
-          />
-          Enable Frustum Culling
-        </label>
-        <div
-          style={{
-            fontSize: "11px",
-            color: "var(--color-text-secondary)",
-            marginTop: "2px",
-            fontStyle: "italic"
-          }}
-        >
-          Skip forces for off-screen particles
-        </div>
-      </div>
-
-      <div className="control-group">
-        <label>
           Max Pool Size: {maxPoolSize}
           <input
             type="range"
@@ -249,10 +227,32 @@ export const PerformanceControls = forwardRef<PerformanceControlsRef, Performanc
           <div
             style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}
           >
-            Pool: {spatialGrid.getPoolStats().arrayPool}/{spatialGrid.getPoolStats().maxPoolSize} arrays
+            Pool hit rate: {spatialGrid.getPoolStats().hitRate}%
           </div>
         </div>
       )}
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={enableFrustumCulling}
+            onChange={(e) => handleFrustumCullingChange(e.target.checked)}
+            style={{ marginRight: "8px" }}
+          />
+          Enable Frustum Culling
+        </label>
+        <div
+          style={{
+            fontSize: "11px",
+            color: "var(--color-text-secondary)",
+            marginTop: "2px",
+            fontStyle: "italic"
+          }}
+        >
+          Skip forces for off-screen particles
+        </div>
+      </div>
     </div>
   );
 });
