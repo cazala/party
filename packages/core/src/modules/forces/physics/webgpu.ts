@@ -384,8 +384,11 @@ export class PhysicsWebGPU implements Force {
     uniformBuffer.destroy();
     readbackBuffer.destroy();
 
-    for (const p of particles) {
-      this.previousPositions.set(p.id, p.position.clone());
+    for (let i = 0; i < particles.length; i++) {
+      this.previousPositions.set(
+        particles[i].id,
+        particles[i].position.clone()
+      );
     }
   }
 
