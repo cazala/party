@@ -183,19 +183,26 @@ export class SpatialGridGPU {
     // Update metrics
     this.metrics.lastUpdateMs = performance.now() - startTime;
     await this.updateMetrics();
+    
+    // Periodically optimize distribution (every 60 updates or significant changes)
+    if (Math.random() < 0.0167 || this.shouldResizeGrid(particleCount)) {
+      await this.optimizeParticleDistribution();
+    }
   }
 
   /**
-   * Query neighbors around a specific position
+   * Query neighbors around a specific position using GPU acceleration
    */
-  async queryNeighbors(query: NeighborQuery): Promise<NeighborResult> {
-    if (!this.neighborQueryPipeline || !this.queryBindGroup) {
+  async queryNeighbors(query: NeighborQuery, particleBuffer: GPUBuffer): Promise<NeighborResult> {
+    if (!this.neighborQueryPipeline) {
       throw new Error('Neighbor query pipeline not initialized');
     }
 
-    // Create query result buffer
+    const device = this.context.getDevice();
+
+    // Create query result buffer (fixed size for simplicity)
     const resultBuffer = this.bufferManager.createBuffer({
-      size: (query.maxNeighbors * 8) + 16, // indices (u32) + distances (f32) + metadata
+      size: 16 + (64 * 4) + (64 * 4), // metadata + indices + distances
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
       label: 'neighbor-query-result'
     });
@@ -210,17 +217,17 @@ export class SpatialGridGPU {
       'neighbor-query-params'
     );
 
-    // Update bind group with query-specific buffers
-    const device = this.context.getDevice();
+    // Create bind group for this specific query
     const queryBindGroup = device.createBindGroup({
       layout: this.neighborQueryPipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: this.cellCountsBuffer! } },
         { binding: 1, resource: { buffer: this.cellOffsetsBuffer! } },
         { binding: 2, resource: { buffer: this.cellParticlesBuffer! } },
-        { binding: 3, resource: { buffer: this.sortedIndicesBuffer! } },
-        { binding: 4, resource: { buffer: queryParamsBuffer } },
-        { binding: 5, resource: { buffer: resultBuffer } }
+        { binding: 3, resource: { buffer: particleBuffer } },
+        { binding: 4, resource: { buffer: this.gridParamsBuffer! } },
+        { binding: 5, resource: { buffer: queryParamsBuffer } },
+        { binding: 6, resource: { buffer: resultBuffer } }
       ]
     });
 
@@ -235,6 +242,9 @@ export class SpatialGridGPU {
     computePass.end();
     this.context.submit([encoder.finish()]);
 
+    // Wait for completion
+    await this.context.getDevice().queue.onSubmittedWorkDone();
+
     // Read back results
     const resultData = await this.context.readBuffer(resultBuffer);
     const resultView = new DataView(resultData);
@@ -248,7 +258,7 @@ export class SpatialGridGPU {
 
     for (let i = 0; i < count; i++) {
       const indexOffset = 16 + (i * 4);
-      const distanceOffset = 16 + (query.maxNeighbors * 4) + (i * 4);
+      const distanceOffset = 16 + (64 * 4) + (i * 4);
 
       indices.push(resultView.getUint32(indexOffset, true));
       distances.push(resultView.getFloat32(distanceOffset, true));
@@ -320,31 +330,167 @@ export class SpatialGridGPU {
   }
 
   /**
-   * Resize grid for different particle counts
+   * Resize grid for different particle counts with advanced optimization
    */
   async resizeGrid(particleCount: number): Promise<void> {
     if (!this.options.enableDynamicResize) {
       return;
     }
 
-    // Calculate optimal cell size based on particle count
-    const particleDensity = particleCount / (this.options.width * this.options.height);
-    const optimalCellSize = Math.sqrt(this.options.maxParticlesPerCell / particleDensity);
+    // Calculate current load metrics
+    const currentDensity = particleCount / this.totalCells;
+    const targetDensity = this.options.maxParticlesPerCell * 0.6; // 60% load factor
     
-    // Clamp cell size to reasonable bounds
-    const newCellSize = Math.max(20, Math.min(200, optimalCellSize));
+    // Calculate optimal cell size based on multiple factors
+    const particleDensity = particleCount / (this.options.width * this.options.height);
+    const densityBasedCellSize = Math.sqrt(targetDensity / particleDensity);
+    
+    // Consider spatial distribution - estimate particle clustering
+    const estimatedClustering = this.estimateParticleClustering(particleCount);
+    const clusteringFactor = Math.max(0.5, Math.min(2.0, estimatedClustering));
+    
+    // Adjust cell size for clustering (smaller cells for more clustered distributions)
+    const clusterAdjustedCellSize = densityBasedCellSize / clusteringFactor;
+    
+    // Apply performance-based bounds
+    const performanceOptimalSize = this.calculatePerformanceOptimalCellSize(particleCount);
+    const newCellSize = this.clampCellSize(
+      Math.min(clusterAdjustedCellSize, performanceOptimalSize),
+      particleCount
+    );
 
-    if (Math.abs(newCellSize - this.options.cellSize) > 5) {
-      console.log(`Resizing grid: ${this.options.cellSize} -> ${newCellSize}`);
+    // Only resize if the change is significant enough to justify the cost
+    const resizeThreshold = Math.max(5, this.options.cellSize * 0.15);
+    if (Math.abs(newCellSize - this.options.cellSize) > resizeThreshold) {
+      console.log(`Optimizing grid: ${this.options.cellSize.toFixed(1)} -> ${newCellSize.toFixed(1)} ` +
+                  `(density: ${currentDensity.toFixed(1)}, clustering: ${clusteringFactor.toFixed(2)})`);
       
+      // Update grid parameters
+      const oldCellSize = this.options.cellSize;
       this.options.cellSize = newCellSize;
       this.gridWidth = Math.ceil(this.options.width / newCellSize);
       this.gridHeight = Math.ceil(this.options.height / newCellSize);
       this.totalCells = this.gridWidth * this.gridHeight;
 
-      // Recreate buffers with new size
+      // Adjust maxParticlesPerCell based on new layout
+      const cellSizeRatio = newCellSize / oldCellSize;
+      this.options.maxParticlesPerCell = Math.ceil(
+        this.options.maxParticlesPerCell * cellSizeRatio * cellSizeRatio
+      );
+
+      // Optimize cell layout for better GPU performance
+      this.optimizeCellLayout();
+
+      // Recreate buffers with new size and optimized layout
       await this.recreateBuffers();
       await this.createBindGroups();
+      
+      // Update metrics to reflect new configuration
+      this.metrics.totalCells = this.totalCells;
+    }
+  }
+
+  /**
+   * Estimate particle clustering factor for grid optimization
+   */
+  private estimateParticleClustering(particleCount: number): number {
+    // Simple heuristic: assume more particles tend to cluster more
+    // In practice, this could analyze actual particle positions
+    const baseClustering = 1.0;
+    const densityEffect = Math.min(2.0, particleCount / 1000);
+    return baseClustering + (densityEffect - 1.0) * 0.3;
+  }
+
+  /**
+   * Calculate performance-optimal cell size based on GPU characteristics
+   */
+  private calculatePerformanceOptimalCellSize(particleCount: number): number {
+    // Optimize for GPU workgroup sizes and memory access patterns
+    const workgroupSize = 64; // Typical compute workgroup size
+    const optimalParticlesPerWorkgroup = workgroupSize * 2;
+    
+    // Calculate cell size that results in efficient GPU utilization
+    const area = this.options.width * this.options.height;
+    const targetCellsPerWorkgroup = Math.ceil(optimalParticlesPerWorkgroup / (particleCount / area));
+    
+    return Math.sqrt(area / (targetCellsPerWorkgroup * workgroupSize));
+  }
+
+  /**
+   * Clamp cell size to reasonable bounds based on particle count and performance
+   */
+  private clampCellSize(cellSize: number, particleCount: number): number {
+    // Dynamic bounds based on particle count
+    const minCellSize = Math.max(10, Math.min(50, particleCount / 1000));
+    const maxCellSize = Math.min(500, Math.max(100, particleCount / 10));
+    
+    return Math.max(minCellSize, Math.min(maxCellSize, cellSize));
+  }
+
+  /**
+   * Optimize cell layout for better GPU memory access patterns
+   */
+  private optimizeCellLayout(): void {
+    // Ensure grid dimensions are aligned for optimal GPU access
+    const optimalAlignment = 64; // GPU cache line size
+    
+    // Round grid dimensions to multiples that work well with GPU architecture
+    const alignedWidth = Math.ceil(this.gridWidth / optimalAlignment) * optimalAlignment;
+    const alignedHeight = Math.ceil(this.gridHeight / optimalAlignment) * optimalAlignment;
+    
+    // Only apply if the change isn't too dramatic
+    if (alignedWidth <= this.gridWidth * 1.1 && alignedHeight <= this.gridHeight * 1.1) {
+      this.gridWidth = alignedWidth;
+      this.gridHeight = alignedHeight;
+      this.totalCells = this.gridWidth * this.gridHeight;
+      
+      // Adjust cell size slightly to maintain area coverage
+      this.options.cellSize = Math.min(
+        this.options.width / this.gridWidth,
+        this.options.height / this.gridHeight
+      );
+    }
+  }
+
+  /**
+   * Analyze and optimize particle distribution efficiency
+   */
+  async optimizeParticleDistribution(): Promise<void> {
+    if (!this.cellCountsBuffer) {
+      return;
+    }
+
+    // Read back cell counts to analyze distribution
+    const cellCountsData = await this.context.readBuffer(this.cellCountsBuffer);
+    const cellCounts = new Uint32Array(cellCountsData);
+    
+    // Analyze distribution patterns
+    let maxCount = 0;
+    let nonEmptyCells = 0;
+    let totalParticles = 0;
+    
+    for (let i = 0; i < cellCounts.length; i++) {
+      const count = cellCounts[i];
+      if (count > 0) {
+        nonEmptyCells++;
+        totalParticles += count;
+        maxCount = Math.max(maxCount, count);
+      }
+    }
+    
+    // Update metrics with actual data
+    this.metrics.avgParticlesPerCell = totalParticles / nonEmptyCells || 0;
+    this.metrics.maxParticlesInCell = maxCount;
+    this.metrics.emptyCells = this.totalCells - nonEmptyCells;
+    
+    // Log optimization recommendations
+    const loadFactor = nonEmptyCells / this.totalCells;
+    const hotspotRatio = maxCount / (this.metrics.avgParticlesPerCell || 1);
+    
+    if (loadFactor < 0.3) {
+      console.log(`Grid underutilized: ${(loadFactor * 100).toFixed(1)}% cells occupied. Consider smaller grid.`);
+    } else if (hotspotRatio > 3) {
+      console.log(`Distribution uneven: max cell has ${hotspotRatio.toFixed(1)}x average. Consider smaller cells.`);
     }
   }
 
@@ -543,6 +689,140 @@ export class SpatialGridGPU {
       shaderSource: buildOffsetsShader,
       options: { label: 'build-offsets-pipeline' }
     });
+
+    // Neighbor query pipeline - efficient neighbor searching with distance culling
+    const neighborQueryShader = `
+      struct Particle {
+        position: vec2<f32>,
+        velocity: vec2<f32>,
+        acceleration: vec2<f32>,
+        mass: f32,
+        size: f32,
+        color: vec4<f32>,
+        lifetime: vec2<f32>,
+        state: u32,
+      }
+      
+      struct GridParams {
+        width: f32,
+        height: f32,
+        cellSize: f32,
+        gridWidth: f32,
+        gridHeight: f32,
+        totalCells: f32,
+        maxParticlesPerCell: f32,
+        particleCount: f32,
+      }
+      
+      struct QueryParams {
+        position: vec2<f32>,
+        radius: f32,
+        maxNeighbors: f32,
+        excludeParticle: f32,
+        _padding: vec3<f32>,
+      }
+      
+      struct QueryResult {
+        count: u32,
+        truncated: u32,
+        _padding: vec2<u32>,
+        indices: array<u32, 64>, // Max 64 neighbors for simplicity
+        distances: array<f32, 64>,
+      }
+      
+      @group(0) @binding(0) var<storage, read> cellCounts: array<u32>;
+      @group(0) @binding(1) var<storage, read> cellOffsets: array<u32>;
+      @group(0) @binding(2) var<storage, read> cellParticles: array<u32>;
+      @group(0) @binding(3) var<storage, read> particles: array<Particle>;
+      @group(0) @binding(4) var<uniform> gridParams: GridParams;
+      @group(0) @binding(5) var<uniform> queryParams: QueryParams;
+      @group(0) @binding(6) var<storage, read_write> result: QueryResult;
+      
+      @workgroup_size(1)
+      @compute fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+        let queryPos = queryParams.position;
+        let queryRadius = queryParams.radius;
+        let maxNeighbors = u32(queryParams.maxNeighbors);
+        let excludeIndex = i32(queryParams.excludeParticle);
+        
+        // Initialize result
+        result.count = 0u;
+        result.truncated = 0u;
+        
+        // Calculate search area in grid cells
+        let cellRadius = u32(ceil(queryRadius / gridParams.cellSize));
+        let centerCellX = u32(queryPos.x / gridParams.cellSize);
+        let centerCellY = u32(queryPos.y / gridParams.cellSize);
+        
+        var neighborCount = 0u;
+        let radiusSquared = queryRadius * queryRadius;
+        
+        // Search neighboring cells
+        for (var dy = 0u; dy <= cellRadius * 2u; dy++) {
+          for (var dx = 0u; dx <= cellRadius * 2u; dx++) {
+            let cellX = centerCellX + dx - cellRadius;
+            let cellY = centerCellY + dy - cellRadius;
+            
+            // Bounds check
+            if (cellX >= u32(gridParams.gridWidth) || cellY >= u32(gridParams.gridHeight)) {
+              continue;
+            }
+            
+            let cellIndex = cellY * u32(gridParams.gridWidth) + cellX;
+            let cellCount = cellCounts[cellIndex];
+            
+            // Check particles in this cell
+            for (var i = 0u; i < cellCount && i < u32(gridParams.maxParticlesPerCell); i++) {
+              if (neighborCount >= maxNeighbors) {
+                result.truncated = 1u;
+                break;
+              }
+              
+              let particleSlot = cellIndex * u32(gridParams.maxParticlesPerCell) + i;
+              let particleIndex = cellParticles[particleSlot];
+              
+              // Skip excluded particle
+              if (excludeIndex >= 0 && particleIndex == u32(excludeIndex)) {
+                continue;
+              }
+              
+              let particle = particles[particleIndex];
+              
+              // Skip inactive or dead particles
+              if ((particle.state & 1u) == 0u || (particle.state & 8u) != 0u) {
+                continue;
+              }
+              
+              // Calculate distance
+              let diff = particle.position - queryPos;
+              let distanceSquared = dot(diff, diff);
+              
+              // Check if within radius
+              if (distanceSquared <= radiusSquared) {
+                result.indices[neighborCount] = particleIndex;
+                result.distances[neighborCount] = sqrt(distanceSquared);
+                neighborCount++;
+              }
+            }
+            
+            if (result.truncated == 1u) {
+              break;
+            }
+          }
+          
+          if (result.truncated == 1u) {
+            break;
+          }
+        }
+        
+        result.count = neighborCount;
+      }
+    `;
+
+    this.neighborQueryPipeline = this.shaderManager.createComputePipeline({
+      shaderSource: neighborQueryShader,
+      options: { label: 'neighbor-query-pipeline' }
+    });
   }
 
   /**
@@ -661,7 +941,7 @@ export class SpatialGridGPU {
   }
 
   /**
-   * Check if grid should be resized
+   * Check if grid should be resized based on multiple performance metrics
    */
   private shouldResizeGrid(particleCount: number): boolean {
     if (!this.options.enableDynamicResize) {
@@ -669,8 +949,22 @@ export class SpatialGridGPU {
     }
 
     const avgParticlesPerCell = particleCount / this.totalCells;
-    return avgParticlesPerCell > this.options.maxParticlesPerCell * 0.8 ||
-           avgParticlesPerCell < this.options.maxParticlesPerCell * 0.2;
+    
+    // Check density thresholds (wider range to avoid frequent resizing)
+    const densityTooHigh = avgParticlesPerCell > this.options.maxParticlesPerCell * 0.85;
+    const densityTooLow = avgParticlesPerCell < this.options.maxParticlesPerCell * 0.15;
+    
+    // Check if particle count has changed significantly
+    const countChangedSignificantly = Math.abs(particleCount - this.currentParticleCount) > 
+                                    Math.max(100, this.currentParticleCount * 0.3);
+    
+    // Consider performance: only resize if we expect significant benefit
+    const currentCells = this.totalCells;
+    const wouldBenefitFromResize = currentCells < 64 || currentCells > 10000;
+    
+    return (densityTooHigh || densityTooLow || 
+           (countChangedSignificantly && wouldBenefitFromResize)) &&
+           particleCount > 10; // Don't resize for very small particle counts
   }
 
   /**

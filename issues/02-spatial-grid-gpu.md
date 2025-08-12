@@ -8,8 +8,8 @@ Implement WebGPU-based spatial grid for efficient neighbor queries, enabling fas
 ### 1. GPU Spatial Grid Data Structure
 - [x] Design GPU-friendly spatial grid layout using compute buffers
 - [x] Implement particle → grid cell mapping on GPU
-- [ ] Create efficient neighbor query system using compute shaders
-- [ ] Add dynamic grid resizing and cell optimization
+- [x] Create efficient neighbor query system using compute shaders
+- [x] Add dynamic grid resizing and cell optimization
 
 ### 2. Compute Shaders for Spatial Operations
 - [ ] Write compute shader for particle spatial sorting
