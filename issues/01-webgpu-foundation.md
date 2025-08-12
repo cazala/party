@@ -18,7 +18,7 @@ Create the foundational WebGPU infrastructure to enable GPU-accelerated particle
 - [x] Implement graceful fallback when WebGPU unavailable
 
 ### 3. Basic Particle Data Structure
-- [ ] Design GPU-friendly particle data layout (Structure of Arrays)
+- [x] Design GPU-friendly particle data layout (Structure of Arrays)
 - [ ] Implement CPU ↔ GPU data synchronization
 - [ ] Create particle buffer management with proper alignment
 - [ ] Add particle lifecycle management on GPU
