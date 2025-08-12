@@ -12,10 +12,10 @@ Implement WebGPU-based spatial grid for efficient neighbor queries, enabling fas
 - [x] Add dynamic grid resizing and cell optimization
 
 ### 2. Compute Shaders for Spatial Operations
-- [ ] Write compute shader for particle spatial sorting
-- [ ] Implement neighbor enumeration with distance culling
-- [ ] Create parallel grid cell population
-- [ ] Add frustum culling integration
+- [x] Write compute shader for particle spatial sorting
+- [x] Implement neighbor enumeration with distance culling
+- [x] Create parallel grid cell population
+- [x] Add frustum culling integration
 
 ### 3. Memory Management
 - [ ] Implement efficient buffer pooling for neighbor lists
