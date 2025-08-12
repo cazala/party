@@ -24,8 +24,8 @@ Create the foundational WebGPU infrastructure to enable GPU-accelerated particle
 - [x] Add particle lifecycle management on GPU
 
 ### 4. Simple Test Force
-- [ ] Implement basic physics force (gravity/friction) on WebGPU
-- [ ] Add compute shader for particle position updates
+- [x] Implement basic physics force (gravity/friction) on WebGPU
+- [x] Add compute shader for particle position updates
 - [ ] Verify CPU/GPU result consistency
 - [ ] Create performance comparison metrics
 
