@@ -9,7 +9,7 @@ Create the foundational WebGPU infrastructure to enable GPU-accelerated particle
 - [x] Create `WebGPUContext` class for device initialization and resource management
 - [x] Implement WebGPU device detection and fallback handling
 - [x] Add compute shader compilation and pipeline management
-- [ ] Create buffer management system for particle data
+- [x] Create buffer management system for particle data
 
 ### 2. Backend Abstraction Layer
 - [ ] Create `ComputeBackend` interface with CPU and WebGPU implementations
