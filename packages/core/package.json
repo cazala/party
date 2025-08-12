@@ -48,6 +48,7 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.0",
+    "@webgpu/types": "^0.1.64",
     "rollup": "^4.0.0",
     "tslib": "^2.6.0",
     "typescript": "^5.0.0"

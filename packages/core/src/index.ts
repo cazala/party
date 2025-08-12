@@ -71,5 +71,4 @@ export {
 } from "./modules/emitter";
 export { Emitters } from "./modules/emitters";
 
-// WebGPU backend system (optional import)
-export * from "./webgpu";
+// No direct WebGPU backend export; forces choose implementation internally

@@ -4,7 +4,8 @@
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
-    "noEmit": false
+    "noEmit": false,
+    "types": ["@webgpu/types"]
   },
   "include": [
     "src/**/*"

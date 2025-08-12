@@ -5,7 +5,8 @@
     "paths": {
       "@cazala/party": ["../core/src"],
       "@cazala/party/*": ["../core/src/*"]
-    }
+    },
+    "types": ["@webgpu/types"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

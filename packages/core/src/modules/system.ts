@@ -1,6 +1,9 @@
 import { Particle } from "./particle";
 import { SpatialGrid } from "./spatial-grid";
 import { Vector2D } from "./vector";
+
+// Re-export SpatialGrid for use in forces
+export { SpatialGrid };
 import mitt, { Emitter as MittEmitter } from "mitt";
 import {
   Physics,
@@ -68,15 +71,14 @@ import {
 } from "./forces/joints";
 import { Emitters } from "./emitters";
 import { SerializedEmitter } from "./emitter";
-import { ComputeBackend, CPUComputeBackend, WebGPUComputeBackend, BackendCapabilities, ComputeMetrics } from "../webgpu/compute-backend";
+// No compute backend abstraction; forces that need WebGPU choose their
+// implementation in their own init(system) hook.
 
 /**
  * Events emitted by the particle system
  */
 export type SystemEvents = {
   "particle-added": { particle: Particle };
-  "backend-changed": { backend: 'cpu' | 'webgpu'; capabilities: BackendCapabilities };
-  "backend-fallback": { reason: string; from: string; to: string };
 };
 
 /**
@@ -87,6 +89,14 @@ export type SystemEvents = {
  * @interface Force
  */
 export interface Force {
+  /**
+   * Called once when the force is added to a System. Use to grab references
+   * to the System, subscribe to events, or perform any setup that requires
+   * access to the System instance.
+   *
+   * @param system - The particle system this force is attached to
+   */
+  init?(system: System): void;
   /**
    * Called once per frame before applying force to individual particles.
    * Use for global calculations or setup that affects all particles.
@@ -126,7 +136,7 @@ export interface Force {
     particles: Particle[],
     deltaTime: number,
     spatialGrid: SpatialGrid
-  ): void;
+  ): void | Promise<void>;
 
   /**
    * Called when the force is being removed or the system is being reset.
@@ -297,7 +307,7 @@ export interface SystemOptions {
   /** Enable camera frustum culling for performance (default: false) */
   enableFrustumCulling?: boolean;
   /** Preferred compute backend ('cpu', 'webgpu', or 'auto' for automatic selection) */
-  backend?: 'cpu' | 'webgpu' | 'auto';
+  backend?: "cpu" | "webgpu" | "auto";
   /** Whether to automatically fall back to CPU if WebGPU fails */
   enableBackendFallback?: boolean;
 }
@@ -370,12 +380,7 @@ export class System {
   /** Event emitter for system events */
   public events: MittEmitter<SystemEvents>;
 
-  /** Current compute backend (CPU or WebGPU) */
-  private computeBackend: ComputeBackend;
-  /** Backend initialization promise */
-  private backendInitialized: Promise<boolean> | null = null;
-  /** Whether backend fallback is enabled */
-  private enableBackendFallback: boolean;
+  // Backend selection is handled within forces; System stays agnostic
 
   /**
    * Creates a new particle system.
@@ -391,7 +396,6 @@ export class System {
     this.width = options.width;
     this.height = options.height;
     this.enableFrustumCulling = options.enableFrustumCulling ?? false;
-    this.enableBackendFallback = options.enableBackendFallback ?? true;
 
     this.spatialGrid = new SpatialGrid({
       width: this.width,
@@ -402,10 +406,7 @@ export class System {
     this.emitters = new Emitters();
     this.events = mitt<SystemEvents>();
 
-    // Initialize compute backend
-    const preferredBackend = options.backend ?? 'auto';
-    this.computeBackend = new CPUComputeBackend(); // Start with CPU as fallback
-    this.initializeBackend(preferredBackend);
+    // Compute backend is chosen by forces via init(system)
   }
 
   /**
@@ -467,6 +468,9 @@ export class System {
    */
   addForce(force: Force): void {
     this.forces.push(force);
+
+    // Initialize the force if it exposes an init hook
+    force.init?.(this);
   }
 
   /**
@@ -499,7 +503,7 @@ export class System {
    *
    * @param deltaTime - Time elapsed since last update in milliseconds
    */
-  update(deltaTime: number): void {
+  async update(deltaTime: number): Promise<void> {
     // Early exit if no particles
     if (this.particles.length === 0) {
       this.emitters.update(deltaTime, this);
@@ -563,20 +567,15 @@ export class System {
       this.enableFrustumCulling &&
       particlesToProcess.length < this.particles.length
     ) {
-      // Create set of visible particle IDs for efficient lookup
-      const visibleParticleIds = new Set(particlesToProcess.map((p) => p.id));
+      // Create set of visible particle IDs for efficient lookup (reserved for future use)
+      // const visibleParticleIds = new Set(particlesToProcess.map((p) => p.id));
 
       // Process visible particles with full force calculations
       for (const particle of particlesToProcess) {
         this.processParticleWithForces(particle, enabledForces, deltaTime);
       }
 
-      // Process off-screen particles with minimal updates (just basic physics)
-      for (const particle of this.particles) {
-        if (!visibleParticleIds.has(particle.id)) {
-          this.processParticleBasicPhysics(particle, deltaTime);
-        }
-      }
+      // Off-screen particles: skip force application (we still integrate later)
     } else {
       // Process all particles normally
       for (const particle of this.particles) {
@@ -589,10 +588,22 @@ export class System {
       force.constraints?.(this.particles, this.spatialGrid);
     }
 
-    // Apply after phase
+    // Apply after phase (support async GPU operations)
+    const afterPromises: Promise<void>[] = [];
     for (const force of enabledForces) {
-      force.after?.(this.particles, deltaTime, this.spatialGrid);
+      const maybePromise = force.after?.(
+        this.particles,
+        deltaTime,
+        this.spatialGrid
+      );
+      if (maybePromise && typeof (maybePromise as any).then === "function") {
+        afterPromises.push(maybePromise as Promise<void>);
+      }
     }
+    await Promise.all(afterPromises);
+
+    // Integrate particle positions after all forces (including async GPU) have applied
+    this.integrateParticles(this.particles, deltaTime);
 
     // Update emitters (spawn new particles)
     this.emitters.update(deltaTime, this);
@@ -607,57 +618,34 @@ export class System {
   private processParticleWithForces(
     particle: Particle,
     forces: Force[],
-    deltaTime: number
+    _deltaTime: number
   ): void {
     // Apply all forces to this particle in sequence
     for (const force of forces) {
       force.apply(particle, this.spatialGrid);
-    }
-
-    // Update physics immediately after force application
-    if (!particle.pinned) {
-      particle.update(deltaTime);
-
-      // Reset velocity for grabbed particles after physics update
-      if (particle.grabbed) {
-        particle.velocity.x = 0;
-        particle.velocity.y = 0;
-      }
-    } else {
-      particle.velocity.x = 0;
-      particle.velocity.y = 0;
-    }
-
-    // Update particle lifetime properties
-    if (particle.duration !== null) {
-      particle.interpolateProperties(deltaTime);
     }
   }
 
   /**
    * Process a particle with only basic physics (for off-screen particles)
    */
-  private processParticleBasicPhysics(
-    particle: Particle,
-    deltaTime: number
-  ): void {
-    // Update physics only (no forces applied)
-    if (!particle.pinned) {
-      particle.update(deltaTime);
-
-      // Reset velocity for grabbed particles
-      if (particle.grabbed) {
+  // Integrate positions/velocities after forces have been applied
+  private integrateParticles(particles: Particle[], delta: number): void {
+    for (const particle of particles) {
+      if (!particle.pinned) {
+        particle.update(delta);
+        if (particle.grabbed) {
+          particle.velocity.x = 0;
+          particle.velocity.y = 0;
+        }
+      } else {
         particle.velocity.x = 0;
         particle.velocity.y = 0;
       }
-    } else {
-      particle.velocity.x = 0;
-      particle.velocity.y = 0;
-    }
 
-    // Update particle lifetime properties
-    if (particle.duration !== null) {
-      particle.interpolateProperties(deltaTime);
+      if (particle.duration !== null) {
+        particle.interpolateProperties(delta);
+      }
     }
   }
 
@@ -772,8 +760,7 @@ export class System {
     for (const force of this.forces) {
       force.clear?.();
     }
-    // Clean up backend resources
-    this.computeBackend.destroy();
+    // No backend resources to clean up at System level
   }
 
   getParticleCount(): number {
@@ -1086,156 +1073,7 @@ export class System {
     }
   }
 
-  /**
-   * Backend Management Methods
-   */
-
-  /**
-   * Initialize the compute backend based on preference
-   */
-  private async initializeBackend(preferredBackend: 'cpu' | 'webgpu' | 'auto'): Promise<void> {
-    this.backendInitialized = this.performBackendInitialization(preferredBackend);
-    await this.backendInitialized;
-  }
-
-  /**
-   * Perform the actual backend initialization
-   */
-  private async performBackendInitialization(preferredBackend: 'cpu' | 'webgpu' | 'auto'): Promise<boolean> {
-    try {
-      if (preferredBackend === 'cpu') {
-        // Force CPU backend
-        await this.computeBackend.initialize();
-        this.events.emit('backend-changed', {
-          backend: 'cpu',
-          capabilities: this.computeBackend.getCapabilities()
-        });
-        return true;
-      }
-
-      if (preferredBackend === 'webgpu' || preferredBackend === 'auto') {
-        // Try WebGPU backend first
-        const webgpuBackend = new WebGPUComputeBackend();
-        const webgpuSuccess = await webgpuBackend.initialize();
-
-        if (webgpuSuccess) {
-          // WebGPU initialization successful
-          this.computeBackend.destroy(); // Clean up CPU backend
-          this.computeBackend = webgpuBackend;
-          this.events.emit('backend-changed', {
-            backend: 'webgpu',
-            capabilities: this.computeBackend.getCapabilities()
-          });
-          return true;
-        } else if (preferredBackend === 'webgpu' && !this.enableBackendFallback) {
-          // WebGPU was specifically requested and fallback is disabled
-          throw new Error('WebGPU backend initialization failed and fallback is disabled');
-        } else {
-          // Fall back to CPU backend
-          webgpuBackend.destroy();
-          await this.computeBackend.initialize();
-          this.events.emit('backend-fallback', {
-            reason: 'WebGPU initialization failed',
-            from: 'webgpu',
-            to: 'cpu'
-          });
-          this.events.emit('backend-changed', {
-            backend: 'cpu',
-            capabilities: this.computeBackend.getCapabilities()
-          });
-          return true;
-        }
-      }
-
-      // Fallback to CPU
-      await this.computeBackend.initialize();
-      return true;
-
-    } catch (error) {
-      console.error('Backend initialization failed:', error);
-      
-      if (this.enableBackendFallback && !(this.computeBackend instanceof CPUComputeBackend)) {
-        // Fall back to CPU as last resort
-        this.computeBackend = new CPUComputeBackend();
-        await this.computeBackend.initialize();
-        this.events.emit('backend-fallback', {
-          reason: `Backend error: ${error}`,
-          from: 'webgpu',
-          to: 'cpu'
-        });
-        return true;
-      }
-      
-      throw error;
-    }
-  }
-
-  /**
-   * Switch to a different compute backend
-   */
-  async switchBackend(newBackend: 'cpu' | 'webgpu'): Promise<boolean> {
-    const currentCapabilities = this.computeBackend.getCapabilities();
-    
-    // If already using the requested backend, do nothing
-    if (currentCapabilities.type === newBackend) {
-      return true;
-    }
-
-    try {
-      let targetBackend: ComputeBackend;
-
-      if (newBackend === 'cpu') {
-        targetBackend = new CPUComputeBackend();
-      } else {
-        targetBackend = new WebGPUComputeBackend();
-      }
-
-      const success = await targetBackend.initialize();
-      
-      if (success) {
-        // Clean up old backend
-        this.computeBackend.destroy();
-        this.computeBackend = targetBackend;
-        
-        this.events.emit('backend-changed', {
-          backend: newBackend,
-          capabilities: this.computeBackend.getCapabilities()
-        });
-        
-        return true;
-      } else {
-        targetBackend.destroy();
-        return false;
-      }
-    } catch (error) {
-      console.error(`Failed to switch to ${newBackend} backend:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Get current backend capabilities
-   */
-  getBackendCapabilities(): BackendCapabilities {
-    return this.computeBackend.getCapabilities();
-  }
-
-  /**
-   * Get current backend performance metrics
-   */
-  getBackendMetrics(): ComputeMetrics {
-    return this.computeBackend.getMetrics();
-  }
-
-  /**
-   * Check if backend is ready for use
-   */
-  async isBackendReady(): Promise<boolean> {
-    if (this.backendInitialized) {
-      return await this.backendInitialized;
-    }
-    return false;
-  }
+  // Backend management removed. Forces handle their own WebGPU setup in init().
 
   /**
    * Z-index tracking methods for efficient sorting optimization

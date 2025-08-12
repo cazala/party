@@ -1,14 +1,13 @@
-import { Vector2D } from "../vector";
-import { Particle } from "../particle";
-import { Force } from "../system";
-import { SpatialGrid } from "../spatial-grid";
+/**
+ * CPU Physics Implementation
+ * 
+ * Pure CPU implementation of physics forces (gravity, inertia, friction)
+ * without any WebGPU dependencies.
+ */
 
-// Default constants for Physics
-export const DEFAULT_GRAVITY_STRENGTH = 0;
-export const DEFAULT_GRAVITY_DIRECTION = new Vector2D(0, 1); // Downward
-export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downward)
-export const DEFAULT_INERTIA = 0.1;
-export const DEFAULT_FRICTION = 0.1;
+import { Vector2D } from "../../vector";
+import { Particle } from "../../particle";
+import { Force, SpatialGrid } from "../../system";
 
 export interface PhysicsOptions {
   gravity?: {
@@ -21,7 +20,17 @@ export interface PhysicsOptions {
   friction?: number;
 }
 
-export class Physics implements Force {
+// Default constants for Physics
+export const DEFAULT_GRAVITY_STRENGTH = 0;
+export const DEFAULT_GRAVITY_DIRECTION = new Vector2D(0, 1); // Downward
+export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downward)
+export const DEFAULT_INERTIA = 0.1;
+export const DEFAULT_FRICTION = 0.1;
+
+/**
+ * CPU-based physics force implementation
+ */
+export class PhysicsCPU implements Force {
   public gravity: {
     strength: number;
     direction: Vector2D;
@@ -35,9 +44,14 @@ export class Physics implements Force {
   constructor(options: PhysicsOptions = {}) {
     this.gravity = {
       strength: options.gravity?.strength || DEFAULT_GRAVITY_STRENGTH,
-      direction:
-        options.gravity?.direction || DEFAULT_GRAVITY_DIRECTION.clone(),
+      direction: options.gravity?.direction || DEFAULT_GRAVITY_DIRECTION.clone(),
     };
+
+    // Handle angle-based direction setting
+    if (options.gravity?.angle !== undefined) {
+      this.gravity.direction = Vector2D.fromAngle(options.gravity.angle);
+    }
+
     this.inertia = options.inertia || DEFAULT_INERTIA;
     this.friction = options.friction || DEFAULT_FRICTION;
   }
@@ -56,7 +70,7 @@ export class Physics implements Force {
   }
 
   set direction(value: Vector2D) {
-    this.gravity.direction = value.clone().normalize();
+    this.gravity.direction = value.clone();
   }
 
   setStrength(strength: number): void {
@@ -123,6 +137,13 @@ export class Physics implements Force {
   }
 
   /**
+   * Called after all particles have been processed (CPU implementation doesn't need this)
+   */
+  after?(_particles: Particle[], _deltaTime: number, _spatialGrid: SpatialGrid): void {
+    // CPU implementation doesn't need batch processing
+  }
+
+  /**
    * Clean up stored positions for removed particles
    */
   cleanupRemovedParticles(activeParticleIds: Set<number>): void {
@@ -139,27 +160,20 @@ export class Physics implements Force {
   clearPositionHistory(): void {
     this.previousPositions.clear();
   }
+
+  clear?(): void {
+    this.clearPositionHistory();
+  }
 }
 
 export function createPhysicsForce(
   gravity: { strength?: number; direction?: Vector2D } = {},
   inertia: number = DEFAULT_INERTIA,
   friction: number = DEFAULT_FRICTION
-): Physics {
-  return new Physics({
-    gravity: {
-      strength: gravity.strength || DEFAULT_GRAVITY_STRENGTH,
-      direction: gravity.direction || DEFAULT_GRAVITY_DIRECTION,
-    },
+): PhysicsCPU {
+  return new PhysicsCPU({
+    gravity,
     inertia,
     friction,
   });
 }
-
-export const defaultPhysics = createPhysicsForce();
-
-// Legacy exports for backward compatibility
-export type Gravity = Physics;
-export const Gravity = Physics;
-export const createGravityForce = createPhysicsForce;
-export const defaultGravity = defaultPhysics;
