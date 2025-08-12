@@ -428,9 +428,7 @@ export class SpatialGridGPU {
    * Create compute pipelines for spatial operations
    */
   private async createComputePipelines(): Promise<void> {
-    // Clear grid pipeline will be implemented in the shader files
-    // For now, we'll use simplified placeholders
-    
+    // Clear grid pipeline
     const clearGridShader = `
       @group(0) @binding(0) var<storage, read_write> cellCounts: array<u32>;
       
@@ -449,15 +447,110 @@ export class SpatialGridGPU {
       options: { label: 'clear-grid-pipeline' }
     });
 
-    // Additional pipelines will be implemented in subsequent commits
-    // This is a foundation for the spatial grid system
+    // Populate grid pipeline - maps particles to grid cells
+    const populateGridShader = `
+      struct Particle {
+        position: vec2<f32>,
+        velocity: vec2<f32>,
+        acceleration: vec2<f32>,
+        mass: f32,
+        size: f32,
+        color: vec4<f32>,
+        lifetime: vec2<f32>,
+        state: u32,
+      }
+      
+      struct GridParams {
+        width: f32,
+        height: f32,
+        cellSize: f32,
+        gridWidth: f32,
+        gridHeight: f32,
+        totalCells: f32,
+        maxParticlesPerCell: f32,
+        particleCount: f32,
+      }
+      
+      @group(0) @binding(0) var<storage, read> particles: array<Particle>;
+      @group(0) @binding(1) var<storage, read_write> cellCounts: array<atomic<u32>>;
+      @group(0) @binding(2) var<storage, read_write> cellParticles: array<u32>;
+      @group(0) @binding(3) var<uniform> gridParams: GridParams;
+      
+      @workgroup_size(64)
+      @compute fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+        let particleIndex = global_id.x;
+        if (particleIndex >= u32(gridParams.particleCount)) {
+          return;
+        }
+        
+        let particle = particles[particleIndex];
+        
+        // Skip inactive or dead particles
+        if ((particle.state & 1u) == 0u || (particle.state & 8u) != 0u) {
+          return;
+        }
+        
+        // Calculate grid cell
+        let cellX = u32(particle.position.x / gridParams.cellSize);
+        let cellY = u32(particle.position.y / gridParams.cellSize);
+        
+        // Bounds check
+        if (cellX >= u32(gridParams.gridWidth) || cellY >= u32(gridParams.gridHeight)) {
+          return;
+        }
+        
+        let cellIndex = cellY * u32(gridParams.gridWidth) + cellX;
+        
+        // Atomically increment cell count and get slot
+        let slot = atomicAdd(&cellCounts[cellIndex], 1u);
+        
+        // Store particle index in cell if there's space
+        if (slot < u32(gridParams.maxParticlesPerCell)) {
+          let particleSlot = cellIndex * u32(gridParams.maxParticlesPerCell) + slot;
+          cellParticles[particleSlot] = particleIndex;
+        }
+      }
+    `;
+
+    this.populateGridPipeline = this.shaderManager.createComputePipeline({
+      shaderSource: populateGridShader,
+      options: { label: 'populate-grid-pipeline' }
+    });
+
+    // Build offsets pipeline - creates prefix sum for efficient cell access
+    const buildOffsetsShader = `
+      @group(0) @binding(0) var<storage, read> cellCounts: array<u32>;
+      @group(0) @binding(1) var<storage, read_write> cellOffsets: array<u32>;
+      @group(0) @binding(2) var<uniform> gridParams: GridParams;
+      
+      @workgroup_size(64)
+      @compute fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+        let cellIndex = global_id.x;
+        if (cellIndex >= u32(gridParams.totalCells)) {
+          return;
+        }
+        
+        // Simple prefix sum implementation (not optimized for large grids)
+        var offset = 0u;
+        for (var i = 0u; i < cellIndex; i++) {
+          offset += cellCounts[i];
+        }
+        cellOffsets[cellIndex] = offset;
+      }
+    `;
+
+    this.buildOffsetssPipeline = this.shaderManager.createComputePipeline({
+      shaderSource: buildOffsetsShader,
+      options: { label: 'build-offsets-pipeline' }
+    });
   }
 
   /**
    * Create bind groups for compute pipelines
    */
   private async createBindGroups(): Promise<void> {
-    if (!this.clearGridPipeline || !this.cellCountsBuffer) {
+    if (!this.clearGridPipeline || !this.populateGridPipeline || !this.buildOffsetssPipeline ||
+        !this.cellCountsBuffer || !this.cellOffsetsBuffer || !this.cellParticlesBuffer || !this.gridParamsBuffer) {
       throw new Error('Pipelines or buffers not initialized');
     }
 
@@ -470,6 +563,18 @@ export class SpatialGridGPU {
         { binding: 0, resource: { buffer: this.cellCountsBuffer } }
       ]
     });
+
+    // Build offsets bind group
+    this.offsetsBindGroup = device.createBindGroup({
+      layout: this.buildOffsetssPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.cellCountsBuffer } },
+        { binding: 1, resource: { buffer: this.cellOffsetsBuffer } },
+        { binding: 2, resource: { buffer: this.gridParamsBuffer } }
+      ]
+    });
+
+    // Note: Populate bind group will be created dynamically with particle buffer
   }
 
   /**
@@ -494,18 +599,65 @@ export class SpatialGridGPU {
   }
 
   /**
-   * Populate grid cells with particles (placeholder)
+   * Populate grid cells with particles
    */
   private async populateGrid(particleBuffer: GPUBuffer, particleCount: number): Promise<void> {
-    // This will be implemented with proper shaders in subsequent commits
-    // For now, this is a placeholder
+    if (!this.populateGridPipeline || !this.gridParamsBuffer) {
+      throw new Error('Populate grid pipeline not initialized');
+    }
+
+    // Update grid parameters with current particle count
+    const gridParams = new Float32Array([
+      this.options.width, this.options.height, this.options.cellSize, this.gridWidth,
+      this.gridHeight, this.totalCells, this.options.maxParticlesPerCell, particleCount
+    ]);
+    this.context.writeBuffer(this.gridParamsBuffer, gridParams.buffer);
+
+    // Create populate bind group with current particle buffer
+    const device = this.context.getDevice();
+    const populateBindGroup = device.createBindGroup({
+      layout: this.populateGridPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: particleBuffer } },
+        { binding: 1, resource: { buffer: this.cellCountsBuffer! } },
+        { binding: 2, resource: { buffer: this.cellParticlesBuffer! } },
+        { binding: 3, resource: { buffer: this.gridParamsBuffer } }
+      ]
+    });
+
+    // Dispatch populate grid compute shader
+    const encoder = this.context.createCommandEncoder('populate-grid');
+    const computePass = encoder.beginComputePass();
+
+    computePass.setPipeline(this.populateGridPipeline);
+    computePass.setBindGroup(0, populateBindGroup);
+
+    const workgroups = Math.ceil(particleCount / 64);
+    computePass.dispatchWorkgroups(workgroups);
+
+    computePass.end();
+    this.context.submit([encoder.finish()]);
   }
 
   /**
-   * Build cell offset arrays (placeholder)
+   * Build cell offset arrays for efficient neighbor access
    */
   private async buildOffsets(): Promise<void> {
-    // This will be implemented with proper shaders in subsequent commits
+    if (!this.buildOffsetssPipeline || !this.offsetsBindGroup) {
+      throw new Error('Build offsets pipeline not initialized');
+    }
+
+    const encoder = this.context.createCommandEncoder('build-offsets');
+    const computePass = encoder.beginComputePass();
+
+    computePass.setPipeline(this.buildOffsetssPipeline);
+    computePass.setBindGroup(0, this.offsetsBindGroup);
+
+    const workgroups = Math.ceil(this.totalCells / 64);
+    computePass.dispatchWorkgroups(workgroups);
+
+    computePass.end();
+    this.context.submit([encoder.finish()]);
   }
 
   /**
