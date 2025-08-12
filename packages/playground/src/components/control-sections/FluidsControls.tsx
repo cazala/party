@@ -189,7 +189,7 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
           Near Pressure: {nearPressureMultiplier.toFixed(1)}
           <input
             type="range"
-            min="-50"
+            min="0"
             max="50"
             step="0.5"
             value={nearPressureMultiplier}
