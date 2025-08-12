@@ -140,16 +140,63 @@ export class BufferManager {
   }
 
   /**
-   * Create particle data buffer with optimal layout
+   * Create particle data buffer with optimal layout and proper alignment
    */
   createParticleBuffer(particleCount: number, usage: GPUBufferUsageFlags = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST): GPUBuffer {
     const bufferSize = particleCount * this.particleLayout.stride;
     
+    // Ensure buffer size meets GPU alignment requirements
+    const alignedSize = this.alignBufferSize(bufferSize, usage);
+    
     return this.createBuffer({
+      size: alignedSize,
+      usage,
+      label: `particle-buffer-${particleCount}-${alignedSize}bytes`
+    });
+  }
+
+  /**
+   * Create optimized particle buffer with proper memory alignment for specific GPU operations
+   */
+  createAlignedParticleBuffer(
+    particleCount: number,
+    usage: GPUBufferUsageFlags,
+    options: {
+      /** Force specific alignment (overrides automatic detection) */
+      forceAlignment?: number;
+      /** Add padding for future growth */
+      growthPadding?: number;
+      /** Enable memory pooling for this buffer */
+      enablePooling?: boolean;
+    } = {}
+  ): GPUBuffer {
+    let bufferSize = particleCount * this.particleLayout.stride;
+    
+    // Add growth padding if specified
+    if (options.growthPadding && options.growthPadding > 0) {
+      const paddingSize = Math.ceil(bufferSize * options.growthPadding);
+      bufferSize += paddingSize;
+    }
+    
+    // Apply custom alignment if specified
+    if (options.forceAlignment) {
+      bufferSize = Math.ceil(bufferSize / options.forceAlignment) * options.forceAlignment;
+    } else {
+      bufferSize = this.alignBufferSize(bufferSize, usage);
+    }
+    
+    const descriptor: BufferDescriptor = {
       size: bufferSize,
       usage,
-      label: `particle-buffer-${particleCount}`
-    });
+      label: `aligned-particle-buffer-${particleCount}-${bufferSize}bytes`
+    };
+    
+    // Use pooling if enabled
+    if (options.enablePooling) {
+      return this.getPooledBuffer(descriptor);
+    } else {
+      return this.createBuffer(descriptor);
+    }
   }
 
   /**
