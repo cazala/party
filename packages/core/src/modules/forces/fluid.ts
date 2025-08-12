@@ -573,24 +573,24 @@ export class Fluid implements Force {
         continue;
       }
 
-      const particles = spatialGrid.getParticles(
+      const neighbors = spatialGrid.getParticles(
         particle.position,
         this.influenceRadius
       );
 
-      if (particles.length === 0) {
+      if (neighbors.length === 0) {
         continue;
       }
 
       const pressureForce = this.calculatePressureForce(
         particle.position,
-        particles
+        neighbors
       );
 
       const viscosityForce = this.calculateViscosityForce(
         particle.position,
         particle.velocity,
-        particles
+        neighbors
       );
 
       // do A = F/d instead of F/m because this is a fluid

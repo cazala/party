@@ -9,6 +9,7 @@ import { Vector2D } from "../../vector";
 import { Particle } from "../../particle";
 import { Force, SpatialGrid } from "../../system";
 import {
+  PhysicsCPU,
   PhysicsOptions,
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_DIRECTION,
@@ -37,6 +38,7 @@ export class PhysicsWebGPU implements Force {
   private pipeline: GPUComputePipeline | null = null;
   private bindGroupLayout: GPUBindGroupLayout | null = null;
   private shaderModule: GPUShaderModule | null = null;
+  private cpuFallback: PhysicsCPU | null = null;
 
   constructor(options: PhysicsOptions = {}) {
     this.gravity = {
@@ -55,8 +57,14 @@ export class PhysicsWebGPU implements Force {
   }
 
   before(particles: Particle[]): void {
-    for (const p of particles) {
-      this.previousPositions.set(p.id, p.position.clone());
+    if (!this.gpuAvailable) {
+      this.ensureCPUFallback();
+      // Mirror CPU's internal state if needed (no-op currently)
+    } else {
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        this.previousPositions.set(p.id, p.position.clone());
+      }
     }
   }
 
@@ -107,11 +115,8 @@ export class PhysicsWebGPU implements Force {
     _spatialGrid: SpatialGrid
   ): void | Promise<void> {
     if (!this.gpuAvailable) {
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        if (!p.pinned && !p.grabbed) this.applyCPU(p);
-      }
-      return;
+      this.ensureCPUFallback();
+      return this.cpuFallback!.apply(particles, _spatialGrid);
     }
     return this.runGPUPhysics(particles);
   }
@@ -127,42 +132,22 @@ export class PhysicsWebGPU implements Force {
     // No-op; GPU work happens in apply()
   }
 
-  /**
-   * CPU implementation of physics forces (fallback)
-   */
-  private applyCPU(particle: Particle): void {
-    const currentPosition = particle.position.clone();
-    const previousPosition = this.previousPositions.get(particle.id);
-
-    // Apply gravity force
-    if (this.gravity.strength !== 0) {
-      const gravityForce = this.gravity.direction
-        .clone()
-        .normalize()
-        .multiply(this.gravity.strength * particle.mass);
-      particle.applyForce(gravityForce);
+  private ensureCPUFallback(): void {
+    if (!this.cpuFallback) {
+      this.cpuFallback = new PhysicsCPU({
+        gravity: {
+          strength: this.gravity.strength,
+          direction: this.gravity.direction.clone(),
+        },
+        inertia: this.inertia,
+        friction: this.friction,
+      });
+    } else {
+      this.cpuFallback.setStrength(this.gravity.strength);
+      this.cpuFallback.setDirection(this.gravity.direction);
+      this.cpuFallback.setInertia(this.inertia);
+      this.cpuFallback.setFriction(this.friction);
     }
-
-    // Apply inertia (momentum from actual position change)
-    if (this.inertia > 0 && previousPosition) {
-      // Calculate actual velocity from position change
-      const actualVelocity = currentPosition.clone().subtract(previousPosition);
-      const inertiaForce = actualVelocity
-        .clone()
-        .multiply(this.inertia * particle.mass);
-      particle.applyForce(inertiaForce);
-    }
-
-    // Apply friction (dampen current velocity)
-    if (this.friction > 0) {
-      const frictionForce = particle.velocity
-        .clone()
-        .multiply(-this.friction * particle.mass);
-      particle.applyForce(frictionForce);
-    }
-
-    // Store current position for next frame
-    this.previousPositions.set(particle.id, currentPosition);
   }
 
   /**

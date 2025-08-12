@@ -98,48 +98,48 @@ export class PhysicsCPU implements Force {
     this.friction = Math.max(0, Math.min(1, friction)); // Clamp between 0 and 1
   }
 
-  private applyOne(particle: Particle, _spatialGrid: SpatialGrid): void {
-    if (particle.pinned || particle.grabbed) {
-      return;
-    }
-
-    const currentPosition = particle.position.clone();
-    const previousPosition = this.previousPositions.get(particle.id);
-
-    // Apply gravity force
-    if (this.gravity.strength !== 0) {
-      const gravityForce = this.gravity.direction
-        .clone()
-        .normalize()
-        .multiply(this.gravity.strength * particle.mass);
-      particle.applyForce(gravityForce);
-    }
-
-    // Apply inertia (momentum from actual position change)
-    if (this.inertia > 0 && previousPosition) {
-      // Calculate actual velocity from position change
-      const actualVelocity = currentPosition.clone().subtract(previousPosition);
-      const inertiaForce = actualVelocity
-        .clone()
-        .multiply(this.inertia * particle.mass);
-      particle.applyForce(inertiaForce);
-    }
-
-    // Apply friction (dampen current velocity)
-    if (this.friction > 0) {
-      const frictionForce = particle.velocity
-        .clone()
-        .multiply(-this.friction * particle.mass);
-      particle.applyForce(frictionForce);
-    }
-
-    // Store current position for next frame
-    this.previousPositions.set(particle.id, currentPosition);
-  }
-
   apply(particles: Particle[], _spatialGrid: SpatialGrid): void {
     for (let i = 0; i < particles.length; i++) {
-      this.applyOne(particles[i], _spatialGrid);
+      const particle = particles[i];
+
+      if (particle.pinned || particle.grabbed) {
+        return;
+      }
+
+      const currentPosition = particle.position.clone();
+      const previousPosition = this.previousPositions.get(particle.id);
+
+      // Apply gravity force
+      if (this.gravity.strength !== 0) {
+        const gravityForce = this.gravity.direction
+          .clone()
+          .normalize()
+          .multiply(this.gravity.strength * particle.mass);
+        particle.applyForce(gravityForce);
+      }
+
+      // Apply inertia (momentum from actual position change)
+      if (this.inertia > 0 && previousPosition) {
+        // Calculate actual velocity from position change
+        const actualVelocity = currentPosition
+          .clone()
+          .subtract(previousPosition);
+        const inertiaForce = actualVelocity
+          .clone()
+          .multiply(this.inertia * particle.mass);
+        particle.applyForce(inertiaForce);
+      }
+
+      // Apply friction (dampen current velocity)
+      if (this.friction > 0) {
+        const frictionForce = particle.velocity
+          .clone()
+          .multiply(-this.friction * particle.mass);
+        particle.applyForce(frictionForce);
+      }
+
+      // Store current position for next frame
+      this.previousPositions.set(particle.id, currentPosition);
     }
   }
 
