@@ -1,6 +1,11 @@
 export class Vector2D {
   constructor(public x: number = 0, public y: number = 0) {}
 
+  // Object pooling for temporary vector calculations
+  private static pool: Vector2D[] = [];
+  private static maxPoolSize: number = 1000;
+  private isPooled: boolean = false;
+
   add(vector: Vector2D): Vector2D {
     this.x += vector.x;
     this.y += vector.y;
@@ -135,6 +140,70 @@ export class Vector2D {
    */
   static radiansToDegrees(radians: number): number {
     return (radians * 180) / Math.PI;
+  }
+
+  /**
+   * Get a pooled Vector2D instance for temporary calculations
+   * @param x Initial x value
+   * @param y Initial y value
+   * @returns A pooled Vector2D instance
+   */
+  static getPooled(x: number = 0, y: number = 0): Vector2D {
+    let vector: Vector2D;
+    
+    if (Vector2D.pool.length > 0) {
+      vector = Vector2D.pool.pop()!;
+      vector.set(x, y);
+    } else {
+      vector = new Vector2D(x, y);
+    }
+    
+    vector.isPooled = true;
+    return vector;
+  }
+
+  /**
+   * Return a vector to the pool for reuse
+   * IMPORTANT: Do not use the vector after returning it to the pool!
+   */
+  returnToPool(): void {
+    if (this.isPooled && Vector2D.pool.length < Vector2D.maxPoolSize) {
+      this.isPooled = false;
+      this.x = 0;
+      this.y = 0;
+      Vector2D.pool.push(this);
+    }
+  }
+
+  /**
+   * Set the maximum pool size
+   * @param maxSize Maximum number of vectors to keep in pool
+   */
+  static setMaxPoolSize(maxSize: number): void {
+    Vector2D.maxPoolSize = Math.max(0, maxSize);
+    
+    // Trim pool if it exceeds new max size
+    if (Vector2D.pool.length > Vector2D.maxPoolSize) {
+      Vector2D.pool.length = Vector2D.maxPoolSize;
+    }
+  }
+
+  /**
+   * Get current pool statistics
+   * @returns Object with pool usage info
+   */
+  static getPoolStats(): { poolSize: number; maxPoolSize: number } {
+    return {
+      poolSize: Vector2D.pool.length,
+      maxPoolSize: Vector2D.maxPoolSize
+    };
+  }
+
+  /**
+   * Clear the entire pool
+   */
+  static clearPool(): void {
+    Vector2D.pool.length = 0;
   }
 }
 

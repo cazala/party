@@ -45,6 +45,94 @@ export interface ParticleOptions {
 let idCounter = 0;
 
 /**
+ * Color interpolation cache to reduce string allocation overhead
+ */
+class ColorCache {
+  private static cache = new Map<string, string>();
+  private static maxCacheSize = 1000;
+
+  /**
+   * Get a cached color interpolation result or compute and cache it
+   */
+  static getCachedLerpColor(startColor: string, endColor: string, t: number): string {
+    // Create cache key with rounded t to reduce cache fragmentation
+    const roundedT = Math.round(t * 100) / 100; // Round to 2 decimal places
+    const key = `${startColor}-${endColor}-${roundedT}`;
+    
+    let cachedColor = this.cache.get(key);
+    if (cachedColor) {
+      return cachedColor;
+    }
+
+    // Compute the interpolated color
+    cachedColor = this.computeLerpColor(startColor, endColor, t);
+    
+    // Add to cache if there's room
+    if (this.cache.size < this.maxCacheSize) {
+      this.cache.set(key, cachedColor);
+    } else {
+      // Clear oldest entries when cache is full
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+        this.cache.set(key, cachedColor);
+      }
+    }
+    
+    return cachedColor;
+  }
+
+  /**
+   * Compute color interpolation without caching
+   */
+  private static computeLerpColor(startColor: string, endColor: string, t: number): string {
+    // Parse hex colors
+    const parseHex = (hex: string) => {
+      const clean = hex.replace('#', '');
+      return {
+        r: parseInt(clean.substr(0, 2), 16),
+        g: parseInt(clean.substr(2, 2), 16),
+        b: parseInt(clean.substr(4, 2), 16)
+      };
+    };
+
+    const start = parseHex(startColor);
+    const end = parseHex(endColor);
+
+    // Interpolate each channel
+    const lerp = (start: number, end: number, t: number) => start + (end - start) * t;
+    const r = Math.round(lerp(start.r, end.r, t));
+    const g = Math.round(lerp(start.g, end.g, t));
+    const b = Math.round(lerp(start.b, end.b, t));
+
+    // Convert back to hex
+    const toHex = (n: number) => {
+      const hex = Math.max(0, Math.min(255, n)).toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    };
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  /**
+   * Clear the color cache
+   */
+  static clearCache(): void {
+    this.cache.clear();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  static getCacheStats(): { size: number; maxSize: number } {
+    return {
+      size: this.cache.size,
+      maxSize: this.maxCacheSize
+    };
+  }
+}
+
+/**
  * Represents a single particle in the physics simulation.
  * 
  * Particles have position, velocity, and acceleration vectors that define their motion.
@@ -164,13 +252,20 @@ export class Particle {
    * @param deltaTime - Time elapsed since last update in milliseconds
    */
   update(deltaTime: number): void {
-    // Create a temporary copy of acceleration, multiply by deltaTime, then add to velocity
-    const accelDelta = this.acceleration.clone().multiply(deltaTime);
+    // Use pooled vectors for temporary calculations to reduce GC pressure
+    const accelDelta = Vector2D.getPooled(
+      this.acceleration.x * deltaTime,
+      this.acceleration.y * deltaTime
+    );
     this.velocity.add(accelDelta);
+    accelDelta.returnToPool();
 
-    // Create a temporary copy of velocity, multiply by deltaTime, then add to position
-    const velocityDelta = this.velocity.clone().multiply(deltaTime);
+    const velocityDelta = Vector2D.getPooled(
+      this.velocity.x * deltaTime,
+      this.velocity.y * deltaTime
+    );
     this.position.add(velocityDelta);
+    velocityDelta.returnToPool();
 
     // Reset acceleration to zero
     this.acceleration.zero();
@@ -189,8 +284,11 @@ export class Particle {
     if (this.mass <= 0) {
       return; // Skip force application for zero or negative mass particles
     }
-    const f = force.clone().divide(this.mass);
+    
+    // Use pooled vector for force calculation to reduce GC pressure
+    const f = Vector2D.getPooled(force.x / this.mass, force.y / this.mass);
     this.acceleration.add(f);
+    f.returnToPool();
   }
 
   /**
@@ -299,6 +397,7 @@ export class Particle {
 
   /**
    * Linear interpolation between two colors in hex format.
+   * Uses ColorCache to reduce string allocation overhead.
    * 
    * @param startColor - Starting color in hex format (#rrggbb)
    * @param endColor - Ending color in hex format (#rrggbb)
@@ -306,31 +405,7 @@ export class Particle {
    * @returns Interpolated color in hex format
    */
   private lerpColor(startColor: string, endColor: string, t: number): string {
-    // Parse hex colors
-    const parseHex = (hex: string) => {
-      const clean = hex.replace('#', '');
-      return {
-        r: parseInt(clean.substr(0, 2), 16),
-        g: parseInt(clean.substr(2, 2), 16),
-        b: parseInt(clean.substr(4, 2), 16)
-      };
-    };
-
-    const start = parseHex(startColor);
-    const end = parseHex(endColor);
-
-    // Interpolate each channel
-    const r = Math.round(this.lerp(start.r, end.r, t));
-    const g = Math.round(this.lerp(start.g, end.g, t));
-    const b = Math.round(this.lerp(start.b, end.b, t));
-
-    // Convert back to hex
-    const toHex = (n: number) => {
-      const hex = Math.max(0, Math.min(255, n)).toString(16);
-      return hex.length === 1 ? '0' + hex : hex;
-    };
-
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    return ColorCache.getCachedLerpColor(startColor, endColor, t);
   }
 
   /**

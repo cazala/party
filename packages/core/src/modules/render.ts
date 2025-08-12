@@ -14,6 +14,99 @@ export const DEFAULT_RENDER_ROTATION_SPEED = 1; // rotations per second
 export const DEFAULT_RENDER_GLOW_EFFECTS = false; // Enable glow effects by default
 export const PINNED_PARTICLE_COLOR = "#6b7280"; // Grey color for pinned particles
 
+/**
+ * Render color cache to avoid repeated color string calculations
+ */
+class RenderColorCache {
+  private static velocityColorCache = new Map<string, string>();
+  private static rotateColorCache = new Map<number, string>();
+  private static maxCacheSize = 500;
+
+  /**
+   * Get cached velocity color or compute and cache it
+   */
+  static getCachedVelocityColor(speed: number, maxSpeed: number): string {
+    // Round speed to reduce cache fragmentation
+    const roundedSpeed = Math.round(speed * 10) / 10; // Round to 1 decimal place
+    const key = `${roundedSpeed}-${maxSpeed}`;
+    
+    let cachedColor = this.velocityColorCache.get(key);
+    if (cachedColor) {
+      return cachedColor;
+    }
+
+    // Compute velocity color
+    const ratio = speed / maxSpeed;
+    const red = Math.floor(Math.min(ratio, 1) * 255);
+    const green = Math.floor((1 - Math.min(ratio, 1)) * 255);
+    cachedColor = `rgb(${red}, ${green}, 0)`;
+    
+    // Add to cache if there's room
+    if (this.velocityColorCache.size < this.maxCacheSize) {
+      this.velocityColorCache.set(key, cachedColor);
+    } else {
+      // Clear oldest entry when cache is full
+      const firstKey = this.velocityColorCache.keys().next().value;
+      if (firstKey) {
+        this.velocityColorCache.delete(firstKey);
+        this.velocityColorCache.set(key, cachedColor);
+      }
+    }
+    
+    return cachedColor;
+  }
+
+  /**
+   * Get cached rotate color or compute and cache it
+   */
+  static getCachedRotateColor(hue: number): string {
+    // Round hue to reduce cache fragmentation
+    const roundedHue = Math.round(hue) % 360;
+    
+    let cachedColor = this.rotateColorCache.get(roundedHue);
+    if (cachedColor) {
+      return cachedColor;
+    }
+
+    // Compute rotate color using HSB
+    const rgb = hsbToRgb(roundedHue, 0.8, 0.9);
+    cachedColor = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+    
+    // Add to cache if there's room
+    if (this.rotateColorCache.size < this.maxCacheSize) {
+      this.rotateColorCache.set(roundedHue, cachedColor);
+    } else {
+      // Clear oldest entry when cache is full
+      const firstKey = this.rotateColorCache.keys().next().value;
+      if (firstKey !== undefined) {
+        this.rotateColorCache.delete(firstKey);
+        this.rotateColorCache.set(roundedHue, cachedColor);
+      }
+    }
+    
+    return cachedColor;
+  }
+
+  /**
+   * Clear all render color caches
+   */
+  static clearCaches(): void {
+    this.velocityColorCache.clear();
+    this.rotateColorCache.clear();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  static getCacheStats(): { velocityCache: number; rotateCache: number; maxSize: number } {
+    return {
+      velocityCache: this.velocityColorCache.size,
+      rotateCache: this.rotateColorCache.size,
+      maxSize: this.maxCacheSize
+    };
+  }
+}
+
 export interface RenderOptions {
   canvas: HTMLCanvasElement;
   clearColor?: string;
@@ -739,14 +832,7 @@ export class Canvas2DRenderer extends Renderer {
 
   private calculateVelocityColor(particle: Particle): string {
     const speed = particle.velocity.magnitude();
-    const ratio = speed / this.maxSpeed;
-
-    // Interpolate from green (slow) to red (fast)
-    const red = Math.floor(ratio * 255);
-    const green = Math.floor((1 - ratio) * 255);
-
-    const color = `rgb(${red}, ${green}, 0)`;
-    return color;
+    return RenderColorCache.getCachedVelocityColor(speed, this.maxSpeed);
   }
 
   private calculateRotateColor(): string {
@@ -756,12 +842,7 @@ export class Canvas2DRenderer extends Renderer {
     // Calculate hue based on rotation speed (360 degrees per rotation)
     const hue = (((elapsedSeconds * this.rotationSpeed) / 100) * 360) % 360;
 
-    // Use high saturation and brightness for vibrant colors
-    const saturation = 1.0;
-    const brightness = 1.0;
-
-    const rgb = hsbToRgb(hue, saturation, brightness);
-    return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+    return RenderColorCache.getCachedRotateColor(hue);
   }
 
   private getParticleColor(particle: Particle): string {
@@ -794,11 +875,7 @@ export class Canvas2DRenderer extends Renderer {
         if (velocity) {
           // Calculate color based on the provided velocity (for previews)
           const speed = velocity.magnitude();
-          const ratio = speed / this.maxSpeed;
-
-          const red = Math.floor(Math.min(ratio, 1) * 255);
-          const green = Math.floor((1 - Math.min(ratio, 1)) * 255);
-          return `rgb(${red}, ${green}, 0)`;
+          return RenderColorCache.getCachedVelocityColor(speed, this.maxSpeed);
         } else {
           // Use particle's velocity (for regular arrows)
           return this.calculateVelocityColor(particle);

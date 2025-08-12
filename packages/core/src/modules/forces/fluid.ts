@@ -16,6 +16,78 @@ export const DEFAULT_NEAR_THRESHOLD = 30;
 const KERNEL_TABLE_SIZE = 1024; // Number of entries in lookup table
 const KERNEL_TABLE_MAX_DISTANCE = 200; // Maximum distance to cache (covers most common radii)
 
+// Fast math approximations
+const INV_PI = 1 / Math.PI; // Pre-computed 1/π
+const PI_OVER_6 = Math.PI / 6; // Pre-computed π/6
+const PI_OVER_15 = Math.PI / 15; // Pre-computed π/15
+const PI_OVER_4 = Math.PI / 4; // Pre-computed π/4
+
+/**
+ * Fast power approximations using bit manipulation and lookup tables
+ */
+class FastMath {
+  private static pow2Table: Float32Array = new Float32Array(256);
+  private static pow4Table: Float32Array = new Float32Array(256);
+  private static pow6Table: Float32Array = new Float32Array(256);
+  private static pow8Table: Float32Array = new Float32Array(256);
+  private static initialized = false;
+
+  static initialize(): void {
+    if (this.initialized) return;
+    
+    // Pre-compute power tables for common operations
+    for (let i = 0; i < 256; i++) {
+      const x = i / 255; // Normalize to [0, 1]
+      this.pow2Table[i] = x * x;
+      this.pow4Table[i] = x * x * x * x;
+      this.pow6Table[i] = x * x * x * x * x * x;
+      this.pow8Table[i] = x * x * x * x * x * x * x * x;
+    }
+    
+    this.initialized = true;
+  }
+
+  /**
+   * Fast approximation for small powers using lookup tables
+   */
+  static fastPow(base: number, exponent: 2 | 4 | 6 | 8): number {
+    if (!this.initialized) this.initialize();
+    
+    if (base <= 0) return 0;
+    if (base >= 1) return Math.pow(base, exponent); // Fallback for values > 1
+    
+    const index = Math.floor(base * 255);
+    switch (exponent) {
+      case 2: return this.pow2Table[index];
+      case 4: return this.pow4Table[index];
+      case 6: return this.pow6Table[index];
+      case 8: return this.pow8Table[index];
+      default: return Math.pow(base, exponent);
+    }
+  }
+
+  /**
+   * Fast square root approximation using bit manipulation
+   */
+  static fastSqrt(x: number): number {
+    if (x < 0.01) return Math.sqrt(x); // Use accurate sqrt for very small values
+    
+    // Fast inverse square root approximation (Quake III algorithm)
+    const halfX = 0.5 * x;
+    const buf = new ArrayBuffer(4);
+    const f32 = new Float32Array(buf);
+    const u32 = new Uint32Array(buf);
+    f32[0] = x;
+    u32[0] = 0x5f3759df - (u32[0] >> 1);
+    let y = f32[0];
+    
+    // Newton-Raphson iteration for better accuracy
+    y = y * (1.5 - halfX * y * y);
+    
+    return x * y; // Convert from inverse sqrt to sqrt
+  }
+}
+
 /**
  * Pre-computed kernel lookup tables for performance optimization
  */
@@ -27,10 +99,25 @@ class KernelLookupTables {
   private viscosityDerivativeTable: Float32Array;
   private stepSize: number;
   private radius: number;
+  
+  // Pre-computed radius powers for performance
+  private radiusSquared: number;
+  private radiusPow4: number;
+  private radiusPow6: number;
+  private radiusPow8: number;
 
   constructor(radius: number) {
+    // Initialize FastMath if not already done
+    FastMath.initialize();
+    
     this.radius = radius;
     this.stepSize = KERNEL_TABLE_MAX_DISTANCE / (KERNEL_TABLE_SIZE - 1);
+    
+    // Pre-compute radius powers for kernel calculations
+    this.radiusSquared = radius * radius;
+    this.radiusPow4 = this.radiusSquared * this.radiusSquared;
+    this.radiusPow6 = this.radiusPow4 * this.radiusSquared;
+    this.radiusPow8 = this.radiusPow4 * this.radiusPow4;
     
     // Initialize lookup tables
     this.densityTable = new Float32Array(KERNEL_TABLE_SIZE);
@@ -57,33 +144,51 @@ class KernelLookupTables {
 
   private calculateDensityKernelRaw(distance: number): number {
     if (distance >= this.radius) return 0;
-    const volume = (Math.PI * Math.pow(this.radius, 4)) / 6;
-    return ((this.radius - distance) * (this.radius - distance)) / volume;
+    
+    // Use pre-computed radius powers and constants
+    const volume = PI_OVER_6 * this.radiusPow4;
+    const factor = this.radius - distance;
+    
+    return (factor * factor) / volume;
   }
 
   private calculateNearDensityKernelRaw(distance: number): number {
     if (distance >= this.radius) return 0;
-    const volume = (Math.PI * Math.pow(this.radius, 6)) / 15;
+    
+    // Use pre-computed radius powers and constants
+    const volume = PI_OVER_15 * this.radiusPow6;
     const factor = this.radius - distance;
-    return (factor * factor * factor * factor) / volume;
+    const factorSquared = factor * factor;
+    
+    return (factorSquared * factorSquared) / volume;
   }
 
   private calculateDerivativeKernelRaw(distance: number): number {
     if (distance >= this.radius) return 0;
-    const scale = -12 / (Math.PI * Math.pow(this.radius, 4));
+    
+    // Use pre-computed radius powers and constants
+    const scale = -12 * INV_PI / this.radiusPow4;
+    
     return (distance - this.radius) * scale;
   }
 
   private calculateViscosityKernelRaw(distance: number): number {
-    const volume = (Math.PI * Math.pow(this.radius, 8)) / 4;
-    const value = Math.max(0, this.radius * this.radius - distance * distance);
+    // Use pre-computed radius powers and constants
+    const volume = PI_OVER_4 * this.radiusPow8;
+    const distanceSquared = distance * distance;
+    const value = Math.max(0, this.radiusSquared - distanceSquared);
+    
     return (value * value * value) / volume;
   }
 
   private calculateViscosityDerivativeKernelRaw(distance: number): number {
     if (distance >= this.radius) return 0;
-    const factor = this.radius * this.radius - distance * distance;
-    const scale = -24 / (Math.PI * Math.pow(this.radius, 8));
+    
+    // Use pre-computed radius powers and constants
+    const scale = -24 * INV_PI / this.radiusPow8;
+    const distanceSquared = distance * distance;
+    const factor = this.radiusSquared - distanceSquared;
+    
     return scale * distance * factor * factor;
   }
 
@@ -403,9 +508,15 @@ export class Fluid implements Force {
                                 !this.densities.has(particle.id);
 
       if (needsRecalculation) {
-        const predictedPosition = particle.position
-          .clone()
-          .add(particle.velocity.clone().multiply(1 / 60));
+        // Use pooled vector for predicted position calculation
+        const velocityDelta = Vector2D.getPooled(
+          particle.velocity.x / 60,
+          particle.velocity.y / 60
+        );
+        const predictedPosition = Vector2D.getPooled(
+          particle.position.x + velocityDelta.x,
+          particle.position.y + velocityDelta.y
+        );
         
         this.densities.set(
           particle.id,
@@ -415,6 +526,10 @@ export class Fluid implements Force {
           particle.id,
           calculateNearDensity(predictedPosition, this.influenceRadius, particles)
         );
+        
+        // Return pooled vectors
+        velocityDelta.returnToPool();
+        predictedPosition.returnToPool();
         
         // Update position cache
         this.updateParticlePositionCache(particle);
@@ -474,24 +589,24 @@ export class Fluid implements Force {
    */
   calculatePressureForce(point: Vector2D, particles: Particle[]) {
     const pressureForce = Vector2D.zero();
+    
     for (const particle of particles) {
       const distance = point.distance(particle.position);
       if (distance === 0) {
         continue;
       }
-      const direction = particle.position
-        .clone()
-        .subtract(point)
-        .divide(distance);
+      
+      // Use pooled vector for temporary direction calculation
+      const direction = Vector2D.getPooled(
+        particle.position.x - point.x,
+        particle.position.y - point.y
+      ).divide(distance);
+      
       const slope = calculateDensitySmoothingKernelDerivative(
         this.influenceRadius,
         distance
       );
       const density = this.densities.get(particle.id)!;
-      // const sharedPressure = this.calculateSharedPressure(
-      //   density,
-      //   this.densities.get(particle.id)!
-      // );
       const pressureResult = this.convertDensityToPressure(
         density,
         this.nearDensities.get(particle.id)!
@@ -503,11 +618,17 @@ export class Fluid implements Force {
           ? pressureResult.nearPressure
           : pressureResult.pressure;
 
-      const gradient =
-        density > 0
-          ? direction.multiply(effectivePressure * slope).divide(density)
-          : Vector2D.zero();
-      pressureForce.add(gradient);
+      if (density > 0) {
+        // Use pooled vector for gradient calculation
+        const gradient = Vector2D.getPooled(
+          direction.x * effectivePressure * slope / density,
+          direction.y * effectivePressure * slope / density
+        );
+        pressureForce.add(gradient);
+        gradient.returnToPool();
+      }
+      
+      direction.returnToPool();
     }
 
     return pressureForce.multiply(-1);
@@ -519,6 +640,7 @@ export class Fluid implements Force {
     particles: Particle[]
   ) {
     const viscosityForce = Vector2D.zero();
+    
     for (const particle of particles) {
       const distance = point.distance(particle.position);
       if (distance === 0) {
@@ -529,10 +651,17 @@ export class Fluid implements Force {
         this.influenceRadius,
         distance
       );
-      viscosityForce.add(
-        particle.velocity.clone().subtract(velocity).multiply(influence)
-      );
+      
+      // Use pooled vector for velocity difference calculation
+      const velocityDiff = Vector2D.getPooled(
+        particle.velocity.x - velocity.x,
+        particle.velocity.y - velocity.y
+      ).multiply(influence);
+      
+      viscosityForce.add(velocityDiff);
+      velocityDiff.returnToPool();
     }
+    
     return viscosityForce.multiply(this.viscosity);
   }
   /**
