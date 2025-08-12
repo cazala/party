@@ -65,6 +65,34 @@ export interface NeighborResult {
   truncated: boolean;
 }
 
+export interface BufferPoolStats {
+  /** Number of buffers in pool */
+  totalBuffers: number;
+  /** Number of currently available buffers */
+  availableBuffers: number;
+  /** Total memory allocated in MB */
+  totalMemoryMB: number;
+  /** Peak memory usage in MB */
+  peakMemoryMB: number;
+  /** Number of buffer allocations */
+  allocations: number;
+  /** Number of buffer deallocations */
+  deallocations: number;
+}
+
+export interface MemoryPressureInfo {
+  /** Current memory usage in MB */
+  currentUsageMB: number;
+  /** Estimated available memory in MB */
+  availableMemoryMB: number;
+  /** Memory pressure level (0-1, higher = more pressure) */
+  pressureLevel: number;
+  /** Whether memory pressure is critical */
+  isCritical: boolean;
+  /** Recommended action */
+  recommendation: 'none' | 'cleanup' | 'reduce_quality' | 'emergency_cleanup';
+}
+
 /**
  * GPU-accelerated spatial grid for efficient neighbor queries
  */
@@ -113,6 +141,23 @@ export class SpatialGridGPU {
   private cameraZoom: number = 1;
   private viewWidth: number = 800;
   private viewHeight: number = 600;
+
+  /** Buffer pool for neighbor query results */
+  private neighborBufferPool: GPUBuffer[] = [];
+  private neighborBufferSizes: Map<GPUBuffer, number> = new Map();
+  private bufferPoolStats: BufferPoolStats = {
+    totalBuffers: 0,
+    availableBuffers: 0,
+    totalMemoryMB: 0,
+    peakMemoryMB: 0,
+    allocations: 0,
+    deallocations: 0
+  };
+
+  /** Memory pressure monitoring */
+  private lastMemoryCheck: number = 0;
+  private memoryCheckInterval: number = 1000; // Check every second
+  private estimatedDeviceMemoryMB: number = 1024; // Conservative estimate
 
   constructor(
     context: WebGPUContext,
@@ -189,6 +234,16 @@ export class SpatialGridGPU {
     if (Math.random() < 0.0167 || this.shouldResizeGrid(particleCount)) {
       await this.optimizeParticleDistribution();
     }
+
+    // Periodically optimize buffer reuse and check memory pressure
+    if (Math.random() < 0.01) { // Every ~100 updates
+      this.optimizeBufferReuse();
+      
+      const memoryInfo = this.getMemoryPressure();
+      if (memoryInfo.isCritical) {
+        this.handleMemoryPressure(memoryInfo);
+      }
+    }
   }
 
   /**
@@ -201,12 +256,12 @@ export class SpatialGridGPU {
 
     const device = this.context.getDevice();
 
-    // Create query result buffer (fixed size for simplicity)
-    const resultBuffer = this.bufferManager.createBuffer({
-      size: 16 + (64 * 4) + (64 * 4), // metadata + indices + distances
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-      label: 'neighbor-query-result'
-    });
+    // Calculate required buffer size based on query parameters
+    const maxNeighbors = Math.min(query.maxNeighbors, 64); // Cap at 64 for now
+    const requiredSize = 16 + (maxNeighbors * 4) + (maxNeighbors * 4); // metadata + indices + distances
+    
+    // Get buffer from pool
+    const resultBuffer = this.getNeighborBuffer(requiredSize);
 
     // Create query parameters buffer
     const queryParams = new Float32Array([
@@ -265,8 +320,8 @@ export class SpatialGridGPU {
       distances.push(resultView.getFloat32(distanceOffset, true));
     }
 
-    // Cleanup temporary buffers
-    this.bufferManager.destroyBuffer(resultBuffer);
+    // Return result buffer to pool and cleanup temporary buffers
+    this.returnNeighborBuffer(resultBuffer);
     this.bufferManager.destroyBuffer(queryParamsBuffer);
 
     return {
@@ -319,6 +374,225 @@ export class SpatialGridGPU {
     // Note: In a full implementation, this would be a separate buffer
     // For now, we're using basic bounds checking in the shader
     console.log(`Frustum culling bounds: (${frustumLeft.toFixed(1)}, ${frustumTop.toFixed(1)}) to (${frustumRight.toFixed(1)}, ${frustumBottom.toFixed(1)})`);
+  }
+
+  /**
+   * Get or create a buffer from the pool for neighbor queries
+   */
+  private getNeighborBuffer(requiredSize: number): GPUBuffer {
+    // Try to find a suitable buffer from the pool
+    for (let i = 0; i < this.neighborBufferPool.length; i++) {
+      const buffer = this.neighborBufferPool[i];
+      const bufferSize = this.neighborBufferSizes.get(buffer)!;
+      
+      if (bufferSize >= requiredSize) {
+        // Remove from pool and return
+        this.neighborBufferPool.splice(i, 1);
+        this.bufferPoolStats.availableBuffers--;
+        this.bufferPoolStats.allocations++;
+        return buffer;
+      }
+    }
+
+    // No suitable buffer found, create a new one
+    const newSize = Math.max(requiredSize, 1024); // Minimum buffer size
+    const buffer = this.bufferManager.createBuffer({
+      size: newSize,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+      label: 'pooled-neighbor-buffer'
+    });
+
+    this.neighborBufferSizes.set(buffer, newSize);
+    this.bufferPoolStats.totalBuffers++;
+    this.bufferPoolStats.allocations++;
+    this.bufferPoolStats.totalMemoryMB += newSize / (1024 * 1024);
+    this.bufferPoolStats.peakMemoryMB = Math.max(
+      this.bufferPoolStats.peakMemoryMB,
+      this.bufferPoolStats.totalMemoryMB
+    );
+
+    return buffer;
+  }
+
+  /**
+   * Return a buffer to the pool for reuse
+   */
+  private returnNeighborBuffer(buffer: GPUBuffer): void {
+    // Add back to pool if we have room
+    const maxPoolSize = 10; // Limit pool size to prevent memory bloat
+    
+    if (this.neighborBufferPool.length < maxPoolSize) {
+      this.neighborBufferPool.push(buffer);
+      this.bufferPoolStats.availableBuffers++;
+      this.bufferPoolStats.deallocations++;
+    } else {
+      // Pool is full, destroy the buffer
+      const bufferSize = this.neighborBufferSizes.get(buffer)!;
+      this.bufferManager.destroyBuffer(buffer);
+      this.neighborBufferSizes.delete(buffer);
+      this.bufferPoolStats.totalBuffers--;
+      this.bufferPoolStats.totalMemoryMB -= bufferSize / (1024 * 1024);
+      this.bufferPoolStats.deallocations++;
+    }
+  }
+
+  /**
+   * Get buffer pool statistics
+   */
+  getBufferPoolStats(): BufferPoolStats {
+    return { ...this.bufferPoolStats };
+  }
+
+  /**
+   * Clean up buffer pool and force garbage collection
+   */
+  private cleanupBufferPool(): void {
+    // Return all pooled buffers
+    for (const buffer of this.neighborBufferPool) {
+      const bufferSize = this.neighborBufferSizes.get(buffer)!;
+      this.bufferManager.destroyBuffer(buffer);
+      this.neighborBufferSizes.delete(buffer);
+      this.bufferPoolStats.totalMemoryMB -= bufferSize / (1024 * 1024);
+    }
+
+    this.neighborBufferPool = [];
+    this.bufferPoolStats.totalBuffers = 0;
+    this.bufferPoolStats.availableBuffers = 0;
+  }
+
+  /**
+   * Monitor GPU memory pressure and return status
+   */
+  getMemoryPressure(): MemoryPressureInfo {
+    const now = performance.now();
+    
+    // Get current memory usage from various sources
+    const gridMemoryMB = this.metrics.memoryUsageMB;
+    const poolMemoryMB = this.bufferPoolStats.totalMemoryMB;
+    const currentUsageMB = gridMemoryMB + poolMemoryMB;
+    
+    // Estimate available memory (this is a rough heuristic)
+    const availableMemoryMB = Math.max(0, this.estimatedDeviceMemoryMB - currentUsageMB);
+    const pressureLevel = Math.min(1.0, currentUsageMB / this.estimatedDeviceMemoryMB);
+    
+    // Determine recommendation based on pressure level
+    let recommendation: MemoryPressureInfo['recommendation'] = 'none';
+    let isCritical = false;
+    
+    if (pressureLevel > 0.9) {
+      recommendation = 'emergency_cleanup';
+      isCritical = true;
+    } else if (pressureLevel > 0.75) {
+      recommendation = 'reduce_quality';
+      isCritical = true;
+    } else if (pressureLevel > 0.6) {
+      recommendation = 'cleanup';
+    }
+    
+    return {
+      currentUsageMB,
+      availableMemoryMB,
+      pressureLevel,
+      isCritical,
+      recommendation
+    };
+  }
+
+  /**
+   * Dynamically allocate neighbor buffer with size based on estimated need
+   */
+  private allocateNeighborBufferDynamic(query: NeighborQuery): GPUBuffer {
+    // Check memory pressure before allocation
+    const memoryInfo = this.getMemoryPressure();
+    
+    // Adjust allocation size based on memory pressure
+    let maxNeighbors = query.maxNeighbors;
+    if (memoryInfo.isCritical) {
+      maxNeighbors = Math.min(maxNeighbors, 32); // Reduce quality under pressure
+    } else if (memoryInfo.pressureLevel > 0.5) {
+      maxNeighbors = Math.min(maxNeighbors, 48);
+    }
+    
+    // Calculate buffer size with some padding for efficiency
+    const baseSize = 16 + (maxNeighbors * 8); // metadata + data
+    const paddedSize = Math.ceil(baseSize / 256) * 256; // Align to 256 bytes
+    
+    // Try to get from pool first
+    const pooledBuffer = this.getNeighborBuffer(paddedSize);
+    if (pooledBuffer) {
+      return pooledBuffer;
+    }
+    
+    // If memory pressure is high, trigger cleanup before allocating
+    if (memoryInfo.pressureLevel > 0.7) {
+      this.handleMemoryPressure(memoryInfo);
+    }
+    
+    // Create new buffer
+    return this.bufferManager.createBuffer({
+      size: paddedSize,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+      label: `neighbor-buffer-${paddedSize}`
+    });
+  }
+
+  /**
+   * Handle memory pressure by cleaning up resources
+   */
+  private handleMemoryPressure(memoryInfo: MemoryPressureInfo): void {
+    console.warn(`GPU memory pressure detected: ${(memoryInfo.pressureLevel * 100).toFixed(1)}% - ${memoryInfo.recommendation}`);
+    
+    switch (memoryInfo.recommendation) {
+      case 'cleanup':
+        // Clean up some pooled buffers
+        while (this.neighborBufferPool.length > 5) {
+          const buffer = this.neighborBufferPool.pop()!;
+          const size = this.neighborBufferSizes.get(buffer)!;
+          this.bufferManager.destroyBuffer(buffer);
+          this.neighborBufferSizes.delete(buffer);
+          this.bufferPoolStats.totalMemoryMB -= size / (1024 * 1024);
+        }
+        break;
+        
+      case 'reduce_quality':
+        // More aggressive cleanup
+        this.cleanupBufferPool();
+        break;
+        
+      case 'emergency_cleanup':
+        // Emergency cleanup - clear everything possible
+        this.cleanupBufferPool();
+        // Could also trigger grid resize to smaller cell size
+        break;
+    }
+  }
+
+  /**
+   * Optimize buffer reuse patterns based on usage statistics
+   */
+  optimizeBufferReuse(): void {
+    const stats = this.bufferPoolStats;
+    
+    // If we're allocating much more than we're deallocating, increase pool size
+    const allocationRate = stats.allocations / Math.max(1, stats.deallocations);
+    if (allocationRate > 2.0 && this.neighborBufferPool.length < 15) {
+      console.log('Increasing buffer pool size due to high allocation rate');
+      // Pool will grow naturally through usage
+    }
+    
+    // If pool is underutilized, reduce it
+    if (stats.availableBuffers > 8 && allocationRate < 0.5) {
+      console.log('Reducing buffer pool size due to low utilization');
+      while (this.neighborBufferPool.length > 3) {
+        const buffer = this.neighborBufferPool.pop()!;
+        const size = this.neighborBufferSizes.get(buffer)!;
+        this.bufferManager.destroyBuffer(buffer);
+        this.neighborBufferSizes.delete(buffer);
+        this.bufferPoolStats.totalBuffers--;
+        this.bufferPoolStats.availableBuffers--;
+        this.bufferPoolStats.totalMemoryMB -= size / (1024 * 1024);
+      }
+    }
   }
 
   /**
@@ -532,6 +806,9 @@ export class SpatialGridGPU {
    * Clean up GPU resources
    */
   destroy(): void {
+    // Clean up buffer pool first
+    this.cleanupBufferPool();
+    
     if (this.cellCountsBuffer) this.bufferManager.destroyBuffer(this.cellCountsBuffer);
     if (this.cellOffsetsBuffer) this.bufferManager.destroyBuffer(this.cellOffsetsBuffer);
     if (this.cellParticlesBuffer) this.bufferManager.destroyBuffer(this.cellParticlesBuffer);
@@ -546,6 +823,9 @@ export class SpatialGridGPU {
     this.sortedIndicesBuffer = null;
     this.sortKeysBuffer = null;
     this.gridParamsBuffer = null;
+    
+    // Clear buffer pool references
+    this.neighborBufferSizes.clear();
   }
 
   /**
