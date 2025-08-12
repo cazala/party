@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Boundary, BoundaryMode } from "@cazala/party";
 import {
+  DEFAULT_BOUNDARY_ENABLED,
   DEFAULT_BOUNDARY_BOUNCE,
   DEFAULT_BOUNDARY_REPEL_DISTANCE,
   DEFAULT_BOUNDARY_REPEL_STRENGTH,
@@ -12,6 +13,7 @@ interface BoundaryControlsProps {
 }
 
 export function BoundaryControls({ boundary }: BoundaryControlsProps) {
+  const [enabled, setEnabled] = useState(DEFAULT_BOUNDARY_ENABLED);
   const [bounce, setBounce] = useState(DEFAULT_BOUNDARY_BOUNCE);
   const [repelDistance, setRepelDistance] = useState(
     DEFAULT_BOUNDARY_REPEL_DISTANCE
@@ -23,6 +25,7 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
 
   useEffect(() => {
     if (boundary) {
+      setEnabled(boundary.enabled);
       setBounce(boundary.bounce);
       setRepelDistance(boundary.repelDistance);
       setRepelStrength(boundary.repelStrength);
@@ -58,82 +61,113 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
     }
   };
 
+  const handleEnabledChange = (enabled: boolean) => {
+    setEnabled(enabled);
+    if (boundary) {
+      boundary.setEnabled(enabled);
+    }
+  };
+
   return (
     <div className="control-section">
       <div className="control-group">
         <label>
-          Mode
-          <select
-            value={mode}
-            onChange={(e) => handleModeChange(e.target.value as BoundaryMode)}
-            className="form-select"
-          >
-            <option value="bounce">Bounce</option>
-            <option value="kill">Kill</option>
-            <option value="warp">Warp</option>
-          </select>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => handleEnabledChange(e.target.checked)}
+            style={{ marginRight: "8px" }}
+          />
+          Enable Boundary
         </label>
-      </div>
-      <div className="control-group">
-        <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
-          {mode === "bounce" && "Particles bounce off boundaries"}
-          {mode === "kill" && "Particles are removed at boundaries"}
-          {mode === "warp" && "Particles teleport to opposite side"}
+        <div
+          style={{
+            fontSize: "11px",
+            color: "var(--color-text-secondary)",
+            marginTop: "2px",
+            fontStyle: "italic"
+          }}
+        >
+          Confines particles within viewport boundaries
         </div>
       </div>
-
-      {mode === "bounce" && (
+      
+      {enabled && (
         <>
           <div className="control-group">
             <label>
-              Bounce: {bounce.toFixed(2)}
+              Mode
+              <select
+                value={mode}
+                onChange={(e) => handleModeChange(e.target.value as BoundaryMode)}
+                className="form-select"
+              >
+                <option value="bounce">Bounce</option>
+                <option value="kill">Kill</option>
+                <option value="warp">Warp</option>
+              </select>
+            </label>
+          </div>
+          <div className="control-group">
+            <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+              {mode === "bounce" && "Particles bounce off boundaries"}
+              {mode === "kill" && "Particles are removed at boundaries"}
+              {mode === "warp" && "Particles teleport to opposite side"}
+            </div>
+          </div>
+
+          {mode === "bounce" && (
+            <div className="control-group">
+              <label>
+                Bounce: {bounce.toFixed(2)}
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={bounce}
+                  onChange={(e) => handleBounceChange(parseFloat(e.target.value))}
+                  className="slider"
+                />
+              </label>
+            </div>
+          )}
+
+          <div className="control-group">
+            <label>
+              Repel Distance: {repelDistance.toFixed(0)}px
               <input
                 type="range"
                 min="0"
-                max="1"
-                step="0.01"
-                value={bounce}
-                onChange={(e) => handleBounceChange(parseFloat(e.target.value))}
+                max="200"
+                step="5"
+                value={repelDistance}
+                onChange={(e) =>
+                  handleRepelDistanceChange(parseFloat(e.target.value))
+                }
+                className="slider"
+              />
+            </label>
+          </div>
+
+          <div className="control-group">
+            <label>
+              Repel Strength: {repelStrength.toFixed(0)}
+              <input
+                type="range"
+                min="0"
+                max="5000"
+                step="5"
+                value={repelStrength}
+                onChange={(e) =>
+                  handleRepelStrengthChange(parseFloat(e.target.value))
+                }
                 className="slider"
               />
             </label>
           </div>
         </>
       )}
-
-      <div className="control-group">
-        <label>
-          Repel Distance: {repelDistance.toFixed(0)}px
-          <input
-            type="range"
-            min="0"
-            max="200"
-            step="5"
-            value={repelDistance}
-            onChange={(e) =>
-              handleRepelDistanceChange(parseFloat(e.target.value))
-            }
-            className="slider"
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Repel Strength: {repelStrength.toFixed(0)}
-          <input
-            type="range"
-            min="0"
-            max="5000"
-            step="5"
-            value={repelStrength}
-            onChange={(e) =>
-              handleRepelStrengthChange(parseFloat(e.target.value))
-            }
-            className="slider"
-          />
-        </label>
-      </div>
     </div>
   );
 }

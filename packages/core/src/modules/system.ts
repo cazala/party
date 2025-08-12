@@ -11,6 +11,7 @@ import {
 } from "./forces/physics";
 import {
   Boundary,
+  DEFAULT_BOUNDARY_ENABLED,
   DEFAULT_BOUNDARY_BOUNCE,
   DEFAULT_BOUNDARY_MODE,
   DEFAULT_BOUNDARY_REPEL_DISTANCE,
@@ -157,6 +158,8 @@ export interface Config {
 
   /** Boundary behavior settings */
   boundary?: {
+    /** Whether boundary force is enabled */
+    enabled?: boolean;
     /** Bounce coefficient when particles hit boundaries (0-1) */
     bounce?: number;
     /** Friction applied during boundary interactions (0-1) */
@@ -868,6 +871,7 @@ export class System {
         };
       } else if (force instanceof Boundary) {
         config.boundary = {
+          enabled: force.enabled,
           bounce: force.bounce,
           mode: force.mode,
           repelDistance: force.repelDistance,
@@ -955,6 +959,7 @@ export class System {
           force.setFriction(config.physics.friction ?? DEFAULT_FRICTION);
         }
       } else if (force instanceof Boundary && config.boundary) {
+        force.setEnabled(config.boundary.enabled ?? DEFAULT_BOUNDARY_ENABLED);
         force.bounce = config.boundary.bounce ?? DEFAULT_BOUNDARY_BOUNCE;
         force.setMode(config.boundary.mode ?? DEFAULT_BOUNDARY_MODE);
         force.setRepelDistance(

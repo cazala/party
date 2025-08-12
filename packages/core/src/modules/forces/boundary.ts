@@ -5,6 +5,7 @@ import { Vector2D } from "../vector";
 import { Physics } from "./physics";
 
 // Default constants for Boundary behavior
+export const DEFAULT_BOUNDARY_ENABLED = true; // Boundary is enabled by default
 export const DEFAULT_BOUNDARY_BOUNCE = 0.4;
 export const DEFAULT_BOUNDARY_MIN_BOUNCE_VELOCITY = 50; // Below this speed, bounce is reduced further
 export const DEFAULT_BOUNDARY_REPEL_DISTANCE = 0; // No repel distance by default
@@ -14,6 +15,7 @@ export const DEFAULT_BOUNDARY_MODE = "bounce"; // Default boundary mode
 export type BoundaryMode = "bounce" | "kill" | "warp";
 
 export interface BoundaryOptions {
+  enabled?: boolean;
   bounce?: number;
   minBounceVelocity?: number;
   repelDistance?: number;
@@ -23,6 +25,7 @@ export interface BoundaryOptions {
 }
 
 export class Boundary implements Force {
+  public enabled: boolean;
   public bounce: number;
   public repelDistance: number;
   public repelStrength: number;
@@ -33,6 +36,7 @@ export class Boundary implements Force {
   private physics?: Physics;
 
   constructor(options: BoundaryOptions = {}) {
+    this.enabled = options.enabled ?? DEFAULT_BOUNDARY_ENABLED;
     this.bounce = options.bounce || DEFAULT_BOUNDARY_BOUNCE;
     this.repelDistance = options.repelDistance || DEFAULT_BOUNDARY_REPEL_DISTANCE;
     this.repelStrength = options.repelStrength || DEFAULT_BOUNDARY_REPEL_STRENGTH;
@@ -60,6 +64,10 @@ export class Boundary implements Force {
 
   setMode(mode: BoundaryMode): void {
     this.mode = mode;
+  }
+
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
   }
 
   contains(particle: Particle, spatialGrid: SpatialGrid): boolean {
@@ -234,6 +242,10 @@ export class Boundary implements Force {
   }
 
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
+    if (!this.enabled) {
+      return;
+    }
+
     // Always apply repel force if enabled
     this.applyRepelForce(particle, spatialGrid);
 
