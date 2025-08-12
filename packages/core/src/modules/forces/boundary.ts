@@ -34,8 +34,10 @@ export class Boundary implements Force {
 
   constructor(options: BoundaryOptions = {}) {
     this.bounce = options.bounce || DEFAULT_BOUNDARY_BOUNCE;
-    this.repelDistance = options.repelDistance || DEFAULT_BOUNDARY_REPEL_DISTANCE;
-    this.repelStrength = options.repelStrength || DEFAULT_BOUNDARY_REPEL_STRENGTH;
+    this.repelDistance =
+      options.repelDistance || DEFAULT_BOUNDARY_REPEL_DISTANCE;
+    this.repelStrength =
+      options.repelStrength || DEFAULT_BOUNDARY_REPEL_STRENGTH;
     this.mode = options.mode || DEFAULT_BOUNDARY_MODE;
     this.physics = options.physics;
   }
@@ -82,7 +84,7 @@ export class Boundary implements Force {
 
   private applyRepelForce(particle: Particle, spatialGrid: SpatialGrid): void {
     if (this.repelStrength <= 0) return;
-    
+
     // For modes other than "none", we can optimize by skipping repel when distance is 0
     // since boundary constraints will handle keeping particles in bounds
     if (this.mode !== "none" && this.repelDistance <= 0) return;
@@ -111,7 +113,7 @@ export class Boundary implements Force {
       if (distToLeft < 0) {
         forceX += this.repelStrength;
       }
-      // Right wall - particle is outside right boundary  
+      // Right wall - particle is outside right boundary
       if (distToRight < 0) {
         forceX -= this.repelStrength;
       }
@@ -127,7 +129,8 @@ export class Boundary implements Force {
       // Standard repel behavior: gradual force within repel distance
       // Apply repel force from left wall
       if (distToLeft < this.repelDistance && distToLeft > 0) {
-        const forceRatio = (this.repelDistance - distToLeft) / this.repelDistance;
+        const forceRatio =
+          (this.repelDistance - distToLeft) / this.repelDistance;
         forceX += forceRatio * this.repelStrength;
       }
 
@@ -140,7 +143,8 @@ export class Boundary implements Force {
 
       // Apply repel force from top wall
       if (distToTop < this.repelDistance && distToTop > 0) {
-        const forceRatio = (this.repelDistance - distToTop) / this.repelDistance;
+        const forceRatio =
+          (this.repelDistance - distToTop) / this.repelDistance;
         forceY += forceRatio * this.repelStrength;
       }
 
@@ -262,11 +266,12 @@ export class Boundary implements Force {
     }
   }
 
-  apply(particle: Particle, spatialGrid: SpatialGrid): void {
-    // Always apply repel force if enabled (even in "none" mode)
-    this.applyRepelForce(particle, spatialGrid);
-
-    // Apply boundary behavior
-    this.constrain(particle, spatialGrid);
+  apply(particles: Particle[], spatialGrid: SpatialGrid): void {
+    for (const particle of particles) {
+      // Always apply repel force if enabled (even in "none" mode)
+      this.applyRepelForce(particle, spatialGrid);
+      // Apply boundary behavior
+      this.constrain(particle, spatialGrid);
+    }
   }
 }

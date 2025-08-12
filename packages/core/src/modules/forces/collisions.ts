@@ -90,23 +90,26 @@ export class Collisions implements Force, RigidBody {
     }
   }
 
-  apply(particle: Particle, spatialGrid: SpatialGrid): void {
-    // Check particle-particle collisions (only if particle collisions are enabled)
-    if (this.enabled) {
-      const neighbors = spatialGrid.getParticles(
-        particle.position,
-        particle.size * 2
-      );
+  apply(particles: Particle[], spatialGrid: SpatialGrid): void {
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
+      // Check particle-particle collisions (only if particle collisions are enabled)
+      if (this.enabled) {
+        const neighbors = spatialGrid.getParticles(
+          particle.position,
+          particle.size * 2
+        );
 
-      for (const other of neighbors) {
-        if (other === particle) continue;
-        this.checkCollision(particle, other);
+        for (const other of neighbors) {
+          if (other === particle) continue;
+          this.checkCollision(particle, other);
+        }
       }
-    }
 
-    // Check particle-joint collisions if joints module is available (independent of particle collisions)
-    if (this.joints && this.joints.enabled && this.joints.enableCollisions) {
-      this.checkParticleJointCollisions(particle, spatialGrid);
+      // Check particle-joint collisions if joints module is available (independent of particle collisions)
+      if (this.joints && this.joints.enabled && this.joints.enableCollisions) {
+        this.checkParticleJointCollisions(particle, spatialGrid);
+      }
     }
   }
 
@@ -128,11 +131,7 @@ export class Collisions implements Force, RigidBody {
     deltaTime: number,
     prePhysicsPositions: Map<number, Vector2D>
   ): void {
-    if (
-      !this.joints ||
-      deltaTime <= 0
-    )
-      return;
+    if (!this.joints || deltaTime <= 0) return;
 
     // Track which particles have already been processed as part of rigid body groups
 
@@ -778,7 +777,10 @@ export class Collisions implements Force, RigidBody {
     // Calculate collision impulse considering both particle and joint masses
     // Use clamped masses to prevent instabilities
     const clampedParticleMass = clampMassForCollision(particle.mass);
-    const totalMass = Math.max(clampedParticleMass + effectiveJointMass, MIN_COLLISION_MASS * 2);
+    const totalMass = Math.max(
+      clampedParticleMass + effectiveJointMass,
+      MIN_COLLISION_MASS * 2
+    );
     const impulse =
       (-(1 + this.restitution) *
         relativeVelocity *

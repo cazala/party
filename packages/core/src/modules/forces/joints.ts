@@ -751,9 +751,8 @@ export class Joints implements Force, RigidBody {
   /**
    * Force interface: apply method (joint constraints are handled in after() method)
    */
-  apply(_particle: Particle, _spatialGrid: SpatialGrid): void {
-    // Joint constraints are applied in after() method after physics integration
-    // This method is kept for interface compatibility but does nothing
+  apply(_particles: Particle[], _spatialGrid: SpatialGrid): void {
+    // Joint constraints are applied in constraints() after integration
   }
 
   /**

@@ -100,8 +100,15 @@ export class Physics implements Force {
     this.implementation.setFriction(friction);
   }
 
-  apply(particle: Particle, spatialGrid: SpatialGrid): void {
-    this.implementation.apply(particle, spatialGrid);
+  apply(particles: Particle[], spatialGrid: SpatialGrid): void | Promise<void> {
+    if ((this.implementation as any).apply) {
+      return (this.implementation as any).apply(particles, spatialGrid);
+    }
+    // Fallback: map to per-particle applyOne if present
+    if ((this.implementation as any).applyOne) {
+      for (const p of particles)
+        (this.implementation as any).applyOne(p, spatialGrid);
+    }
   }
 
   after?(

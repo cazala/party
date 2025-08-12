@@ -48,30 +48,33 @@ export class Interaction implements Force {
     this.isActive = true;
   }
 
-  apply(particle: Particle, _spatialGrid: SpatialGrid): void {
-    if (!this.isActive || particle.pinned) return;
+  apply(particles: Particle[], _spatialGrid: SpatialGrid): void {
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
+      if (!this.isActive || particle.pinned) continue;
 
-    // Calculate distance from interaction point to particle
-    const dx = this.position.x - particle.position.x;
-    const dy = this.position.y - particle.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+      // Calculate distance from interaction point to particle
+      const dx = this.position.x - particle.position.x;
+      const dy = this.position.y - particle.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Skip if particle is outside interaction radius
-    if (distance > this.radius || distance === 0) return;
+      // Skip if particle is outside interaction radius
+      if (distance > this.radius || distance === 0) return;
 
-    // Calculate force direction (normalized)
-    const forceDirection = new Vector2D(dx / distance, dy / distance);
+      // Calculate force direction (normalized)
+      const forceDirection = new Vector2D(dx / distance, dy / distance);
 
-    // Calculate force magnitude with falloff based on distance
-    // Closer particles experience stronger force
-    const distanceRatio = 1 - distance / this.radius;
-    const forceMagnitude = this.strength * distanceRatio * particle.mass;
+      // Calculate force magnitude with falloff based on distance
+      // Closer particles experience stronger force
+      const distanceRatio = 1 - distance / this.radius;
+      const forceMagnitude = this.strength * distanceRatio * particle.mass;
 
-    // Apply force in appropriate direction
-    const force = forceDirection.multiply(
-      this.mode === "attract" ? forceMagnitude : -forceMagnitude
-    );
+      // Apply force in appropriate direction
+      const force = forceDirection.multiply(
+        this.mode === "attract" ? forceMagnitude : -forceMagnitude
+      );
 
-    particle.applyForce(force);
+      particle.applyForce(force);
+    }
   }
 }

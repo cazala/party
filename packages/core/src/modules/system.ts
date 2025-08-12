@@ -107,13 +107,9 @@ export interface Force {
   before?(particles: Particle[], deltaTime: number): void;
 
   /**
-   * Called once per particle to apply the force effect.
-   * This is where the main force logic should be implemented.
-   *
-   * @param particle - The particle to apply the force to
-   * @param spatialGrid - Spatial grid for efficient neighbor queries
+   * Called once per frame to apply the force to all particles.
    */
-  apply(particle: Particle, spatialGrid: SpatialGrid): void;
+  apply(particles: Particle[], spatialGrid: SpatialGrid): void | Promise<void>;
 
   /**
    * Called after applying forces but before updating particle positions.
@@ -518,8 +514,8 @@ export class System {
       ? this.spatialGrid.getVisibleParticles(this.particles, 100) // 100px padding
       : this.particles;
 
-    for (const particle of this.particles) {
-      this.spatialGrid.insert(particle);
+    for (let i = 0; i < this.particles.length; i++) {
+      this.spatialGrid.insert(this.particles[i]);
     }
 
     // Filter out disabled forces to avoid unnecessary iterations
@@ -539,7 +535,8 @@ export class System {
     // Early exit if no enabled forces and no physics needed
     if (enabledForces.length === 0) {
       // Still need to update particles for basic physics and lifetime
-      for (const particle of this.particles) {
+      for (let i = 0; i < this.particles.length; i++) {
+        const particle = this.particles[i];
         if (!particle.pinned && !particle.grabbed) {
           particle.update(deltaTime);
         } else {
@@ -570,17 +567,13 @@ export class System {
       // Create set of visible particle IDs for efficient lookup (reserved for future use)
       // const visibleParticleIds = new Set(particlesToProcess.map((p) => p.id));
 
-      // Process visible particles with full force calculations
-      for (const particle of particlesToProcess) {
-        this.processParticleWithForces(particle, enabledForces, deltaTime);
-      }
+      // Apply forces (visible only)
+      await this.applyForces(enabledForces, particlesToProcess);
 
       // Off-screen particles: skip force application (we still integrate later)
     } else {
-      // Process all particles normally
-      for (const particle of this.particles) {
-        this.processParticleWithForces(particle, enabledForces, deltaTime);
-      }
+      // Apply forces to all particles
+      await this.applyForces(enabledForces, this.particles);
     }
 
     // Apply constraints phase
@@ -615,14 +608,15 @@ export class System {
   /**
    * Process a particle with all forces applied
    */
-  private processParticleWithForces(
-    particle: Particle,
+  private async applyForces(
     forces: Force[],
-    _deltaTime: number
-  ): void {
-    // Apply all forces to this particle in sequence
+    particles: Particle[]
+  ): Promise<void> {
     for (const force of forces) {
-      force.apply(particle, this.spatialGrid);
+      const maybe = force.apply(particles, this.spatialGrid);
+      if (maybe && typeof (maybe as any).then === "function") {
+        await (maybe as Promise<void>);
+      }
     }
   }
 
@@ -631,7 +625,8 @@ export class System {
    */
   // Integrate positions/velocities after forces have been applied
   private integrateParticles(particles: Particle[], delta: number): void {
-    for (const particle of particles) {
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
       if (!particle.pinned) {
         particle.update(delta);
         if (particle.grabbed) {

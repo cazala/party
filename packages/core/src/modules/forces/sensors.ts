@@ -178,88 +178,91 @@ export class Sensors implements Force {
     this.renderer = renderer;
   }
 
-  apply(particle: Particle, _spatialGrid: SpatialGrid): void {
-    // Only apply sensor logic if sensors are enabled
-    if (!this.enableSensors || !this.renderer || particle.pinned) {
-      return;
-    }
+  apply(particles: Particle[], _spatialGrid: SpatialGrid): void {
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
+      // Only apply sensor logic if sensors are enabled
+      if (!this.enableSensors || !this.renderer || particle.pinned) {
+        continue;
+      }
 
-    // Get velocity magnitude
-    const velocityMagnitude = particle.velocity.magnitude();
+      // Get velocity magnitude
+      const velocityMagnitude = particle.velocity.magnitude();
 
-    // Calculate the direction the particle is moving
-    const velocityDirection =
-      velocityMagnitude < 0.01
-        ? Vector2D.random().normalize()
-        : particle.velocity.clone().normalize();
+      // Calculate the direction the particle is moving
+      const velocityDirection =
+        velocityMagnitude < 0.01
+          ? Vector2D.random().normalize()
+          : particle.velocity.clone().normalize();
 
-    // Calculate positions of the 2 sensors
+      // Calculate positions of the 2 sensors
 
-    // Left sensor: rotated by -sensorAngle (sensorAngle is already in radians)
-    const leftDirection = new Vector2D(
-      velocityDirection.x * Math.cos(-this.sensorAngle) -
-        velocityDirection.y * Math.sin(-this.sensorAngle),
-      velocityDirection.x * Math.sin(-this.sensorAngle) +
-        velocityDirection.y * Math.cos(-this.sensorAngle)
-    );
-    const leftSensorPos = particle.position
-      .clone()
-      .add(leftDirection.multiply(this.sensorDistance));
-
-    // Right sensor: rotated by +sensorAngle (sensorAngle is already in radians)
-    const rightDirection = new Vector2D(
-      velocityDirection.x * Math.cos(this.sensorAngle) -
-        velocityDirection.y * Math.sin(this.sensorAngle),
-      velocityDirection.x * Math.sin(this.sensorAngle) +
-        velocityDirection.y * Math.cos(this.sensorAngle)
-    );
-    const rightSensorPos = particle.position
-      .clone()
-      .add(rightDirection.multiply(this.sensorDistance));
-
-    // Process follow behavior
-    let followForce: Vector2D | null = null;
-    if (this.followBehavior !== "none") {
-      followForce = this.calculateBehaviorForce(
-        particle,
-        leftSensorPos,
-        rightSensorPos,
-        leftDirection,
-        rightDirection,
-        this.followBehavior,
-        false
+      // Left sensor: rotated by -sensorAngle (sensorAngle is already in radians)
+      const leftDirection = new Vector2D(
+        velocityDirection.x * Math.cos(-this.sensorAngle) -
+          velocityDirection.y * Math.sin(-this.sensorAngle),
+        velocityDirection.x * Math.sin(-this.sensorAngle) +
+          velocityDirection.y * Math.cos(-this.sensorAngle)
       );
-    }
+      const leftSensorPos = particle.position
+        .clone()
+        .add(leftDirection.multiply(this.sensorDistance));
 
-    // Process flee behavior
-    let fleeForce: Vector2D | null = null;
-    if (this.fleeBehavior !== "none") {
-      fleeForce = this.calculateBehaviorForce(
-        particle,
-        leftSensorPos,
-        rightSensorPos,
-        leftDirection,
-        rightDirection,
-        this.fleeBehavior,
-        true
+      // Right sensor: rotated by +sensorAngle (sensorAngle is already in radians)
+      const rightDirection = new Vector2D(
+        velocityDirection.x * Math.cos(this.sensorAngle) -
+          velocityDirection.y * Math.sin(this.sensorAngle),
+        velocityDirection.x * Math.sin(this.sensorAngle) +
+          velocityDirection.y * Math.cos(this.sensorAngle)
       );
-    }
+      const rightSensorPos = particle.position
+        .clone()
+        .add(rightDirection.multiply(this.sensorDistance));
 
-    // Combine forces if both are present
-    let finalForce: Vector2D | null = null;
-    if (followForce && fleeForce) {
-      finalForce = followForce.add(fleeForce);
-    } else if (followForce) {
-      finalForce = followForce;
-    } else if (fleeForce) {
-      finalForce = fleeForce;
-    }
+      // Process follow behavior
+      let followForce: Vector2D | null = null;
+      if (this.followBehavior !== "none") {
+        followForce = this.calculateBehaviorForce(
+          particle,
+          leftSensorPos,
+          rightSensorPos,
+          leftDirection,
+          rightDirection,
+          this.followBehavior,
+          false
+        );
+      }
 
-    // Apply final force
-    if (finalForce) {
-      particle.velocity = finalForce
-        .normalize()
-        .multiply(this.sensorStrength / 5);
+      // Process flee behavior
+      let fleeForce: Vector2D | null = null;
+      if (this.fleeBehavior !== "none") {
+        fleeForce = this.calculateBehaviorForce(
+          particle,
+          leftSensorPos,
+          rightSensorPos,
+          leftDirection,
+          rightDirection,
+          this.fleeBehavior,
+          true
+        );
+      }
+
+      // Combine forces if both are present
+      let finalForce: Vector2D | null = null;
+      if (followForce && fleeForce) {
+        finalForce = followForce.add(fleeForce);
+      } else if (followForce) {
+        finalForce = followForce;
+      } else if (fleeForce) {
+        finalForce = fleeForce;
+      }
+
+      // Apply final force
+      if (finalForce) {
+        particle.velocity = finalForce
+          .normalize()
+          .multiply(this.sensorStrength / 5);
+      }
     }
   }
 

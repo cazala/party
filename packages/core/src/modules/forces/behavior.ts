@@ -27,15 +27,18 @@ export class Behavior implements Force {
   viewRadius: number;
   viewAngle: number; // Field of view angle in radians
   wanderMap: Record<number, Vector2D> = {};
-  
+
   // Enhanced wander state tracking
-  private wanderStates: Record<number, {
-    targetDirection: Vector2D;
-    directionChangeTimer: number;
-    speedMultiplier: number;
-    noiseOffset: number;
-    lastUpdateTime: number;
-  }> = {};
+  private wanderStates: Record<
+    number,
+    {
+      targetDirection: Vector2D;
+      directionChangeTimer: number;
+      speedMultiplier: number;
+      noiseOffset: number;
+      lastUpdateTime: number;
+    }
+  > = {};
 
   /**
    * Simple 1D noise function for smooth random values
@@ -244,7 +247,7 @@ export class Behavior implements Force {
 
   wander(particle: Particle): Vector2D {
     const currentTime = Date.now() * 0.001; // Convert to seconds
-    
+
     // Initialize or get wander state for this particle
     let state = this.wanderStates[particle.id];
     if (!state) {
@@ -253,147 +256,160 @@ export class Behavior implements Force {
         directionChangeTimer: 0,
         speedMultiplier: 1,
         noiseOffset: Math.random() * 1000, // Random starting point for noise
-        lastUpdateTime: currentTime
+        lastUpdateTime: currentTime,
       };
     }
 
     const actualDeltaTime = Math.min(currentTime - state.lastUpdateTime, 0.1); // Cap delta time
     state.lastUpdateTime = currentTime;
-    
+
     // Scale behavior based on wander weight intensity
     const intensity = Math.min(this.wanderWeight, 2.0); // Cap at 2.0 for extreme behavior
-    
+
     // Direction change frequency: calm (every 2-4s) to frantic (every 0.2-0.5s)
     const directionChangeFrequency = Math.max(0.2, 4.0 - intensity * 3.8);
-    
+
     // Update direction change timer
     state.directionChangeTimer -= actualDeltaTime;
-    
+
     // Time to change direction or pick new target
     if (state.directionChangeTimer <= 0) {
       // For high intensity: more random, sharp changes
       // For low intensity: gentle, flowing changes
       const randomness = Math.min(intensity * 0.7, 1.0);
       const smoothness = 1.0 - randomness;
-      
+
       // Combine smooth noise with random changes
       const noiseInfluence = this.smoothNoise(state.noiseOffset) * smoothness;
       const randomInfluence = (Math.random() * 2 - 1) * randomness;
-      
+
       // Create new target direction
-      const angle = Math.atan2(state.targetDirection.y, state.targetDirection.x) + 
-                   (noiseInfluence + randomInfluence) * Math.PI * 0.5; // Max 90° turn
-      
+      const angle =
+        Math.atan2(state.targetDirection.y, state.targetDirection.x) +
+        (noiseInfluence + randomInfluence) * Math.PI * 0.5; // Max 90° turn
+
       state.targetDirection.set(Math.cos(angle), Math.sin(angle));
-      
+
       // Reset timer with some variation
       const variation = 1 + (Math.random() * 2 - 1) * 0.5; // ±50% variation
       state.directionChangeTimer = directionChangeFrequency * variation;
-      
+
       // Advance noise offset for next change
       state.noiseOffset += 0.1 + intensity * 0.1;
     }
-    
+
     // Calculate speed variation using sine waves for natural rhythm
     const speedNoiseTime = currentTime * (0.5 + intensity * 1.5); // Faster oscillation for higher intensity
-    const speedVariation = Math.sin(speedNoiseTime) * Math.sin(speedNoiseTime * 1.7) * 0.5 + 0.5;
-    
+    const speedVariation =
+      Math.sin(speedNoiseTime) * Math.sin(speedNoiseTime * 1.7) * 0.5 + 0.5;
+
     // Speed multiplier: calm (0.3-1.0) to frantic (0.1-2.5)
     const minSpeed = Math.max(0.1, 0.5 - intensity * 0.4);
     const maxSpeed = 0.5 + intensity * 2.0;
     state.speedMultiplier = minSpeed + speedVariation * (maxSpeed - minSpeed);
-    
+
     // Create steering force towards target direction
-    
+
     // Calculate steering force (how much to turn towards target)
     const steerStrength = 0.3 + intensity * 0.7; // Gentle to aggressive steering
-    const desiredVelocity = state.targetDirection.clone()
+    const desiredVelocity = state.targetDirection
+      .clone()
       .multiply(1000 * particle.mass * state.speedMultiplier);
-    
-    const steer = desiredVelocity.clone().subtract(particle.velocity).multiply(steerStrength);
-    
+
+    const steer = desiredVelocity
+      .clone()
+      .subtract(particle.velocity)
+      .multiply(steerStrength);
+
     // Add some perpendicular noise for more organic movement
-    const perpendicular = new Vector2D(-state.targetDirection.y, state.targetDirection.x);
-    const perpendicularNoise = this.smoothNoise(state.noiseOffset + currentTime) * intensity * 200;
+    const perpendicular = new Vector2D(
+      -state.targetDirection.y,
+      state.targetDirection.x
+    );
+    const perpendicularNoise =
+      this.smoothNoise(state.noiseOffset + currentTime) * intensity * 200;
     steer.add(perpendicular.multiply(perpendicularNoise));
-    
+
     // Apply intensity scaling to final force
     steer.multiply(intensity);
-    
+
     return steer;
   }
 
-  apply(particle: Particle, spatialGrid: SpatialGrid): void {
-    if (!this.enabled || particle.pinned) {
-      return;
-    }
+  apply(particles: Particle[], spatialGrid: SpatialGrid): void {
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
+      if (!this.enabled || particle.pinned) {
+        continue;
+      }
 
-    // Calculate effective maxSpeed - use a fixed value of 1000 when forces are active
-    const hasActiveForces =
-      this.cohesionWeight > 0 ||
-      this.alignmentWeight > 0 ||
-      this.separationWeight > 0 ||
-      this.wanderWeight > 0 ||
-      this.chaseWeight > 0 ||
-      this.avoidWeight > 0;
+      // Calculate effective maxSpeed - use a fixed value of 1000 when forces are active
+      const hasActiveForces =
+        this.cohesionWeight > 0 ||
+        this.alignmentWeight > 0 ||
+        this.separationWeight > 0 ||
+        this.wanderWeight > 0 ||
+        this.chaseWeight > 0 ||
+        this.avoidWeight > 0;
 
-    // Early return if no forces are active
-    if (!hasActiveForces) {
-      return;
-    }
+      // Early return if no forces are active
+      if (!hasActiveForces) {
+        continue;
+      }
 
-    // Use spatial grid for efficient neighbor lookup - only when needed
-    const neighbors = spatialGrid.getParticles(
-      particle.position,
-      this.viewRadius
-    );
-
-    // Apply field of view filtering to all neighbors (except wander which doesn't use neighbors)
-    const filteredNeighbors = this.filterByFieldOfView(particle, neighbors);
-
-    // Only compute forces that have non-zero weights
-    if (this.wanderWeight > 0) {
-      const wander = this.wander(particle);
-      wander.multiply(this.wanderWeight);
-      particle.applyForce(wander);
-    }
-
-    if (this.separationWeight > 0) {
-      const separate = this.separate(
-        particle,
-        filteredNeighbors,
-        this.separationRange
+      // Use spatial grid for efficient neighbor lookup - only when needed
+      const neighbors = spatialGrid.getParticles(
+        particle.position,
+        this.viewRadius
       );
-      separate.multiply(this.separationWeight);
-      particle.applyForce(separate);
-    }
 
-    if (this.alignmentWeight > 0) {
-      const align = this.align(particle, filteredNeighbors);
-      align.multiply(this.alignmentWeight);
-      particle.applyForce(align);
-    }
+      // Apply field of view filtering to all neighbors (except wander which doesn't use neighbors)
+      const filteredNeighbors = this.filterByFieldOfView(particle, neighbors);
 
-    if (this.cohesionWeight > 0) {
-      const cohesion = this.cohesion(particle, filteredNeighbors);
-      cohesion.multiply(this.cohesionWeight);
-      particle.applyForce(cohesion);
-    }
+      // Only compute forces that have non-zero weights
+      if (this.wanderWeight > 0) {
+        const wander = this.wander(particle);
+        wander.multiply(this.wanderWeight);
+        particle.applyForce(wander);
+      }
 
-    if (this.chaseWeight > 0) {
-      const chaseNeighbors = this.filterByNarrowFieldOfView(
-        particle,
-        filteredNeighbors
-      );
-      const chase = this.chase(particle, chaseNeighbors);
-      chase.multiply(this.chaseWeight).limit(50000 * this.chaseWeight);
-      particle.applyForce(chase);
-    }
+      if (this.separationWeight > 0) {
+        const separate = this.separate(
+          particle,
+          filteredNeighbors,
+          this.separationRange
+        );
+        separate.multiply(this.separationWeight);
+        particle.applyForce(separate);
+      }
 
-    if (this.avoidWeight > 0) {
-      const avoid = this.avoid(particle, filteredNeighbors);
-      avoid.multiply(this.avoidWeight).limit(50000 * this.avoidWeight);
-      particle.applyForce(avoid);
+      if (this.alignmentWeight > 0) {
+        const align = this.align(particle, filteredNeighbors);
+        align.multiply(this.alignmentWeight);
+        particle.applyForce(align);
+      }
+
+      if (this.cohesionWeight > 0) {
+        const cohesion = this.cohesion(particle, filteredNeighbors);
+        cohesion.multiply(this.cohesionWeight);
+        particle.applyForce(cohesion);
+      }
+
+      if (this.chaseWeight > 0) {
+        const chaseNeighbors = this.filterByNarrowFieldOfView(
+          particle,
+          filteredNeighbors
+        );
+        const chase = this.chase(particle, chaseNeighbors);
+        chase.multiply(this.chaseWeight).limit(50000 * this.chaseWeight);
+        particle.applyForce(chase);
+      }
+
+      if (this.avoidWeight > 0) {
+        const avoid = this.avoid(particle, filteredNeighbors);
+        avoid.multiply(this.avoidWeight).limit(50000 * this.avoidWeight);
+        particle.applyForce(avoid);
+      }
     }
   }
 

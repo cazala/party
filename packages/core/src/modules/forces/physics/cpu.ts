@@ -1,6 +1,6 @@
 /**
  * CPU Physics Implementation
- * 
+ *
  * Pure CPU implementation of physics forces (gravity, inertia, friction)
  * without any WebGPU dependencies.
  */
@@ -44,7 +44,8 @@ export class PhysicsCPU implements Force {
   constructor(options: PhysicsOptions = {}) {
     this.gravity = {
       strength: options.gravity?.strength || DEFAULT_GRAVITY_STRENGTH,
-      direction: options.gravity?.direction || DEFAULT_GRAVITY_DIRECTION.clone(),
+      direction:
+        options.gravity?.direction || DEFAULT_GRAVITY_DIRECTION.clone(),
     };
 
     // Handle angle-based direction setting
@@ -97,7 +98,7 @@ export class PhysicsCPU implements Force {
     this.friction = Math.max(0, Math.min(1, friction)); // Clamp between 0 and 1
   }
 
-  apply(particle: Particle, _spatialGrid: SpatialGrid): void {
+  private applyOne(particle: Particle, _spatialGrid: SpatialGrid): void {
     if (particle.pinned || particle.grabbed) {
       return;
     }
@@ -136,10 +137,20 @@ export class PhysicsCPU implements Force {
     this.previousPositions.set(particle.id, currentPosition);
   }
 
+  apply(particles: Particle[], _spatialGrid: SpatialGrid): void {
+    for (let i = 0; i < particles.length; i++) {
+      this.applyOne(particles[i], _spatialGrid);
+    }
+  }
+
   /**
    * Called after all particles have been processed (CPU implementation doesn't need this)
    */
-  after?(_particles: Particle[], _deltaTime: number, _spatialGrid: SpatialGrid): void {
+  after?(
+    _particles: Particle[],
+    _deltaTime: number,
+    _spatialGrid: SpatialGrid
+  ): void {
     // CPU implementation doesn't need batch processing
   }
 

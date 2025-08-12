@@ -54,6 +54,12 @@ export class PhysicsWebGPU implements Force {
     this.friction = options.friction || DEFAULT_FRICTION;
   }
 
+  before(particles: Particle[]): void {
+    for (const p of particles) {
+      this.previousPositions.set(p.id, p.position.clone());
+    }
+  }
+
   // Gravity methods (backward compatibility)
   get strength(): number {
     return this.gravity.strength;
@@ -95,28 +101,30 @@ export class PhysicsWebGPU implements Force {
     this.friction = Math.max(0, Math.min(1, friction)); // Clamp between 0 and 1
   }
 
-  apply(particle: Particle, _spatialGrid: SpatialGrid): void {
-    if (particle.pinned || particle.grabbed) {
+  // System calls the batch signature
+  apply(
+    particles: Particle[],
+    _spatialGrid: SpatialGrid
+  ): void | Promise<void> {
+    if (!this.gpuAvailable) {
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (!p.pinned && !p.grabbed) this.applyCPU(p);
+      }
       return;
     }
-
-    // Placeholder: batch for future GPU processing
-    // For now, fall back to CPU per-particle
-
-    // CPU fallback processing
-    this.applyCPU(particle);
+    return this.runGPUPhysics(particles);
   }
 
   /**
    * Process batched particles on GPU (called after all particles processed)
    */
   after(
-    particles: Particle[],
+    _particles: Particle[],
     _deltaTime: number,
     _spatialGrid: SpatialGrid
   ): void | Promise<void> {
-    if (!this.gpuAvailable) return;
-    return this.runGPUPhysics(particles);
+    // No-op; GPU work happens in apply()
   }
 
   /**
@@ -179,26 +187,32 @@ export class PhysicsWebGPU implements Force {
         gravityDir: vec2<f32>,
         gravityStrength: f32,
         friction: f32,
+        inertia: f32,
         count: u32,
+        _pad0: u32,
+        _pad1: u32,
       };
 
       @group(0) @binding(0) var<storage, read_write> velocities: array<vec2<f32>>;
       @group(0) @binding(1) var<storage, read> masses: array<f32>;
-      @group(0) @binding(2) var<uniform> params: Params;
+      @group(0) @binding(2) var<storage, read> posCurr: array<vec2<f32>>;
+      @group(0) @binding(3) var<storage, read> posPrev: array<vec2<f32>>;
+      @group(0) @binding(4) var<uniform> params: Params;
 
       @compute @workgroup_size(64)
       fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let i: u32 = gid.x;
         if (i >= params.count) { return; }
-        // Skip zero-mass (dead) particles implicitly by mass check
         let m: f32 = masses[i];
         var v: vec2<f32> = velocities[i];
-        // Gravity
         if (params.gravityStrength != 0.0) {
           let g = normalize(params.gravityDir) * params.gravityStrength * m;
           v = v + g;
         }
-        // Friction (simple damping)
+        if (params.inertia != 0.0) {
+          let disp = posCurr[i] - posPrev[i];
+          v = v + disp * (params.inertia * m);
+        }
         if (params.friction != 0.0) {
           v = v + (-params.friction * m) * v;
         }
@@ -220,6 +234,16 @@ export class PhysicsWebGPU implements Force {
         },
         {
           binding: 2,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        },
+        {
+          binding: 3,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        },
+        {
+          binding: 4,
           visibility: GPUShaderStage.COMPUTE,
           buffer: { type: "uniform" },
         },
@@ -253,11 +277,20 @@ export class PhysicsWebGPU implements Force {
     // Build input arrays
     const velocities = new Float32Array(count * 2);
     const masses = new Float32Array(count);
+    const posCurr = new Float32Array(count * 2);
+    const posPrev = new Float32Array(count * 2);
     for (let j = 0; j < count; j++) {
       const p = particles[indices[j]];
       velocities[j * 2] = p.velocity.x;
       velocities[j * 2 + 1] = p.velocity.y;
       masses[j] = p.mass;
+      posCurr[j * 2] = p.position.x;
+      posCurr[j * 2 + 1] = p.position.y;
+      const prev = this.previousPositions.get(p.id);
+      const px = prev ? prev.x : p.position.x;
+      const py = prev ? prev.y : p.position.y;
+      posPrev[j * 2] = px;
+      posPrev[j * 2 + 1] = py;
     }
 
     const device = this.device;
@@ -282,18 +315,29 @@ export class PhysicsWebGPU implements Force {
     });
     device.queue.writeBuffer(massesBuffer, 0, masses.buffer as ArrayBuffer);
 
+    const posCurrBuffer = device.createBuffer({
+      size: posCurr.byteLength,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    device.queue.writeBuffer(posCurrBuffer, 0, posCurr.buffer as ArrayBuffer);
+
+    const posPrevBuffer = device.createBuffer({
+      size: posPrev.byteLength,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    device.queue.writeBuffer(posPrevBuffer, 0, posPrev.buffer as ArrayBuffer);
+
     // Uniforms
-    const paramsData = new Float32Array([
-      this.gravity.direction.x,
-      this.gravity.direction.y,
-      this.gravity.strength,
-      this.friction,
-    ]);
-    // Pack params into 5 floats (last slot reinterpreted as u32 count via separate buffer)
-    // Simpler approach: use a 16-byte aligned uniform buffer with 8 floats
+    // 32-byte uniform buffer (8 x f32 slots)
     const uniformData = new ArrayBuffer(32);
-    new Float32Array(uniformData, 0, 4).set(paramsData);
-    new Uint32Array(uniformData, 16, 1)[0] = count;
+    const f32 = new Float32Array(uniformData);
+    const u32 = new Uint32Array(uniformData);
+    f32[0] = this.gravity.direction.x;
+    f32[1] = this.gravity.direction.y;
+    f32[2] = this.gravity.strength;
+    f32[3] = this.friction;
+    f32[4] = this.inertia;
+    u32[5] = count;
     const uniformBuffer = device.createBuffer({
       size: uniformData.byteLength,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -306,7 +350,9 @@ export class PhysicsWebGPU implements Force {
       entries: [
         { binding: 0, resource: { buffer: velocitiesBuffer } },
         { binding: 1, resource: { buffer: massesBuffer } },
-        { binding: 2, resource: { buffer: uniformBuffer } },
+        { binding: 2, resource: { buffer: posCurrBuffer } },
+        { binding: 3, resource: { buffer: posPrevBuffer } },
+        { binding: 4, resource: { buffer: uniformBuffer } },
       ],
     });
 
@@ -348,8 +394,14 @@ export class PhysicsWebGPU implements Force {
     // Cleanup (buffers will be GC'd; explicit destroy if desired)
     velocitiesBuffer.destroy();
     massesBuffer.destroy();
+    posCurrBuffer.destroy();
+    posPrevBuffer.destroy();
     uniformBuffer.destroy();
     readbackBuffer.destroy();
+
+    for (const p of particles) {
+      this.previousPositions.set(p.id, p.position.clone());
+    }
   }
 
   /**
