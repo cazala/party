@@ -29,11 +29,9 @@ export function CollapsibleSection({
         </div>
         <span className={`collapsible-arrow ${isOpen ? 'open' : ''}`}>▼</span>
       </div>
-      {isOpen && (
-        <div className="collapsible-content">
-          {children}
-        </div>
-      )}
+      <div className="collapsible-content" style={{ display: isOpen ? 'block' : 'none' }}>
+        {children}
+      </div>
     </div>
   );
 }
