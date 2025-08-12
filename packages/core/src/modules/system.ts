@@ -68,12 +68,15 @@ import {
 } from "./forces/joints";
 import { Emitters } from "./emitters";
 import { SerializedEmitter } from "./emitter";
+import { ComputeBackend, CPUComputeBackend, WebGPUComputeBackend, BackendCapabilities, ComputeMetrics } from "../webgpu/compute-backend";
 
 /**
  * Events emitted by the particle system
  */
 export type SystemEvents = {
   "particle-added": { particle: Particle };
+  "backend-changed": { backend: 'cpu' | 'webgpu'; capabilities: BackendCapabilities };
+  "backend-fallback": { reason: string; from: string; to: string };
 };
 
 /**
@@ -293,6 +296,10 @@ export interface SystemOptions {
   cellSize?: number;
   /** Enable camera frustum culling for performance (default: false) */
   enableFrustumCulling?: boolean;
+  /** Preferred compute backend ('cpu', 'webgpu', or 'auto' for automatic selection) */
+  backend?: 'cpu' | 'webgpu' | 'auto';
+  /** Whether to automatically fall back to CPU if WebGPU fails */
+  enableBackendFallback?: boolean;
 }
 
 /**
@@ -363,6 +370,13 @@ export class System {
   /** Event emitter for system events */
   public events: MittEmitter<SystemEvents>;
 
+  /** Current compute backend (CPU or WebGPU) */
+  private computeBackend: ComputeBackend;
+  /** Backend initialization promise */
+  private backendInitialized: Promise<boolean> | null = null;
+  /** Whether backend fallback is enabled */
+  private enableBackendFallback: boolean;
+
   /**
    * Creates a new particle system.
    *
@@ -370,11 +384,14 @@ export class System {
    * @param options.width - Width of the simulation area
    * @param options.height - Height of the simulation area
    * @param options.cellSize - Size of spatial grid cells (optional, default: 100)
+   * @param options.backend - Preferred compute backend (optional, default: 'auto')
+   * @param options.enableBackendFallback - Enable automatic fallback to CPU (optional, default: true)
    */
   constructor(options: SystemOptions) {
     this.width = options.width;
     this.height = options.height;
     this.enableFrustumCulling = options.enableFrustumCulling ?? false;
+    this.enableBackendFallback = options.enableBackendFallback ?? true;
 
     this.spatialGrid = new SpatialGrid({
       width: this.width,
@@ -384,6 +401,11 @@ export class System {
 
     this.emitters = new Emitters();
     this.events = mitt<SystemEvents>();
+
+    // Initialize compute backend
+    const preferredBackend = options.backend ?? 'auto';
+    this.computeBackend = new CPUComputeBackend(); // Start with CPU as fallback
+    this.initializeBackend(preferredBackend);
   }
 
   /**
@@ -734,6 +756,8 @@ export class System {
     for (const force of this.forces) {
       force.clear?.();
     }
+    // Reset backend state but don't destroy it
+    // The backend should remain initialized for continued use
   }
 
   clear(): void {
@@ -748,6 +772,8 @@ export class System {
     for (const force of this.forces) {
       force.clear?.();
     }
+    // Clean up backend resources
+    this.computeBackend.destroy();
   }
 
   getParticleCount(): number {
@@ -1058,6 +1084,157 @@ export class System {
         this.emitters.deserialize(config.emitters.emitterConfigs);
       }
     }
+  }
+
+  /**
+   * Backend Management Methods
+   */
+
+  /**
+   * Initialize the compute backend based on preference
+   */
+  private async initializeBackend(preferredBackend: 'cpu' | 'webgpu' | 'auto'): Promise<void> {
+    this.backendInitialized = this.performBackendInitialization(preferredBackend);
+    await this.backendInitialized;
+  }
+
+  /**
+   * Perform the actual backend initialization
+   */
+  private async performBackendInitialization(preferredBackend: 'cpu' | 'webgpu' | 'auto'): Promise<boolean> {
+    try {
+      if (preferredBackend === 'cpu') {
+        // Force CPU backend
+        await this.computeBackend.initialize();
+        this.events.emit('backend-changed', {
+          backend: 'cpu',
+          capabilities: this.computeBackend.getCapabilities()
+        });
+        return true;
+      }
+
+      if (preferredBackend === 'webgpu' || preferredBackend === 'auto') {
+        // Try WebGPU backend first
+        const webgpuBackend = new WebGPUComputeBackend();
+        const webgpuSuccess = await webgpuBackend.initialize();
+
+        if (webgpuSuccess) {
+          // WebGPU initialization successful
+          this.computeBackend.destroy(); // Clean up CPU backend
+          this.computeBackend = webgpuBackend;
+          this.events.emit('backend-changed', {
+            backend: 'webgpu',
+            capabilities: this.computeBackend.getCapabilities()
+          });
+          return true;
+        } else if (preferredBackend === 'webgpu' && !this.enableBackendFallback) {
+          // WebGPU was specifically requested and fallback is disabled
+          throw new Error('WebGPU backend initialization failed and fallback is disabled');
+        } else {
+          // Fall back to CPU backend
+          webgpuBackend.destroy();
+          await this.computeBackend.initialize();
+          this.events.emit('backend-fallback', {
+            reason: 'WebGPU initialization failed',
+            from: 'webgpu',
+            to: 'cpu'
+          });
+          this.events.emit('backend-changed', {
+            backend: 'cpu',
+            capabilities: this.computeBackend.getCapabilities()
+          });
+          return true;
+        }
+      }
+
+      // Fallback to CPU
+      await this.computeBackend.initialize();
+      return true;
+
+    } catch (error) {
+      console.error('Backend initialization failed:', error);
+      
+      if (this.enableBackendFallback && !(this.computeBackend instanceof CPUComputeBackend)) {
+        // Fall back to CPU as last resort
+        this.computeBackend = new CPUComputeBackend();
+        await this.computeBackend.initialize();
+        this.events.emit('backend-fallback', {
+          reason: `Backend error: ${error}`,
+          from: 'webgpu',
+          to: 'cpu'
+        });
+        return true;
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Switch to a different compute backend
+   */
+  async switchBackend(newBackend: 'cpu' | 'webgpu'): Promise<boolean> {
+    const currentCapabilities = this.computeBackend.getCapabilities();
+    
+    // If already using the requested backend, do nothing
+    if (currentCapabilities.type === newBackend) {
+      return true;
+    }
+
+    try {
+      let targetBackend: ComputeBackend;
+
+      if (newBackend === 'cpu') {
+        targetBackend = new CPUComputeBackend();
+      } else {
+        targetBackend = new WebGPUComputeBackend();
+      }
+
+      const success = await targetBackend.initialize();
+      
+      if (success) {
+        // Clean up old backend
+        this.computeBackend.destroy();
+        this.computeBackend = targetBackend;
+        
+        this.events.emit('backend-changed', {
+          backend: newBackend,
+          capabilities: this.computeBackend.getCapabilities()
+        });
+        
+        return true;
+      } else {
+        targetBackend.destroy();
+        return false;
+      }
+    } catch (error) {
+      console.error(`Failed to switch to ${newBackend} backend:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get current backend capabilities
+   */
+  getBackendCapabilities(): BackendCapabilities {
+    return this.computeBackend.getCapabilities();
+  }
+
+  /**
+   * Get current backend performance metrics
+   */
+  getBackendMetrics(): ComputeMetrics {
+    return this.computeBackend.getMetrics();
+  }
+
+  /**
+   * Check if backend is ready for use
+   */
+  async isBackendReady(): Promise<boolean> {
+    if (this.backendInitialized) {
+      return await this.backendInitialized;
+    }
+    return false;
   }
 
   /**
