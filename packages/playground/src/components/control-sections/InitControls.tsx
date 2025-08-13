@@ -319,7 +319,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
             <input
               type="range"
               min="0"
-              max="5000"
+              max="15000"
               step="1"
               value={numParticles}
               onChange={(e) => handleSpawnChange(parseInt(e.target.value))}

@@ -19,61 +19,99 @@ export interface PerformanceControlsRef {
     enableFrustumCulling: boolean;
     maxPoolSize: number;
   };
-  setState: (state: Partial<{
-    cellSize: number;
-    showSpatialGrid: boolean;
-    enableFrustumCulling: boolean;
-    maxPoolSize: number;
-  }>) => void;
+  setState: (
+    state: Partial<{
+      cellSize: number;
+      showSpatialGrid: boolean;
+      enableFrustumCulling: boolean;
+      maxPoolSize: number;
+      useWebGPU: boolean;
+    }>
+  ) => void;
 }
 
-export const PerformanceControls = forwardRef<PerformanceControlsRef, PerformanceControlsProps>(({
-  system,
-  spatialGrid,
-  renderer,
-}, ref) => {
+export const PerformanceControls = forwardRef<
+  PerformanceControlsRef,
+  PerformanceControlsProps
+>(({ system, spatialGrid, renderer }, ref) => {
   const [cellSize, setCellSize] = useState(DEFAULT_SPATIAL_GRID_CELL_SIZE);
   const [showSpatialGrid, setShowSpatialGrid] = useState(false);
   const [enableFrustumCulling, setEnableFrustumCulling] = useState(false);
   const [maxPoolSize, setMaxPoolSize] = useState(1000);
   const [fps, setFps] = useState(0);
   const [particleCount, setParticleCount] = useState(0);
+  const [useWebGPU, setUseWebGPU] = useState(false);
 
   // Expose state management methods
-  useImperativeHandle(ref, () => ({
-    getState: () => ({
+  useImperativeHandle(
+    ref,
+    () => ({
+      getState: () => ({
+        cellSize,
+        showSpatialGrid,
+        enableFrustumCulling,
+        maxPoolSize,
+        useWebGPU,
+      }),
+      setState: (state) => {
+        if (state.cellSize !== undefined) {
+          setCellSize(state.cellSize);
+          if (spatialGrid) {
+            spatialGrid.setCellSize(state.cellSize);
+          }
+        }
+        if (state.showSpatialGrid !== undefined) {
+          setShowSpatialGrid(state.showSpatialGrid);
+          if (renderer) {
+            renderer.setShowSpatialGrid(state.showSpatialGrid);
+          }
+        }
+        if (state.enableFrustumCulling !== undefined) {
+          setEnableFrustumCulling(state.enableFrustumCulling);
+          if (system) {
+            system.setFrustumCulling(state.enableFrustumCulling);
+          }
+        }
+        if (state.maxPoolSize !== undefined) {
+          setMaxPoolSize(state.maxPoolSize);
+          if (system) {
+            system.setMaxPoolSize(state.maxPoolSize);
+          }
+        }
+        // WebGPU preference (optional in older sessions)
+        if (state.useWebGPU !== undefined) {
+          const desired = !!state.useWebGPU;
+          setUseWebGPU(desired);
+          // Switch physics backend if available
+          try {
+            const physics = system?.forces.find(
+              (f: any) => f?.constructor?.name === "Physics"
+            ) as any;
+            if (
+              physics &&
+              typeof physics.getBackend === "function" &&
+              typeof physics.setBackend === "function"
+            ) {
+              if (desired) {
+                physics.setBackend("webgpu");
+              } else {
+                physics.setBackend("cpu");
+              }
+            }
+          } catch {}
+        }
+      },
+    }),
+    [
       cellSize,
       showSpatialGrid,
       enableFrustumCulling,
       maxPoolSize,
-    }),
-    setState: (state) => {
-      if (state.cellSize !== undefined) {
-        setCellSize(state.cellSize);
-        if (spatialGrid) {
-          spatialGrid.setCellSize(state.cellSize);
-        }
-      }
-      if (state.showSpatialGrid !== undefined) {
-        setShowSpatialGrid(state.showSpatialGrid);
-        if (renderer) {
-          renderer.setShowSpatialGrid(state.showSpatialGrid);
-        }
-      }
-      if (state.enableFrustumCulling !== undefined) {
-        setEnableFrustumCulling(state.enableFrustumCulling);
-        if (system) {
-          system.setFrustumCulling(state.enableFrustumCulling);
-        }
-      }
-      if (state.maxPoolSize !== undefined) {
-        setMaxPoolSize(state.maxPoolSize);
-        if (system) {
-          system.setMaxPoolSize(state.maxPoolSize);
-        }
-      }
-    },
-  }), [cellSize, showSpatialGrid, enableFrustumCulling, maxPoolSize, spatialGrid, renderer, system]);
+      spatialGrid,
+      renderer,
+      system,
+    ]
+  );
 
   useEffect(() => {
     if (renderer) {
@@ -107,6 +145,23 @@ export const PerformanceControls = forwardRef<PerformanceControlsRef, Performanc
 
     return () => clearInterval(interval);
   }, [system]);
+
+  const handleUseWebGPUChange = (enabled: boolean) => {
+    setUseWebGPU(enabled);
+    // Attempt to switch Physics force backend
+    try {
+      const physics = system?.forces.find(
+        (f: any) => f?.constructor?.name === "Physics"
+      ) as any;
+      if (physics && typeof physics.setBackend === "function") {
+        const ok = physics.setBackend(enabled ? "webgpu" : "cpu");
+        if (!ok) {
+          // Revert UI if switch failed (e.g., WebGPU unavailable)
+          setUseWebGPU(false);
+        }
+      }
+    } catch {}
+  };
 
   const handleCellSizeChange = (size: number) => {
     setCellSize(size);
@@ -198,6 +253,28 @@ export const PerformanceControls = forwardRef<PerformanceControlsRef, Performanc
       {/* Performance Optimization Controls */}
       <div className="control-group">
         <label>
+          <input
+            type="checkbox"
+            checked={useWebGPU}
+            onChange={(e) => handleUseWebGPUChange(e.target.checked)}
+            style={{ marginRight: "8px" }}
+          />
+          Use WebGPU (when available)
+        </label>
+        <div
+          style={{
+            fontSize: "11px",
+            color: "var(--color-text-secondary)",
+            marginTop: "2px",
+            fontStyle: "italic",
+          }}
+        >
+          Accelerate supported forces. Falls back to CPU if not supported.
+        </div>
+      </div>
+
+      <div className="control-group">
+        <label>
           Max Pool Size: {maxPoolSize}
           <input
             type="range"
@@ -214,7 +291,7 @@ export const PerformanceControls = forwardRef<PerformanceControlsRef, Performanc
             fontSize: "11px",
             color: "var(--color-text-secondary)",
             marginTop: "2px",
-            fontStyle: "italic"
+            fontStyle: "italic",
           }}
         >
           Memory pooling for grid arrays
@@ -247,7 +324,7 @@ export const PerformanceControls = forwardRef<PerformanceControlsRef, Performanc
             fontSize: "11px",
             color: "var(--color-text-secondary)",
             marginTop: "2px",
-            fontStyle: "italic"
+            fontStyle: "italic",
           }}
         >
           Skip forces for off-screen particles

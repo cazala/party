@@ -68,7 +68,13 @@ export interface SavedSession {
       colors?: string[];
       velocityConfig?: {
         speed: number;
-        direction: "random" | "in" | "out" | "custom" | "clockwise" | "counter-clockwise";
+        direction:
+          | "random"
+          | "in"
+          | "out"
+          | "custom"
+          | "clockwise"
+          | "counter-clockwise";
         angle: number;
       };
       innerRadius?: number;
@@ -101,6 +107,7 @@ export interface SavedSession {
     performance?: {
       cellSize: number;
       showSpatialGrid: boolean;
+      useWebGPU?: boolean;
     };
     emitter?: {
       particleSize: number;

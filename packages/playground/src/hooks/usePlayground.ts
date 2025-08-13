@@ -141,7 +141,7 @@ export function usePlayground(
         zoomState.targetCameraY,
         zoomState.targetZoom
       );
-      
+
       // Update system camera for frustum culling
       const system = systemRef.current;
       if (system) {
@@ -169,7 +169,7 @@ export function usePlayground(
     renderer.setCamera(newCameraX, newCameraY);
     boundary.setCamera(newCameraX, newCameraY, newZoom);
     spatialGrid.setCamera(newCameraX, newCameraY, newZoom);
-    
+
     // Update system camera for frustum culling
     const system = systemRef.current;
     if (system) {
@@ -357,6 +357,8 @@ export function usePlayground(
     sensors.setRenderer(renderer);
 
     system.addForce(physics);
+    // Ensure default backend is CPU (UI checkbox starts unchecked)
+    physics.setBackend?.("cpu");
     system.addForce(boundary);
     system.addForce(behavior);
     system.addForce(collisions);
@@ -497,9 +499,9 @@ export function usePlayground(
       const particleOptions = {
         mass: particleMass ?? currentSpawnConfig.defaultMass,
         size: particleSize,
-        acceleration: new Vector2D(0, 0),
+        // Do NOT pass a shared acceleration Vector2D; let Particle create its own per-instance
         pinned: currentSpawnConfig.pinned,
-      };
+      } as const;
 
       const spawner = new Spawner();
 

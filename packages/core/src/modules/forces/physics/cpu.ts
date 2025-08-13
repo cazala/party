@@ -103,7 +103,9 @@ export class PhysicsCPU implements Force {
       const particle = particles[i];
 
       if (particle.pinned || particle.grabbed) {
-        return;
+        // Skip physics updates for pinned or currently grabbed particles
+        // but continue processing the rest
+        continue;
       }
 
       const currentPosition = particle.position.clone();

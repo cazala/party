@@ -56,13 +56,18 @@ export class PhysicsWebGPU implements Force {
     this.friction = options.friction || DEFAULT_FRICTION;
   }
 
-  before(particles: Particle[]): void {
+  private lastDeltaTime: number = 1 / 60;
+
+  before(particles: Particle[], deltaTime: number): void {
+    this.lastDeltaTime = deltaTime || this.lastDeltaTime;
     if (!this.gpuAvailable) {
       this.ensureCPUFallback();
-      // Mirror CPU's internal state if needed (no-op currently)
-    } else {
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
+      return;
+    }
+    // Initialize previous position only for new particles; preserve last frame for inertia
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      if (!this.previousPositions.has(p.id)) {
         this.previousPositions.set(p.id, p.position.clone());
       }
     }
@@ -173,9 +178,9 @@ export class PhysicsWebGPU implements Force {
         gravityStrength: f32,
         friction: f32,
         inertia: f32,
+        deltaTime: f32,
         count: u32,
         _pad0: u32,
-        _pad1: u32,
       };
 
       @group(0) @binding(0) var<storage, read_write> velocities: array<vec2<f32>>;
@@ -188,18 +193,17 @@ export class PhysicsWebGPU implements Force {
       fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let i: u32 = gid.x;
         if (i >= params.count) { return; }
-        let m: f32 = masses[i];
         var v: vec2<f32> = velocities[i];
         if (params.gravityStrength != 0.0) {
-          let g = normalize(params.gravityDir) * params.gravityStrength * m;
+          let g = normalize(params.gravityDir) * params.gravityStrength * params.deltaTime;
           v = v + g;
         }
         if (params.inertia != 0.0) {
           let disp = posCurr[i] - posPrev[i];
-          v = v + disp * (params.inertia * m);
+          v = v + disp * (params.inertia * params.deltaTime);
         }
         if (params.friction != 0.0) {
-          v = v + (-params.friction * m) * v;
+          v = v + (-params.friction) * v * params.deltaTime;
         }
         velocities[i] = v;
       }
@@ -313,7 +317,7 @@ export class PhysicsWebGPU implements Force {
     device.queue.writeBuffer(posPrevBuffer, 0, posPrev.buffer as ArrayBuffer);
 
     // Uniforms
-    // 32-byte uniform buffer (8 x f32 slots)
+    // 32-byte uniform buffer (8 x 4-byte slots)
     const uniformData = new ArrayBuffer(32);
     const f32 = new Float32Array(uniformData);
     const u32 = new Uint32Array(uniformData);
@@ -322,7 +326,8 @@ export class PhysicsWebGPU implements Force {
     f32[2] = this.gravity.strength;
     f32[3] = this.friction;
     f32[4] = this.inertia;
-    u32[5] = count;
+    f32[5] = this.lastDeltaTime;
+    u32[6] = count;
     const uniformBuffer = device.createBuffer({
       size: uniformData.byteLength,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -369,11 +374,31 @@ export class PhysicsWebGPU implements Force {
     const updated = new Float32Array(out.slice(0));
     readbackBuffer.unmap();
 
-    // Write back to particles
+    // Resting-state damping: clamp tiny velocities when displacement is negligible
+    const velocityEpsilon = 0.05; // units per second
+    const displacementEpsilonSq = 0.01 * 0.01; // squared units
+
     for (let j = 0; j < count; j++) {
-      const p = particles[indices[j]];
-      p.velocity.x = updated[j * 2];
-      p.velocity.y = updated[j * 2 + 1];
+      const idx = indices[j];
+      const p = particles[idx];
+      let vx = updated[j * 2];
+      let vy = updated[j * 2 + 1];
+
+      const dx = posCurr[j * 2] - posPrev[j * 2];
+      const dy = posCurr[j * 2 + 1] - posPrev[j * 2 + 1];
+      const dispSq = dx * dx + dy * dy;
+
+      if (
+        Math.abs(vx) < velocityEpsilon &&
+        Math.abs(vy) < velocityEpsilon &&
+        dispSq < displacementEpsilonSq
+      ) {
+        vx = 0;
+        vy = 0;
+      }
+
+      p.velocity.x = vx;
+      p.velocity.y = vy;
     }
 
     // Cleanup (buffers will be GC'd; explicit destroy if desired)

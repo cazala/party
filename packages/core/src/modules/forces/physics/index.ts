@@ -136,7 +136,44 @@ export class Physics implements Force {
   }
 
   /**
-   * Set the compute backend and switch implementation if needed
+   * Explicitly set backend implementation.
+   * @returns true if switched or already on desired backend, false if requested backend unavailable
+   */
+  setBackend(backend: "cpu" | "webgpu"): boolean {
+    const wantsWebGPU = backend === "webgpu";
+    const isWebGPU = this.implementation instanceof PhysicsWebGPU;
+    if (wantsWebGPU === isWebGPU) return true;
+
+    // Gather current options to preserve behavior across switch
+    const currentOptions: PhysicsOptions = {
+      gravity: {
+        strength: this.implementation.gravity.strength,
+        direction: this.implementation.gravity.direction.clone(),
+      },
+      inertia: this.implementation.inertia,
+      friction: this.implementation.friction,
+    };
+
+    if (wantsWebGPU) {
+      const canUseWebGPU =
+        typeof navigator !== "undefined" && !!(navigator as any).gpu;
+      if (!canUseWebGPU) return false;
+      this.implementation = new PhysicsWebGPU(currentOptions);
+      return true;
+    }
+
+    // Switch to CPU
+    this.implementation = new PhysicsCPU(currentOptions);
+    return true;
+  }
+
+  /** Get current backend */
+  getBackend(): "cpu" | "webgpu" {
+    return this.implementation instanceof PhysicsWebGPU ? "webgpu" : "cpu";
+  }
+
+  /**
+   * Set the compute backend and switch implementation if needed (auto-select)
    */
   init?(_system: System): void {
     // Pick implementation once at init time based on WebGPU availability
