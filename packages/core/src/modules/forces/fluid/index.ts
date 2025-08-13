@@ -1,4 +1,4 @@
-import { Force, System } from "../../system";
+import { Force } from "../../system";
 import {
   FluidCPU,
   DEFAULT_FLUID_ENABLED,
@@ -129,13 +129,7 @@ export class Fluid implements Force {
     return this.implementation instanceof FluidWebGPU ? "webgpu" : "cpu";
   }
 
-  init?(_system: System): void {
-    const canUseWebGPU =
-      typeof navigator !== "undefined" && !!(navigator as any).gpu;
-    if (canUseWebGPU && !(this.implementation instanceof FluidWebGPU)) {
-      this.setBackend("webgpu");
-    }
-  }
+  // Do not auto-switch backend on init; start with CPU unless explicitly changed by the user
 
   // Backward-compatibility helpers used by renderer
   calculatePressureForce(point: any, particles: any) {

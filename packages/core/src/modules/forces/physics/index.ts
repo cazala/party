@@ -7,7 +7,7 @@
 
 import { Vector2D } from "../../vector";
 import { Particle } from "../../particle";
-import { Force, SpatialGrid, System } from "../../system";
+import { Force, SpatialGrid } from "../../system";
 
 // Import both implementations
 import {
@@ -175,23 +175,7 @@ export class Physics implements Force {
   /**
    * Set the compute backend and switch implementation if needed (auto-select)
    */
-  init?(_system: System): void {
-    // Pick implementation once at init time based on WebGPU availability
-    const canUseWebGPU =
-      typeof navigator !== "undefined" && !!(navigator as any).gpu;
-    if (canUseWebGPU && !(this.implementation instanceof PhysicsWebGPU)) {
-      const currentOptions: PhysicsOptions = {
-        gravity: {
-          strength: this.implementation.gravity.strength,
-          direction: this.implementation.gravity.direction.clone(),
-        },
-        inertia: this.implementation.inertia,
-        friction: this.implementation.friction,
-      };
-      // WebGPU implementation is currently a stub that mirrors CPU behavior
-      this.implementation = new PhysicsWebGPU(currentOptions);
-    }
-  }
+  // Do not auto-switch backend on init; start with CPU unless explicitly changed by the user
 
   /**
    * Get current compute backend

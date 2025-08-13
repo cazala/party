@@ -256,7 +256,7 @@ export const PerformanceControls = forwardRef<
             onChange={(e) => handleUseWebGPUChange(e.target.checked)}
             style={{ marginRight: "8px" }}
           />
-          Use WebGPU (when available)
+          Use WebGPU
         </label>
         <div
           style={{
