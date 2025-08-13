@@ -82,20 +82,13 @@ export const PerformanceControls = forwardRef<
         if (state.useWebGPU !== undefined) {
           const desired = !!state.useWebGPU;
           setUseWebGPU(desired);
-          // Switch physics backend if available
+          // Switch all forces that expose setBackend
           try {
-            const physics = system?.forces.find(
-              (f: any) => f?.constructor?.name === "Physics"
-            ) as any;
-            if (
-              physics &&
-              typeof physics.getBackend === "function" &&
-              typeof physics.setBackend === "function"
-            ) {
-              if (desired) {
-                physics.setBackend("webgpu");
-              } else {
-                physics.setBackend("cpu");
+            if (system) {
+              for (const force of system.forces as any[]) {
+                if (force && typeof (force as any).setBackend === "function") {
+                  (force as any).setBackend(desired ? "webgpu" : "cpu");
+                }
               }
             }
           } catch {}
@@ -148,17 +141,21 @@ export const PerformanceControls = forwardRef<
 
   const handleUseWebGPUChange = (enabled: boolean) => {
     setUseWebGPU(enabled);
-    // Attempt to switch Physics force backend
+    // Attempt to switch all forces that support GPU
     try {
-      const physics = system?.forces.find(
-        (f: any) => f?.constructor?.name === "Physics"
-      ) as any;
-      if (physics && typeof physics.setBackend === "function") {
-        const ok = physics.setBackend(enabled ? "webgpu" : "cpu");
-        if (!ok) {
-          // Revert UI if switch failed (e.g., WebGPU unavailable)
-          setUseWebGPU(false);
+      let atLeastOne = false;
+      let allOk = true;
+      if (system) {
+        for (const force of system.forces as any[]) {
+          if (force && typeof (force as any).setBackend === "function") {
+            atLeastOne = true;
+            const ok = (force as any).setBackend(enabled ? "webgpu" : "cpu");
+            if (!ok) allOk = false;
+          }
         }
+      }
+      if (atLeastOne && !allOk) {
+        setUseWebGPU(false);
       }
     } catch {}
   };
