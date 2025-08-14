@@ -451,9 +451,15 @@ export function usePlayground(
       innerRadius: number = 50,
       squareSize: number = 200,
       cornerRadius: number = 0,
-      particleMass?: number
+      particleMass?: number,
+      clothEnabled?: boolean
     ) => {
       if (!systemRef.current) return;
+
+      // Clear all joints BEFORE clearing particles to prevent phantom joints
+      if (jointsRef.current) {
+        jointsRef.current.clear();
+      }
 
       // Clear existing particles
       systemRef.current.particles = [];
@@ -527,6 +533,52 @@ export function usePlayground(
       // Add all particles to the system
       for (const particle of particles) {
         systemRef.current.addParticle(particle);
+      }
+
+      // Create cloth joints for grid shape when enabled
+      if (shape === "grid" && clothEnabled && particles.length > 0) {
+        const joints = jointsRef.current;
+        if (joints) {
+          // Calculate grid dimensions
+          const cols = Math.ceil(Math.sqrt(numParticles));
+          const rows = Math.ceil(numParticles / cols);
+
+          // Create horizontal and vertical joints between adjacent particles
+          for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+              const currentIndex = row * cols + col;
+              
+              // Skip if current particle doesn't exist
+              if (currentIndex >= particles.length) continue;
+              
+              const currentParticle = particles[currentIndex];
+              
+              // Connect to right neighbor (horizontal joint)
+              if (col < cols - 1) {
+                const rightIndex = row * cols + (col + 1);
+                if (rightIndex < particles.length) {
+                  const rightParticle = particles[rightIndex];
+                  joints.createJoint({
+                    particleA: currentParticle,
+                    particleB: rightParticle,
+                  });
+                }
+              }
+              
+              // Connect to bottom neighbor (vertical joint)
+              if (row < rows - 1) {
+                const bottomIndex = (row + 1) * cols + col;
+                if (bottomIndex < particles.length) {
+                  const bottomParticle = particles[bottomIndex];
+                  joints.createJoint({
+                    particleA: currentParticle,
+                    particleB: bottomParticle,
+                  });
+                }
+              }
+            }
+          }
+        }
       }
     },
     [] // No dependencies - get current values when called
