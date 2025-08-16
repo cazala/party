@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import {
   Collisions,
   Joints,
-  DEFAULT_COLLISIONS_ENABLED,
+  DEFAULT_COLLISIONS_ENABLE_PARTICLES,
   DEFAULT_COLLISIONS_EAT,
   DEFAULT_COLLISIONS_RESTITUTION,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
@@ -16,13 +16,32 @@ interface CollisionControlsProps {
   joints: Joints | null;
 }
 
-export function CollisionControls({
+export interface CollisionControlsRef {
+  getState: () => {
+    particleCollisionsEnabled: boolean;
+    jointCollisionsEnabled: boolean;
+    jointCrossingResolutionEnabled: boolean;
+    restitution: number;
+    momentum: number;
+    collisionsEat: boolean;
+  };
+  setState: (state: Partial<{
+    particleCollisionsEnabled: boolean;
+    jointCollisionsEnabled: boolean;
+    jointCrossingResolutionEnabled: boolean;
+    restitution: number;
+    momentum: number;
+    collisionsEat: boolean;
+  }>) => void;
+}
+
+export const CollisionControls = forwardRef<CollisionControlsRef, CollisionControlsProps>(({
   collisions,
   joints,
-}: CollisionControlsProps) {
+}, ref) => {
   // Collision states
   const [particleCollisionsEnabled, setParticleCollisionsEnabled] = useState(
-    DEFAULT_COLLISIONS_ENABLED
+    DEFAULT_COLLISIONS_ENABLE_PARTICLES
   );
   const [jointCollisionsEnabled, setJointCollisionsEnabled] = useState(
     DEFAULT_JOINT_COLLISIONS_ENABLED
@@ -39,7 +58,7 @@ export function CollisionControls({
   // Update states when modules change
   useEffect(() => {
     if (collisions) {
-      setParticleCollisionsEnabled(collisions.enabled);
+      setParticleCollisionsEnabled(collisions.enableParticles);
       setCollisionsEat(collisions.eat);
       setRestitution(collisions.restitution);
       setMomentumState(collisions.momentum || DEFAULT_MOMENTUM_PRESERVATION);
@@ -57,7 +76,7 @@ export function CollisionControls({
   const handleParticleCollisionsEnabledChange = (enabled: boolean) => {
     setParticleCollisionsEnabled(enabled);
     if (collisions) {
-      collisions.setEnabled(enabled);
+      collisions.setEnableParticles(enabled);
     }
   };
 
@@ -95,6 +114,38 @@ export function CollisionControls({
       collisions.setEat(eat);
     }
   };
+
+  // Expose state management methods
+  useImperativeHandle(ref, () => ({
+    getState: () => ({
+      particleCollisionsEnabled,
+      jointCollisionsEnabled,
+      jointCrossingResolutionEnabled,
+      restitution,
+      momentum,
+      collisionsEat,
+    }),
+    setState: (state) => {
+      if (state.particleCollisionsEnabled !== undefined) {
+        setParticleCollisionsEnabled(state.particleCollisionsEnabled);
+      }
+      if (state.jointCollisionsEnabled !== undefined) {
+        setJointCollisionsEnabled(state.jointCollisionsEnabled);
+      }
+      if (state.jointCrossingResolutionEnabled !== undefined) {
+        setJointCrossingResolutionEnabled(state.jointCrossingResolutionEnabled);
+      }
+      if (state.restitution !== undefined) {
+        setRestitution(state.restitution);
+      }
+      if (state.momentum !== undefined) {
+        setMomentumState(state.momentum);
+      }
+      if (state.collisionsEat !== undefined) {
+        setCollisionsEat(state.collisionsEat);
+      }
+    },
+  }), [particleCollisionsEnabled, jointCollisionsEnabled, jointCrossingResolutionEnabled, restitution, momentum, collisionsEat]);
 
   return (
     <div className="control-section">
@@ -191,4 +242,4 @@ export function CollisionControls({
       </div>
     </div>
   );
-}
+});

@@ -13,6 +13,7 @@ import { RigidBody } from "../rigid-body";
 
 // Default constants for Collisions
 export const DEFAULT_COLLISIONS_ENABLED = true;
+export const DEFAULT_COLLISIONS_ENABLE_PARTICLES = true;
 export const DEFAULT_COLLISIONS_EAT = false;
 export const DEFAULT_COLLISIONS_RESTITUTION = 0.95;
 export const DEFAULT_MOMENTUM_PRESERVATION = 0.7;
@@ -35,6 +36,7 @@ export type CollisionsEvents = {
 
 export interface CollisionsOptions {
   enabled?: boolean;
+  enableParticles?: boolean;
   eat?: boolean;
   restitution?: number;
   joints?: Joints;
@@ -44,6 +46,7 @@ export interface CollisionsOptions {
 
 export class Collisions implements Force, RigidBody {
   public enabled: boolean;
+  public enableParticles: boolean;
   public eat: boolean;
   public restitution: number;
   public momentum: number; // Momentum preservation for joint particles
@@ -54,6 +57,7 @@ export class Collisions implements Force, RigidBody {
 
   constructor(options: CollisionsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_COLLISIONS_ENABLED;
+    this.enableParticles = options.enableParticles ?? DEFAULT_COLLISIONS_ENABLE_PARTICLES;
     this.eat = options.eat ?? DEFAULT_COLLISIONS_EAT;
     this.restitution = options.restitution ?? DEFAULT_COLLISIONS_RESTITUTION;
     this.momentum = options.momentum ?? DEFAULT_MOMENTUM_PRESERVATION;
@@ -64,6 +68,10 @@ export class Collisions implements Force, RigidBody {
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+  }
+
+  setEnableParticles(enableParticles: boolean): void {
+    this.enableParticles = enableParticles;
   }
 
   setEat(eat: boolean): void {
@@ -92,7 +100,7 @@ export class Collisions implements Force, RigidBody {
 
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
     // Check particle-particle collisions (only if particle collisions are enabled)
-    if (this.enabled) {
+    if (this.enabled && this.enableParticles) {
       const neighbors = spatialGrid.getParticles(
         particle.position,
         particle.size * 2

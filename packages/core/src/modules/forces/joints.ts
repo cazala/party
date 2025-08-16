@@ -40,6 +40,8 @@ export const DEFAULT_JOINTS_ENABLED = true;
 export const DEFAULT_JOINT_COLLISIONS_ENABLED = true;
 export const DEFAULT_JOINT_TOLERANCE = 1.0;
 export const DEFAULT_JOINT_CROSSING_RESOLUTION = true;
+export const DEFAULT_MAX_ITERATIONS = 10;
+export const DEFAULT_CONVERGENCE_THRESHOLD = 0.001;
 
 export interface JointOptions {
   particleA: Particle;
@@ -56,6 +58,8 @@ export interface JointsOptions {
   enabled?: boolean;
   enableCollisions?: boolean;
   enableCrossingResolution?: boolean;
+  maxIterations?: number;
+  convergenceThreshold?: number;
 }
 
 /**
@@ -157,12 +161,16 @@ export class Joint {
     // If already at correct distance, do nothing
     if (Math.abs(displacement) < 0.001) return;
 
-    // Calculate correction needed - fully rigid joints
-    const correction = displacement * 0.5; // Split correction between both particles
+    // Calculate correction needed - use stronger correction for better rigidity
+    const correction = displacement * 0.8; // Increased from 0.5 to 0.8 for better rigidity
 
     // Calculate position adjustments
     const correctionX = correction * directionX;
     const correctionY = correction * directionY;
+
+    // Check if this joint is stressed (red) and needs velocity correction
+    const stressRatio = this.getStressRatio();
+    const isStressed = Math.abs(stressRatio) > 0.3; // Red joints need help, green joints preserve physics
 
     // Apply position corrections
     if (
@@ -176,26 +184,65 @@ export class Joint {
       this.particleA.position.y += correctionY;
       this.particleB.position.x -= correctionX;
       this.particleB.position.y -= correctionY;
+
+      // Apply velocity correction ONLY for stressed (red) joints
+      if (isStressed) {
+        const velocityCorrection = 0.15; // Moderate correction for stressed joints
+        this.particleA.velocity.x *= 1 - velocityCorrection;
+        this.particleA.velocity.y *= 1 - velocityCorrection;
+        this.particleB.velocity.x *= 1 - velocityCorrection;
+        this.particleB.velocity.y *= 1 - velocityCorrection;
+      }
     } else if (
       (this.particleA.pinned || this.particleA.grabbed) &&
       !this.particleB.pinned &&
       !this.particleB.grabbed
     ) {
       // Only particle B can move (A is pinned or grabbed)
+      const oldBx = this.particleB.position.x;
+      const oldBy = this.particleB.position.y;
+
       this.particleB.position.x =
         this.particleA.position.x + this.restLength * directionX;
       this.particleB.position.y =
         this.particleA.position.y + this.restLength * directionY;
+
+      // Calculate position change and update velocity accordingly
+      const positionChangeX = this.particleB.position.x - oldBx;
+      const positionChangeY = this.particleB.position.y - oldBy;
+
+      // Apply velocity correction ONLY for stressed (red) joints
+      if (isStressed) {
+        // For pinned joints, apply stronger correction since one particle can't move
+        this.particleB.velocity.x += positionChangeX * 0.2;
+        this.particleB.velocity.y += positionChangeY * 0.2;
+      }
+      // For normal (green) joints, preserve natural velocity completely
     } else if (
       !this.particleA.pinned &&
       !this.particleA.grabbed &&
       (this.particleB.pinned || this.particleB.grabbed)
     ) {
       // Only particle A can move (B is pinned or grabbed)
+      const oldAx = this.particleA.position.x;
+      const oldAy = this.particleA.position.y;
+
       this.particleA.position.x =
         this.particleB.position.x - this.restLength * directionX;
       this.particleA.position.y =
         this.particleB.position.y - this.restLength * directionY;
+
+      // Calculate position change and update velocity accordingly
+      const positionChangeX = this.particleA.position.x - oldAx;
+      const positionChangeY = this.particleA.position.y - oldAy;
+
+      // Apply velocity correction ONLY for stressed (red) joints
+      if (isStressed) {
+        // For pinned joints, apply stronger correction since one particle can't move
+        this.particleA.velocity.x += positionChangeX * 0.2;
+        this.particleA.velocity.y += positionChangeY * 0.2;
+      }
+      // For normal (green) joints, preserve natural velocity completely
     }
 
     // Joints maintain rigid distance constraints
@@ -319,6 +366,8 @@ export class Joints implements Force, RigidBody {
   public joints: Map<string, Joint> = new Map();
   public enableCollisions: boolean;
   public enableCrossingResolution: boolean;
+  public maxIterations: number;
+  public convergenceThreshold: number;
   private globalTolerance: number = DEFAULT_JOINT_TOLERANCE;
 
   // Track grabbed particles and their previous positions for velocity calculation
@@ -335,6 +384,9 @@ export class Joints implements Force, RigidBody {
       options.enableCollisions ?? DEFAULT_JOINT_COLLISIONS_ENABLED;
     this.enableCrossingResolution =
       options.enableCrossingResolution ?? DEFAULT_JOINT_CROSSING_RESOLUTION;
+    this.maxIterations = options.maxIterations ?? DEFAULT_MAX_ITERATIONS;
+    this.convergenceThreshold =
+      options.convergenceThreshold ?? DEFAULT_CONVERGENCE_THRESHOLD;
   }
 
   setEnabled(enabled: boolean): void {
@@ -347,6 +399,14 @@ export class Joints implements Force, RigidBody {
 
   setEnableCrossingResolution(enableCrossingResolution: boolean): void {
     this.enableCrossingResolution = enableCrossingResolution;
+  }
+
+  setMaxIterations(maxIterations: number): void {
+    this.maxIterations = Math.max(1, Math.min(20, maxIterations));
+  }
+
+  setConvergenceThreshold(threshold: number): void {
+    this.convergenceThreshold = Math.max(0.0001, Math.min(0.1, threshold));
   }
 
   /**
@@ -802,12 +862,13 @@ export class Joints implements Force, RigidBody {
    * This prevents rigid body penetration by detecting and resolving joint crossings
    */
   private solveConstraintsExhaustively(spatialGrid: SpatialGrid): void {
-    const maxIterations = 10; // Maximum iterations to prevent infinite loops
     const maxCrossingResolutionAttempts = 5; // Max attempts to resolve each crossing
 
-    for (let iteration = 0; iteration < maxIterations; iteration++) {
-      // Step 1: Apply standard joint constraints
+    for (let iteration = 0; iteration < this.maxIterations; iteration++) {
+      // Step 1: Apply standard joint constraints with convergence tracking
       let hasConstraintViolations = false;
+      let maxDisplacement = 0;
+
       for (const joint of this.joints.values()) {
         if (joint.isValid) {
           joint.applyConstraint();
@@ -815,10 +876,17 @@ export class Joints implements Force, RigidBody {
 
           // Check if constraint is still violated
           const displacement = Math.abs(finalDistance - joint.restLength);
-          if (displacement > 0.001) {
+          maxDisplacement = Math.max(maxDisplacement, displacement);
+
+          if (displacement > this.convergenceThreshold) {
             hasConstraintViolations = true;
           }
         }
+      }
+
+      // Early termination if converged
+      if (maxDisplacement < this.convergenceThreshold) {
+        break;
       }
 
       if (!this.enableCrossingResolution) {
@@ -840,7 +908,7 @@ export class Joints implements Force, RigidBody {
 
       // If this is the last iteration and we still have violations,
       // apply emergency separation
-      if (iteration === maxIterations - 1 && crossings.length > 0) {
+      if (iteration === this.maxIterations - 1 && crossings.length > 0) {
         this.applyEmergencySeparation(crossings);
       }
     }

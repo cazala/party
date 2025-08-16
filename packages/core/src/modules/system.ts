@@ -19,6 +19,7 @@ import {
 import {
   Collisions,
   DEFAULT_COLLISIONS_ENABLED,
+  DEFAULT_COLLISIONS_ENABLE_PARTICLES,
   DEFAULT_COLLISIONS_EAT,
 } from "./forces/collisions";
 import {
@@ -171,8 +172,10 @@ export interface Config {
 
   /** Particle collision settings */
   collisions?: {
-    /** Whether particle-particle collisions are enabled */
+    /** Whether collision system is enabled */
     enabled?: boolean;
+    /** Whether particle-particle collision detection is enabled */
+    enableParticles?: boolean;
     /** Whether larger particles can consume smaller ones */
     eat?: boolean;
   };
@@ -263,6 +266,8 @@ export interface Config {
     restitution?: number;
     /** Whether joints interact with particle collisions */
     enableCollisions?: boolean;
+    /** Whether joint crossing resolution is enabled */
+    enableCrossingResolution?: boolean;
     /** Friction applied to connected particles */
     friction?: number;
   };
@@ -876,6 +881,7 @@ export class System {
       } else if (force instanceof Collisions) {
         config.collisions = {
           enabled: force.enabled,
+          enableParticles: force.enableParticles,
           eat: force.eat,
         };
       } else if (force instanceof Behavior) {
@@ -922,6 +928,7 @@ export class System {
           enabled: force.enabled,
           tolerance: force.getGlobalTolerance(),
           enableCollisions: force.enableCollisions,
+          enableCrossingResolution: force.enableCrossingResolution,
         };
       }
     }
@@ -966,6 +973,9 @@ export class System {
       } else if (force instanceof Collisions && config.collisions) {
         force.setEnabled(
           config.collisions.enabled ?? DEFAULT_COLLISIONS_ENABLED
+        );
+        force.setEnableParticles(
+          config.collisions.enableParticles ?? DEFAULT_COLLISIONS_ENABLE_PARTICLES
         );
         force.setEat(config.collisions.eat ?? DEFAULT_COLLISIONS_EAT);
       } else if (force instanceof Behavior && config.behavior) {
@@ -1047,6 +1057,9 @@ export class System {
         );
         if (config.joints.enableCollisions !== undefined) {
           force.setEnableCollisions(config.joints.enableCollisions);
+        }
+        if (config.joints.enableCrossingResolution !== undefined) {
+          force.setEnableCrossingResolution(config.joints.enableCrossingResolution);
         }
       }
     }

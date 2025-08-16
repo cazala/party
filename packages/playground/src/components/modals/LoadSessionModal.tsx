@@ -4,6 +4,7 @@ import { SessionManager } from "../../utils/SessionManager";
 import { SessionMetadata } from "../../types/session";
 import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
 import { SystemControlsRef } from "../SystemControls";
+import { ForcesControlsRef } from "../ForcesControls";
 import "./Modal.css";
 
 interface LoadSessionModalProps {
@@ -16,6 +17,7 @@ interface LoadSessionModalProps {
   zoomStateRef?: any;
   undoRedo?: UseUndoRedoReturn;
   systemControlsRef?: React.RefObject<SystemControlsRef>;
+  forcesControlsRef?: React.RefObject<ForcesControlsRef>;
   onLoadSuccess?: (sessionName: string) => void;
 }
 
@@ -29,6 +31,7 @@ export function LoadSessionModal({
   zoomStateRef,
   undoRedo,
   systemControlsRef,
+  forcesControlsRef,
   onLoadSuccess,
 }: LoadSessionModalProps) {
   const [sessions, setSessions] = useState<SessionMetadata[]>([]);
@@ -124,6 +127,11 @@ export function LoadSessionModal({
           // Restore system controls state if available
           if (systemControls && systemControlsRef?.current) {
             systemControlsRef.current.setSystemControlsState(systemControls);
+          }
+          
+          // Restore collision controls state if available
+          if (systemControls?.collisionControls && forcesControlsRef?.current) {
+            forcesControlsRef.current.setCollisionControlsState(systemControls.collisionControls);
           }
         }
       );

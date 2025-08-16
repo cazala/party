@@ -11,6 +11,7 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
   const [enabled, setEnabled] = useState(true);
   const [jointCount, setJointCount] = useState(0);
   const [tolerance, setTolerance] = useState(1.0);
+  const [maxIterations, setMaxIterations] = useState(10);
 
   // Update local state when joints changes
   useEffect(() => {
@@ -18,6 +19,7 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
       setEnabled(joints.enabled);
       setJointCount(joints.getJointCount());
       setTolerance(joints.getGlobalTolerance());
+      setMaxIterations(joints.maxIterations);
     }
   }, [joints]);
 
@@ -45,6 +47,14 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
       joints.setGlobalTolerance(value);
     }
   };
+
+  const handleMaxIterationsChange = (value: number) => {
+    setMaxIterations(value);
+    if (joints) {
+      joints.setMaxIterations(value);
+    }
+  };
+
 
   const handleClearAllJoints = () => {
     if (joints && undoRedo) {
@@ -93,6 +103,28 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
           }}
         />
       </div>
+
+      <div className="control-group">
+        <label>Max Iterations: {maxIterations}</label>
+        <input
+          type="range"
+          min="1"
+          max="20"
+          step="1"
+          value={maxIterations}
+          onChange={(e) => handleMaxIterationsChange(parseInt(e.target.value))}
+          className="slider"
+          disabled={!enabled}
+          style={{
+            width: "100%",
+            marginTop: "4px",
+          }}
+        />
+        <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
+          Higher values = more rigid joints, but lower performance
+        </div>
+      </div>
+
 
       <div className="control-group">
         <button

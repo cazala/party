@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { System } from "@cazala/party";
 import { SessionManager } from "../../utils/SessionManager";
 import { SystemControlsRef } from "../SystemControls";
+import { ForcesControlsRef } from "../ForcesControls";
 import "./Modal.css";
 
 interface SaveSessionModalProps {
@@ -10,6 +11,7 @@ interface SaveSessionModalProps {
   system: System | null;
   renderer?: any;
   systemControlsRef?: React.RefObject<SystemControlsRef>;
+  forcesControlsRef?: React.RefObject<ForcesControlsRef>;
   onSaveSuccess?: (sessionName: string) => void;
 }
 
@@ -19,6 +21,7 @@ export function SaveSessionModal({
   system,
   renderer,
   systemControlsRef,
+  forcesControlsRef,
   onSaveSuccess,
 }: SaveSessionModalProps) {
   const [sessionName, setSessionName] = useState("");
@@ -123,12 +126,21 @@ export function SaveSessionModal({
       // Get system controls state
       const systemControlsState = systemControlsRef?.current?.getSystemControlsState();
       
+      // Get collision controls state
+      const collisionControlsState = forcesControlsRef?.current?.getCollisionControlsState();
+      
+      // Combine all UI states
+      const combinedState = {
+        ...systemControlsState,
+        collisionControls: collisionControlsState,
+      };
+      
       const result = SessionManager.saveSession(
         system,
         trimmedName,
         showOverwriteWarning,
         renderer,
-        systemControlsState
+        combinedState
       );
 
       if (result.success) {

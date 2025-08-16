@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { RotateCcw, Download, Upload } from "lucide-react";
 import {
   Physics,
@@ -50,7 +50,7 @@ import {
 import { PhysicsControls } from "./control-sections/PhysicsControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
 import { BoundaryControls } from "./control-sections/BoundaryControls";
-import { CollisionControls } from "./control-sections/CollisionControls";
+import { CollisionControls, CollisionControlsRef } from "./control-sections/CollisionControls";
 import { FluidsControls } from "./control-sections/FluidsControls";
 import { SensorsControls } from "./control-sections/SensorsControls";
 import { JointControls } from "./control-sections/JointControls";
@@ -71,7 +71,12 @@ interface ForcesControlsProps {
   sessionLoadTrigger?: number;
 }
 
-export function ForcesControls({
+export interface ForcesControlsRef {
+  getCollisionControlsState: () => any;
+  setCollisionControlsState: (state: any) => void;
+}
+
+export const ForcesControls = forwardRef<ForcesControlsRef, ForcesControlsProps>(({
   system,
   physics,
   behavior,
@@ -82,8 +87,9 @@ export function ForcesControls({
   joints,
   undoRedo,
   sessionLoadTrigger = 0,
-}: ForcesControlsProps) {
+}, ref) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const collisionControlsRef = useRef<CollisionControlsRef>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Trigger UI refresh when a session is loaded
@@ -92,6 +98,16 @@ export function ForcesControls({
       setRefreshKey((prev) => prev + 1);
     }
   }, [sessionLoadTrigger]);
+
+  // Expose methods for session save/restore
+  useImperativeHandle(ref, () => ({
+    getCollisionControlsState: () => {
+      return collisionControlsRef.current?.getState() || null;
+    },
+    setCollisionControlsState: (state: any) => {
+      collisionControlsRef.current?.setState(state);
+    },
+  }), []);
 
   const resetToDefaults = () => {
     // Reset physics
@@ -262,6 +278,7 @@ export function ForcesControls({
 
       <CollapsibleSection title="Collisions">
         <CollisionControls
+          ref={collisionControlsRef}
           key={`collisions-${refreshKey}`}
           collisions={collisions}
           joints={joints}
@@ -293,4 +310,4 @@ export function ForcesControls({
       </CollapsibleSection>
     </div>
   );
-}
+});

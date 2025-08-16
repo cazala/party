@@ -452,7 +452,7 @@ export function usePlayground(
       squareSize: number = 200,
       cornerRadius: number = 0,
       particleMass?: number,
-      clothEnabled?: boolean
+      enableJoints?: boolean
     ) => {
       if (!systemRef.current) return;
 
@@ -536,7 +536,7 @@ export function usePlayground(
       }
 
       // Create cloth joints for grid shape when enabled
-      if (shape === "grid" && clothEnabled && particles.length > 0) {
+      if (shape === "grid" && enableJoints && particles.length > 0) {
         const joints = jointsRef.current;
         if (joints) {
           // Calculate grid dimensions
@@ -610,7 +610,9 @@ export function usePlayground(
         initConfig.velocityConfig,
         initConfig.innerRadius,
         initConfig.squareSize,
-        initConfig.cornerRadius
+        initConfig.cornerRadius,
+        initConfig.particleMass,
+        initConfig.enableJoints
       );
     } else {
       // Fallback to default

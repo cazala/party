@@ -4,7 +4,7 @@ import { useToolMode } from "./hooks/useToolMode";
 import { useFullscreen } from "./hooks/useFullscreen";
 import { useEffect, useRef, useState } from "react";
 import { SystemControls, SystemControlsRef } from "./components/SystemControls";
-import { ForcesControls } from "./components/ForcesControls";
+import { ForcesControls, ForcesControlsRef } from "./components/ForcesControls";
 import { TopBar } from "./components/TopBar";
 import { ToolBar } from "./components/ToolBar";
 import { HelpModal } from "./components/HelpModal";
@@ -25,6 +25,7 @@ const TOOLBAR_HEIGHT = 60;
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const systemControlsRef = useRef<SystemControlsRef>(null);
+  const forcesControlsRef = useRef<ForcesControlsRef>(null);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
@@ -230,6 +231,7 @@ function App() {
           }}
         >
           <ForcesControls
+            ref={forcesControlsRef}
             system={system}
             physics={physics}
             behavior={behavior}
@@ -255,6 +257,7 @@ function App() {
         system={system}
         renderer={renderer}
         systemControlsRef={systemControlsRef}
+        forcesControlsRef={forcesControlsRef}
         onSaveSuccess={(sessionName) => {
           console.log(`Session "${sessionName}" saved successfully`);
         }}
@@ -270,6 +273,7 @@ function App() {
         zoomStateRef={zoomStateRef}
         undoRedo={undoRedo}
         systemControlsRef={systemControlsRef}
+        forcesControlsRef={forcesControlsRef}
         onLoadSuccess={(sessionName) => {
           console.log(`Session "${sessionName}" loaded successfully`);
           // Trigger UI refresh to update controls with loaded configuration
