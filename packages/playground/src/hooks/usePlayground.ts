@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import {
   Canvas2DRenderer,
-  Physics,
+  Environment,
   Particle,
   System,
   Vector2D,
@@ -50,7 +50,7 @@ export function usePlayground(
   const systemRef = useRef<System | null>(null);
   // Individual force/utility refs – kept outside of React state because the
   // physics engine mutates them on every tick.
-  const physicsRef = useRef<Physics | null>(null);
+  const environmentRef = useRef<Environment | null>(null);
   const boundsRef = useRef<Boundary | null>(null);
   const behaviorRef = useRef<Behavior | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
@@ -314,12 +314,12 @@ export function usePlayground(
   useEffect(() => {
     if (systemRef.current) return;
 
-    const physics = new Physics({
+    const environment = new Environment({
       gravity: { strength: DEFAULT_GRAVITY_STRENGTH },
     });
-    physicsRef.current = physics;
+    environmentRef.current = environment;
 
-    const boundary = new Boundary({ physics: physics });
+    const boundary = new Boundary({ environment: environment });
     boundsRef.current = boundary;
 
     const behavior = new Behavior({ enabled: false }); // Playground default: on
@@ -328,7 +328,7 @@ export function usePlayground(
     const joints = new Joints({ enabled: true }); // Playground default: on
     jointsRef.current = joints;
 
-    const collisions = new Collisions({ joints: joints, physics: physics });
+    const collisions = new Collisions({ joints: joints, environment: environment });
     collisionsRef.current = collisions;
 
     const fluid = new Fluid({ enabled: false }); // Playground default: off
@@ -357,7 +357,7 @@ export function usePlayground(
     // Connect renderer to sensors for pixel reading
     sensors.setRenderer(renderer);
 
-    system.addForce(physics);
+    system.addForce(environment);
     system.addForce(boundary);
     system.addForce(behavior);
     system.addForce(collisions);
@@ -622,20 +622,20 @@ export function usePlayground(
   }, [spawnParticles]);
 
   const updateGravity = useCallback((strength: number) => {
-    if (physicsRef.current) {
-      physicsRef.current.setStrength(strength);
+    if (environmentRef.current) {
+      environmentRef.current.setStrength(strength);
     }
   }, []);
 
   const updateInertia = useCallback((inertia: number) => {
-    if (physicsRef.current) {
-      physicsRef.current.setInertia(inertia);
+    if (environmentRef.current) {
+      environmentRef.current.setInertia(inertia);
     }
   }, []);
 
   const updateFriction = useCallback((friction: number) => {
-    if (physicsRef.current) {
-      physicsRef.current.setFriction(friction);
+    if (environmentRef.current) {
+      environmentRef.current.setFriction(friction);
     }
   }, []);
 
@@ -701,7 +701,7 @@ export function usePlayground(
   return {
     // Live engine handles ------------------------------------------------------
     system: systemRef.current,
-    physics: physicsRef.current,
+    environment: environmentRef.current,
     boundary: boundsRef.current,
     behavior: behaviorRef.current,
     collisions: collisionsRef.current,

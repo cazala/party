@@ -34,7 +34,7 @@ function App() {
 
   const {
     system,
-    physics,
+    environment,
     boundary,
     behavior,
     collisions,
@@ -71,7 +71,7 @@ function App() {
   useEffect(() => {
     if (
       !system ||
-      !physics ||
+      !environment ||
       !boundary ||
       !behavior ||
       !collisions ||
@@ -90,7 +90,7 @@ function App() {
     );
   }, [
     system,
-    physics,
+    environment,
     boundary,
     behavior,
     collisions,
@@ -233,7 +233,7 @@ function App() {
           <ForcesControls
             ref={forcesControlsRef}
             system={system}
-            physics={physics}
+            environment={environment}
             behavior={behavior}
             boundary={boundary}
             collisions={collisions}

@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { RotateCcw, Download, Upload } from "lucide-react";
 import {
-  Physics,
+  Environment,
   Behavior,
   Boundary,
   Collisions,
@@ -11,7 +11,7 @@ import {
   System,
   Config,
   DEFAULT_GRAVITY_STRENGTH,
-  DEFAULT_GRAVITY_ANGLE,
+  DEFAULT_GRAVITY_DIRECTION,
   DEFAULT_BEHAVIOR_WANDER_WEIGHT,
   DEFAULT_BEHAVIOR_COHESION_WEIGHT,
   DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT,
@@ -47,7 +47,7 @@ import {
   DEFAULT_NEAR_THRESHOLD,
   DEFAULT_NEAR_PRESSURE_MULTIPLIER,
 } from "@cazala/party";
-import { PhysicsControls } from "./control-sections/PhysicsControls";
+import { EnvironmentControls } from "./control-sections/EnvironmentControls";
 import { BehaviorControls } from "./control-sections/BehaviorControls";
 import { BoundaryControls } from "./control-sections/BoundaryControls";
 import { CollisionControls, CollisionControlsRef } from "./control-sections/CollisionControls";
@@ -60,7 +60,7 @@ import "./ForcesControls.css";
 
 interface ForcesControlsProps {
   system: System | null;
-  physics: Physics | null;
+  environment: Environment | null;
   behavior: Behavior | null;
   boundary: Boundary | null;
   collisions: Collisions | null;
@@ -78,7 +78,7 @@ export interface ForcesControlsRef {
 
 export const ForcesControls = forwardRef<ForcesControlsRef, ForcesControlsProps>(({
   system,
-  physics,
+  environment,
   behavior,
   boundary,
   collisions,
@@ -110,12 +110,12 @@ export const ForcesControls = forwardRef<ForcesControlsRef, ForcesControlsProps>
   }), []);
 
   const resetToDefaults = () => {
-    // Reset physics
-    if (physics) {
-      physics.setStrength(DEFAULT_GRAVITY_STRENGTH);
-      physics.setDirectionFromAngle(DEFAULT_GRAVITY_ANGLE); // DEFAULT_GRAVITY_ANGLE is already in radians
-      physics.setInertia(0);
-      physics.setFriction(0);
+    // Reset environment
+    if (environment) {
+      environment.setStrength(DEFAULT_GRAVITY_STRENGTH);
+      environment.setDirection(DEFAULT_GRAVITY_DIRECTION);
+      environment.setInertia(0);
+      environment.setFriction(0);
     }
 
     // Reset boundary
@@ -272,8 +272,8 @@ export const ForcesControls = forwardRef<ForcesControlsRef, ForcesControlsProps>
         style={{ display: "none" }}
       />
 
-      <CollapsibleSection title="Physics" defaultOpen={true}>
-        <PhysicsControls key={`physics-${refreshKey}`} physics={physics} />
+      <CollapsibleSection title="Environment" defaultOpen={true}>
+        <EnvironmentControls key={`environment-${refreshKey}`} environment={environment} />
       </CollapsibleSection>
 
       <CollapsibleSection title="Collisions">

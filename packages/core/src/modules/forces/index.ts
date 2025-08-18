@@ -1,5 +1,5 @@
 export * from "./boundary";
-export * from "./physics";
+export * from "./environment";
 export * from "./behavior";
 export * from "./collisions";
 export * from "./fluid";

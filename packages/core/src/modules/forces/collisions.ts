@@ -4,7 +4,7 @@ import { Vector2D } from "../vector";
 import { SpatialGrid } from "../spatial-grid";
 import mitt, { Emitter } from "mitt";
 import { Joints, Joint } from "./joints";
-import { Physics } from "./physics";
+import { Environment } from "./environment";
 import {
   getClosestPointOnLineSegment,
   checkLineSegmentIntersection,
@@ -41,7 +41,7 @@ export interface CollisionsOptions {
   restitution?: number;
   joints?: Joints;
   momentum?: number;
-  physics?: Physics;
+  environment?: Environment;
 }
 
 export class Collisions implements Force, RigidBody {
@@ -53,7 +53,7 @@ export class Collisions implements Force, RigidBody {
   public events: Emitter<CollisionsEvents>; // For emitting collision events
   private joints?: Joints; // Optional joints module for joint-particle collisions
   private positions: Map<number, Vector2D> = new Map();
-  private physics?: Physics; // Reference to physics module for friction
+  private environment?: Environment; // Reference to environment module for friction
 
   constructor(options: CollisionsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_COLLISIONS_ENABLED;
@@ -62,7 +62,7 @@ export class Collisions implements Force, RigidBody {
     this.restitution = options.restitution ?? DEFAULT_COLLISIONS_RESTITUTION;
     this.momentum = options.momentum ?? DEFAULT_MOMENTUM_PRESERVATION;
     this.joints = options.joints;
-    this.physics = options.physics;
+    this.environment = options.environment;
     this.events = mitt<CollisionsEvents>();
   }
 
@@ -86,8 +86,8 @@ export class Collisions implements Force, RigidBody {
     this.momentum = Math.max(0, Math.min(1, momentum)); // Clamp between 0 and 1
   }
 
-  setPhysics(physics: Physics): void {
-    this.physics = physics;
+  setEnvironment(environment: Environment): void {
+    this.environment = environment;
   }
 
   before(particles: Particle[], deltaTime: number): void {
@@ -801,8 +801,8 @@ export class Collisions implements Force, RigidBody {
     particle.velocity.add(particleImpulse);
 
     // Apply friction to tangential velocity component
-    if (this.physics && this.physics.friction > 0) {
-      this.applyJointFriction(particle, collisionNormal, this.physics.friction);
+    if (this.environment && this.environment.friction > 0) {
+      this.applyJointFriction(particle, collisionNormal, this.environment.friction);
     }
 
     // Transfer force to joint particles based on impact location and masses
@@ -850,8 +850,8 @@ export class Collisions implements Force, RigidBody {
     particle.velocity.add(impulseVector);
 
     // Apply friction to tangential velocity component
-    if (this.physics && this.physics.friction > 0) {
-      this.applyJointFriction(particle, collisionNormal, this.physics.friction);
+    if (this.environment && this.environment.friction > 0) {
+      this.applyJointFriction(particle, collisionNormal, this.environment.friction);
     }
 
     // Position correction to prevent particle from staying inside the joint (static joint version)

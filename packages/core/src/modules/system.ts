@@ -1,14 +1,13 @@
 import { Particle } from "./particle";
 import { SpatialGrid } from "./spatial-grid";
-import { Vector2D } from "./vector";
 import mitt, { Emitter as MittEmitter } from "mitt";
 import {
-  Physics,
+  Environment,
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_DIRECTION,
   DEFAULT_INERTIA,
   DEFAULT_FRICTION,
-} from "./forces/physics";
+} from "./forces/environment";
 import {
   Boundary,
   DEFAULT_BOUNDARY_BOUNCE,
@@ -141,18 +140,20 @@ export interface Force {
  * @interface Config
  */
 export interface Config {
-  /** Physics force configurations */
-  physics?: {
+  /** Environment force configurations */
+  environment?: {
     /** Gravity settings */
     gravity?: {
-      /** Gravitational acceleration strength (default: 0.1) */
+      /** Gravitational acceleration strength (default: 0) */
       strength?: number;
-      /** Gravity direction vector. Default is downward: {x: 0, y: 1} */
-      direction?: { x?: number; y?: number };
+      /** Gravity direction enum (default: 'down') */
+      direction?: 'up' | 'down' | 'left' | 'right' | 'in' | 'out' | 'custom';
+      /** Custom gravity angle in radians (only used when direction is 'custom') */
+      angle?: number;
     };
-    /** Inertia factor for momentum preservation (0-1, default: 0.99) */
+    /** Inertia factor for momentum preservation (0-1, default: 0.1) */
     inertia?: number;
-    /** Friction coefficient for velocity damping (0-1, default: 0.01) */
+    /** Friction coefficient for velocity damping (0-1, default: 0.1) */
     friction?: number;
   };
 
@@ -450,6 +451,11 @@ export class System {
    */
   addForce(force: Force): void {
     this.forces.push(force);
+    
+    // Update environment world size if it's an Environment force
+    if (force instanceof Environment) {
+      force.updateWorldSize(this.width, this.height);
+    }
   }
 
   /**
@@ -767,6 +773,13 @@ export class System {
     this.width = width;
     this.height = height;
     this.spatialGrid.setSize(width, height);
+    
+    // Update environment world size for 'in'/'out' gravity calculations
+    for (const force of this.forces) {
+      if (force instanceof Environment) {
+        force.updateWorldSize(width, height);
+      }
+    }
   }
 
   /**
@@ -778,13 +791,20 @@ export class System {
   }
 
   /**
-   * Update camera information for frustum culling
+   * Update camera information for frustum culling and environment forces
    * @param cameraX Camera X position
    * @param cameraY Camera Y position
    * @param zoom Camera zoom level
    */
   updateCamera(cameraX: number, cameraY: number, zoom: number): void {
     this.spatialGrid.setCamera(cameraX, cameraY, zoom);
+    
+    // Update environment forces with camera information for 'in'/'out' gravity calculations
+    for (const force of this.forces) {
+      if (force instanceof Environment) {
+        force.setCamera(cameraX, cameraY, zoom);
+      }
+    }
   }
 
   /**
@@ -862,11 +882,12 @@ export class System {
 
     // Export configuration for each force type present in the system
     for (const force of this.forces) {
-      if (force instanceof Physics) {
-        config.physics = {
+      if (force instanceof Environment) {
+        config.environment = {
           gravity: {
-            strength: force.strength,
-            direction: { x: force.direction.x, y: force.direction.y },
+            strength: force.gravity.strength,
+            direction: force.gravity.direction,
+            angle: force.gravity.angle,
           },
           inertia: force.inertia,
           friction: force.friction,
@@ -945,21 +966,19 @@ export class System {
   import(config: Config): void {
     // Apply configuration for each force type present in the system
     for (const force of this.forces) {
-      if (force instanceof Physics) {
-        if (config.physics) {
+      if (force instanceof Environment) {
+        if (config.environment) {
           force.setStrength(
-            config.physics.gravity?.strength ?? DEFAULT_GRAVITY_STRENGTH
+            config.environment.gravity?.strength ?? DEFAULT_GRAVITY_STRENGTH
           );
           force.setDirection(
-            new Vector2D(
-              config.physics.gravity?.direction?.x ??
-                DEFAULT_GRAVITY_DIRECTION.x,
-              config.physics.gravity?.direction?.y ??
-                DEFAULT_GRAVITY_DIRECTION.y
-            )
+            config.environment.gravity?.direction ?? DEFAULT_GRAVITY_DIRECTION
           );
-          force.setInertia(config.physics.inertia ?? DEFAULT_INERTIA);
-          force.setFriction(config.physics.friction ?? DEFAULT_FRICTION);
+          if (config.environment.gravity?.angle !== undefined) {
+            force.setGravityAngle(config.environment.gravity.angle);
+          }
+          force.setInertia(config.environment.inertia ?? DEFAULT_INERTIA);
+          force.setFriction(config.environment.friction ?? DEFAULT_FRICTION);
         }
       } else if (force instanceof Boundary && config.boundary) {
         force.bounce = config.boundary.bounce ?? DEFAULT_BOUNDARY_BOUNCE;
