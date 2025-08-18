@@ -84,6 +84,7 @@ export function usePlayground(
     amplitude: Math.PI * 2, // 360 degrees in radians (full spread)
     colors: [], // Empty array means use default palette
     zIndex: 0, // default render depth
+    followMouse: false, // emitters are stationary by default
     // Lifetime properties
     lifetime: false, // particles have unlimited lifetime by default
     duration: 5000, // 5 seconds when not infinite

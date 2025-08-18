@@ -211,4 +211,16 @@ export class Emitters {
     }
     return false;
   }
+
+  /**
+   * Updates mouse position for all emitters that follow the mouse
+   * 
+   * @param worldX Mouse world X coordinate
+   * @param worldY Mouse world Y coordinate
+   */
+  updateMousePosition(worldX: number, worldY: number): void {
+    for (const emitter of this.emitters.values()) {
+      emitter.updateMousePosition(worldX, worldY);
+    }
+  }
 }

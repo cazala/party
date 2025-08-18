@@ -17,6 +17,7 @@ export interface SerializedEmitter {
   colors: string[];
   enabled: boolean;
   zIndex: number;
+  followMouse?: boolean; // whether emitter position follows mouse cursor
 
   // Lifetime properties
   lifetime: boolean; // whether particles have a limited lifetime
@@ -42,6 +43,7 @@ export interface EmitterOptions {
   colors?: string[];
   enabled?: boolean;
   zIndex?: number;
+  followMouse?: boolean; // whether emitter position follows mouse cursor
 
   // Lifetime properties
   lifetime?: boolean; // whether particles have a limited lifetime
@@ -62,6 +64,7 @@ export const DEFAULT_EMITTER_AMPLITUDE = Math.PI * 2; // 360 degrees in radians
 export const DEFAULT_EMITTER_PARTICLE_SIZE = 5;
 export const DEFAULT_EMITTER_PARTICLE_MASS = 1;
 export const DEFAULT_EMITTER_COLORS: string[] = []; // Empty means use default palette
+export const DEFAULT_EMITTER_FOLLOW_MOUSE = false; // emitters are stationary by default
 
 // Lifetime defaults
 export const DEFAULT_EMITTER_LIFETIME = false; // particles have unlimited lifetime by default
@@ -90,6 +93,7 @@ export class Emitter {
   public colors: string[];
   public enabled: boolean;
   public zIndex: number;
+  public followMouse: boolean;
 
   // Lifetime properties
   public lifetime: boolean;
@@ -119,6 +123,7 @@ export class Emitter {
     this.colors = options.colors ?? [...DEFAULT_EMITTER_COLORS];
     this.enabled = options.enabled ?? true;
     this.zIndex = options.zIndex ?? 0;
+    this.followMouse = options.followMouse ?? DEFAULT_EMITTER_FOLLOW_MOUSE;
 
     // Initialize lifetime properties
     this.lifetime = options.lifetime ?? DEFAULT_EMITTER_LIFETIME;
@@ -251,6 +256,21 @@ export class Emitter {
     this.enabled = enabled;
   }
 
+  setFollowMouse(followMouse: boolean): void {
+    this.followMouse = followMouse;
+  }
+
+  /**
+   * Updates the emitter position to follow mouse coordinates in world space
+   * @param worldX World X coordinate
+   * @param worldY World Y coordinate
+   */
+  updateMousePosition(worldX: number, worldY: number): void {
+    if (this.followMouse) {
+      this.position.set(worldX, worldY);
+    }
+  }
+
   /**
    * Serializes the emitter for session saving or undo/redo
    *
@@ -269,6 +289,7 @@ export class Emitter {
       colors: [...this.colors],
       enabled: this.enabled,
       zIndex: this.zIndex,
+      followMouse: this.followMouse,
       // Include lifetime properties
       lifetime: this.lifetime,
       duration: this.duration,
@@ -298,6 +319,7 @@ export class Emitter {
       colors: [...data.colors],
       enabled: data.enabled,
       zIndex: data.zIndex ?? 0, // Default to 0 for backward compatibility
+      followMouse: data.followMouse ?? DEFAULT_EMITTER_FOLLOW_MOUSE, // Default to false for backward compatibility
       // Include lifetime properties with fallbacks for backward compatibility
       lifetime: data.lifetime ?? DEFAULT_EMITTER_LIFETIME,
       duration: data.duration ?? DEFAULT_EMITTER_DURATION,

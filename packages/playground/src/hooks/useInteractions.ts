@@ -936,6 +936,7 @@ export function useInteractions({
         colors: emitterConfig.colors,
         enabled: true,
         zIndex: emitterConfig.zIndex,
+        followMouse: emitterConfig.followMouse,
         // Lifetime properties
         lifetime: emitterConfig.lifetime,
         duration: emitterConfig.duration,
@@ -1646,6 +1647,12 @@ export function useInteractions({
       // Always update cursor position for density display (use world coordinates)
       if (renderer.setCursorPosition) {
         renderer.setCursorPosition(new Vector2D(worldPos.x, worldPos.y));
+      }
+
+      // Update emitters that follow mouse
+      const emitters = getEmitters?.();
+      if (emitters) {
+        emitters.updateMousePosition(worldPos.x, worldPos.y);
       }
 
       const mouseState = mouseStateRef.current;
