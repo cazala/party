@@ -3,7 +3,7 @@ import { Canvas2DRenderer, Fluid } from "@cazala/party";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
-  DEFAULT_RENDER_ROTATION_SPEED,
+  DEFAULT_RENDER_HUE_SPEED,
   DEFAULT_RENDER_GLOW_EFFECTS,
 } from "@cazala/party/modules/render";
 
@@ -14,18 +14,18 @@ interface RenderControlsProps {
 
 export interface RenderControlsRef {
   getState: () => {
-    colorMode: "particle" | "custom" | "velocity" | "rotate";
+    colorMode: "particle" | "custom" | "velocity" | "hue";
     customColor: string;
-    rotationSpeed: number;
+    hueSpeed: number;
     showDensity: boolean;
     showVelocity: boolean;
     densityFieldColor: string;
     glowEffects: boolean;
   };
   setState: (state: Partial<{
-    colorMode: "particle" | "custom" | "velocity" | "rotate";
+    colorMode: "particle" | "custom" | "velocity" | "hue";
     customColor: string;
-    rotationSpeed: number;
+    hueSpeed: number;
     showDensity: boolean;
     showVelocity: boolean;
     densityFieldColor: string;
@@ -36,8 +36,8 @@ export interface RenderControlsRef {
 export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>(({ renderer, fluid }, ref) => {
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
-  const [rotationSpeed, setRotationSpeed] = useState(
-    DEFAULT_RENDER_ROTATION_SPEED
+  const [hueSpeed, setHueSpeed] = useState(
+    DEFAULT_RENDER_HUE_SPEED
   );
   const [showDensity, setShowDensity] = useState(true);
   const [showVelocity, setShowVelocity] = useState(true);
@@ -47,9 +47,9 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
   // Expose state management methods
   useImperativeHandle(ref, () => ({
     getState: () => ({
-      colorMode: colorMode as "particle" | "custom" | "velocity" | "rotate",
+      colorMode: colorMode as "particle" | "custom" | "velocity" | "hue",
       customColor,
-      rotationSpeed,
+      hueSpeed,
       showDensity,
       showVelocity,
       densityFieldColor,
@@ -68,10 +68,10 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
           renderer.setCustomColor(state.customColor);
         }
       }
-      if (state.rotationSpeed !== undefined) {
-        setRotationSpeed(state.rotationSpeed);
+      if (state.hueSpeed !== undefined) {
+        setHueSpeed(state.hueSpeed);
         if (renderer) {
-          renderer.setRotationSpeed(state.rotationSpeed);
+          renderer.setHueSpeed(state.hueSpeed);
         }
       }
       if (state.showDensity !== undefined) {
@@ -99,13 +99,13 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
         }
       }
     },
-  }), [colorMode, customColor, rotationSpeed, showDensity, showVelocity, densityFieldColor, glowEffects, renderer]);
+  }), [colorMode, customColor, hueSpeed, showDensity, showVelocity, densityFieldColor, glowEffects, renderer]);
 
   useEffect(() => {
     if (renderer) {
-      setColorMode(renderer.colorMode as "particle" | "custom" | "velocity" | "rotate");
+      setColorMode(renderer.colorMode as "particle" | "custom" | "velocity" | "hue");
       setCustomColor(renderer.customColor);
-      setRotationSpeed(renderer.getRotationSpeed());
+      setHueSpeed(renderer.getHueSpeed());
       setShowDensity(renderer.showDensity);
       setShowVelocity(renderer.showVelocity);
       setDensityFieldColor(renderer.densityFieldColor);
@@ -114,10 +114,10 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
   }, [renderer, fluid]);
 
   const handleColorModeChange = (mode: string) => {
-    setColorMode(mode as "particle" | "custom" | "velocity" | "rotate");
+    setColorMode(mode as "particle" | "custom" | "velocity" | "hue");
     if (renderer) {
       renderer.setColorMode(
-        mode as "particle" | "custom" | "velocity" | "rotate"
+        mode as "particle" | "custom" | "velocity" | "hue"
       );
     }
   };
@@ -129,10 +129,10 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
     }
   };
 
-  const handleRotationSpeedChange = (speed: number) => {
-    setRotationSpeed(speed);
+  const handleHueSpeedChange = (speed: number) => {
+    setHueSpeed(speed);
     if (renderer) {
-      renderer.setRotationSpeed(speed);
+      renderer.setHueSpeed(speed);
     }
   };
 
@@ -178,7 +178,7 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
               <option value="particle">Particle</option>
               <option value="custom">Custom</option>
               <option value="velocity">Velocity</option>
-              <option value="rotate">Rotate</option>
+              <option value="hue">Hue</option>
             </select>
             {colorMode === "custom" && (
               <input
@@ -192,18 +192,18 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
         </label>
       </div>
 
-      {colorMode === "rotate" && (
+      {colorMode === "hue" && (
         <div className="control-group">
           <label>
-            Speed: {rotationSpeed.toFixed(1)} rot/sec
+            Speed: {hueSpeed.toFixed(1)} hue/sec
             <input
               type="range"
               min="0.1"
               max="10"
               step="0.1"
-              value={rotationSpeed}
+              value={hueSpeed}
               onChange={(e) =>
-                handleRotationSpeedChange(parseFloat(e.target.value))
+                handleHueSpeedChange(parseFloat(e.target.value))
               }
               className="slider"
             />

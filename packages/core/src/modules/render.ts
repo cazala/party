@@ -10,7 +10,7 @@ import { Joint, Joints } from "./forces/joints";
 export const DEFAULT_RENDER_COLOR_MODE = "particle";
 export const DEFAULT_RENDER_CUSTOM_COLOR = "#FFFFFF";
 export const DEFAULT_RENDER_MAX_SPEED = 400;
-export const DEFAULT_RENDER_ROTATION_SPEED = 1; // rotations per second
+export const DEFAULT_RENDER_HUE_SPEED = 1; // hue cycles per second
 export const DEFAULT_RENDER_GLOW_EFFECTS = false; // Enable glow effects by default
 export const PINNED_PARTICLE_COLOR = "#6b7280"; // Grey color for pinned particles
 
@@ -19,7 +19,7 @@ export const PINNED_PARTICLE_COLOR = "#6b7280"; // Grey color for pinned particl
  */
 class RenderColorCache {
   private static velocityColorCache = new Map<string, string>();
-  private static rotateColorCache = new Map<number, string>();
+  private static hueColorCache = new Map<number, string>();
   private static maxCacheSize = 500;
 
   /**
@@ -29,7 +29,7 @@ class RenderColorCache {
     // Round speed to reduce cache fragmentation
     const roundedSpeed = Math.round(speed * 10) / 10; // Round to 1 decimal place
     const key = `${roundedSpeed}-${maxSpeed}`;
-    
+
     let cachedColor = this.velocityColorCache.get(key);
     if (cachedColor) {
       return cachedColor;
@@ -40,7 +40,7 @@ class RenderColorCache {
     const red = Math.floor(Math.min(ratio, 1) * 255);
     const green = Math.floor((1 - Math.min(ratio, 1)) * 255);
     cachedColor = `rgb(${red}, ${green}, 0)`;
-    
+
     // Add to cache if there's room
     if (this.velocityColorCache.size < this.maxCacheSize) {
       this.velocityColorCache.set(key, cachedColor);
@@ -52,38 +52,38 @@ class RenderColorCache {
         this.velocityColorCache.set(key, cachedColor);
       }
     }
-    
+
     return cachedColor;
   }
 
   /**
-   * Get cached rotate color or compute and cache it
+   * Get cached hue color or compute and cache it
    */
-  static getCachedRotateColor(hue: number): string {
+  static getCachedHueColor(hue: number): string {
     // Round hue to reduce cache fragmentation
     const roundedHue = Math.round(hue) % 360;
-    
-    let cachedColor = this.rotateColorCache.get(roundedHue);
+
+    let cachedColor = this.hueColorCache.get(roundedHue);
     if (cachedColor) {
       return cachedColor;
     }
 
-    // Compute rotate color using HSB
+    // Compute hue color using HSB
     const rgb = hsbToRgb(roundedHue, 0.8, 0.9);
     cachedColor = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
-    
+
     // Add to cache if there's room
-    if (this.rotateColorCache.size < this.maxCacheSize) {
-      this.rotateColorCache.set(roundedHue, cachedColor);
+    if (this.hueColorCache.size < this.maxCacheSize) {
+      this.hueColorCache.set(roundedHue, cachedColor);
     } else {
       // Clear oldest entry when cache is full
-      const firstKey = this.rotateColorCache.keys().next().value;
+      const firstKey = this.hueColorCache.keys().next().value;
       if (firstKey !== undefined) {
-        this.rotateColorCache.delete(firstKey);
-        this.rotateColorCache.set(roundedHue, cachedColor);
+        this.hueColorCache.delete(firstKey);
+        this.hueColorCache.set(roundedHue, cachedColor);
       }
     }
-    
+
     return cachedColor;
   }
 
@@ -92,17 +92,21 @@ class RenderColorCache {
    */
   static clearCaches(): void {
     this.velocityColorCache.clear();
-    this.rotateColorCache.clear();
+    this.hueColorCache.clear();
   }
 
   /**
    * Get cache statistics
    */
-  static getCacheStats(): { velocityCache: number; rotateCache: number; maxSize: number } {
+  static getCacheStats(): {
+    velocityCache: number;
+    hueCache: number;
+    maxSize: number;
+  } {
     return {
       velocityCache: this.velocityColorCache.size,
-      rotateCache: this.rotateColorCache.size,
-      maxSize: this.maxCacheSize
+      hueCache: this.hueColorCache.size,
+      maxSize: this.maxCacheSize,
     };
   }
 }
@@ -112,11 +116,11 @@ export interface RenderOptions {
   clearColor?: string;
   clearAlpha?: number;
   globalAlpha?: number;
-  colorMode?: "particle" | "custom" | "velocity" | "rotate";
+  colorMode?: "particle" | "custom" | "velocity" | "hue";
   customColor?: string;
   maxSpeed?: number;
   sensors?: Sensors | null;
-  rotationSpeed?: number;
+  hueSpeed?: number;
   glowEffects?: boolean;
 }
 
@@ -176,7 +180,7 @@ export abstract class Renderer {
   protected clearColor: string;
   protected clearAlpha: number;
   protected globalAlpha: number;
-  public colorMode: "particle" | "custom" | "velocity" | "rotate";
+  public colorMode: "particle" | "custom" | "velocity" | "hue";
   public customColor: string;
   public maxSpeed: number;
   public showSpatialGrid: boolean;
@@ -185,8 +189,8 @@ export abstract class Renderer {
   public densityFieldColor: string;
   public cursorPosition: Vector2D | null;
   protected sensors: Sensors | null;
-  public rotationSpeed: number;
-  protected rotationStartTime: number;
+  public hueSpeed: number;
+  protected hueStartTime: number;
   public glowEffects: boolean;
 
   // Trail system properties
@@ -207,8 +211,8 @@ export abstract class Renderer {
     this.cursorPosition = null;
     this.sensors = options.sensors ?? null;
     this.trailImageData = null;
-    this.rotationSpeed = options.rotationSpeed ?? DEFAULT_RENDER_ROTATION_SPEED;
-    this.rotationStartTime = Date.now();
+    this.hueSpeed = options.hueSpeed ?? DEFAULT_RENDER_HUE_SPEED;
+    this.hueStartTime = Date.now();
     this.glowEffects = options.glowEffects ?? DEFAULT_RENDER_GLOW_EFFECTS;
 
     const ctx = this.canvas.getContext("2d");
@@ -349,10 +353,10 @@ export abstract class Renderer {
     };
   }
 
-  setColorMode(mode: "particle" | "custom" | "velocity" | "rotate"): void {
+  setColorMode(mode: "particle" | "custom" | "velocity" | "hue"): void {
     this.colorMode = mode;
-    if (mode === "rotate") {
-      this.rotationStartTime = Date.now(); // Reset rotation when switching to rotate mode
+    if (mode === "hue") {
+      this.hueStartTime = Date.now(); // Reset hue when switching to hue mode
     }
   }
 
@@ -360,16 +364,16 @@ export abstract class Renderer {
     this.customColor = color;
   }
 
-  getColorMode(): "particle" | "custom" | "velocity" | "rotate" {
+  getColorMode(): "particle" | "custom" | "velocity" | "hue" {
     return this.colorMode;
   }
 
-  setRotationSpeed(speed: number): void {
-    this.rotationSpeed = speed;
+  setHueSpeed(speed: number): void {
+    this.hueSpeed = speed;
   }
 
-  getRotationSpeed(): number {
-    return this.rotationSpeed;
+  getHueSpeed(): number {
+    return this.hueSpeed;
   }
 
   getCustomColor(): string {
@@ -835,14 +839,14 @@ export class Canvas2DRenderer extends Renderer {
     return RenderColorCache.getCachedVelocityColor(speed, this.maxSpeed);
   }
 
-  private calculateRotateColor(): string {
+  private calculateHueColor(): string {
     const currentTime = Date.now();
-    const elapsedSeconds = (currentTime - this.rotationStartTime) / 1000;
+    const elapsedSeconds = (currentTime - this.hueStartTime) / 1000;
 
-    // Calculate hue based on rotation speed (360 degrees per rotation)
-    const hue = (((elapsedSeconds * this.rotationSpeed) / 100) * 360) % 360;
+    // Calculate hue based on hue speed (360 degrees per rotation)
+    const hue = (elapsedSeconds * this.hueSpeed * 3.6) % 360;
 
-    return RenderColorCache.getCachedRotateColor(hue);
+    return RenderColorCache.getCachedHueColor(hue);
   }
 
   private getParticleColor(particle: Particle): string {
@@ -856,8 +860,8 @@ export class Canvas2DRenderer extends Renderer {
         return this.customColor;
       case "velocity":
         return this.calculateVelocityColor(particle);
-      case "rotate":
-        return this.calculateRotateColor();
+      case "hue":
+        return this.calculateHueColor();
       case "particle":
       default:
         return particle.color;
@@ -880,8 +884,8 @@ export class Canvas2DRenderer extends Renderer {
           // Use particle's velocity (for regular arrows)
           return this.calculateVelocityColor(particle);
         }
-      case "rotate":
-        return this.calculateRotateColor();
+      case "hue":
+        return this.calculateHueColor();
       case "particle":
       default:
         return particle.color;

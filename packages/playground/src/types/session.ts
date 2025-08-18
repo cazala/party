@@ -91,9 +91,9 @@ export interface SavedSession {
       radius: number;
     };
     render?: {
-      colorMode: "particle" | "custom" | "velocity" | "rotate";
+      colorMode: "particle" | "custom" | "velocity" | "hue";
       customColor: string;
-      rotationSpeed: number;
+      hueSpeed: number;
       showDensity: boolean;
       showVelocity: boolean;
       densityFieldColor: string;
