@@ -205,12 +205,12 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
 
       <div className="control-group">
         <label>
-          Damping: {damping.toFixed(2)}
+          Damping: {damping.toFixed(3)}
           <input
             type="range"
             min="0.8"
             max="1"
-            step="0.01"
+            step="0.001"
             value={damping}
             onChange={(e) => handleDampingChange(parseFloat(e.target.value))}
             className="slider"

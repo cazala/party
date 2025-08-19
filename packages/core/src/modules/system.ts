@@ -7,6 +7,7 @@ import {
   DEFAULT_GRAVITY_DIRECTION,
   DEFAULT_INERTIA,
   DEFAULT_FRICTION,
+  DEFAULT_DAMPING,
 } from "./forces/environment";
 import {
   Boundary,
@@ -156,6 +157,8 @@ export interface Config {
     inertia?: number;
     /** Friction coefficient for velocity damping (0-1, default: 0.1) */
     friction?: number;
+    /** Velocity damping factor (0-1, default: 1) */
+    damping?: number;
   };
 
   /** Boundary behavior settings */
@@ -894,6 +897,7 @@ export class System {
           },
           inertia: force.inertia,
           friction: force.friction,
+          damping: force.damping,
         };
       } else if (force instanceof Boundary) {
         config.boundary = {
@@ -983,6 +987,7 @@ export class System {
           }
           force.setInertia(config.environment.inertia ?? DEFAULT_INERTIA);
           force.setFriction(config.environment.friction ?? DEFAULT_FRICTION);
+          force.setDamping(config.environment.damping ?? DEFAULT_DAMPING);
         }
       } else if (force instanceof Boundary && config.boundary) {
         force.bounce = config.boundary.bounce ?? DEFAULT_BOUNDARY_BOUNCE;
