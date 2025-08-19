@@ -8,6 +8,7 @@ import {
   DEFAULT_FRICTION,
   radToDeg,
   degToRad,
+  DEFAULT_DAMPING,
 } from "@cazala/party";
 
 type GravityDirection =
@@ -35,6 +36,7 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
   ); // Convert radians to degrees for UI
   const [inertia, setInertia] = useState(DEFAULT_INERTIA);
   const [friction, setFriction] = useState(DEFAULT_FRICTION);
+  const [damping, setDamping] = useState(DEFAULT_DAMPING);
 
   useEffect(() => {
     if (environment) {
@@ -45,6 +47,7 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
       );
       setInertia(environment.inertia);
       setFriction(environment.friction);
+      setDamping(environment.damping);
     }
   }, [environment]);
 
@@ -80,6 +83,13 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
     setFriction(value);
     if (environment) {
       environment.setFriction(value);
+    }
+  };
+
+  const handleDampingChange = (value: number) => {
+    setDamping(value);
+    if (environment) {
+      environment.setDamping(value);
     }
   };
 
@@ -188,6 +198,21 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
             step="0.001"
             value={friction}
             onChange={(e) => handleFrictionChange(parseFloat(e.target.value))}
+            className="slider"
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Damping: {damping.toFixed(2)}
+          <input
+            type="range"
+            min="0.8"
+            max="1"
+            step="0.01"
+            value={damping}
+            onChange={(e) => handleDampingChange(parseFloat(e.target.value))}
             className="slider"
           />
         </label>

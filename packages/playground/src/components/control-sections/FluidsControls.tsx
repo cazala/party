@@ -7,6 +7,7 @@ import {
   DEFAULT_VISCOSITY,
   DEFAULT_NEAR_PRESSURE_MULTIPLIER,
   DEFAULT_NEAR_THRESHOLD,
+  DEFAULT_ENABLE_NEAR_PRESSURE,
 } from "@cazala/party";
 
 interface FluidsControlsProps {
@@ -28,6 +29,9 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
     DEFAULT_NEAR_PRESSURE_MULTIPLIER
   );
   const [nearThreshold, setNearThreshold] = useState(DEFAULT_NEAR_THRESHOLD);
+  const [enableNearPressure, setEnableNearPressure] = useState(
+    DEFAULT_ENABLE_NEAR_PRESSURE
+  );
 
   useEffect(() => {
     if (fluid) {
@@ -38,6 +42,7 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
       setViscosity(fluid.viscosity);
       setNearPressureMultiplier(fluid.nearPressureMultiplier);
       setNearThreshold(fluid.nearThreshold);
+      setEnableNearPressure(fluid.enableNearPressure);
     }
   }, [fluid]);
 
@@ -76,6 +81,10 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
         setNearThreshold(value as number);
         fluid.nearThreshold = value as number;
         break;
+      case "enableNearPressure":
+        setEnableNearPressure(value as boolean);
+        fluid.enableNearPressure = value as boolean;
+        break;
     }
   };
 
@@ -99,7 +108,7 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
           <input
             type="range"
             min="0.001"
-            max="1"
+            max="2"
             step="0.0001"
             value={targetDensity}
             disabled={!fluidEnabled}
@@ -169,6 +178,20 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
       </div>
       <div className="control-group">
         <label>
+          <input
+            type="checkbox"
+            checked={enableNearPressure}
+            disabled={!fluidEnabled}
+            onChange={(e) =>
+              handleFluidChange("enableNearPressure", e.target.checked)
+            }
+            className="checkbox"
+          />
+          Enable Near Pressure
+        </label>
+      </div>
+      <div className="control-group">
+        <label>
           Near Threshold: {nearThreshold.toFixed(0)}px
           <input
             type="range"
@@ -176,11 +199,13 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
             max="200"
             step="1"
             value={nearThreshold}
-            disabled={!fluidEnabled}
+            disabled={!fluidEnabled || !enableNearPressure}
             onChange={(e) =>
               handleFluidChange("nearThreshold", parseFloat(e.target.value))
             }
-            className={`slider ${!fluidEnabled ? "disabled" : ""}`}
+            className={`slider ${
+              !fluidEnabled || !enableNearPressure ? "disabled" : ""
+            }`}
           />
         </label>
       </div>
@@ -193,14 +218,16 @@ export function FluidsControls({ fluid }: FluidsControlsProps) {
             max="50"
             step="0.5"
             value={nearPressureMultiplier}
-            disabled={!fluidEnabled}
+            disabled={!fluidEnabled || !enableNearPressure}
             onChange={(e) =>
               handleFluidChange(
                 "nearPressureMultiplier",
                 parseFloat(e.target.value)
               )
             }
-            className={`slider ${!fluidEnabled ? "disabled" : ""}`}
+            className={`slider ${
+              !fluidEnabled || !enableNearPressure ? "disabled" : ""
+            }`}
           />
         </label>
       </div>

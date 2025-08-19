@@ -304,7 +304,7 @@ export function SensorsControls({ sensors }: SensorsControlsProps) {
           <input
             type="range"
             min="0"
-            max="2000"
+            max="4000"
             step="0.1"
             value={sensorStrength}
             disabled={!sensorsEnabled}

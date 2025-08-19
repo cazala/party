@@ -43,6 +43,7 @@ import {
   DEFAULT_VISCOSITY,
   DEFAULT_NEAR_PRESSURE_MULTIPLIER,
   DEFAULT_NEAR_THRESHOLD,
+  DEFAULT_ENABLE_NEAR_PRESSURE,
 } from "./forces/fluid";
 import {
   Sensors,
@@ -221,6 +222,8 @@ export interface Config {
     nearPressureMultiplier?: number;
     /** Distance threshold for switching from regular to near pressure (in pixels) */
     nearThreshold?: number;
+    /** Whether near pressure calculations are enabled */
+    enableNearPressure?: boolean;
     /** Resistance to movement through fluid medium */
     resistance?: number;
   };
@@ -927,6 +930,7 @@ export class System {
           viscosity: force.viscosity,
           nearPressureMultiplier: force.nearPressureMultiplier,
           nearThreshold: force.nearThreshold,
+          enableNearPressure: force.enableNearPressure,
         };
       } else if (force instanceof Sensors) {
         config.sensors = {
@@ -1032,6 +1036,8 @@ export class System {
           DEFAULT_NEAR_PRESSURE_MULTIPLIER;
         force.nearThreshold =
           config.fluid.nearThreshold ?? DEFAULT_NEAR_THRESHOLD;
+        force.enableNearPressure =
+          config.fluid.enableNearPressure ?? DEFAULT_ENABLE_NEAR_PRESSURE;
       } else if (force instanceof Sensors && config.sensors) {
         force.setEnableTrail(
           config.sensors.enableTrail ?? DEFAULT_TRAIL_ENABLED

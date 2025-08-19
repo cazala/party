@@ -4,14 +4,22 @@ import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
 
 // Gravity direction enum
-export type GravityDirection = 'up' | 'down' | 'left' | 'right' | 'in' | 'out' | 'custom';
+export type GravityDirection =
+  | "up"
+  | "down"
+  | "left"
+  | "right"
+  | "in"
+  | "out"
+  | "custom";
 
 // Default constants for Environment
 export const DEFAULT_GRAVITY_STRENGTH = 0;
-export const DEFAULT_GRAVITY_DIRECTION: GravityDirection = 'down';
+export const DEFAULT_GRAVITY_DIRECTION: GravityDirection = "down";
 export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downward)
 export const DEFAULT_INERTIA = 0.1;
 export const DEFAULT_FRICTION = 0.1;
+export const DEFAULT_DAMPING = 1;
 
 export interface EnvironmentOptions {
   gravity?: {
@@ -23,6 +31,7 @@ export interface EnvironmentOptions {
   friction?: number;
   worldWidth?: number; // For 'in'/'out' gravity calculations
   worldHeight?: number; // For 'in'/'out' gravity calculations
+  damping?: number;
 }
 
 export class Environment implements Force {
@@ -33,6 +42,7 @@ export class Environment implements Force {
   };
   public inertia: number;
   public friction: number;
+  public damping: number;
   public worldWidth: number;
   public worldHeight: number;
 
@@ -52,6 +62,7 @@ export class Environment implements Force {
     };
     this.inertia = options.inertia ?? DEFAULT_INERTIA;
     this.friction = options.friction ?? DEFAULT_FRICTION;
+    this.damping = options.damping ?? DEFAULT_DAMPING;
     this.worldWidth = options.worldWidth ?? 1200;
     this.worldHeight = options.worldHeight ?? 800;
   }
@@ -75,6 +86,10 @@ export class Environment implements Force {
 
   setGravityAngle(angle: number): void {
     this.gravity.angle = angle;
+  }
+
+  setDamping(damping: number): void {
+    this.damping = Math.max(0, Math.min(1, damping)); // Clamp between 0 and 1
   }
 
   setWorldSize(width: number, height: number): void {
@@ -101,43 +116,51 @@ export class Environment implements Force {
    */
   private calculateGravityDirection(particlePosition: Vector2D): Vector2D {
     switch (this.gravity.direction) {
-      case 'up':
+      case "up":
         return new Vector2D(0, -1);
-      case 'down':
+      case "down":
         return new Vector2D(0, 1);
-      case 'left':
+      case "left":
         return new Vector2D(-1, 0);
-      case 'right':
+      case "right":
         return new Vector2D(1, 0);
-      case 'in': {
+      case "in": {
         // Gravity toward visible world center (accounting for camera position and zoom)
-        const visibleCenterX = (-this.cameraX + this.worldWidth / 2) / this.zoom;
-        const visibleCenterY = (-this.cameraY + this.worldHeight / 2) / this.zoom;
+        const visibleCenterX =
+          (-this.cameraX + this.worldWidth / 2) / this.zoom;
+        const visibleCenterY =
+          (-this.cameraY + this.worldHeight / 2) / this.zoom;
         const direction = new Vector2D(
           visibleCenterX - particlePosition.x,
           visibleCenterY - particlePosition.y
         );
-        const length = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
+        const length = Math.sqrt(
+          direction.x * direction.x + direction.y * direction.y
+        );
         if (length > 0) {
           return new Vector2D(direction.x / length, direction.y / length);
         }
         return new Vector2D(0, 0);
       }
-      case 'out': {
+      case "out": {
         // Gravity away from visible world center (accounting for camera position and zoom)
-        const visibleCenterX = (-this.cameraX + this.worldWidth / 2) / this.zoom;
-        const visibleCenterY = (-this.cameraY + this.worldHeight / 2) / this.zoom;
+        const visibleCenterX =
+          (-this.cameraX + this.worldWidth / 2) / this.zoom;
+        const visibleCenterY =
+          (-this.cameraY + this.worldHeight / 2) / this.zoom;
         const direction = new Vector2D(
           particlePosition.x - visibleCenterX,
           particlePosition.y - visibleCenterY
         );
-        const length = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
+        const length = Math.sqrt(
+          direction.x * direction.x + direction.y * direction.y
+        );
         if (length > 0) {
           return new Vector2D(direction.x / length, direction.y / length);
         }
         return new Vector2D(0, 0);
       }
-      case 'custom':
+      case "custom":
         return Vector2D.fromAngle(this.gravity.angle ?? DEFAULT_GRAVITY_ANGLE);
       default:
         return new Vector2D(0, 1); // Default to down
@@ -154,7 +177,9 @@ export class Environment implements Force {
 
     // Apply gravity force
     if (this.gravity.strength !== 0) {
-      const gravityDirection = this.calculateGravityDirection(particle.position);
+      const gravityDirection = this.calculateGravityDirection(
+        particle.position
+      );
       const gravityForce = gravityDirection
         .clone()
         .multiply(this.gravity.strength * particle.mass);
@@ -181,6 +206,10 @@ export class Environment implements Force {
 
     // Store current position for next frame
     this.previousPositions.set(particle.id, currentPosition);
+
+    if (this.damping !== 1) {
+      particle.velocity.multiply(this.damping);
+    }
   }
 
   /**
@@ -201,7 +230,6 @@ export class Environment implements Force {
     this.previousPositions.clear();
   }
 
-
   /**
    * Update world size for 'in' and 'out' gravity calculations
    * This should be called when the system size changes
@@ -213,9 +241,14 @@ export class Environment implements Force {
 }
 
 export function createEnvironmentForce(
-  gravity: { strength?: number; direction?: GravityDirection; angle?: number } = {},
+  gravity: {
+    strength?: number;
+    direction?: GravityDirection;
+    angle?: number;
+  } = {},
   inertia: number = DEFAULT_INERTIA,
-  friction: number = DEFAULT_FRICTION
+  friction: number = DEFAULT_FRICTION,
+  damping: number = DEFAULT_DAMPING
 ): Environment {
   return new Environment({
     gravity: {
@@ -225,8 +258,8 @@ export function createEnvironmentForce(
     },
     inertia,
     friction,
+    damping,
   });
 }
 
 export const defaultEnvironment = createEnvironmentForce();
-
