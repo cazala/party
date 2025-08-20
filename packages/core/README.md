@@ -162,7 +162,7 @@ import { Environment } from "@cazala/party";
 
 const environment = new Environment({
   gravity: {
-    strength: 0.2,
+    strength: 1000,
     direction: "down", // 'up', 'down', 'left', 'right', 'in', 'out', 'custom'
     angle: Math.PI / 2, // Custom angle in radians (only used when direction is 'custom')
   },
@@ -534,7 +534,7 @@ system.import(config);
 // Partial configuration updates
 system.import({
   environment: {
-    gravity: { strength: 0.3, direction: "down" },
+    gravity: { strength: 1000, direction: "down" },
     inertia: 0.1,
     friction: 0.02,
     damping: 0.01,

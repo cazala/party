@@ -80,9 +80,10 @@ for (let i = 0; i < 100; i++) {
 // Add environmental physics
 system.addForce(
   new Environment({
-    gravity: { strength: 0.1, direction: "down" },
-    friction: 0.01,
-    inertia: 0.1,
+    gravity: {
+      strength: 1000,
+      direction: "down",
+    },
   })
 );
 system.addForce(new Boundary({ mode: "bounce", friction: 0.1 }));
