@@ -55,7 +55,13 @@ npm dev
 ### Using the Core Library
 
 ```typescript
-import { System, Particle, Physics, Boundary } from "@cazala/party";
+import {
+  System,
+  Particle,
+  Vector2D,
+  Environment,
+  Boundary,
+} from "@cazala/party";
 
 // Create a particle system
 const system = new System({ width: 800, height: 600 });
@@ -71,9 +77,15 @@ for (let i = 0; i < 100; i++) {
   system.addParticle(particle);
 }
 
-// Add forces
-system.addForce(new Physics({ gravity: { strength: 0.1 } }));
-system.addForce(new Boundary({ mode: "bounce" }));
+// Add environmental physics
+system.addForce(
+  new Environment({
+    gravity: { strength: 0.1, direction: "down" },
+    friction: 0.01,
+    inertia: 0.1,
+  })
+);
+system.addForce(new Boundary({ mode: "bounce", friction: 0.1 }));
 
 // Start the simulation
 system.play();
@@ -127,13 +139,13 @@ The force system uses a four-phase lifecycle:
 
 Available forces include:
 
-- **Physics**: Gravity, inertia, friction
-- **Boundary**: Boundary interactions (bounce, kill, warp)
-- **Collisions**: Particle-particle collision detection and response
+- **Environment**: Gravity, inertia, friction, and damping for environmental physics
+- **Boundary**: Boundary interactions (bounce, kill, warp) with friction support
+- **Collisions**: Particle-particle collision detection and response with friction
 - **Behavior**: Flocking behaviors (cohesion, alignment, separation, wander)
 - **Fluid**: Smoothed Particle Hydrodynamics (SPH) implementation
 - **Sensors**: Environmental sensing with trail-following behaviors
-- **Joints**: Distance constraints between particles
+- **Joints**: Distance constraints between particles with momentum preservation
 - **Interaction**: User-controlled attraction/repulsion forces
 - **Emitters**: Continuous particle emission with lifetime management
 

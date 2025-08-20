@@ -22,7 +22,13 @@ npm install @cazala/party
 ## Quick Start
 
 ```typescript
-import { System, Particle, Vector2D, Physics, Boundary } from "@cazala/party";
+import {
+  System,
+  Particle,
+  Vector2D,
+  Environment,
+  Boundary,
+} from "@cazala/party";
 
 // Create a particle system
 const system = new System({ width: 800, height: 600 });
@@ -42,12 +48,13 @@ for (let i = 0; i < 100; i++) {
   system.addParticle(particle);
 }
 
-// Add physics forces
+// Add environmental physics
 system.addForce(
-  new Physics({
-    gravity: { strength: 0.1, direction: { x: 0, y: 1 } },
+  new Environment({
+    gravity: { strength: 0.1, direction: "down" },
     friction: 0.01,
-    inertia: 0.99,
+    inertia: 0.1,
+    damping: 0.02,
   })
 );
 
@@ -105,7 +112,7 @@ const particle = new Particle({
   size: 8,
   color: "#ff6b35",
   pinned: false, // Whether particle is affected by forces
-  
+
   // Lifetime properties (optional)
   duration: 5000, // Particle lifetime in milliseconds (undefined = infinite)
   endSizeMultiplier: 0.1, // Final size multiplier (interpolated over lifetime)
@@ -146,22 +153,36 @@ interface Force {
 
 ## Available Forces
 
-### Physics
+### Environment
 
-Basic physics simulation with gravity, inertia, and friction:
+Environmental physics simulation including gravity, inertia, friction, and damping:
 
 ```typescript
-import { Physics } from "@cazala/party";
+import { Environment } from "@cazala/party";
 
-const physics = new Physics({
+const environment = new Environment({
   gravity: {
     strength: 0.2,
-    direction: { x: 0, y: 1 }, // Downward
+    direction: "down", // 'up', 'down', 'left', 'right', 'in', 'out', 'custom'
+    angle: Math.PI / 2, // Custom angle in radians (only used when direction is 'custom')
   },
-  inertia: 0.99, // Momentum preservation (0-1)
+  inertia: 0.1, // Momentum preservation based on previous position (0-1)
   friction: 0.01, // Velocity damping (0-1)
+  damping: 0.02, // Direct velocity damping factor (0-1)
 });
 ```
+
+**Gravity Directions:**
+
+- **Directional**: `up`, `down`, `left`, `right` - Standard directional gravity
+- **Radial**: `in` (toward center), `out` (away from center) - Radial gravity fields
+- **Custom**: `custom` - Use custom angle for any direction
+
+**Physics Properties:**
+
+- **Inertia**: Applies momentum based on particle movement between frames, creating realistic motion continuation
+- **Friction**: Applies force opposing current velocity, gradually slowing particles
+- **Damping**: Direct velocity multiplication for immediate velocity reduction
 
 ### Boundary
 
@@ -171,13 +192,24 @@ Boundary interactions for keeping particles within limits:
 import { Boundary } from "@cazala/party";
 
 const boundary = new Boundary({
-  mode: "bounce", // 'bounce', 'kill', or 'warp'
-  bounce: 0.8, // Energy retention on bounce
+  mode: "bounce", // 'bounce', 'kill', 'warp', or 'none'
+  bounce: 0.8, // Energy retention on bounce (0-1)
+  friction: 0.1, // Tangential friction during boundary collisions (0-1)
   repelDistance: 50, // Distance to start repel force
   repelStrength: 0.5, // Strength of boundary repulsion
-  physics: physicsForce, // Optional: reference to physics for friction
 });
 ```
+
+**Boundary Modes:**
+
+- **bounce**: Particles bounce off boundaries with energy retention based on `bounce` coefficient
+- **kill**: Particles are removed when they hit boundaries
+- **warp**: Particles teleport to opposite side when hitting boundaries
+- **none**: No boundary interactions
+
+**Friction Parameter:**
+
+The `friction` parameter applies tangential friction during boundary collisions, reducing velocity perpendicular to the collision normal. This creates more realistic boundary interactions where particles lose speed when sliding along walls.
 
 ### Collisions
 
@@ -188,13 +220,20 @@ import { Collisions } from "@cazala/party";
 
 const collisions = new Collisions({
   enabled: true,
+  enableParticles: true, // Enable particle-particle collisions
   eat: true, // Larger particles consume smaller ones
-  restitution: 0.8, // Collision elasticity
-  momentum: 0.9, // Momentum preservation for joint particles
+  restitution: 0.8, // Collision elasticity (0-1)
+  friction: 0.1, // Tangential friction during collisions (0-1)
   joints: jointsForce, // Optional: reference to joints for joint-particle collisions
-  physics: physicsForce, // Optional: reference to physics for friction
 });
 ```
+
+**Collision Parameters:**
+
+- **restitution**: Controls collision elasticity (0 = perfectly inelastic, 1 = perfectly elastic)
+- **friction**: Applies tangential friction during collisions, reducing relative motion perpendicular to collision normal
+- **eat**: When enabled, larger particles absorb smaller particles on collision, combining their mass and size
+- **enableParticles**: Controls whether particle-particle collisions are processed
 
 ### Behavior (Flocking)
 
@@ -276,6 +315,7 @@ import { Joints } from "@cazala/party";
 const joints = new Joints({
   enabled: true, // Enable/disable joints system
   enableCollisions: true, // Joints interact with collisions
+  momentum: 0.7, // Momentum preservation for joint particles (0-1)
 });
 
 // Create joints between particles
@@ -307,6 +347,15 @@ const currentTolerance = joints.getGlobalTolerance();
 - `0.5` - Break when stress exceeds 50% of maximum expected
 - `0.1` - Break easily under small stress
 - `0.0` - Break immediately with any disturbance
+
+**Momentum Preservation:**
+
+The `momentum` parameter (0-1) controls how much of the velocity change from constraint solving is preserved:
+
+- `1.0` - Full momentum preservation: particle velocities match their actual movement after constraint solving
+- `0.7` - Balanced preservation: maintains most momentum while allowing some constraint-induced dampening (default)
+- `0.3` - Reduced preservation: allows more dampening for stable but less energetic systems
+- `0.0` - No preservation: constraint solving can dramatically alter velocities
 
 ### Interaction
 
@@ -343,7 +392,7 @@ const emitter = new Emitter({
   particleSize: 6,
   particleMass: 1.2,
   colors: ["#ff6b35", "#f7931e", "#ffd700"], // Particle colors (random selection)
-  
+
   // Particle lifetime configuration
   infinite: false, // If false, particles have limited lifetime
   duration: 3000, // Particle lifetime in milliseconds
@@ -424,6 +473,7 @@ const isGlowEnabled = renderer.getGlowEffects();
 ```
 
 **Performance Impact:**
+
 - **With glow effects**: Each particle is rendered with Canvas2D shadow operations, creating a beautiful glow but significantly impacting frame rates
 - **Without glow effects**: Particles use simple fill operations, maximizing performance for large particle counts
 - **Automatic optimization**: When trails are enabled, glow effects are automatically bypassed to prevent visual conflicts and performance degradation
@@ -483,8 +533,21 @@ system.import(config);
 
 // Partial configuration updates
 system.import({
-  physics: {
-    gravity: { strength: 0.3 },
+  environment: {
+    gravity: { strength: 0.3, direction: "down" },
+    inertia: 0.1,
+    friction: 0.02,
+    damping: 0.01,
+  },
+  boundary: {
+    mode: "bounce",
+    bounce: 0.8,
+    friction: 0.1,
+  },
+  collisions: {
+    enabled: true,
+    friction: 0.1,
+    restitution: 0.9,
   },
   behavior: {
     enabled: true,
@@ -498,8 +561,7 @@ system.import({
   },
   joints: {
     enabled: true,
-    stiffness: 0.8, // Set global joint stiffness
-    tolerance: 0.6, // Set global joint tolerance
+    momentum: 0.7, // Momentum preservation
     enableCollisions: true,
   },
   emitters: {

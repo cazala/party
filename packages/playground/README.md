@@ -165,21 +165,28 @@ Delete particles from simulation:
 
 ### Physics Controls (Right Panel)
 
-#### Physics
+#### Environment
 
-- **Gravity**: Direction and strength
-- **Inertia**: Momentum preservation (0-1)
-- **Friction**: Global velocity damping
+- **Gravity**: Direction and strength with support for directional, radial, and custom angles
+- **Inertia**: Position-based momentum preservation (0-1)
+- **Friction**: Force-based velocity damping proportional to mass (0-1)
+- **Damping**: Direct velocity multiplication factor (0-1)
 
 #### Boundary
 
-- **Mode**: Bounce, Kill, or Warp at boundaries
-- **Bounce**: Energy retention on collision
-- **Repel**: Boundary repulsion settings
+- **Mode**: Bounce, Kill, Warp, or None at boundaries
+- **Bounce**: Energy retention on collision (0-1)
+- **Friction**: Tangential friction during boundary collisions (0-1)
+- **Repel**: Boundary repulsion distance and strength settings
 
 #### Collisions
 
-- **Enable**: Particle-particle collisions
+- **Enable Collisions**: Master switch for entire collision system
+- **Particle vs Particle**: Enable particle-particle collisions
+- **Particle vs Joint**: Enable particle-joint collisions
+- **Joint vs Joint**: Enable joint crossing resolution
+- **Restitution**: Collision elasticity (0-1)
+- **Friction**: Tangential friction during collisions (0-1)
 - **Eating**: Larger particles consume smaller ones
 
 #### Behavior (Flocking)
@@ -207,8 +214,11 @@ Delete particles from simulation:
 
 #### Joints
 
-- **Constraint Settings**: Restitution and friction
-- **Collision Integration**: Joint-collision interactions
+- **Enable Joints**: Master switch for joint system
+- **Tolerance**: Joint breaking stress tolerance (0-1)
+- **Max Iterations**: Constraint solving iterations for rigidity
+- **Momentum**: Momentum preservation for joint particles (0-1)
+- **Clear All**: Remove all existing joints
 
 ## Keyboard Shortcuts
 
@@ -263,10 +273,11 @@ Delete particles from simulation:
 Saved sessions include:
 
 - All particle positions, velocities, and properties
-- Complete physics configuration
+- Complete physics configuration (environment, boundary, collisions, behavior, fluid, sensors, joints)
 - Visual settings and camera position
 - Active tool mode and spawn settings
 - Emitter configurations with lifetime settings
+- Joint network topology and properties
 
 ## Educational Use
 
@@ -274,9 +285,10 @@ The playground is excellent for exploring physics concepts:
 
 ### Basic Physics
 
-- **Gravity**: Observe acceleration and terminal velocity
-- **Friction**: Study energy dissipation
-- **Collisions**: Elastic and inelastic interactions
+- **Gravity**: Observe acceleration and terminal velocity with multiple gravity modes
+- **Inertia vs Friction vs Damping**: Compare different momentum preservation and energy dissipation methods
+- **Collisions**: Elastic and inelastic interactions with tangential friction effects
+- **Boundary Interactions**: Study different boundary behaviors and their friction effects
 
 ### Emergent Behaviors
 
@@ -293,9 +305,10 @@ The playground is excellent for exploring physics concepts:
 
 ### Complex Systems
 
-- **Sensor Networks**: Environmental navigation
-- **Constraint Systems**: Joint-based structures
+- **Sensor Networks**: Environmental navigation and trail-following
+- **Constraint Systems**: Joint-based structures with momentum preservation
 - **Multi-agent Systems**: Individual vs collective behavior
+- **Rigid Body Dynamics**: Joint networks with collision interactions and stress-based breaking
 
 ## Development
 
