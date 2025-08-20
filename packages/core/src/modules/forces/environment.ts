@@ -19,7 +19,7 @@ export const DEFAULT_GRAVITY_DIRECTION: GravityDirection = "down";
 export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downward)
 export const DEFAULT_INERTIA = 0;
 export const DEFAULT_FRICTION = 0;
-export const DEFAULT_DAMPING = 1;
+export const DEFAULT_DAMPING = 0;
 
 export interface EnvironmentOptions {
   gravity?: {
@@ -91,7 +91,6 @@ export class Environment implements Force {
   setDamping(damping: number): void {
     this.damping = Math.max(0, Math.min(1, damping)); // Clamp between 0 and 1
   }
-
 
   setWorldSize(width: number, height: number): void {
     this.worldWidth = width;
@@ -204,8 +203,8 @@ export class Environment implements Force {
       particle.applyForce(frictionForce);
     }
 
-    if (this.damping !== 1) {
-      particle.velocity.multiply(this.damping);
+    if (this.damping !== 0) {
+      particle.velocity.multiply(1 - this.damping * 0.2);
     }
   }
 

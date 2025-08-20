@@ -93,7 +93,6 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
     }
   };
 
-
   const getDirectionLabel = (direction: GravityDirection): string => {
     switch (direction) {
       case "up":
@@ -206,19 +205,18 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
 
       <div className="control-group">
         <label>
-          Damping: {damping.toFixed(3)}
+          Damping: {damping.toFixed(2)}
           <input
             type="range"
-            min="0.8"
+            min="0"
             max="1"
-            step="0.001"
+            step="0.01"
             value={damping}
             onChange={(e) => handleDampingChange(parseFloat(e.target.value))}
             className="slider"
           />
         </label>
       </div>
-
     </div>
   );
 }
