@@ -5,6 +5,7 @@ import {
   Environment,
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_DIRECTION,
+  DEFAULT_INERTIA,
   DEFAULT_FRICTION,
   DEFAULT_DAMPING,
   DEFAULT_MOMENTUM_PRESERVATION,
@@ -901,6 +902,7 @@ export class System {
             direction: force.gravity.direction,
             angle: force.gravity.angle,
           },
+          inertia: force.inertia,
           friction: force.friction,
           damping: force.damping,
           momentum: force.momentum,
@@ -993,6 +995,7 @@ export class System {
           if (config.environment.gravity?.angle !== undefined) {
             force.setGravityAngle(config.environment.gravity.angle);
           }
+          force.setInertia(config.environment.inertia ?? DEFAULT_INERTIA);
           force.setFriction(config.environment.friction ?? DEFAULT_FRICTION);
           force.setDamping(config.environment.damping ?? DEFAULT_DAMPING);
           force.setMomentum(
