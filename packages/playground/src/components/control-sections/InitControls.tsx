@@ -573,7 +573,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
                 <input
                   type="range"
                   min="50"
-                  max="1000"
+                  max="10000"
                   step="10"
                   value={squareSize}
                   onChange={(e) => {
