@@ -2,6 +2,7 @@ import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import {
   Collisions,
   Joints,
+  DEFAULT_COLLISIONS_ENABLED,
   DEFAULT_COLLISIONS_ENABLE_PARTICLES,
   DEFAULT_COLLISIONS_EAT,
   DEFAULT_COLLISIONS_RESTITUTION,
@@ -18,6 +19,7 @@ interface CollisionControlsProps {
 
 export interface CollisionControlsRef {
   getState: () => {
+    collisionsEnabled: boolean;
     particleCollisionsEnabled: boolean;
     jointCollisionsEnabled: boolean;
     jointCrossingResolutionEnabled: boolean;
@@ -26,6 +28,7 @@ export interface CollisionControlsRef {
     collisionsEat: boolean;
   };
   setState: (state: Partial<{
+    collisionsEnabled: boolean;
     particleCollisionsEnabled: boolean;
     jointCollisionsEnabled: boolean;
     jointCrossingResolutionEnabled: boolean;
@@ -40,6 +43,7 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
   joints,
 }, ref) => {
   // Collision states
+  const [collisionsEnabled, setCollisionsEnabled] = useState(DEFAULT_COLLISIONS_ENABLED);
   const [particleCollisionsEnabled, setParticleCollisionsEnabled] = useState(
     DEFAULT_COLLISIONS_ENABLE_PARTICLES
   );
@@ -58,6 +62,7 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
   // Update states when modules change
   useEffect(() => {
     if (collisions) {
+      setCollisionsEnabled(collisions.enabled);
       setParticleCollisionsEnabled(collisions.enableParticles);
       setCollisionsEat(collisions.eat);
       setRestitution(collisions.restitution);
@@ -73,6 +78,13 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
   }, [joints]);
 
   // Collision handlers
+  const handleCollisionsEnabledChange = (enabled: boolean) => {
+    setCollisionsEnabled(enabled);
+    if (collisions) {
+      collisions.setEnabled(enabled);
+    }
+  };
+
   const handleParticleCollisionsEnabledChange = (enabled: boolean) => {
     setParticleCollisionsEnabled(enabled);
     if (collisions) {
@@ -118,6 +130,7 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
   // Expose state management methods
   useImperativeHandle(ref, () => ({
     getState: () => ({
+      collisionsEnabled,
       particleCollisionsEnabled,
       jointCollisionsEnabled,
       jointCrossingResolutionEnabled,
@@ -126,6 +139,9 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
       collisionsEat,
     }),
     setState: (state) => {
+      if (state.collisionsEnabled !== undefined) {
+        setCollisionsEnabled(state.collisionsEnabled);
+      }
       if (state.particleCollisionsEnabled !== undefined) {
         setParticleCollisionsEnabled(state.particleCollisionsEnabled);
       }
@@ -145,7 +161,7 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
         setCollisionsEat(state.collisionsEat);
       }
     },
-  }), [particleCollisionsEnabled, jointCollisionsEnabled, jointCrossingResolutionEnabled, restitution, friction, collisionsEat]);
+  }), [collisionsEnabled, particleCollisionsEnabled, jointCollisionsEnabled, jointCrossingResolutionEnabled, restitution, friction, collisionsEat]);
 
   return (
     <div className="control-section">
@@ -153,10 +169,26 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
         <label>
           <input
             type="checkbox"
+            checked={collisionsEnabled}
+            onChange={(e) =>
+              handleCollisionsEnabledChange(e.target.checked)
+            }
+          />
+          Enable Collisions
+          <Tooltip content="Enable/disable the entire collision system" />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
             checked={particleCollisionsEnabled}
+            disabled={!collisionsEnabled}
             onChange={(e) =>
               handleParticleCollisionsEnabledChange(e.target.checked)
             }
+            className={`checkbox ${!collisionsEnabled ? "disabled" : ""}`}
           />
           Particle vs Particle
           <Tooltip content="Enable collisions between particles" />
@@ -168,10 +200,11 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
           <input
             type="checkbox"
             checked={jointCollisionsEnabled}
+            disabled={!collisionsEnabled}
             onChange={(e) =>
               handleJointCollisionsEnabledChange(e.target.checked)
             }
-            className="checkbox"
+            className={`checkbox ${!collisionsEnabled ? "disabled" : ""}`}
           />
           Particle vs Joint
           <Tooltip content="Enable collisions between particles and joints" />
@@ -183,10 +216,11 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
           <input
             type="checkbox"
             checked={jointCrossingResolutionEnabled}
+            disabled={!collisionsEnabled}
             onChange={(e) =>
               handleJointCrossingResolutionEnabledChange(e.target.checked)
             }
-            className="checkbox"
+            className={`checkbox ${!collisionsEnabled ? "disabled" : ""}`}
           />
           Joint vs Joint
           <Tooltip content="Enable crossing resolution between joints to prevent structural overlaps" />
@@ -202,10 +236,11 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
             max="1"
             step="0.001"
             value={restitution}
+            disabled={!collisionsEnabled}
             onChange={(e) =>
               handleRestitutionChange(parseFloat(e.target.value))
             }
-            className="slider"
+            className={`slider ${!collisionsEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -219,8 +254,9 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
             max="1"
             step="0.001"
             value={friction}
+            disabled={!collisionsEnabled}
             onChange={(e) => handleFrictionChange(parseFloat(e.target.value))}
-            className="slider"
+            className={`slider ${!collisionsEnabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -230,10 +266,10 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
           <input
             type="checkbox"
             checked={collisionsEat}
-            disabled={!particleCollisionsEnabled}
+            disabled={!collisionsEnabled || !particleCollisionsEnabled}
             onChange={(e) => handleCollisionsEatChange(e.target.checked)}
             className={`checkbox ${
-              !particleCollisionsEnabled ? "disabled" : ""
+              !collisionsEnabled || !particleCollisionsEnabled ? "disabled" : ""
             }`}
           />
           Enable Eat
