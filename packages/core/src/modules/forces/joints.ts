@@ -42,6 +42,7 @@ export const DEFAULT_JOINT_TOLERANCE = 1.0;
 export const DEFAULT_JOINT_CROSSING_RESOLUTION = true;
 export const DEFAULT_MAX_ITERATIONS = 10;
 export const DEFAULT_CONVERGENCE_THRESHOLD = 0.001;
+export const DEFAULT_MOMENTUM_PRESERVATION = 0.7;
 
 export interface JointOptions {
   particleA: Particle;
@@ -60,6 +61,7 @@ export interface JointsOptions {
   enableCrossingResolution?: boolean;
   maxIterations?: number;
   convergenceThreshold?: number;
+  momentum?: number;
 }
 
 /**
@@ -368,10 +370,14 @@ export class Joints implements Force, RigidBody {
   public enableCrossingResolution: boolean;
   public maxIterations: number;
   public convergenceThreshold: number;
+  public momentum: number; // Momentum preservation for joint particles
   private globalTolerance: number = DEFAULT_JOINT_TOLERANCE;
 
   // Track grabbed particles and their previous positions for velocity calculation
   private grabbedParticlePositions: Map<number, Vector2D> = new Map();
+  
+  // Store positions for momentum preservation (before physics integration)
+  private prePhysicsPositions: Map<number, Vector2D> = new Map();
 
   // Rigid body group caching for performance optimization
   private rigidBodyGroupCache: Map<number, Set<Particle>> = new Map();
@@ -387,6 +393,7 @@ export class Joints implements Force, RigidBody {
     this.maxIterations = options.maxIterations ?? DEFAULT_MAX_ITERATIONS;
     this.convergenceThreshold =
       options.convergenceThreshold ?? DEFAULT_CONVERGENCE_THRESHOLD;
+    this.momentum = options.momentum ?? DEFAULT_MOMENTUM_PRESERVATION;
   }
 
   setEnabled(enabled: boolean): void {
@@ -407,6 +414,10 @@ export class Joints implements Force, RigidBody {
 
   setConvergenceThreshold(threshold: number): void {
     this.convergenceThreshold = Math.max(0.0001, Math.min(0.1, threshold));
+  }
+
+  setMomentum(momentum: number): void {
+    this.momentum = Math.max(0, Math.min(1, momentum)); // Clamp between 0 and 1
   }
 
   /**
@@ -513,6 +524,7 @@ export class Joints implements Force, RigidBody {
    */
   clear(): void {
     this.joints.clear();
+    this.prePhysicsPositions.clear();
     // Invalidate cache since all joints are cleared
     this.invalidateRigidBodyGroupCache();
   }
@@ -819,8 +831,17 @@ export class Joints implements Force, RigidBody {
   /**
    * Force interface: prepare joints before physics integration
    */
-  before(particles: Particle[], _deltaTime: number): void {
+  before(particles: Particle[], deltaTime: number): void {
     if (!this.enabled) return;
+
+    // Store positions before physics integration for momentum preservation
+    if (deltaTime > 0) {
+      for (const particle of particles) {
+        if (this.hasJoint(particle.id)) {
+          this.prePhysicsPositions.set(particle.id, particle.position.clone());
+        }
+      }
+    }
 
     // Remove invalid joints (particles that have been deleted)
     const invalidJoints: string[] = [];
@@ -855,6 +876,40 @@ export class Joints implements Force, RigidBody {
 
     // Exhaustive constraint solving with joint crossing resolution
     this.solveConstraintsExhaustively(spatialGrid);
+  }
+
+  /**
+   * Force interface: apply momentum preservation after physics integration
+   */
+  after(particles: Particle[], deltaTime: number, _spatialGrid: SpatialGrid): void {
+    if (!this.enabled || deltaTime <= 0) return;
+    this.applyMomentumPreservation(particles, deltaTime);
+  }
+
+  /**
+   * Apply momentum preservation to joint particles
+   * Called after physics integration with prePhysicsPositions
+   */
+  applyMomentumPreservation(particles: Particle[], deltaTime: number): void {
+    if (deltaTime <= 0) return;
+
+    // Update velocities for constrained particles to match actual movement
+    for (const particle of particles) {
+      if (!particle.pinned && this.hasJoint(particle.id)) {
+        const prePhysicsPosition = this.prePhysicsPositions.get(particle.id);
+        if (prePhysicsPosition) {
+          const totalMovement = particle.position
+            .clone()
+            .subtract(prePhysicsPosition);
+          const actualVelocity = totalMovement.divide(deltaTime);
+
+          particle.velocity = particle.velocity
+            .clone()
+            .multiply(1 - this.momentum)
+            .add(actualVelocity.multiply(this.momentum));
+        }
+      }
+    }
   }
 
   /**

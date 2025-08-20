@@ -2,7 +2,6 @@ import { Vector2D } from "../vector";
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
-import { Joints } from "./joints";
 
 // Gravity direction enum
 export type GravityDirection =
@@ -21,7 +20,6 @@ export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downwa
 export const DEFAULT_INERTIA = 0;
 export const DEFAULT_FRICTION = 0;
 export const DEFAULT_DAMPING = 1;
-export const DEFAULT_MOMENTUM_PRESERVATION = 0.7;
 
 export interface EnvironmentOptions {
   gravity?: {
@@ -34,8 +32,6 @@ export interface EnvironmentOptions {
   worldWidth?: number; // For 'in'/'out' gravity calculations
   worldHeight?: number; // For 'in'/'out' gravity calculations
   damping?: number;
-  momentum?: number; // Momentum preservation for joint particles
-  joints?: any; // Reference to joints module
 }
 
 export class Environment implements Force {
@@ -47,7 +43,6 @@ export class Environment implements Force {
   public inertia: number;
   public friction: number;
   public damping: number;
-  public momentum: number;
   public worldWidth: number;
   public worldHeight: number;
 
@@ -58,8 +53,6 @@ export class Environment implements Force {
 
   // Store positions before physics integration for inertia and momentum preservation
   private previousPositions: Map<number, Vector2D> = new Map();
-  // Reference to joints module for momentum preservation
-  private joints?: Joints;
 
   constructor(options: EnvironmentOptions = {}) {
     this.gravity = {
@@ -70,10 +63,8 @@ export class Environment implements Force {
     this.inertia = options.inertia ?? DEFAULT_INERTIA;
     this.friction = options.friction ?? DEFAULT_FRICTION;
     this.damping = options.damping ?? DEFAULT_DAMPING;
-    this.momentum = options.momentum ?? DEFAULT_MOMENTUM_PRESERVATION;
     this.worldWidth = options.worldWidth ?? 1200;
     this.worldHeight = options.worldHeight ?? 800;
-    this.joints = options.joints;
   }
 
   // Getters for backward compatibility
@@ -101,13 +92,6 @@ export class Environment implements Force {
     this.damping = Math.max(0, Math.min(1, damping)); // Clamp between 0 and 1
   }
 
-  setMomentum(momentum: number): void {
-    this.momentum = Math.max(0, Math.min(1, momentum)); // Clamp between 0 and 1
-  }
-
-  setJoints(joints: any): void {
-    this.joints = joints;
-  }
 
   setWorldSize(width: number, height: number): void {
     this.worldWidth = width;
@@ -239,44 +223,6 @@ export class Environment implements Force {
   /**
    * Clear all stored positions (useful for resets)
    */
-  before(particles: Particle[], deltaTime: number): void {
-    if (deltaTime <= 0) return;
-    // Store positions before physics integration for both inertia and momentum preservation
-    for (const particle of particles) {
-      this.previousPositions.set(particle.id, particle.position.clone());
-    }
-  }
-
-  after(particles: Particle[], deltaTime: number, _spatialGrid: any): void {
-    if (!this.joints || deltaTime <= 0) return;
-    this.applyMomentumPreservation(particles, deltaTime);
-  }
-
-  /**
-   * Apply momentum preservation to joint particles
-   * Called after physics integration with prePhysicsPositions
-   */
-  applyMomentumPreservation(particles: Particle[], deltaTime: number): void {
-    if (!this.joints || deltaTime <= 0) return;
-
-    // Update velocities for constrained particles to match actual movement
-    for (const particle of particles) {
-      if (!particle.pinned && this.joints?.hasJoint?.(particle.id)) {
-        const previousPosition = this.previousPositions.get(particle.id);
-        if (previousPosition) {
-          const totalMovement = particle.position
-            .clone()
-            .subtract(previousPosition);
-          const actualVelocity = totalMovement.divide(deltaTime);
-
-          particle.velocity = particle.velocity
-            .clone()
-            .multiply(1 - this.momentum)
-            .add(actualVelocity.multiply(this.momentum));
-        }
-      }
-    }
-  }
 
   clear(): void {
     this.previousPositions.clear();
@@ -300,9 +246,7 @@ export function createEnvironmentForce(
   } = {},
   inertia: number = DEFAULT_INERTIA,
   friction: number = DEFAULT_FRICTION,
-  damping: number = DEFAULT_DAMPING,
-  momentum: number = DEFAULT_MOMENTUM_PRESERVATION,
-  joints?: Joints
+  damping: number = DEFAULT_DAMPING
 ): Environment {
   return new Environment({
     gravity: {
@@ -313,8 +257,6 @@ export function createEnvironmentForce(
     inertia,
     friction,
     damping,
-    momentum,
-    joints,
   });
 }
 

@@ -9,7 +9,6 @@ import {
   radToDeg,
   degToRad,
   DEFAULT_DAMPING,
-  DEFAULT_MOMENTUM_PRESERVATION,
 } from "@cazala/party";
 
 type GravityDirection =
@@ -38,7 +37,6 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
   const [inertia, setInertia] = useState(DEFAULT_INERTIA);
   const [friction, setFriction] = useState(DEFAULT_FRICTION);
   const [damping, setDamping] = useState(DEFAULT_DAMPING);
-  const [momentum, setMomentum] = useState(DEFAULT_MOMENTUM_PRESERVATION);
 
   useEffect(() => {
     if (environment) {
@@ -50,7 +48,6 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
       setInertia(environment.inertia);
       setFriction(environment.friction);
       setDamping(environment.damping);
-      setMomentum(environment.momentum);
     }
   }, [environment]);
 
@@ -96,12 +93,6 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
     }
   };
 
-  const handleMomentumChange = (value: number) => {
-    setMomentum(value);
-    if (environment) {
-      environment.setMomentum(value);
-    }
-  };
 
   const getDirectionLabel = (direction: GravityDirection): string => {
     switch (direction) {
@@ -228,20 +219,6 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
         </label>
       </div>
 
-      <div className="control-group">
-        <label>
-          Momentum: {momentum.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={momentum}
-            onChange={(e) => handleMomentumChange(parseFloat(e.target.value))}
-            className="slider"
-          />
-        </label>
-      </div>
     </div>
   );
 }

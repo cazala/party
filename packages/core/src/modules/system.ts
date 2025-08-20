@@ -8,7 +8,6 @@ import {
   DEFAULT_INERTIA,
   DEFAULT_FRICTION,
   DEFAULT_DAMPING,
-  DEFAULT_MOMENTUM_PRESERVATION,
 } from "./forces/environment";
 import {
   Boundary,
@@ -70,6 +69,7 @@ import {
   Joints,
   DEFAULT_JOINTS_ENABLED,
   DEFAULT_JOINT_TOLERANCE,
+  DEFAULT_MOMENTUM_PRESERVATION,
 } from "./forces/joints";
 import { Emitters } from "./emitters";
 import { SerializedEmitter } from "./emitter";
@@ -162,8 +162,6 @@ export interface Config {
     friction?: number;
     /** Velocity damping factor (0-1, default: 1) */
     damping?: number;
-    /** Momentum preservation for joint particles (0-1, default: 0.7) */
-    momentum?: number;
   };
 
   /** Boundary behavior settings */
@@ -284,6 +282,8 @@ export interface Config {
     enableCrossingResolution?: boolean;
     /** Friction applied to connected particles */
     friction?: number;
+    /** Momentum preservation for joint particles (0-1, default: 0.7) */
+    momentum?: number;
   };
 
   /** Particle emitters settings */
@@ -905,7 +905,6 @@ export class System {
           inertia: force.inertia,
           friction: force.friction,
           damping: force.damping,
-          momentum: force.momentum,
         };
       } else if (force instanceof Boundary) {
         config.boundary = {
@@ -968,6 +967,7 @@ export class System {
           tolerance: force.getGlobalTolerance(),
           enableCollisions: force.enableCollisions,
           enableCrossingResolution: force.enableCrossingResolution,
+          momentum: force.momentum,
         };
       }
     }
@@ -998,9 +998,6 @@ export class System {
           force.setInertia(config.environment.inertia ?? DEFAULT_INERTIA);
           force.setFriction(config.environment.friction ?? DEFAULT_FRICTION);
           force.setDamping(config.environment.damping ?? DEFAULT_DAMPING);
-          force.setMomentum(
-            config.environment.momentum ?? DEFAULT_MOMENTUM_PRESERVATION
-          );
         }
       } else if (force instanceof Boundary && config.boundary) {
         force.bounce = config.boundary.bounce ?? DEFAULT_BOUNDARY_BOUNCE;
@@ -1113,6 +1110,9 @@ export class System {
             config.joints.enableCrossingResolution
           );
         }
+        force.setMomentum(
+          config.joints.momentum ?? DEFAULT_MOMENTUM_PRESERVATION
+        );
       }
     }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Joints, getIdCounter } from "@cazala/party";
+import { Joints, getIdCounter, DEFAULT_MOMENTUM_PRESERVATION } from "@cazala/party";
 import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
 
 interface JointControlsProps {
@@ -12,6 +12,7 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
   const [jointCount, setJointCount] = useState(0);
   const [tolerance, setTolerance] = useState(1.0);
   const [maxIterations, setMaxIterations] = useState(10);
+  const [momentum, setMomentum] = useState(DEFAULT_MOMENTUM_PRESERVATION);
 
   // Update local state when joints changes
   useEffect(() => {
@@ -20,6 +21,7 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
       setJointCount(joints.getJointCount());
       setTolerance(joints.getGlobalTolerance());
       setMaxIterations(joints.maxIterations);
+      setMomentum(joints.momentum);
     }
   }, [joints]);
 
@@ -52,6 +54,13 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
     setMaxIterations(value);
     if (joints) {
       joints.setMaxIterations(value);
+    }
+  };
+
+  const handleMomentumChange = (value: number) => {
+    setMomentum(value);
+    if (joints) {
+      joints.setMomentum(value);
     }
   };
 
@@ -125,6 +134,26 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
         </div>
       </div>
 
+      <div className="control-group">
+        <label>Momentum: {momentum.toFixed(2)}</label>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={momentum}
+          onChange={(e) => handleMomentumChange(parseFloat(e.target.value))}
+          className="slider"
+          disabled={!enabled}
+          style={{
+            width: "100%",
+            marginTop: "4px",
+          }}
+        />
+        <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
+          Momentum preservation for joint particles (0 = no preservation, 1 = full preservation)
+        </div>
+      </div>
 
       <div className="control-group">
         <button
