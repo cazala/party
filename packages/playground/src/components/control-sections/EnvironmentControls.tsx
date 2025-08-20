@@ -4,6 +4,7 @@ import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_DIRECTION,
   DEFAULT_GRAVITY_ANGLE,
+  DEFAULT_INERTIA,
   DEFAULT_FRICTION,
   radToDeg,
   degToRad,
@@ -34,6 +35,7 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
   const [gravityAngle, setGravityAngle] = useState(
     radToDeg(DEFAULT_GRAVITY_ANGLE)
   ); // Convert radians to degrees for UI
+  const [inertia, setInertia] = useState(DEFAULT_INERTIA);
   const [friction, setFriction] = useState(DEFAULT_FRICTION);
   const [damping, setDamping] = useState(DEFAULT_DAMPING);
   const [momentum, setMomentum] = useState(DEFAULT_MOMENTUM_PRESERVATION);
@@ -45,6 +47,7 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
       setGravityAngle(
         radToDeg(environment.gravity.angle ?? DEFAULT_GRAVITY_ANGLE)
       );
+      setInertia(environment.inertia);
       setFriction(environment.friction);
       setDamping(environment.damping);
       setMomentum(environment.momentum);
@@ -69,6 +72,13 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
     setGravityAngle(angle); // Store degrees in UI state
     if (environment) {
       environment.setGravityAngle(degToRad(angle)); // Convert to radians for core library
+    }
+  };
+
+  const handleInertiaChange = (value: number) => {
+    setInertia(value);
+    if (environment) {
+      environment.setInertia(value);
     }
   };
 
@@ -175,12 +185,27 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
 
       <div className="control-group">
         <label>
+          Inertia: {inertia.toFixed(2)}
+          <input
+            type="range"
+            min="0"
+            max="10"
+            step="0.01"
+            value={inertia}
+            onChange={(e) => handleInertiaChange(parseFloat(e.target.value))}
+            className="slider"
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
           Friction: {friction.toFixed(2)}
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.001"
+            max="10"
+            step="0.01"
             value={friction}
             onChange={(e) => handleFrictionChange(parseFloat(e.target.value))}
             className="slider"

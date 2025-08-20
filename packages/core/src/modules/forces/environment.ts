@@ -18,6 +18,7 @@ export type GravityDirection =
 export const DEFAULT_GRAVITY_STRENGTH = 0;
 export const DEFAULT_GRAVITY_DIRECTION: GravityDirection = "down";
 export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downward)
+export const DEFAULT_INERTIA = 0;
 export const DEFAULT_FRICTION = 0;
 export const DEFAULT_DAMPING = 1;
 export const DEFAULT_MOMENTUM_PRESERVATION = 0.7;
@@ -28,6 +29,7 @@ export interface EnvironmentOptions {
     direction?: GravityDirection;
     angle?: number; // Only used when direction is 'custom'
   };
+  inertia?: number;
   friction?: number;
   worldWidth?: number; // For 'in'/'out' gravity calculations
   worldHeight?: number; // For 'in'/'out' gravity calculations
@@ -42,6 +44,7 @@ export class Environment implements Force {
     direction: GravityDirection;
     angle?: number; // Only for custom direction
   };
+  public inertia: number;
   public friction: number;
   public damping: number;
   public momentum: number;
@@ -64,6 +67,7 @@ export class Environment implements Force {
       direction: options.gravity?.direction ?? DEFAULT_GRAVITY_DIRECTION,
       angle: options.gravity?.angle ?? DEFAULT_GRAVITY_ANGLE,
     };
+    this.inertia = options.inertia ?? DEFAULT_INERTIA;
     this.friction = options.friction ?? DEFAULT_FRICTION;
     this.damping = options.damping ?? DEFAULT_DAMPING;
     this.momentum = options.momentum ?? DEFAULT_MOMENTUM_PRESERVATION;
@@ -114,6 +118,10 @@ export class Environment implements Force {
     this.cameraX = cameraX;
     this.cameraY = cameraY;
     this.zoom = zoom;
+  }
+
+  setInertia(inertia: number): void {
+    this.inertia = Math.max(0, Math.min(1, inertia)); // Clamp between 0 and 1
   }
 
   setFriction(friction: number): void {
@@ -179,6 +187,18 @@ export class Environment implements Force {
   apply(particle: Particle, _spatialGrid: SpatialGrid): void {
     if (particle.pinned || particle.grabbed) {
       return;
+    }
+
+    // Apply inertia based on previous position
+    if (this.inertia > 0) {
+      const previousPosition = this.previousPositions.get(particle.id);
+      if (previousPosition) {
+        const movement = particle.position.clone().subtract(previousPosition);
+        const inertiaForce = movement.multiply(this.inertia * particle.mass);
+        particle.applyForce(inertiaForce);
+      }
+      // Store current position for next frame
+      this.previousPositions.set(particle.id, particle.position.clone());
     }
 
     // Apply gravity force
@@ -278,8 +298,11 @@ export function createEnvironmentForce(
     direction?: GravityDirection;
     angle?: number;
   } = {},
+  inertia: number = DEFAULT_INERTIA,
   friction: number = DEFAULT_FRICTION,
-  damping: number = DEFAULT_DAMPING
+  damping: number = DEFAULT_DAMPING,
+  momentum: number = DEFAULT_MOMENTUM_PRESERVATION,
+  joints?: Joints
 ): Environment {
   return new Environment({
     gravity: {
@@ -287,8 +310,11 @@ export function createEnvironmentForce(
       direction: gravity.direction ?? DEFAULT_GRAVITY_DIRECTION,
       angle: gravity.angle ?? DEFAULT_GRAVITY_ANGLE,
     },
+    inertia,
     friction,
     damping,
+    momentum,
+    joints,
   });
 }
 
