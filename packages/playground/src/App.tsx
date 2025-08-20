@@ -200,11 +200,14 @@ function App() {
           <canvas
             ref={canvasRef}
             id="canvas"
-            className={
+            className={[
               toolMode === "grab"
                 ? `grab-tool${!!currentlyGrabbedParticle ? " grabbing" : ""}`
-                : ""
-            }
+                : "",
+              isFullscreen ? "fullscreen" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             width={
               isFullscreen
                 ? size.width

@@ -33,6 +33,12 @@
   margin-top: 60px; /* Push canvas below ToolBar */
 }
 
+/* Fullscreen canvas styling - no margins/offsets when in fullscreen mode */
+#canvas.fullscreen {
+  height: 100% !important;
+  margin-top: 0 !important;
+}
+
 /* Cursor styles for different tool modes */
 #canvas.grab-tool {
   cursor: grab;
