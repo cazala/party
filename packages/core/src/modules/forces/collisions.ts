@@ -15,7 +15,7 @@ export const DEFAULT_COLLISIONS_ENABLED = true;
 export const DEFAULT_COLLISIONS_ENABLE_PARTICLES = true;
 export const DEFAULT_COLLISIONS_EAT = false;
 export const DEFAULT_COLLISIONS_RESTITUTION = 0.95;
-export const DEFAULT_COLLISIONS_FRICTION = 0;
+export const DEFAULT_COLLISIONS_FRICTION = 0.1;
 
 // Mass clamping constants to prevent collision instabilities
 const MIN_COLLISION_MASS = 1;
