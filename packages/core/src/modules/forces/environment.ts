@@ -2,6 +2,7 @@ import { Vector2D } from "../vector";
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
+import { Joints } from "./joints";
 
 // Gravity direction enum
 export type GravityDirection =
@@ -17,9 +18,9 @@ export type GravityDirection =
 export const DEFAULT_GRAVITY_STRENGTH = 0;
 export const DEFAULT_GRAVITY_DIRECTION: GravityDirection = "down";
 export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downward)
-export const DEFAULT_INERTIA = 0.1;
-export const DEFAULT_FRICTION = 0.1;
+export const DEFAULT_FRICTION = 0;
 export const DEFAULT_DAMPING = 1;
+export const DEFAULT_MOMENTUM_PRESERVATION = 0.7;
 
 export interface EnvironmentOptions {
   gravity?: {
@@ -27,11 +28,12 @@ export interface EnvironmentOptions {
     direction?: GravityDirection;
     angle?: number; // Only used when direction is 'custom'
   };
-  inertia?: number;
   friction?: number;
   worldWidth?: number; // For 'in'/'out' gravity calculations
   worldHeight?: number; // For 'in'/'out' gravity calculations
   damping?: number;
+  momentum?: number; // Momentum preservation for joint particles
+  joints?: any; // Reference to joints module
 }
 
 export class Environment implements Force {
@@ -40,9 +42,9 @@ export class Environment implements Force {
     direction: GravityDirection;
     angle?: number; // Only for custom direction
   };
-  public inertia: number;
   public friction: number;
   public damping: number;
+  public momentum: number;
   public worldWidth: number;
   public worldHeight: number;
 
@@ -51,8 +53,10 @@ export class Environment implements Force {
   private cameraY: number = 0;
   private zoom: number = 1;
 
-  // Store previous positions for inertia calculation
+  // Store positions before physics integration for inertia and momentum preservation
   private previousPositions: Map<number, Vector2D> = new Map();
+  // Reference to joints module for momentum preservation
+  private joints?: Joints;
 
   constructor(options: EnvironmentOptions = {}) {
     this.gravity = {
@@ -60,11 +64,12 @@ export class Environment implements Force {
       direction: options.gravity?.direction ?? DEFAULT_GRAVITY_DIRECTION,
       angle: options.gravity?.angle ?? DEFAULT_GRAVITY_ANGLE,
     };
-    this.inertia = options.inertia ?? DEFAULT_INERTIA;
     this.friction = options.friction ?? DEFAULT_FRICTION;
     this.damping = options.damping ?? DEFAULT_DAMPING;
+    this.momentum = options.momentum ?? DEFAULT_MOMENTUM_PRESERVATION;
     this.worldWidth = options.worldWidth ?? 1200;
     this.worldHeight = options.worldHeight ?? 800;
+    this.joints = options.joints;
   }
 
   // Getters for backward compatibility
@@ -92,6 +97,14 @@ export class Environment implements Force {
     this.damping = Math.max(0, Math.min(1, damping)); // Clamp between 0 and 1
   }
 
+  setMomentum(momentum: number): void {
+    this.momentum = Math.max(0, Math.min(1, momentum)); // Clamp between 0 and 1
+  }
+
+  setJoints(joints: any): void {
+    this.joints = joints;
+  }
+
   setWorldSize(width: number, height: number): void {
     this.worldWidth = width;
     this.worldHeight = height;
@@ -101,10 +114,6 @@ export class Environment implements Force {
     this.cameraX = cameraX;
     this.cameraY = cameraY;
     this.zoom = zoom;
-  }
-
-  setInertia(inertia: number): void {
-    this.inertia = Math.max(0, Math.min(1, inertia)); // Clamp between 0 and 1
   }
 
   setFriction(friction: number): void {
@@ -172,9 +181,6 @@ export class Environment implements Force {
       return;
     }
 
-    const currentPosition = particle.position.clone();
-    const previousPosition = this.previousPositions.get(particle.id);
-
     // Apply gravity force
     if (this.gravity.strength !== 0) {
       const gravityDirection = this.calculateGravityDirection(
@@ -186,16 +192,6 @@ export class Environment implements Force {
       particle.applyForce(gravityForce);
     }
 
-    // Apply inertia (momentum from actual position change)
-    if (this.inertia > 0 && previousPosition) {
-      // Calculate actual velocity from position change
-      const actualVelocity = currentPosition.clone().subtract(previousPosition);
-      const inertiaForce = actualVelocity
-        .clone()
-        .multiply(this.inertia * particle.mass);
-      particle.applyForce(inertiaForce);
-    }
-
     // Apply friction (dampen current velocity)
     if (this.friction > 0) {
       const frictionForce = particle.velocity
@@ -203,9 +199,6 @@ export class Environment implements Force {
         .multiply(-this.friction * particle.mass);
       particle.applyForce(frictionForce);
     }
-
-    // Store current position for next frame
-    this.previousPositions.set(particle.id, currentPosition);
 
     if (this.damping !== 1) {
       particle.velocity.multiply(this.damping);
@@ -226,6 +219,45 @@ export class Environment implements Force {
   /**
    * Clear all stored positions (useful for resets)
    */
+  before(particles: Particle[], deltaTime: number): void {
+    if (deltaTime <= 0) return;
+    // Store positions before physics integration for both inertia and momentum preservation
+    for (const particle of particles) {
+      this.previousPositions.set(particle.id, particle.position.clone());
+    }
+  }
+
+  after(particles: Particle[], deltaTime: number, _spatialGrid: any): void {
+    if (!this.joints || deltaTime <= 0) return;
+    this.applyMomentumPreservation(particles, deltaTime);
+  }
+
+  /**
+   * Apply momentum preservation to joint particles
+   * Called after physics integration with prePhysicsPositions
+   */
+  applyMomentumPreservation(particles: Particle[], deltaTime: number): void {
+    if (!this.joints || deltaTime <= 0) return;
+
+    // Update velocities for constrained particles to match actual movement
+    for (const particle of particles) {
+      if (!particle.pinned && this.joints?.hasJoint?.(particle.id)) {
+        const previousPosition = this.previousPositions.get(particle.id);
+        if (previousPosition) {
+          const totalMovement = particle.position
+            .clone()
+            .subtract(previousPosition);
+          const actualVelocity = totalMovement.divide(deltaTime);
+
+          particle.velocity = particle.velocity
+            .clone()
+            .multiply(1 - this.momentum)
+            .add(actualVelocity.multiply(this.momentum));
+        }
+      }
+    }
+  }
+
   clear(): void {
     this.previousPositions.clear();
   }
@@ -246,7 +278,6 @@ export function createEnvironmentForce(
     direction?: GravityDirection;
     angle?: number;
   } = {},
-  inertia: number = DEFAULT_INERTIA,
   friction: number = DEFAULT_FRICTION,
   damping: number = DEFAULT_DAMPING
 ): Environment {
@@ -256,7 +287,6 @@ export function createEnvironmentForce(
       direction: gravity.direction ?? DEFAULT_GRAVITY_DIRECTION,
       angle: gravity.angle ?? DEFAULT_GRAVITY_ANGLE,
     },
-    inertia,
     friction,
     damping,
   });

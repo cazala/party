@@ -5,9 +5,9 @@ import {
   Environment,
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_DIRECTION,
-  DEFAULT_INERTIA,
   DEFAULT_FRICTION,
   DEFAULT_DAMPING,
+  DEFAULT_MOMENTUM_PRESERVATION,
 } from "./forces/environment";
 import {
   Boundary,
@@ -15,12 +15,14 @@ import {
   DEFAULT_BOUNDARY_MODE,
   DEFAULT_BOUNDARY_REPEL_DISTANCE,
   DEFAULT_BOUNDARY_REPEL_STRENGTH,
+  DEFAULT_BOUNDARY_FRICTION,
 } from "./forces/boundary";
 import {
   Collisions,
   DEFAULT_COLLISIONS_ENABLED,
   DEFAULT_COLLISIONS_ENABLE_PARTICLES,
   DEFAULT_COLLISIONS_EAT,
+  DEFAULT_COLLISIONS_FRICTION,
 } from "./forces/collisions";
 import {
   Behavior,
@@ -149,7 +151,7 @@ export interface Config {
       /** Gravitational acceleration strength (default: 0) */
       strength?: number;
       /** Gravity direction enum (default: 'down') */
-      direction?: 'up' | 'down' | 'left' | 'right' | 'in' | 'out' | 'custom';
+      direction?: "up" | "down" | "left" | "right" | "in" | "out" | "custom";
       /** Custom gravity angle in radians (only used when direction is 'custom') */
       angle?: number;
     };
@@ -159,16 +161,18 @@ export interface Config {
     friction?: number;
     /** Velocity damping factor (0-1, default: 1) */
     damping?: number;
+    /** Momentum preservation for joint particles (0-1, default: 0.7) */
+    momentum?: number;
   };
 
   /** Boundary behavior settings */
   boundary?: {
     /** Bounce coefficient when particles hit boundaries (0-1) */
     bounce?: number;
-    /** Friction applied during boundary interactions (0-1) */
-    friction?: number;
     /** Boundary interaction mode */
     mode?: "bounce" | "kill" | "warp" | "none";
+    /** Friction applied during boundary interactions (0-1, default: 0) */
+    friction?: number;
     /** Distance from boundary to start repel force */
     repelDistance?: number;
     /** Strength of boundary repel force */
@@ -183,6 +187,8 @@ export interface Config {
     enableParticles?: boolean;
     /** Whether larger particles can consume smaller ones */
     eat?: boolean;
+    /** Friction applied during particle collisions (0-1, default: 0) */
+    friction?: number;
   };
 
   /** Flocking behavior settings */
@@ -457,7 +463,7 @@ export class System {
    */
   addForce(force: Force): void {
     this.forces.push(force);
-    
+
     // Update environment world size if it's an Environment force
     if (force instanceof Environment) {
       force.updateWorldSize(this.width, this.height);
@@ -779,7 +785,7 @@ export class System {
     this.width = width;
     this.height = height;
     this.spatialGrid.setSize(width, height);
-    
+
     // Update environment world size for 'in'/'out' gravity calculations
     for (const force of this.forces) {
       if (force instanceof Environment) {
@@ -804,7 +810,7 @@ export class System {
    */
   updateCamera(cameraX: number, cameraY: number, zoom: number): void {
     this.spatialGrid.setCamera(cameraX, cameraY, zoom);
-    
+
     // Update environment forces with camera information for 'in'/'out' gravity calculations
     for (const force of this.forces) {
       if (force instanceof Environment) {
@@ -895,9 +901,9 @@ export class System {
             direction: force.gravity.direction,
             angle: force.gravity.angle,
           },
-          inertia: force.inertia,
           friction: force.friction,
           damping: force.damping,
+          momentum: force.momentum,
         };
       } else if (force instanceof Boundary) {
         config.boundary = {
@@ -905,12 +911,14 @@ export class System {
           mode: force.mode,
           repelDistance: force.repelDistance,
           repelStrength: force.repelStrength,
+          friction: force.friction,
         };
       } else if (force instanceof Collisions) {
         config.collisions = {
           enabled: force.enabled,
           enableParticles: force.enableParticles,
           eat: force.eat,
+          friction: force.friction,
         };
       } else if (force instanceof Behavior) {
         config.behavior = {
@@ -985,9 +993,11 @@ export class System {
           if (config.environment.gravity?.angle !== undefined) {
             force.setGravityAngle(config.environment.gravity.angle);
           }
-          force.setInertia(config.environment.inertia ?? DEFAULT_INERTIA);
           force.setFriction(config.environment.friction ?? DEFAULT_FRICTION);
           force.setDamping(config.environment.damping ?? DEFAULT_DAMPING);
+          force.setMomentum(
+            config.environment.momentum ?? DEFAULT_MOMENTUM_PRESERVATION
+          );
         }
       } else if (force instanceof Boundary && config.boundary) {
         force.bounce = config.boundary.bounce ?? DEFAULT_BOUNDARY_BOUNCE;
@@ -998,14 +1008,21 @@ export class System {
         force.setRepelStrength(
           config.boundary.repelStrength ?? DEFAULT_BOUNDARY_REPEL_STRENGTH
         );
+        force.setFriction(
+          config.boundary.friction ?? DEFAULT_BOUNDARY_FRICTION
+        );
       } else if (force instanceof Collisions && config.collisions) {
         force.setEnabled(
           config.collisions.enabled ?? DEFAULT_COLLISIONS_ENABLED
         );
         force.setEnableParticles(
-          config.collisions.enableParticles ?? DEFAULT_COLLISIONS_ENABLE_PARTICLES
+          config.collisions.enableParticles ??
+            DEFAULT_COLLISIONS_ENABLE_PARTICLES
         );
         force.setEat(config.collisions.eat ?? DEFAULT_COLLISIONS_EAT);
+        force.setFriction(
+          config.collisions.friction ?? DEFAULT_COLLISIONS_FRICTION
+        );
       } else if (force instanceof Behavior && config.behavior) {
         force.setEnabled(config.behavior.enabled ?? DEFAULT_BEHAVIOR_ENABLED);
         force.wanderWeight =
@@ -1089,7 +1106,9 @@ export class System {
           force.setEnableCollisions(config.joints.enableCollisions);
         }
         if (config.joints.enableCrossingResolution !== undefined) {
-          force.setEnableCrossingResolution(config.joints.enableCrossingResolution);
+          force.setEnableCrossingResolution(
+            config.joints.enableCrossingResolution
+          );
         }
       }
     }

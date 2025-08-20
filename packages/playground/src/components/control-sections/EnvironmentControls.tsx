@@ -4,11 +4,11 @@ import {
   DEFAULT_GRAVITY_STRENGTH,
   DEFAULT_GRAVITY_DIRECTION,
   DEFAULT_GRAVITY_ANGLE,
-  DEFAULT_INERTIA,
   DEFAULT_FRICTION,
   radToDeg,
   degToRad,
   DEFAULT_DAMPING,
+  DEFAULT_MOMENTUM_PRESERVATION,
 } from "@cazala/party";
 
 type GravityDirection =
@@ -34,9 +34,9 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
   const [gravityAngle, setGravityAngle] = useState(
     radToDeg(DEFAULT_GRAVITY_ANGLE)
   ); // Convert radians to degrees for UI
-  const [inertia, setInertia] = useState(DEFAULT_INERTIA);
   const [friction, setFriction] = useState(DEFAULT_FRICTION);
   const [damping, setDamping] = useState(DEFAULT_DAMPING);
+  const [momentum, setMomentum] = useState(DEFAULT_MOMENTUM_PRESERVATION);
 
   useEffect(() => {
     if (environment) {
@@ -45,9 +45,9 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
       setGravityAngle(
         radToDeg(environment.gravity.angle ?? DEFAULT_GRAVITY_ANGLE)
       );
-      setInertia(environment.inertia);
       setFriction(environment.friction);
       setDamping(environment.damping);
+      setMomentum(environment.momentum);
     }
   }, [environment]);
 
@@ -72,13 +72,6 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
     }
   };
 
-  const handleInertiaChange = (value: number) => {
-    setInertia(value);
-    if (environment) {
-      environment.setInertia(value);
-    }
-  };
-
   const handleFrictionChange = (value: number) => {
     setFriction(value);
     if (environment) {
@@ -90,6 +83,13 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
     setDamping(value);
     if (environment) {
       environment.setDamping(value);
+    }
+  };
+
+  const handleMomentumChange = (value: number) => {
+    setMomentum(value);
+    if (environment) {
+      environment.setMomentum(value);
     }
   };
 
@@ -175,21 +175,6 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
 
       <div className="control-group">
         <label>
-          Inertia: {inertia.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.001"
-            value={inertia}
-            onChange={(e) => handleInertiaChange(parseFloat(e.target.value))}
-            className="slider"
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
           Friction: {friction.toFixed(2)}
           <input
             type="range"
@@ -213,6 +198,21 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
             step="0.001"
             value={damping}
             onChange={(e) => handleDampingChange(parseFloat(e.target.value))}
+            className="slider"
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Momentum: {momentum.toFixed(2)}
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={momentum}
+            onChange={(e) => handleMomentumChange(parseFloat(e.target.value))}
             className="slider"
           />
         </label>

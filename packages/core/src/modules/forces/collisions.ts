@@ -4,7 +4,6 @@ import { Vector2D } from "../vector";
 import { SpatialGrid } from "../spatial-grid";
 import mitt, { Emitter } from "mitt";
 import { Joints, Joint } from "./joints";
-import { Environment } from "./environment";
 import {
   getClosestPointOnLineSegment,
   checkLineSegmentIntersection,
@@ -16,7 +15,7 @@ export const DEFAULT_COLLISIONS_ENABLED = true;
 export const DEFAULT_COLLISIONS_ENABLE_PARTICLES = true;
 export const DEFAULT_COLLISIONS_EAT = false;
 export const DEFAULT_COLLISIONS_RESTITUTION = 0.95;
-export const DEFAULT_MOMENTUM_PRESERVATION = 0.7;
+export const DEFAULT_COLLISIONS_FRICTION = 0;
 
 // Mass clamping constants to prevent collision instabilities
 const MIN_COLLISION_MASS = 1;
@@ -31,7 +30,7 @@ function clampMassForCollision(mass: number): number {
 }
 
 export type CollisionsEvents = {
-  collision: { particle1: Particle; particle2: Particle; enabled: boolean };
+  collision: { particle1: Particle; particle2: Particle };
 };
 
 export interface CollisionsOptions {
@@ -39,9 +38,8 @@ export interface CollisionsOptions {
   enableParticles?: boolean;
   eat?: boolean;
   restitution?: number;
+  friction?: number;
   joints?: Joints;
-  momentum?: number;
-  environment?: Environment;
 }
 
 export class Collisions implements Force, RigidBody {
@@ -49,20 +47,18 @@ export class Collisions implements Force, RigidBody {
   public enableParticles: boolean;
   public eat: boolean;
   public restitution: number;
-  public momentum: number; // Momentum preservation for joint particles
+  public friction: number;
   public events: Emitter<CollisionsEvents>; // For emitting collision events
   private joints?: Joints; // Optional joints module for joint-particle collisions
-  private positions: Map<number, Vector2D> = new Map();
-  private environment?: Environment; // Reference to environment module for friction
 
   constructor(options: CollisionsOptions = {}) {
     this.enabled = options.enabled ?? DEFAULT_COLLISIONS_ENABLED;
-    this.enableParticles = options.enableParticles ?? DEFAULT_COLLISIONS_ENABLE_PARTICLES;
+    this.enableParticles =
+      options.enableParticles ?? DEFAULT_COLLISIONS_ENABLE_PARTICLES;
     this.eat = options.eat ?? DEFAULT_COLLISIONS_EAT;
     this.restitution = options.restitution ?? DEFAULT_COLLISIONS_RESTITUTION;
-    this.momentum = options.momentum ?? DEFAULT_MOMENTUM_PRESERVATION;
+    this.friction = options.friction ?? DEFAULT_COLLISIONS_FRICTION;
     this.joints = options.joints;
-    this.environment = options.environment;
     this.events = mitt<CollisionsEvents>();
   }
 
@@ -82,25 +78,17 @@ export class Collisions implements Force, RigidBody {
     this.restitution = restitution;
   }
 
-  setMomentum(momentum: number): void {
-    this.momentum = Math.max(0, Math.min(1, momentum)); // Clamp between 0 and 1
+  setFriction(friction: number): void {
+    this.friction = Math.max(0, Math.min(1, friction)); // Clamp between 0 and 1
   }
 
-  setEnvironment(environment: Environment): void {
-    this.environment = environment;
-  }
-
-  before(particles: Particle[], deltaTime: number): void {
-    if (!this.joints || deltaTime <= 0) return;
-    // Store positions before physics integration for velocity correction
-    for (const particle of particles) {
-      this.positions.set(particle.id, particle.position.clone());
-    }
+  setJoints(joints: Joints): void {
+    this.joints = joints;
   }
 
   apply(particle: Particle, spatialGrid: SpatialGrid): void {
     // Check particle-particle collisions (only if particle collisions are enabled)
-    if (this.enabled && this.enableParticles) {
+    if (this.enabled) {
       const neighbors = spatialGrid.getParticles(
         particle.position,
         particle.size * 2
@@ -115,51 +103,6 @@ export class Collisions implements Force, RigidBody {
     // Check particle-joint collisions if joints module is available (independent of particle collisions)
     if (this.joints && this.joints.enabled && this.joints.enableCollisions) {
       this.checkParticleJointCollisions(particle, spatialGrid);
-    }
-  }
-
-  after(
-    particles: Particle[],
-    deltaTime: number,
-    _spatialGrid: SpatialGrid
-  ): void {
-    if (!this.joints || deltaTime <= 0) return;
-    this.applyMomentumPreservation(particles, deltaTime, this.positions);
-  }
-
-  /**
-   * Apply momentum preservation to joint particles
-   * Called by System after physics integration with prePhysicsPositions
-   */
-  applyMomentumPreservation(
-    particles: Particle[],
-    deltaTime: number,
-    prePhysicsPositions: Map<number, Vector2D>
-  ): void {
-    if (
-      !this.joints ||
-      deltaTime <= 0
-    )
-      return;
-
-    // Track which particles have already been processed as part of rigid body groups
-
-    // Update velocities for constrained particles to match actual movement
-    for (const particle of particles) {
-      if (!particle.pinned && this.joints?.hasJoint(particle.id)) {
-        const prePhysicsPosition = prePhysicsPositions.get(particle.id);
-        if (prePhysicsPosition) {
-          const totalMovement = particle.position
-            .clone()
-            .subtract(prePhysicsPosition);
-          const actualVelocity = totalMovement.divide(deltaTime);
-
-          particle.velocity = particle.velocity
-            .clone()
-            .multiply(1 - this.momentum)
-            .add(actualVelocity.multiply(this.momentum));
-        }
-      }
     }
   }
 
@@ -180,10 +123,9 @@ export class Collisions implements Force, RigidBody {
     this.events.emit("collision", {
       particle1,
       particle2,
-      enabled: this.enabled,
     });
 
-    if (!this.enabled) {
+    if (!this.enableParticles) {
       return;
     }
 
@@ -786,7 +728,10 @@ export class Collisions implements Force, RigidBody {
     // Calculate collision impulse considering both particle and joint masses
     // Use clamped masses to prevent instabilities
     const clampedParticleMass = clampMassForCollision(particle.mass);
-    const totalMass = Math.max(clampedParticleMass + effectiveJointMass, MIN_COLLISION_MASS * 2);
+    const totalMass = Math.max(
+      clampedParticleMass + effectiveJointMass,
+      MIN_COLLISION_MASS * 2
+    );
     const impulse =
       (-(1 + this.restitution) *
         relativeVelocity *
@@ -801,8 +746,8 @@ export class Collisions implements Force, RigidBody {
     particle.velocity.add(particleImpulse);
 
     // Apply friction to tangential velocity component
-    if (this.environment && this.environment.friction > 0) {
-      this.applyJointFriction(particle, collisionNormal, this.environment.friction);
+    if (this.friction > 0) {
+      this.applyJointFriction(particle, collisionNormal, this.friction);
     }
 
     // Transfer force to joint particles based on impact location and masses
@@ -850,8 +795,8 @@ export class Collisions implements Force, RigidBody {
     particle.velocity.add(impulseVector);
 
     // Apply friction to tangential velocity component
-    if (this.environment && this.environment.friction > 0) {
-      this.applyJointFriction(particle, collisionNormal, this.environment.friction);
+    if (this.friction > 0) {
+      this.applyJointFriction(particle, collisionNormal, this.friction);
     }
 
     // Position correction to prevent particle from staying inside the joint (static joint version)

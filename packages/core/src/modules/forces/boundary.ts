@@ -2,7 +2,6 @@ import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
 import { Vector2D } from "../vector";
-import { Environment } from "./environment";
 
 // Default constants for Boundary behavior
 export const DEFAULT_BOUNDARY_BOUNCE = 0.4;
@@ -10,6 +9,7 @@ export const DEFAULT_BOUNDARY_MIN_BOUNCE_VELOCITY = 50; // Below this speed, bou
 export const DEFAULT_BOUNDARY_REPEL_DISTANCE = 0; // No repel distance by default
 export const DEFAULT_BOUNDARY_REPEL_STRENGTH = 0; // No repel strength by default
 export const DEFAULT_BOUNDARY_MODE = "bounce"; // Default boundary mode
+export const DEFAULT_BOUNDARY_FRICTION = 0.1;
 
 export type BoundaryMode = "bounce" | "kill" | "warp" | "none";
 
@@ -19,7 +19,7 @@ export interface BoundaryOptions {
   repelDistance?: number;
   repelStrength?: number;
   mode?: BoundaryMode;
-  environment?: Environment; // Reference to environment module for friction
+  friction?: number;
 }
 
 export class Boundary implements Force {
@@ -27,17 +27,19 @@ export class Boundary implements Force {
   public repelDistance: number;
   public repelStrength: number;
   public mode: BoundaryMode;
+  public friction: number;
   private cameraX: number = 0;
   private cameraY: number = 0;
   private zoom: number = 1;
-  private environment?: Environment;
 
   constructor(options: BoundaryOptions = {}) {
     this.bounce = options.bounce || DEFAULT_BOUNDARY_BOUNCE;
-    this.repelDistance = options.repelDistance || DEFAULT_BOUNDARY_REPEL_DISTANCE;
-    this.repelStrength = options.repelStrength || DEFAULT_BOUNDARY_REPEL_STRENGTH;
+    this.repelDistance =
+      options.repelDistance || DEFAULT_BOUNDARY_REPEL_DISTANCE;
+    this.repelStrength =
+      options.repelStrength || DEFAULT_BOUNDARY_REPEL_STRENGTH;
     this.mode = options.mode || DEFAULT_BOUNDARY_MODE;
-    this.environment = options.environment;
+    this.friction = options.friction ?? DEFAULT_BOUNDARY_FRICTION;
   }
 
   setCamera(cameraX: number, cameraY: number, zoom: number): void {
@@ -46,8 +48,8 @@ export class Boundary implements Force {
     this.zoom = zoom;
   }
 
-  setEnvironment(environment: Environment): void {
-    this.environment = environment;
+  setFriction(friction: number): void {
+    this.friction = Math.max(0, Math.min(1, friction)); // Clamp between 0 and 1
   }
 
   setRepelDistance(distance: number): void {
@@ -82,7 +84,7 @@ export class Boundary implements Force {
 
   private applyRepelForce(particle: Particle, spatialGrid: SpatialGrid): void {
     if (this.repelStrength <= 0) return;
-    
+
     // For modes other than "none", we can optimize by skipping repel when distance is 0
     // since boundary constraints will handle keeping particles in bounds
     if (this.mode !== "none" && this.repelDistance <= 0) return;
@@ -111,7 +113,7 @@ export class Boundary implements Force {
       if (distToLeft < 0) {
         forceX += this.repelStrength;
       }
-      // Right wall - particle is outside right boundary  
+      // Right wall - particle is outside right boundary
       if (distToRight < 0) {
         forceX -= this.repelStrength;
       }
@@ -127,7 +129,8 @@ export class Boundary implements Force {
       // Standard repel behavior: gradual force within repel distance
       // Apply repel force from left wall
       if (distToLeft < this.repelDistance && distToLeft > 0) {
-        const forceRatio = (this.repelDistance - distToLeft) / this.repelDistance;
+        const forceRatio =
+          (this.repelDistance - distToLeft) / this.repelDistance;
         forceX += forceRatio * this.repelStrength;
       }
 
@@ -140,7 +143,8 @@ export class Boundary implements Force {
 
       // Apply repel force from top wall
       if (distToTop < this.repelDistance && distToTop > 0) {
-        const forceRatio = (this.repelDistance - distToTop) / this.repelDistance;
+        const forceRatio =
+          (this.repelDistance - distToTop) / this.repelDistance;
         forceY += forceRatio * this.repelStrength;
       }
 
@@ -174,8 +178,8 @@ export class Boundary implements Force {
       particle.position.x = worldLeft + radius;
       particle.velocity.x = Math.abs(particle.velocity.x) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce y velocity)
-      if (this.environment) {
-        particle.velocity.y *= 1 - this.environment.friction;
+      if (this.friction > 0) {
+        particle.velocity.y *= 1 - this.friction;
       }
     }
 
@@ -184,8 +188,8 @@ export class Boundary implements Force {
       particle.position.x = worldRight - radius;
       particle.velocity.x = -Math.abs(particle.velocity.x) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce y velocity)
-      if (this.environment) {
-        particle.velocity.y *= 1 - this.environment.friction;
+      if (this.friction > 0) {
+        particle.velocity.y *= 1 - this.friction;
       }
     }
 
@@ -194,8 +198,8 @@ export class Boundary implements Force {
       particle.position.y = worldTop + radius;
       particle.velocity.y = Math.abs(particle.velocity.y) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce x velocity)
-      if (this.environment) {
-        particle.velocity.x *= 1 - this.environment.friction;
+      if (this.friction > 0) {
+        particle.velocity.x *= 1 - this.friction;
       }
     }
 
@@ -204,8 +208,8 @@ export class Boundary implements Force {
       particle.position.y = worldBottom - radius;
       particle.velocity.y = -Math.abs(particle.velocity.y) * this.bounce; // Force velocity away from wall
       // Apply tangential friction (reduce x velocity)
-      if (this.environment) {
-        particle.velocity.x *= 1 - this.environment.friction;
+      if (this.friction > 0) {
+        particle.velocity.x *= 1 - this.friction;
       }
     }
   }

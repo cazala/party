@@ -5,9 +5,9 @@ import {
   DEFAULT_COLLISIONS_ENABLE_PARTICLES,
   DEFAULT_COLLISIONS_EAT,
   DEFAULT_COLLISIONS_RESTITUTION,
+  DEFAULT_COLLISIONS_FRICTION,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
   DEFAULT_JOINT_CROSSING_RESOLUTION,
-  DEFAULT_MOMENTUM_PRESERVATION,
 } from "@cazala/party";
 import { Tooltip } from "../Tooltip";
 
@@ -22,7 +22,7 @@ export interface CollisionControlsRef {
     jointCollisionsEnabled: boolean;
     jointCrossingResolutionEnabled: boolean;
     restitution: number;
-    momentum: number;
+    friction: number;
     collisionsEat: boolean;
   };
   setState: (state: Partial<{
@@ -30,7 +30,7 @@ export interface CollisionControlsRef {
     jointCollisionsEnabled: boolean;
     jointCrossingResolutionEnabled: boolean;
     restitution: number;
-    momentum: number;
+    friction: number;
     collisionsEat: boolean;
   }>) => void;
 }
@@ -52,7 +52,7 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
   const [restitution, setRestitution] = useState(
     DEFAULT_COLLISIONS_RESTITUTION
   );
-  const [momentum, setMomentumState] = useState(DEFAULT_MOMENTUM_PRESERVATION);
+  const [friction, setFriction] = useState(DEFAULT_COLLISIONS_FRICTION);
   const [collisionsEat, setCollisionsEat] = useState(DEFAULT_COLLISIONS_EAT);
 
   // Update states when modules change
@@ -61,7 +61,7 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
       setParticleCollisionsEnabled(collisions.enableParticles);
       setCollisionsEat(collisions.eat);
       setRestitution(collisions.restitution);
-      setMomentumState(collisions.momentum || DEFAULT_MOMENTUM_PRESERVATION);
+      setFriction(collisions.friction);
     }
   }, [collisions]);
 
@@ -101,10 +101,10 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
     }
   };
 
-  const handleMomentumChange = (value: number) => {
-    setMomentumState(value);
+  const handleFrictionChange = (value: number) => {
+    setFriction(value);
     if (collisions) {
-      collisions.setMomentum(value);
+      collisions.setFriction(value);
     }
   };
 
@@ -122,7 +122,7 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
       jointCollisionsEnabled,
       jointCrossingResolutionEnabled,
       restitution,
-      momentum,
+      friction,
       collisionsEat,
     }),
     setState: (state) => {
@@ -138,14 +138,14 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
       if (state.restitution !== undefined) {
         setRestitution(state.restitution);
       }
-      if (state.momentum !== undefined) {
-        setMomentumState(state.momentum);
+      if (state.friction !== undefined) {
+        setFriction(state.friction);
       }
       if (state.collisionsEat !== undefined) {
         setCollisionsEat(state.collisionsEat);
       }
     },
-  }), [particleCollisionsEnabled, jointCollisionsEnabled, jointCrossingResolutionEnabled, restitution, momentum, collisionsEat]);
+  }), [particleCollisionsEnabled, jointCollisionsEnabled, jointCrossingResolutionEnabled, restitution, friction, collisionsEat]);
 
   return (
     <div className="control-section">
@@ -212,14 +212,14 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
 
       <div className="control-group">
         <label>
-          Momentum: {momentum.toFixed(2)}
+          Friction: {friction.toFixed(2)}
           <input
             type="range"
             min="0"
             max="1"
             step="0.001"
-            value={momentum}
-            onChange={(e) => handleMomentumChange(parseFloat(e.target.value))}
+            value={friction}
+            onChange={(e) => handleFrictionChange(parseFloat(e.target.value))}
             className="slider"
           />
         </label>

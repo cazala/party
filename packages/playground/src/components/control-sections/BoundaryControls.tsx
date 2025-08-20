@@ -5,6 +5,7 @@ import {
   DEFAULT_BOUNDARY_REPEL_DISTANCE,
   DEFAULT_BOUNDARY_REPEL_STRENGTH,
   DEFAULT_BOUNDARY_MODE,
+  DEFAULT_BOUNDARY_FRICTION,
 } from "@cazala/party/modules/forces/boundary";
 
 interface BoundaryControlsProps {
@@ -20,6 +21,7 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
     DEFAULT_BOUNDARY_REPEL_STRENGTH
   );
   const [mode, setMode] = useState<BoundaryMode>(DEFAULT_BOUNDARY_MODE);
+  const [friction, setFriction] = useState(DEFAULT_BOUNDARY_FRICTION);
 
   useEffect(() => {
     if (boundary) {
@@ -27,6 +29,7 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
       setRepelDistance(boundary.repelDistance);
       setRepelStrength(boundary.repelStrength);
       setMode(boundary.mode);
+      setFriction(boundary.friction);
     }
   }, [boundary]);
 
@@ -55,6 +58,13 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
     setMode(newMode);
     if (boundary) {
       boundary.setMode(newMode);
+    }
+  };
+
+  const handleFrictionChange = (value: number) => {
+    setFriction(value);
+    if (boundary) {
+      boundary.setFriction(value);
     }
   };
 
@@ -91,22 +101,41 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
       </div>
 
       {mode === "bounce" && (
-        <div className="control-group">
-          <label>
-            Bounce: {bounce.toFixed(2)}
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={bounce}
-              onChange={(e) =>
-                handleBounceChange(parseFloat(e.target.value))
-              }
-              className="slider"
-            />
-          </label>
-        </div>
+        <>
+          <div className="control-group">
+            <label>
+              Bounce: {bounce.toFixed(2)}
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={bounce}
+                onChange={(e) =>
+                  handleBounceChange(parseFloat(e.target.value))
+                }
+                className="slider"
+              />
+            </label>
+          </div>
+          
+          <div className="control-group">
+            <label>
+              Friction: {friction.toFixed(2)}
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={friction}
+                onChange={(e) =>
+                  handleFrictionChange(parseFloat(e.target.value))
+                }
+                className="slider"
+              />
+            </label>
+          </div>
+        </>
       )}
 
       <div className="control-group">

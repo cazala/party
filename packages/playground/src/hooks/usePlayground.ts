@@ -142,7 +142,7 @@ export function usePlayground(
         zoomState.targetCameraY,
         zoomState.targetZoom
       );
-      
+
       // Update system camera for frustum culling
       const system = systemRef.current;
       if (system) {
@@ -170,7 +170,7 @@ export function usePlayground(
     renderer.setCamera(newCameraX, newCameraY);
     boundary.setCamera(newCameraX, newCameraY, newZoom);
     spatialGrid.setCamera(newCameraX, newCameraY, newZoom);
-    
+
     // Update system camera for frustum culling
     const system = systemRef.current;
     if (system) {
@@ -314,21 +314,22 @@ export function usePlayground(
   useEffect(() => {
     if (systemRef.current) return;
 
+    const joints = new Joints(); // Playground default: on
+    jointsRef.current = joints;
+
     const environment = new Environment({
       gravity: { strength: DEFAULT_GRAVITY_STRENGTH },
+      joints,
     });
     environmentRef.current = environment;
 
-    const boundary = new Boundary({ environment: environment });
+    const boundary = new Boundary();
     boundsRef.current = boundary;
 
     const behavior = new Behavior({ enabled: false }); // Playground default: on
     behaviorRef.current = behavior;
 
-    const joints = new Joints({ enabled: true }); // Playground default: on
-    jointsRef.current = joints;
-
-    const collisions = new Collisions({ joints: joints, environment: environment });
+    const collisions = new Collisions({ joints });
     collisionsRef.current = collisions;
 
     const fluid = new Fluid({ enabled: false }); // Playground default: off
@@ -548,12 +549,12 @@ export function usePlayground(
           for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
               const currentIndex = row * cols + col;
-              
+
               // Skip if current particle doesn't exist
               if (currentIndex >= particles.length) continue;
-              
+
               const currentParticle = particles[currentIndex];
-              
+
               // Connect to right neighbor (horizontal joint)
               if (col < cols - 1) {
                 const rightIndex = row * cols + (col + 1);
@@ -565,7 +566,7 @@ export function usePlayground(
                   });
                 }
               }
-              
+
               // Connect to bottom neighbor (vertical joint)
               if (row < rows - 1) {
                 const bottomIndex = (row + 1) * cols + col;
@@ -624,12 +625,6 @@ export function usePlayground(
   const updateGravity = useCallback((strength: number) => {
     if (environmentRef.current) {
       environmentRef.current.setStrength(strength);
-    }
-  }, []);
-
-  const updateInertia = useCallback((inertia: number) => {
-    if (environmentRef.current) {
-      environmentRef.current.setInertia(inertia);
     }
   }, []);
 
@@ -720,7 +715,6 @@ export function usePlayground(
     resetParticles,
     spawnParticles,
     updateGravity,
-    updateInertia,
     updateFriction,
     addParticle,
     updateParticleDefaults,
