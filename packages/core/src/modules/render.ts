@@ -215,7 +215,7 @@ export abstract class Renderer {
     this.hueStartTime = Date.now();
     this.glowEffects = options.glowEffects ?? DEFAULT_RENDER_GLOW_EFFECTS;
 
-    const ctx = this.canvas.getContext("2d");
+    const ctx = this.canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) {
       throw new Error("Could not get 2D context from canvas");
     }
@@ -423,7 +423,7 @@ export abstract class Renderer {
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = this.canvas.width;
     tempCanvas.height = this.canvas.height;
-    const tempCtx = tempCanvas.getContext("2d");
+    const tempCtx = tempCanvas.getContext("2d", { willReadFrequently: true });
 
     if (tempCtx) {
       // Copy current canvas to temp canvas
