@@ -6,13 +6,17 @@ export function useWebGPUPlayground(
   canvasRef: React.RefObject<HTMLCanvasElement>,
   _toolMode: ToolMode = "spawn"
 ) {
+  const instanceId = useRef(Math.random().toString(36).substr(2, 9));
   const rendererRef = useRef<WebGPURenderer | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  console.log("WebGPU hook instance:", instanceId.current, "initialized:", isInitialized);
 
   // Initialize WebGPU renderer
   useEffect(() => {
-    if (isInitialized || error) {
+    // Only run if we don't already have a renderer
+    if (rendererRef.current || error) {
       return;
     }
 
@@ -85,6 +89,8 @@ export function useWebGPUPlayground(
 
         console.log("=== WEBGPU PLAYGROUND INIT SUCCESS ===");
         rendererRef.current = renderer;
+        console.log("Renderer set to rendererRef.current:", !!rendererRef.current);
+        console.log("Renderer instance:", renderer);
         setIsInitialized(true);
         setError(null);
       } catch (err) {
@@ -108,7 +114,7 @@ export function useWebGPUPlayground(
         rendererRef.current = null;
       }
     };
-  }, [isInitialized, error]); // Remove canvasRef.current dependency to avoid infinite loops
+  }, []); // Run once on mount, cleanup on unmount
 
   const spawnParticles = useCallback((
     numParticles: number,
@@ -124,7 +130,23 @@ export function useWebGPUPlayground(
     particleMass?: number,
     _enableJoints?: boolean
   ) => {
-    if (!rendererRef.current) return;
+    console.log("WebGPU spawnParticles called (instance " + instanceId.current + "):", {
+      numParticles,
+      shape,
+      spacing,
+      particleSize,
+      radius,
+      velocityConfig,
+      particleMass,
+      rendererExists: !!rendererRef.current,
+      rendererValue: rendererRef.current,
+      isInitialized
+    });
+    
+    if (!rendererRef.current) {
+      console.warn("WebGPU renderer not available for spawning particles (rendererRef.current is:", rendererRef.current, ")");
+      return;
+    }
 
     // Clear existing particles
     rendererRef.current.clearParticles();
@@ -181,45 +203,45 @@ export function useWebGPUPlayground(
     // Add other shapes as needed
 
     rendererRef.current.spawnParticles(particles);
-  }, []);
+  }, [isInitialized]);
 
   const setGravityStrength = useCallback((strength: number) => {
     if (rendererRef.current) {
       rendererRef.current.setGravityStrength(strength);
     }
-  }, []);
+  }, [isInitialized]);
 
   const play = useCallback(() => {
     if (rendererRef.current) {
       rendererRef.current.play();
     }
-  }, []);
+  }, [isInitialized]);
 
   const pause = useCallback(() => {
     if (rendererRef.current) {
       rendererRef.current.pause();
     }
-  }, []);
+  }, [isInitialized]);
 
   const clear = useCallback(() => {
     if (rendererRef.current) {
       rendererRef.current.clearParticles();
     }
-  }, []);
+  }, [isInitialized]);
 
   const resetParticles = useCallback(() => {
     if (rendererRef.current) {
       rendererRef.current.reset();
     }
-  }, []);
+  }, [isInitialized]);
 
   const getParticleCount = useCallback(() => {
     return rendererRef.current?.getParticleCount() || 0;
-  }, []);
+  }, [isInitialized]);
 
   const getFPS = useCallback(() => {
     return rendererRef.current?.getFPS() || 0;
-  }, []);
+  }, [isInitialized]);
 
   return {
     renderer: rendererRef.current,

@@ -62,7 +62,13 @@ export class WebGPURenderer {
     size?: number;
     mass?: number;
   }>): void {
-    if (!this.particleSystem) return;
+    console.log("WebGPURenderer.spawnParticles called with", particles.length, "particles");
+    console.log("First few particles:", particles.slice(0, 3));
+    
+    if (!this.particleSystem) {
+      console.warn("WebGPU particle system not available");
+      return;
+    }
     
     const webgpuParticles: WebGPUParticle[] = particles.map(p => ({
       position: [p.x, p.y],
@@ -71,7 +77,12 @@ export class WebGPURenderer {
       mass: p.mass || 1,
     }));
     
+    console.log("Converted to WebGPU format:", webgpuParticles.length, "particles");
+    console.log("First WebGPU particle:", webgpuParticles[0]);
+    
     this.particleSystem.setParticles(webgpuParticles);
+    
+    console.log("Particle count after spawning:", this.particleSystem.getParticleCount());
   }
 
   clearParticles(): void {
