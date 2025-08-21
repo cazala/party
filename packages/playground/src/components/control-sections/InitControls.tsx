@@ -8,7 +8,7 @@ import {
 import { ColorSelector } from "../ColorSelector";
 import { calculateMassFromSize } from "../../utils/particle";
 
-const DEFAULT_SPAWN_NUM_PARTICLES = 100;
+const DEFAULT_SPAWN_NUM_PARTICLES = 10000;
 const DEFAULT_SPAWN_SHAPE = "grid";
 const DEFAULT_SPAWN_SPACING = 25;
 const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
@@ -65,6 +65,7 @@ interface InitControlsProps {
   };
   onParticleSizeChange?: (size: number) => void;
   onColorsChange?: (colors: string[]) => void;
+  onGravityStrengthChange?: (strength: number) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
 }
 
@@ -108,6 +109,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       onGetInitConfig,
       onParticleSizeChange,
       onColorsChange,
+      onGravityStrengthChange,
       getCurrentCamera,
     },
     ref
@@ -136,6 +138,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       angle: DEFAULT_VELOCITY_ANGLE,
     });
     const [enableJoints, setEnableJoints] = useState(DEFAULT_ENABLE_JOINTS);
+    const [gravityStrength, setGravityStrength] = useState(0);
 
     const skipResetRef = useRef(false);
 
@@ -337,8 +340,8 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
             <input
               type="range"
               min="0"
-              max="5000"
-              step="1"
+              max="200000"
+              step="100"
               value={numParticles}
               onChange={(e) => handleSpawnChange(parseInt(e.target.value))}
               className="slider"
@@ -400,6 +403,25 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
                   undefined,
                   newMass
                 );
+              }}
+              className="slider"
+            />
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
+            Gravity Strength: {gravityStrength.toFixed(1)}
+            <input
+              type="range"
+              min="0"
+              max="500"
+              step="1"
+              value={gravityStrength}
+              onChange={(e) => {
+                const newGravity = parseFloat(e.target.value);
+                setGravityStrength(newGravity);
+                onGravityStrengthChange?.(newGravity);
               }}
               className="slider"
             />

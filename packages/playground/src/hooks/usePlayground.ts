@@ -319,7 +319,6 @@ export function usePlayground(
 
     const environment = new Environment({
       gravity: { strength: DEFAULT_GRAVITY_STRENGTH },
-      joints,
     });
     environmentRef.current = environment;
 
