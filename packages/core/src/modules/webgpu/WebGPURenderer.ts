@@ -47,6 +47,7 @@ export class WebGPURenderer {
   }
 
   setGravityStrength(strength: number): void {
+    console.log("WebGPU setGravityStrength called:", strength);
     this.gravityStrength = strength;
   }
 
@@ -119,9 +120,11 @@ export class WebGPURenderer {
   }
 
   play(): void {
+    console.log("WebGPU renderer play() called, currently playing:", this.isPlaying);
     if (this.isPlaying) return;
     this.isPlaying = true;
     this.lastTime = performance.now();
+    console.log("Starting WebGPU animation loop");
     this.animate();
   }
 
@@ -139,6 +142,15 @@ export class WebGPURenderer {
     const currentTime = performance.now();
     const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 1/30); // Cap at 30 FPS minimum
     this.lastTime = currentTime;
+
+    // Debug: Log animation loop occasionally
+    if (Math.random() < 0.01) { // Log ~1% of frames
+      console.log("WebGPU animate loop:", {
+        deltaTime: deltaTime.toFixed(4),
+        gravityStrength: this.gravityStrength,
+        particleCount: this.particleSystem.getParticleCount()
+      });
+    }
 
     // Update physics
     this.particleSystem.update(deltaTime, this.gravityStrength);

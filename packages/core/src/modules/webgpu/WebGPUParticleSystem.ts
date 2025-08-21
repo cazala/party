@@ -26,6 +26,7 @@ export class WebGPUParticleSystem {
   private context: GPUCanvasContext;
   
   private particleBuffer: GPUBuffer | null = null;
+  private vertexBuffer: GPUBuffer | null = null;
   private forceUniformBuffer: GPUBuffer | null = null;
   private renderUniformBuffer: GPUBuffer | null = null;
   
@@ -35,7 +36,7 @@ export class WebGPUParticleSystem {
   private computePipeline: GPUComputePipeline | null = null;
   private renderPipeline: GPURenderPipeline | null = null;
   
-  private particles: WebGPUParticle[] = [];
+  private particleCount: number = 0;
   private maxParticles: number = 100000;
   
   constructor(private webgpuDevice: WebGPUDevice) {
@@ -57,11 +58,17 @@ export class WebGPUParticleSystem {
   }
 
   private async createBuffers(): Promise<void> {
-    // Create particle buffer (storage buffer)
+    // Create particle buffer (storage buffer + vertex buffer)
     const particleDataSize = this.maxParticles * 6 * 4; // 6 floats per particle * 4 bytes per float
     this.particleBuffer = this.device.createBuffer({
       size: particleDataSize,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC,
+    });
+
+    // Create a separate vertex buffer for rendering
+    this.vertexBuffer = this.device.createBuffer({
+      size: particleDataSize,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     });
 
     // Create force uniform buffer
@@ -113,13 +120,41 @@ export class WebGPUParticleSystem {
     });
     console.log("Compute pipeline created");
 
-    // Create render pipeline
+    // Create render pipeline with vertex buffer layout
     console.log("Creating render pipeline...");
     this.renderPipeline = this.device.createRenderPipeline({
       layout: 'auto',
       vertex: {
         module: renderShaderModule,
         entryPoint: 'vs_main',
+        buffers: [
+          {
+            arrayStride: 24, // 6 floats * 4 bytes per particle (position, velocity, size, mass)
+            stepMode: 'instance',
+            attributes: [
+              {
+                format: 'float32x2',
+                offset: 0,
+                shaderLocation: 0, // position
+              },
+              {
+                format: 'float32x2', 
+                offset: 8,
+                shaderLocation: 1, // velocity
+              },
+              {
+                format: 'float32',
+                offset: 16,
+                shaderLocation: 2, // size
+              },
+              {
+                format: 'float32',
+                offset: 20,
+                shaderLocation: 3, // mass
+              },
+            ],
+          },
+        ],
       },
       fragment: {
         module: renderShaderModule,
@@ -148,7 +183,7 @@ export class WebGPUParticleSystem {
 
   private createBindGroups(): void {
     if (!this.computePipeline || !this.renderPipeline || 
-        !this.particleBuffer || !this.forceUniformBuffer || !this.renderUniformBuffer) {
+        !this.particleBuffer || !this.vertexBuffer || !this.forceUniformBuffer || !this.renderUniformBuffer) {
       throw new Error('Pipelines or buffers not created');
     }
 
@@ -177,12 +212,6 @@ export class WebGPUParticleSystem {
       entries: [
         {
           binding: 0,
-          resource: {
-            buffer: this.particleBuffer,
-          },
-        },
-        {
-          binding: 1,
           resource: {
             buffer: this.renderUniformBuffer,
           },
@@ -226,6 +255,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let gravity_force = force_uniforms.gravity_direction * force_uniforms.gravity_strength * particle.mass;
   particle.velocity += gravity_force * force_uniforms.delta_time;
   
+  // DEBUG: Force obvious movement regardless of physics
+  particle.position.y += 50.0 * force_uniforms.delta_time;
+  
   // Update position
   particle.position += particle.velocity * force_uniforms.delta_time;
   
@@ -234,13 +266,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }`;
     } else if (filename === 'render.wgsl') {
       return `
-struct Particle {
-  position: vec2<f32>,
-  velocity: vec2<f32>,
-  size: f32,
-  mass: f32,
-}
-
 struct RenderUniforms {
   canvas_size: vec2<f32>,
   camera_position: vec2<f32>,
@@ -253,13 +278,15 @@ struct VertexOutput {
   @location(0) uv: vec2<f32>,
 }
 
-@group(0) @binding(0) var<storage, read> particles: array<Particle>;
-@group(0) @binding(1) var<uniform> render_uniforms: RenderUniforms;
+@group(0) @binding(0) var<uniform> render_uniforms: RenderUniforms;
 
 @vertex
 fn vs_main(
   @builtin(vertex_index) vertex_index: u32,
-  @builtin(instance_index) instance_index: u32
+  @location(0) position: vec2<f32>,
+  @location(1) velocity: vec2<f32>,
+  @location(2) size: f32,
+  @location(3) mass: f32
 ) -> VertexOutput {
   var out: VertexOutput;
   
@@ -277,12 +304,11 @@ fn vs_main(
     vec2<f32>(1.0, 1.0)
   );
   
-  let particle = particles[instance_index];
   let quad_pos = quad_positions[vertex_index];
   
-  let world_pos = (particle.position - render_uniforms.camera_position) * render_uniforms.zoom;
+  let world_pos = (position - render_uniforms.camera_position) * render_uniforms.zoom;
   let screen_pos = (world_pos / render_uniforms.canvas_size) * 2.0 - 1.0;
-  let scaled_quad = quad_pos * particle.size * render_uniforms.zoom / render_uniforms.canvas_size;
+  let scaled_quad = quad_pos * size * render_uniforms.zoom / render_uniforms.canvas_size;
   
   out.position = vec4<f32>(screen_pos + scaled_quad, 0.0, 1.0);
   out.uv = quad_uvs[vertex_index];
@@ -303,23 +329,25 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
   }
 
   setParticles(particles: WebGPUParticle[]): void {
-    this.particles = particles.slice(0, this.maxParticles);
-    this.updateParticleBuffer();
+    const clampedParticles = particles.slice(0, this.maxParticles);
+    this.particleCount = clampedParticles.length;
+    this.updateParticleBuffer(clampedParticles);
   }
 
-  addParticle(particle: WebGPUParticle): void {
-    if (this.particles.length < this.maxParticles) {
-      this.particles.push(particle);
-      this.updateParticleBuffer();
+  addParticle(_particle: WebGPUParticle): void {
+    if (this.particleCount < this.maxParticles) {
+      // For adding single particles, we'd need to read current buffer, add particle, and write back
+      // For now, just use setParticles for simplicity
+      console.warn("addParticle not implemented - use setParticles instead");
     }
   }
 
-  private updateParticleBuffer(): void {
-    if (!this.particleBuffer) return;
+  private updateParticleBuffer(particles: WebGPUParticle[]): void {
+    if (!this.particleBuffer || !this.vertexBuffer) return;
 
-    const data = new Float32Array(this.particles.length * 6);
-    for (let i = 0; i < this.particles.length; i++) {
-      const particle = this.particles[i];
+    const data = new Float32Array(particles.length * 6);
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
       const offset = i * 6;
       data[offset] = particle.position[0];
       data[offset + 1] = particle.position[1];
@@ -329,26 +357,58 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
       data[offset + 5] = particle.mass;
     }
 
+    console.log(`DEBUG: Setting ${particles.length} particles. First particle:`, {
+      position: [particles[0]?.position[0], particles[0]?.position[1]],
+      velocity: [particles[0]?.velocity[0], particles[0]?.velocity[1]],
+      size: particles[0]?.size,
+      mass: particles[0]?.mass
+    });
+
+    // Write to both buffers initially
     this.device.queue.writeBuffer(this.particleBuffer, 0, data);
+    this.device.queue.writeBuffer(this.vertexBuffer, 0, data);
   }
 
   updateForces(uniforms: ForceUniforms): void {
     if (!this.forceUniformBuffer) return;
 
-    const data = new Float32Array([
-      uniforms.gravityStrength,
-      uniforms.gravityDirection[0],
-      uniforms.gravityDirection[1],
-      uniforms.deltaTime,
-      uniforms.particleCount,
-      0, 0, 0 // padding for alignment
-    ]);
+    // Create array buffer to handle mixed data types correctly
+    const buffer = new ArrayBuffer(32); // 8 floats * 4 bytes
+    const floatView = new Float32Array(buffer);
+    const uintView = new Uint32Array(buffer);
+    
+    floatView[0] = uniforms.gravityStrength;      // f32
+    floatView[1] = uniforms.gravityDirection[0];  // vec2<f32>.x
+    floatView[2] = uniforms.gravityDirection[1];  // vec2<f32>.y  
+    floatView[3] = uniforms.deltaTime;           // f32
+    uintView[4] = uniforms.particleCount;        // u32 (using uint view)
+    
+    const data = new Uint8Array(buffer);
+
+    // Debug: Log uniform data occasionally 
+    if (Math.random() < 0.01) {
+      console.log("Writing force uniforms to GPU:", {
+        gravityStrength: floatView[0],
+        gravityDirection: [floatView[1], floatView[2]],
+        deltaTime: floatView[3],
+        particleCount: uintView[4]
+      });
+    }
 
     this.device.queue.writeBuffer(this.forceUniformBuffer, 0, data);
   }
 
   updateRender(uniforms: RenderUniforms): void {
     if (!this.renderUniformBuffer) return;
+
+    // Debug occasionally
+    if (Math.random() < 0.01) {
+      console.log("DEBUG: Render uniforms:", {
+        canvasSize: uniforms.canvasSize,
+        cameraPosition: uniforms.cameraPosition,
+        zoom: uniforms.zoom
+      });
+    }
 
     const data = new Float32Array([
       uniforms.canvasSize[0],
@@ -365,11 +425,21 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
   update(deltaTime: number, gravityStrength: number): void {
     if (!this.computePipeline || !this.computeBindGroup) return;
 
+    // Debug logging occasionally
+    if (Math.random() < 0.01) {
+      console.log("WebGPU particle system update:", {
+        deltaTime: deltaTime.toFixed(4),
+        gravityStrength,
+        particleCount: this.particleCount,
+        gravityDirection: [0, 1]
+      });
+    }
+
     this.updateForces({
       gravityStrength,
       gravityDirection: [0, 1], // Down
       deltaTime,
-      particleCount: this.particles.length,
+      particleCount: this.particleCount,
     });
 
     const commandEncoder = this.device.createCommandEncoder();
@@ -378,15 +448,32 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     computePass.setPipeline(this.computePipeline);
     computePass.setBindGroup(0, this.computeBindGroup);
     
-    const workgroupCount = Math.ceil(this.particles.length / 64);
+    const workgroupCount = Math.ceil(this.particleCount / 64);
+    
+    // Debug logging occasionally
+    if (Math.random() < 0.01) {
+      console.log("Dispatching compute workgroups:", {
+        workgroupCount,
+        particleCount: this.particleCount,
+        gravityStrength,
+        computePipeline: !!this.computePipeline,
+        computeBindGroup: !!this.computeBindGroup
+      });
+    }
+    
     computePass.dispatchWorkgroups(workgroupCount);
     
     computePass.end();
-    this.device.queue.submit([commandEncoder.finish()]);
+    
+    // Store command encoder for render pass to use
+    this.pendingCommandEncoder = commandEncoder;
+    // Don't submit yet - wait for render pass
   }
 
+  private pendingCommandEncoder: GPUCommandEncoder | null = null;
+
   render(canvasSize: [number, number], cameraPosition: [number, number], zoom: number): void {
-    if (!this.renderPipeline || !this.renderBindGroup || this.particles.length === 0) return;
+    if (!this.renderPipeline || !this.renderBindGroup || this.particleCount === 0) return;
 
     this.updateRender({
       canvasSize,
@@ -395,7 +482,19 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
       _padding: 0,
     });
 
-    const commandEncoder = this.device.createCommandEncoder();
+    // Use the same command encoder as compute pass for proper ordering
+    const commandEncoder = this.pendingCommandEncoder || this.device.createCommandEncoder();
+    
+    // Copy updated particle data from storage buffer to vertex buffer
+    if (this.particleBuffer && this.vertexBuffer) {
+      const copySize = this.particleCount * 6 * 4; // 6 floats * 4 bytes per particle
+      commandEncoder.copyBufferToBuffer(
+        this.particleBuffer, 0,
+        this.vertexBuffer, 0,
+        copySize
+      );
+    }
+    
     const textureView = this.context.getCurrentTexture().createView();
     
     const renderPass = commandEncoder.beginRenderPass({
@@ -409,27 +508,47 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
 
     renderPass.setPipeline(this.renderPipeline);
     renderPass.setBindGroup(0, this.renderBindGroup);
-    renderPass.draw(4, this.particles.length); // 4 vertices per quad, instanced
+    renderPass.setVertexBuffer(0, this.vertexBuffer);
+    
+    // Debug occasionally
+    if (Math.random() < 0.01) {
+      console.log("DEBUG: Rendering particles:", {
+        particleCount: this.particleCount,
+        vertexBuffer: !!this.vertexBuffer,
+        renderPipeline: !!this.renderPipeline,
+        renderBindGroup: !!this.renderBindGroup
+      });
+    }
+    
+    renderPass.draw(4, this.particleCount); // 4 vertices per quad, instanced
     renderPass.end();
 
+    // Now submit both compute and render together
     this.device.queue.submit([commandEncoder.finish()]);
+    this.pendingCommandEncoder = null;
   }
 
   getParticleCount(): number {
-    return this.particles.length;
+    return this.particleCount;
   }
 
   clear(): void {
-    this.particles = [];
-    this.updateParticleBuffer();
+    this.particleCount = 0;
+    // Clear the GPU buffer by writing empty data
+    if (this.particleBuffer) {
+      const emptyData = new Float32Array(0);
+      this.device.queue.writeBuffer(this.particleBuffer, 0, emptyData);
+    }
   }
 
   destroy(): void {
     this.particleBuffer?.destroy();
+    this.vertexBuffer?.destroy();
     this.forceUniformBuffer?.destroy();
     this.renderUniformBuffer?.destroy();
     
     this.particleBuffer = null;
+    this.vertexBuffer = null;
     this.forceUniformBuffer = null;
     this.renderUniformBuffer = null;
     this.computeBindGroup = null;
