@@ -45,6 +45,7 @@ interface SystemControlsProps {
     cornerRadius?: number,
     particleMass?: number
   ) => void;
+  onGravityStrengthChange?: (strength: number) => void;
   onGetInitConfig?: () => {
     numParticles: number;
     shape: "grid" | "random" | "circle" | "donut" | "square";
@@ -76,6 +77,7 @@ export const SystemControls = forwardRef<SystemControlsRef, SystemControlsProps>
   spatialGrid,
   interaction,
   onInitParticles,
+  onGravityStrengthChange,
   onGetInitConfig,
   onSpawnConfigChange,
   onEmitterConfigChange,
@@ -145,6 +147,7 @@ export const SystemControls = forwardRef<SystemControlsRef, SystemControlsProps>
           onGetInitConfig={onGetInitConfig}
           onParticleSizeChange={handleParticleSizeChange}
           onColorsChange={handleColorsChange}
+          onGravityStrengthChange={onGravityStrengthChange}
           getCurrentCamera={getCurrentCamera}
         />
       </CollapsibleSection>

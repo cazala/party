@@ -51,6 +51,7 @@ function App() {
     clear,
     resetParticles,
     spawnParticles,
+    updateGravity,
     setSpawnConfig,
     setEmitterConfig,
     currentlyGrabbedParticle,
@@ -159,6 +160,7 @@ function App() {
             spatialGrid={spatialGrid}
             interaction={interaction}
             onInitParticles={spawnParticles}
+            onGravityStrengthChange={updateGravity}
             onGetInitConfig={() => ({
               numParticles: 100,
               shape: "grid" as const,
