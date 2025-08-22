@@ -37,7 +37,6 @@ export class WebGPUParticleSystem {
 
   private particleCount: number = 0;
   private maxParticles: number = 100000;
-  private startTime: number = 0;
 
   constructor(private webgpuDevice: WebGPUDevice) {
     if (!webgpuDevice.device || !webgpuDevice.context) {
@@ -55,7 +54,6 @@ export class WebGPUParticleSystem {
     console.log("WebGPUParticleSystem: Creating bind groups...");
     this.createBindGroups();
     console.log("WebGPUParticleSystem: Initialization complete");
-    this.startTime = performance.now();
   }
 
   private async createBuffers(): Promise<void> {
@@ -492,7 +490,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
   clear(): void {
     this.particleCount = 0;
-    this.startTime = performance.now(); // Reset time when clearing
   }
 
   destroy(): void {
