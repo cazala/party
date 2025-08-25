@@ -1,9 +1,10 @@
-import { WebGPUDevice } from "./WebGPUDevice";
+import type { WebGPURenderer } from "./WebGPURenderer";
 import { renderShaderWGSL } from "./shaders/render";
 import {
   buildComputeProgram,
-  type ComputeModuleDescriptor,
   type ComputeProgramBuild,
+  ComputeModule,
+  type ComputeModuleDescriptor,
 } from "./shaders/compute";
 import { DEFAULTS } from "./config";
 
@@ -44,9 +45,10 @@ export class WebGPUParticleSystem {
   private computeBuild: ComputeProgramBuild | null = null;
 
   constructor(
-    private webgpuDevice: WebGPUDevice,
-    private modules: ComputeModuleDescriptor[]
+    private renderer: WebGPURenderer,
+    private modules: readonly ComputeModule<string, string>[]
   ) {
+    const webgpuDevice = renderer.getWebGPUDevice();
     if (!webgpuDevice.device || !webgpuDevice.context) {
       throw new Error("WebGPU device not initialized");
     }
@@ -54,14 +56,41 @@ export class WebGPUParticleSystem {
     this.context = webgpuDevice.context;
   }
 
-  getModule(name: string): ComputeModuleDescriptor | undefined {
-    return this.modules.find((m) => m.name === name);
+  private static toDescriptor(
+    m: ComputeModule<string, string>
+  ): ComputeModuleDescriptor<string, string> {
+    return m.descriptor();
+  }
+
+  getModule<Name extends string>(
+    name: Name
+  ): ComputeModule<string, string> | undefined {
+    const found = (
+      this.modules as readonly ComputeModule<string, string>[]
+    ).find((m) => {
+      const d = WebGPUParticleSystem.toDescriptor(m);
+      return d.name === name;
+    });
+    return found;
   }
 
   async initialize(): Promise<void> {
     await this.createBuffers();
     await this.createPipelines();
     this.createBindGroups();
+    // Attach to renderer automatically
+    this.renderer.attachSystem(this);
+
+    // Attach per-module uniform writers to modules
+    (this.modules as readonly ComputeModule<string, string>[]).forEach(
+      (mod) => {
+        const name = WebGPUParticleSystem.toDescriptor(mod).name;
+        const writer = (values: Partial<Record<string, number>>) => {
+          this.writeUniform(name, values);
+        };
+        mod.attachUniformWriter(writer);
+      }
+    );
   }
 
   private async createBuffers(): Promise<void> {
@@ -126,7 +155,7 @@ export class WebGPUParticleSystem {
         entryPoint: "fs_main",
         targets: [
           {
-            format: this.webgpuDevice.format,
+            format: this.renderer.getWebGPUDevice().format,
             blend: {
               color: {
                 srcFactor: "src-alpha",
@@ -234,7 +263,12 @@ export class WebGPUParticleSystem {
   }
 
   private getModuleIndex(name: string): number {
-    return this.modules.findIndex((m) => m.name === name);
+    return (this.modules as readonly ComputeModule<string, string>[]).findIndex(
+      (m) => {
+        const d = WebGPUParticleSystem.toDescriptor(m);
+        return d.name === name;
+      }
+    );
   }
 
   private writeSimulationUniforms(
@@ -252,12 +286,16 @@ export class WebGPUParticleSystem {
     // Build full vec array from state
     const values = new Float32Array(layout.vec4Count * 4);
     for (const [key, map] of Object.entries(layout.mapping)) {
-      values[(map as any).flatIndex] = this.moduleUniformState[idx][key] ?? 0;
+      values[(map as unknown as { flatIndex: number }).flatIndex] =
+        this.moduleUniformState[idx][key] ?? 0;
     }
     this.device.queue.writeBuffer(buf, 0, values);
   }
 
-  writeUniform(moduleName: string, values: Record<string, number>): void {
+  writeUniform(
+    moduleName: string,
+    values: Partial<Record<string, number>>
+  ): void {
     const idx = this.getModuleIndex(moduleName);
     if (idx === -1) return;
     const buf = this.moduleUniformBuffers[idx];
@@ -266,11 +304,11 @@ export class WebGPUParticleSystem {
     // Merge into state to avoid zeroing unspecified fields
     const state = this.moduleUniformState[idx];
     for (const [key, value] of Object.entries(values)) {
-      state[key] = value;
+      state[key] = value as number;
     }
     const data = new Float32Array(layout.vec4Count * 4);
     for (const [key, map] of Object.entries(layout.mapping)) {
-      data[(map as any).flatIndex] = state[key] ?? 0;
+      data[(map as { flatIndex: number }).flatIndex] = state[key] ?? 0;
     }
     this.device.queue.writeBuffer(buf, 0, data);
   }

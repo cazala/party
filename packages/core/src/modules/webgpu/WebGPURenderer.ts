@@ -16,7 +16,7 @@ export class WebGPURenderer {
   private isPlaying = false;
   private lastTime = 0;
 
-  private system: WebGPUParticleSystem | null = null;
+  public system: WebGPUParticleSystem | null = null;
 
   constructor(private options: WebGPURendererOptions) {
     this.webgpuDevice = new WebGPUDevice({ canvas: options.canvas });
@@ -42,14 +42,12 @@ export class WebGPURenderer {
     return this.webgpuDevice;
   }
 
-  attachSystem(system: WebGPUParticleSystem): void {
-    this.system = system;
+  attachSystem(system: WebGPUParticleSystem): WebGPURenderer {
+    (this as unknown as WebGPURenderer).system = system as WebGPUParticleSystem;
+    return this as unknown as WebGPURenderer;
   }
 
-  writeUniform(moduleName: string, values: Record<string, number>): void {
-    if (!this.system) return;
-    this.system.writeUniform(moduleName, values);
-  }
+  // Intentionally no uniform write API here; modules manage their own uniforms.
 
   spawnParticles(
     particles: Array<{

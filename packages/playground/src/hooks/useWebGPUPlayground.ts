@@ -1,5 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { WebGPURenderer, Gravity } from "@cazala/party";
+import {
+  WebGPURenderer,
+  Gravity,
+  WebGPUParticleSystem,
+  simulationModule,
+} from "@cazala/party";
 import { ToolMode } from "./useToolMode";
 
 export function useWebGPUPlayground(
@@ -8,6 +13,8 @@ export function useWebGPUPlayground(
 ) {
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
   const rendererRef = useRef<WebGPURenderer | null>(null);
+  const systemRef = useRef<any | null>(null);
+  const gravityRef = useRef<Gravity | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,24 +114,13 @@ export function useWebGPUPlayground(
 
         // Create a default particle system with default modules and attach it BEFORE exposing renderer
         try {
-          const { WebGPUParticleSystem, simulationModule } = await import(
-            "@cazala/party"
-          );
           // Create a live Gravity instance to manage state
-          const gravity = new Gravity({ strength: 0, dirX: 0, dirY: 1 });
-          const modules = [simulationModule, gravity.descriptor()];
-          const system = new WebGPUParticleSystem(
-            renderer.getWebGPUDevice(),
-            modules
-          );
+          const gravity = new Gravity({ strength: 0, dirX: 1, dirY: 1 });
+          const modules = [simulationModule, gravity];
+          const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
-          renderer.attachSystem(system);
-          // Subscribe gravity to push uniform updates automatically
-          gravity.subscribe((values) => {
-            renderer.writeUniform("gravity", values);
-          });
-          // Expose a setter via closure
-          (renderer as any).__gravity = gravity;
+          systemRef.current = system;
+          gravityRef.current = gravity;
         } catch (sysErr) {
           console.error(
             "Failed to create/attach WebGPU particle system:",
@@ -159,6 +155,8 @@ export function useWebGPUPlayground(
         rendererRef.current.destroy();
         rendererRef.current = null;
       }
+      systemRef.current = null;
+      gravityRef.current = null;
     };
   }, []); // Run once on mount, cleanup on unmount
 
@@ -193,10 +191,12 @@ export function useWebGPUPlayground(
         }
       );
 
-      if (!rendererRef.current) {
+      if (!rendererRef.current || !systemRef.current) {
         console.warn(
-          "WebGPU renderer not available for spawning particles (rendererRef.current is:",
+          "WebGPU renderer or system not available for spawning particles (rendererRef.current:",
           rendererRef.current,
+          "systemRef.current:",
+          systemRef.current,
           ")"
         );
         return;
@@ -264,10 +264,8 @@ export function useWebGPUPlayground(
   // Update WebGPU gravity module uniform
   const setGravityStrength = useCallback(
     (strength: number) => {
-      const renderer = rendererRef.current as any;
-      if (renderer && renderer.__gravity) {
-        renderer.__gravity.setStrength(strength);
-      }
+      const gravity = gravityRef.current;
+      gravity?.setStrength(strength);
     },
     [isInitialized]
   );
@@ -306,6 +304,8 @@ export function useWebGPUPlayground(
 
   return {
     renderer: rendererRef.current,
+    system: systemRef.current,
+    gravity: gravityRef.current,
     isInitialized,
     error,
     spawnParticles,
@@ -317,7 +317,6 @@ export function useWebGPUPlayground(
     getParticleCount,
     getFPS,
     // Dummy values for compatibility
-    system: null,
     environment: null,
     boundary: null,
     behavior: null,

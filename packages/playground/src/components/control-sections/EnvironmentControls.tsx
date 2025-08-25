@@ -26,10 +26,7 @@ interface EnvironmentControlsProps {
   renderer?: WebGPURenderer | null;
 }
 
-export function EnvironmentControls({
-  environment,
-  renderer,
-}: EnvironmentControlsProps) {
+export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
   const [gravityStrength, setGravityStrength] = useState(
     DEFAULT_GRAVITY_STRENGTH
   );
@@ -61,8 +58,6 @@ export function EnvironmentControls({
     if (environment) {
       environment.setStrength(value);
     }
-    // Also update WebGPU gravity module if renderer is available
-    renderer?.writeUniform("gravity", { strength: value });
   };
 
   const handleGravityDirectionChange = (direction: GravityDirection) => {

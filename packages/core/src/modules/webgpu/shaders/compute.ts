@@ -1,15 +1,42 @@
 export type ComputeModuleRole = "simulation" | "force";
 
-export interface ComputeModuleDescriptor {
-  name: string; // e.g., "gravity", "simulation"
+export interface ComputeModuleDescriptor<
+  Name extends string,
+  BindingKeys extends string
+> {
+  name: Name;
   role: ComputeModuleRole;
-  bindings?: string[]; // e.g., ["strength", "dirX", "dirY"] for force modules
+  bindings?: readonly BindingKeys[];
   apply?: (args: {
     particleVar: string;
     dtVar: string;
-    getUniform: (id: string) => string;
-  }) => string; // force effect body snippet
+    getUniform: (id: BindingKeys) => string;
+  }) => string;
 }
+
+export abstract class ComputeModule<
+  Name extends string,
+  BindingKeys extends string
+> {
+  private _writer: ((values: Partial<Record<string, number>>) => void) | null =
+    null;
+
+  attachUniformWriter(
+    writer: (values: Partial<Record<string, number>>) => void
+  ): void {
+    this._writer = writer;
+  }
+
+  protected write(values: Partial<Record<BindingKeys, number>>): void {
+    // Binding keys are narrowed by the generic; cast to the writer's accepted shape
+    this._writer?.(values as unknown as Partial<Record<string, number>>);
+  }
+
+  abstract descriptor(): ComputeModuleDescriptor<Name, BindingKeys>;
+}
+
+// Deprecated: previously supported mixing descriptors and modules
+// Now we only support ComputeModule instances across the codebase.
 
 export interface ModuleUniformLayout {
   moduleName: string;
@@ -30,9 +57,13 @@ function capitalize(text: string): string {
   return text.length ? text[0].toUpperCase() + text.slice(1) : text;
 }
 
+// Note: all modules are instances of ComputeModule now
+
 export function buildComputeProgram(
-  modules: ComputeModuleDescriptor[]
+  modules: readonly ComputeModule<string, string>[]
 ): ComputeProgramBuild {
+  // Normalize to descriptors (all are modules now)
+  const descriptors = modules.map((m) => m.descriptor());
   const particleStruct = `
 struct Particle {
   position: vec2<f32>,
@@ -44,7 +75,7 @@ struct Particle {
 
   const storageDecl = `@group(0) @binding(0) var<storage, read_write> particles: array<Particle>;`;
 
-  const sim = modules.find((m) => m.role === "simulation");
+  const sim = descriptors.find((m) => m.role === "simulation");
   if (!sim) {
     throw new Error("No simulation module provided");
   }
@@ -52,7 +83,7 @@ struct Particle {
   const layouts: ModuleUniformLayout[] = [];
   const uniformDecls: string[] = [];
 
-  modules.forEach((mod, idx) => {
+  descriptors.forEach((mod, idx) => {
     const bindingIndex = idx + 1; // 0 is particles
     const uniformsVar = `${mod.name}_uniforms`;
     const structName = `Uniforms_${capitalize(mod.name)}`;
@@ -63,7 +94,7 @@ struct Particle {
     const sizeBytes = vec4Count * 16;
 
     const mapping: Record<string, { flatIndex: number; expr: string }> = {};
-    ids.forEach((id, i) => {
+    ids.forEach((id: string, i: number) => {
       const vecIndex = Math.floor(i / 4);
       const compIndex = i % 4; // 0:x,1:y,2:z,3:w
       const comp =
@@ -104,7 +135,7 @@ struct Particle {
   ].expr;
 
   const forceStatements: string[] = [];
-  modules.forEach((mod) => {
+  descriptors.forEach((mod) => {
     if (mod.role !== "force" || !mod.apply) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
