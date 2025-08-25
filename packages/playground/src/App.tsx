@@ -215,7 +215,11 @@ function App() {
                 ? size.width
                 : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH
             }
-            height={isFullscreen ? size.height : size.height - TOPBAR_HEIGHT - TOOLBAR_HEIGHT}
+            height={
+              isFullscreen
+                ? size.height
+                : size.height - TOPBAR_HEIGHT - TOOLBAR_HEIGHT
+            }
           />
           <ToolBar
             toolMode={toolMode}
@@ -247,6 +251,7 @@ function App() {
             joints={joints}
             undoRedo={undoRedo}
             sessionLoadTrigger={sessionLoadTrigger}
+            renderer={renderer}
           />
         </div>
       </div>

@@ -1,6 +1,5 @@
 import { WebGPUDevice } from "./WebGPUDevice";
 import { WebGPUParticleSystem, WebGPUParticle } from "./WebGPUParticleSystem";
-import { defaultComputeModules } from "./shaders/modules";
 
 export interface WebGPURendererOptions {
   canvas: HTMLCanvasElement;
@@ -17,8 +16,7 @@ export class WebGPURenderer {
   private isPlaying = false;
   private lastTime = 0;
 
-  // Gravity settings
-  private gravityStrength = 0;
+  private system: WebGPUParticleSystem | null = null;
 
   constructor(private options: WebGPURendererOptions) {
     this.webgpuDevice = new WebGPUDevice({ canvas: options.canvas });
@@ -31,11 +29,8 @@ export class WebGPURenderer {
     if (!success) return false;
 
     try {
-      this.particleSystem = new WebGPUParticleSystem(
-        this.webgpuDevice,
-        defaultComputeModules
-      );
-      await this.particleSystem.initialize();
+      // Renderer no longer owns the particle system; user creates it and passes renderer.
+      // We still return true here just for device readiness.
       return true;
     } catch (error) {
       console.error("Failed to initialize WebGPU particle system:", error);
@@ -43,12 +38,17 @@ export class WebGPURenderer {
     }
   }
 
-  setGravityStrength(strength: number): void {
-    this.gravityStrength = strength;
+  getWebGPUDevice(): WebGPUDevice {
+    return this.webgpuDevice;
   }
 
-  getGravityStrength(): number {
-    return this.gravityStrength;
+  attachSystem(system: WebGPUParticleSystem): void {
+    this.system = system;
+  }
+
+  writeUniform(moduleName: string, values: Record<string, number>): void {
+    if (!this.system) return;
+    this.system.writeUniform(moduleName, values);
   }
 
   spawnParticles(
@@ -61,7 +61,7 @@ export class WebGPURenderer {
       mass?: number;
     }>
   ): void {
-    if (!this.particleSystem) {
+    if (!this.system) {
       console.warn("WebGPU particle system not available");
       return;
     }
@@ -73,16 +73,16 @@ export class WebGPURenderer {
       mass: p.mass || 1,
     }));
 
-    this.particleSystem.setParticles(webgpuParticles);
+    this.system.setParticles(webgpuParticles);
   }
 
   clearParticles(): void {
-    if (!this.particleSystem) return;
-    this.particleSystem.clear();
+    if (!this.system) return;
+    this.system.clear();
   }
 
   getParticleCount(): number {
-    return this.particleSystem?.getParticleCount() || 0;
+    return this.system?.getParticleCount() || 0;
   }
 
   setCamera(x: number, y: number): void {
@@ -125,17 +125,17 @@ export class WebGPURenderer {
   }
 
   private animate = (): void => {
-    if (!this.isPlaying || !this.particleSystem) return;
+    if (!this.isPlaying || !this.system) return;
 
     const currentTime = performance.now();
     const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 1 / 30); // Cap at 30 FPS minimum
     this.lastTime = currentTime;
 
-    // Update physics
-    this.particleSystem.update(deltaTime, this.gravityStrength);
+    // Update physics via system
+    this.system.update(deltaTime);
 
     // Render
-    this.particleSystem.render(
+    this.system.render(
       [this.options.width, this.options.height],
       [this.camera.x, this.camera.y],
       this.zoom

@@ -5,3 +5,4 @@ export {
   type RenderUniforms,
 } from "./WebGPUParticleSystem";
 export { WebGPURenderer } from "./WebGPURenderer";
+export * from "./shaders/modules";

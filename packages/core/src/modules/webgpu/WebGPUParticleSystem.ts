@@ -29,6 +29,7 @@ export class WebGPUParticleSystem {
 
   private particleBuffer: GPUBuffer | null = null;
   private moduleUniformBuffers: (GPUBuffer | null)[] = [];
+  private moduleUniformState: Record<string, number>[] = [];
   private renderUniformBuffer: GPUBuffer | null = null;
 
   private renderBindGroup: GPUBindGroup | null = null;
@@ -51,6 +52,10 @@ export class WebGPUParticleSystem {
     }
     this.device = webgpuDevice.device;
     this.context = webgpuDevice.context;
+  }
+
+  getModule(name: string): ComputeModuleDescriptor | undefined {
+    return this.modules.find((m) => m.name === name);
   }
 
   async initialize(): Promise<void> {
@@ -77,6 +82,15 @@ export class WebGPUParticleSystem {
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       })
     );
+
+    // Initialize per-module CPU-side uniform state for merging partial writes
+    this.moduleUniformState = this.computeBuild.layouts.map((layout) => {
+      const state: Record<string, number> = {};
+      for (const key of Object.keys(layout.mapping)) {
+        state[key] = 0;
+      }
+      return state;
+    });
 
     // Create render uniform buffer (canvas_size, camera_position, zoom, padding)
     this.renderUniformBuffer = this.device.createBuffer({
@@ -232,26 +246,33 @@ export class WebGPUParticleSystem {
     const buf = this.moduleUniformBuffers[idx];
     if (!buf) return;
     const layout = this.computeBuild!.layouts[idx];
+    // Merge into state
+    this.moduleUniformState[idx]["dt"] = deltaTime;
+    this.moduleUniformState[idx]["count"] = particleCount;
+    // Build full vec array from state
     const values = new Float32Array(layout.vec4Count * 4);
-    values[layout.mapping["dt"].flatIndex] = deltaTime;
-    values[layout.mapping["count"].flatIndex] = particleCount;
+    for (const [key, map] of Object.entries(layout.mapping)) {
+      values[(map as any).flatIndex] = this.moduleUniformState[idx][key] ?? 0;
+    }
     this.device.queue.writeBuffer(buf, 0, values);
   }
 
-  private writeGravityUniforms(
-    gravityStrength: number,
-    direction: [number, number]
-  ): void {
-    const idx = this.getModuleIndex("gravity");
+  writeUniform(moduleName: string, values: Record<string, number>): void {
+    const idx = this.getModuleIndex(moduleName);
     if (idx === -1) return;
     const buf = this.moduleUniformBuffers[idx];
     if (!buf) return;
     const layout = this.computeBuild!.layouts[idx];
-    const values = new Float32Array(layout.vec4Count * 4);
-    values[layout.mapping["strength"].flatIndex] = gravityStrength;
-    values[layout.mapping["dirX"].flatIndex] = direction[0];
-    values[layout.mapping["dirY"].flatIndex] = direction[1];
-    this.device.queue.writeBuffer(buf, 0, values);
+    // Merge into state to avoid zeroing unspecified fields
+    const state = this.moduleUniformState[idx];
+    for (const [key, value] of Object.entries(values)) {
+      state[key] = value;
+    }
+    const data = new Float32Array(layout.vec4Count * 4);
+    for (const [key, map] of Object.entries(layout.mapping)) {
+      data[(map as any).flatIndex] = state[key] ?? 0;
+    }
+    this.device.queue.writeBuffer(buf, 0, data);
   }
 
   updateRender(uniforms: RenderUniforms): void {
@@ -269,9 +290,8 @@ export class WebGPUParticleSystem {
     this.device.queue.writeBuffer(this.renderUniformBuffer, 0, data);
   }
 
-  update(deltaTime: number, gravityStrength: number): void {
+  update(deltaTime: number): void {
     this.writeSimulationUniforms(deltaTime, this.particleCount);
-    this.writeGravityUniforms(gravityStrength, [0, 1]);
   }
 
   render(

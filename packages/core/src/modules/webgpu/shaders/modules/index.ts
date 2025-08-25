@@ -1,6 +1,9 @@
 import { simulationModule } from "./simulation";
-import { gravityModule } from "./gravity";
+import { Gravity } from "./gravity";
 
-export { simulationModule, gravityModule };
+export { simulationModule, Gravity };
 
-export const defaultComputeModules = [simulationModule, gravityModule];
+export const defaultComputeModules = [
+  simulationModule,
+  new Gravity().descriptor(),
+];

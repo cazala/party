@@ -9,6 +9,7 @@ import {
   radToDeg,
   degToRad,
   DEFAULT_DAMPING,
+  WebGPURenderer,
 } from "@cazala/party";
 
 type GravityDirection =
@@ -22,9 +23,13 @@ type GravityDirection =
 
 interface EnvironmentControlsProps {
   environment: Environment | null;
+  renderer?: WebGPURenderer | null;
 }
 
-export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
+export function EnvironmentControls({
+  environment,
+  renderer,
+}: EnvironmentControlsProps) {
   const [gravityStrength, setGravityStrength] = useState(
     DEFAULT_GRAVITY_STRENGTH
   );
@@ -56,6 +61,8 @@ export function EnvironmentControls({ environment }: EnvironmentControlsProps) {
     if (environment) {
       environment.setStrength(value);
     }
+    // Also update WebGPU gravity module if renderer is available
+    renderer?.writeUniform("gravity", { strength: value });
   };
 
   const handleGravityDirectionChange = (direction: GravityDirection) => {
