@@ -1,5 +1,6 @@
 import { WebGPUDevice } from "./WebGPUDevice";
 import { WebGPUParticleSystem, WebGPUParticle } from "./WebGPUParticleSystem";
+import { defaultComputeModules } from "./shaders/modules";
 
 export interface WebGPURendererOptions {
   canvas: HTMLCanvasElement;
@@ -30,7 +31,10 @@ export class WebGPURenderer {
     if (!success) return false;
 
     try {
-      this.particleSystem = new WebGPUParticleSystem(this.webgpuDevice);
+      this.particleSystem = new WebGPUParticleSystem(
+        this.webgpuDevice,
+        defaultComputeModules
+      );
       await this.particleSystem.initialize();
       return true;
     } catch (error) {

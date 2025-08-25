@@ -1,6 +1,10 @@
 import { WebGPUDevice } from "./WebGPUDevice";
 import { renderShaderWGSL } from "./shaders/render";
-import { computeShaderWGSL } from "./shaders/compute";
+import {
+  buildComputeProgram,
+  type ComputeModuleDescriptor,
+  type ComputeProgramBuild,
+} from "./shaders/compute";
 import { DEFAULTS } from "./config";
 
 export interface WebGPUParticle {
@@ -10,12 +14,7 @@ export interface WebGPUParticle {
   mass: number;
 }
 
-export interface ForceUniforms {
-  gravityStrength: number;
-  gravityDirection: [number, number];
-  deltaTime: number;
-  time: number;
-}
+// Module-specific uniform interfaces are kept internal; uniforms are written dynamically.
 
 export interface RenderUniforms {
   canvasSize: [number, number];
@@ -29,7 +28,7 @@ export class WebGPUParticleSystem {
   private context: GPUCanvasContext;
 
   private particleBuffer: GPUBuffer | null = null;
-  private forceUniformBuffer: GPUBuffer | null = null;
+  private moduleUniformBuffers: (GPUBuffer | null)[] = [];
   private renderUniformBuffer: GPUBuffer | null = null;
 
   private renderBindGroup: GPUBindGroup | null = null;
@@ -41,7 +40,12 @@ export class WebGPUParticleSystem {
   private particleCount: number = 0;
   private maxParticles: number = DEFAULTS.maxParticles;
 
-  constructor(private webgpuDevice: WebGPUDevice) {
+  private computeBuild: ComputeProgramBuild | null = null;
+
+  constructor(
+    private webgpuDevice: WebGPUDevice,
+    private modules: ComputeModuleDescriptor[]
+  ) {
     if (!webgpuDevice.device || !webgpuDevice.context) {
       throw new Error("WebGPU device not initialized");
     }
@@ -63,11 +67,16 @@ export class WebGPUParticleSystem {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
-    // Create force uniform buffer (gravity_strength, gravity_direction, time, padding1, padding2)
-    this.forceUniformBuffer = this.device.createBuffer({
-      size: 32, // 8 floats * 4 bytes (with padding for alignment)
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
+    // Build program to derive layouts and code
+    this.computeBuild = buildComputeProgram(this.modules);
+
+    // Create module uniform buffers dynamically (one per module) using computed sizes
+    this.moduleUniformBuffers = this.computeBuild.layouts.map((layout) =>
+      this.device.createBuffer({
+        size: layout.sizeBytes,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      })
+    );
 
     // Create render uniform buffer (canvas_size, camera_position, zoom, padding)
     this.renderUniformBuffer = this.device.createBuffer({
@@ -79,7 +88,7 @@ export class WebGPUParticleSystem {
   private async createPipelines(): Promise<void> {
     // Load shader code (render + compute)
     const renderShaderCode = renderShaderWGSL;
-    const computeShaderCode = computeShaderWGSL;
+    const computeShaderCode = this.computeBuild?.code || "";
 
     // Create render shader module
     const renderShaderModule = this.device.createShaderModule({
@@ -137,7 +146,7 @@ export class WebGPUParticleSystem {
     if (
       !this.renderPipeline ||
       !this.particleBuffer ||
-      !this.forceUniformBuffer ||
+      this.moduleUniformBuffers.some((b) => !b) ||
       !this.renderUniformBuffer
     ) {
       throw new Error("Pipeline or buffers not created");
@@ -158,7 +167,7 @@ export class WebGPUParticleSystem {
       ],
     });
 
-    // Create compute bind group: particles storage (read_write) + force uniforms
+    // Create compute bind group: particles storage + module uniforms
     if (!this.computePipeline) {
       throw new Error("Compute pipeline not created");
     }
@@ -169,10 +178,10 @@ export class WebGPUParticleSystem {
           binding: 0,
           resource: { buffer: this.particleBuffer },
         },
-        {
-          binding: 1,
-          resource: { buffer: this.forceUniformBuffer },
-        },
+        ...this.moduleUniformBuffers.map((buf, i) => ({
+          binding: i + 1,
+          resource: { buffer: buf as GPUBuffer },
+        })),
       ],
     });
   }
@@ -210,24 +219,39 @@ export class WebGPUParticleSystem {
     this.device.queue.writeBuffer(this.particleBuffer, 0, data);
   }
 
-  updateForces(uniforms: ForceUniforms): void {
-    if (!this.forceUniformBuffer) return;
+  private getModuleIndex(name: string): number {
+    return this.modules.findIndex((m) => m.name === name);
+  }
 
-    // Pack uniforms into two vec4s to avoid alignment issues
-    // v0: [gravity_strength, delta_time, particle_count, 0]
-    // v1: [dir.x, dir.y, 0, 0]
-    const data = new Float32Array([
-      uniforms.gravityStrength,
-      uniforms.deltaTime,
-      this.particleCount,
-      0.0,
-      uniforms.gravityDirection[0],
-      uniforms.gravityDirection[1],
-      0.0,
-      0.0,
-    ]);
+  private writeSimulationUniforms(
+    deltaTime: number,
+    particleCount: number
+  ): void {
+    const idx = this.getModuleIndex("simulation");
+    if (idx === -1) return;
+    const buf = this.moduleUniformBuffers[idx];
+    if (!buf) return;
+    const layout = this.computeBuild!.layouts[idx];
+    const values = new Float32Array(layout.vec4Count * 4);
+    values[layout.mapping["dt"].flatIndex] = deltaTime;
+    values[layout.mapping["count"].flatIndex] = particleCount;
+    this.device.queue.writeBuffer(buf, 0, values);
+  }
 
-    this.device.queue.writeBuffer(this.forceUniformBuffer, 0, data);
+  private writeGravityUniforms(
+    gravityStrength: number,
+    direction: [number, number]
+  ): void {
+    const idx = this.getModuleIndex("gravity");
+    if (idx === -1) return;
+    const buf = this.moduleUniformBuffers[idx];
+    if (!buf) return;
+    const layout = this.computeBuild!.layouts[idx];
+    const values = new Float32Array(layout.vec4Count * 4);
+    values[layout.mapping["strength"].flatIndex] = gravityStrength;
+    values[layout.mapping["dirX"].flatIndex] = direction[0];
+    values[layout.mapping["dirY"].flatIndex] = direction[1];
+    this.device.queue.writeBuffer(buf, 0, values);
   }
 
   updateRender(uniforms: RenderUniforms): void {
@@ -246,12 +270,8 @@ export class WebGPUParticleSystem {
   }
 
   update(deltaTime: number, gravityStrength: number): void {
-    this.updateForces({
-      gravityStrength,
-      gravityDirection: [0, 1], // Down
-      deltaTime,
-      time: 0,
-    });
+    this.writeSimulationUniforms(deltaTime, this.particleCount);
+    this.writeGravityUniforms(gravityStrength, [0, 1]);
   }
 
   render(
@@ -322,11 +342,11 @@ export class WebGPUParticleSystem {
 
   destroy(): void {
     this.particleBuffer?.destroy();
-    this.forceUniformBuffer?.destroy();
+    this.moduleUniformBuffers.forEach((b) => b?.destroy());
     this.renderUniformBuffer?.destroy();
 
     this.particleBuffer = null;
-    this.forceUniformBuffer = null;
+    this.moduleUniformBuffers = [];
     this.renderUniformBuffer = null;
     this.renderBindGroup = null;
     this.renderPipeline = null;
