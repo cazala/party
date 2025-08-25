@@ -1,5 +1,5 @@
-import { WebGPUDevice } from './WebGPUDevice';
-import { WebGPUParticleSystem, WebGPUParticle } from './WebGPUParticleSystem';
+import { WebGPUDevice } from "./WebGPUDevice";
+import { WebGPUParticleSystem, WebGPUParticle } from "./WebGPUParticleSystem";
 
 export interface WebGPURendererOptions {
   canvas: HTMLCanvasElement;
@@ -15,39 +15,31 @@ export class WebGPURenderer {
   private animationId: number | null = null;
   private isPlaying = false;
   private lastTime = 0;
-  
+
   // Gravity settings
   private gravityStrength = 0;
-  
+
   constructor(private options: WebGPURendererOptions) {
     this.webgpuDevice = new WebGPUDevice({ canvas: options.canvas });
     // Particle system will be created after device initialization
   }
 
   async initialize(): Promise<boolean> {
-    console.log("WebGPURenderer: Starting device initialization...");
     const success = await this.webgpuDevice.initialize();
-    console.log("WebGPURenderer: Device initialization result:", success);
-    
+
     if (!success) return false;
-    
+
     try {
-      console.log("WebGPURenderer: Creating particle system...");
       this.particleSystem = new WebGPUParticleSystem(this.webgpuDevice);
-      console.log("WebGPURenderer: Particle system created successfully");
-      
-      console.log("WebGPURenderer: Starting particle system initialization...");
       await this.particleSystem.initialize();
-      console.log("WebGPURenderer: Particle system initialized successfully");
       return true;
     } catch (error) {
-      console.error('Failed to initialize WebGPU particle system:', error);
+      console.error("Failed to initialize WebGPU particle system:", error);
       return false;
     }
   }
 
   setGravityStrength(strength: number): void {
-    console.log("WebGPU setGravityStrength called:", strength);
     this.gravityStrength = strength;
   }
 
@@ -55,35 +47,29 @@ export class WebGPURenderer {
     return this.gravityStrength;
   }
 
-  spawnParticles(particles: Array<{
-    x: number;
-    y: number;
-    vx?: number;
-    vy?: number;
-    size?: number;
-    mass?: number;
-  }>): void {
-    console.log("WebGPURenderer.spawnParticles called with", particles.length, "particles");
-    console.log("First few particles:", particles.slice(0, 3));
-    
+  spawnParticles(
+    particles: Array<{
+      x: number;
+      y: number;
+      vx?: number;
+      vy?: number;
+      size?: number;
+      mass?: number;
+    }>
+  ): void {
     if (!this.particleSystem) {
       console.warn("WebGPU particle system not available");
       return;
     }
-    
-    const webgpuParticles: WebGPUParticle[] = particles.map(p => ({
+
+    const webgpuParticles: WebGPUParticle[] = particles.map((p) => ({
       position: [p.x, p.y],
       velocity: [p.vx || 0, p.vy || 0],
       size: p.size || 5,
       mass: p.mass || 1,
     }));
-    
-    console.log("Converted to WebGPU format:", webgpuParticles.length, "particles");
-    console.log("First WebGPU particle:", webgpuParticles[0]);
-    
+
     this.particleSystem.setParticles(webgpuParticles);
-    
-    console.log("Particle count after spawning:", this.particleSystem.getParticleCount());
   }
 
   clearParticles(): void {
@@ -120,11 +106,9 @@ export class WebGPURenderer {
   }
 
   play(): void {
-    console.log("WebGPU renderer play() called, currently playing:", this.isPlaying);
     if (this.isPlaying) return;
     this.isPlaying = true;
     this.lastTime = performance.now();
-    console.log("Starting WebGPU animation loop");
     this.animate();
   }
 
@@ -140,17 +124,8 @@ export class WebGPURenderer {
     if (!this.isPlaying || !this.particleSystem) return;
 
     const currentTime = performance.now();
-    const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 1/30); // Cap at 30 FPS minimum
+    const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 1 / 30); // Cap at 30 FPS minimum
     this.lastTime = currentTime;
-
-    // Debug: Log animation loop occasionally
-    if (Math.random() < 0.01) { // Log ~1% of frames
-      console.log("WebGPU animate loop:", {
-        deltaTime: deltaTime.toFixed(4),
-        gravityStrength: this.gravityStrength,
-        particleCount: this.particleSystem.getParticleCount()
-      });
-    }
 
     // Update physics
     this.particleSystem.update(deltaTime, this.gravityStrength);
