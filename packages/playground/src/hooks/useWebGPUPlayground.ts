@@ -5,6 +5,7 @@ import {
   WebGPUParticleSystem,
   simulationModule,
 } from "@cazala/party";
+import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary";
 import { ToolMode } from "./useToolMode";
 
 export function useWebGPUPlayground(
@@ -115,8 +116,14 @@ export function useWebGPUPlayground(
         // Create a default particle system with default modules and attach it BEFORE exposing renderer
         try {
           // Create a live Gravity instance to manage state
-          const gravity = new Gravity({ strength: 0, dirX: 1, dirY: 1 });
-          const modules = [simulationModule, gravity];
+          const gravity = new Gravity({ strength: 0, dirX: 0, dirY: 1 });
+          const boundary = new Boundary({
+            minX: -800,
+            minY: -600,
+            maxX: 800,
+            maxY: 600,
+          });
+          const modules = [simulationModule, gravity, boundary];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
           systemRef.current = system;
