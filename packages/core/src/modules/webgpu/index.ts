@@ -5,4 +5,10 @@ export {
   type RenderUniforms,
 } from "./WebGPUParticleSystem";
 export { WebGPURenderer } from "./WebGPURenderer";
-export * from "./shaders/modules";
+export {
+  simulationModule,
+  Gravity,
+  Boundary as WebGPUBoundary,
+  Collisions as WebGPUCollisions,
+  defaultComputeModules,
+} from "./shaders/modules";

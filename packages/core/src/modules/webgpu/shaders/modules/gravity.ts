@@ -41,10 +41,10 @@ export class Gravity extends ComputeModule<
       name: "gravity",
       role: "force",
       bindings: ["strength", "dirX", "dirY"] as const,
-      apply: ({ particleVar, dtVar, getUniform }) => `{
+      apply: ({ particleVar, getUniform }) => `{
   let gravity_dir = vec2<f32>(${getUniform("dirX")}, ${getUniform("dirY")});
   let gravity = gravity_dir * ${getUniform("strength")};
-  ${particleVar}.velocity += gravity * ${dtVar};
+  ${particleVar}.velocity += gravity;
 }`,
     };
   }

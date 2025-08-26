@@ -6,6 +6,7 @@ import {
   simulationModule,
 } from "@cazala/party";
 import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary";
+import { Collisions } from "@cazala/party/modules/webgpu/shaders/modules/collisions";
 import { ToolMode } from "./useToolMode";
 
 export function useWebGPUPlayground(
@@ -122,8 +123,10 @@ export function useWebGPUPlayground(
             minY: -600,
             maxX: 800,
             maxY: 600,
+            restitution: 0.6,
           });
-          const modules = [simulationModule, gravity, boundary];
+          const collisions = new Collisions({ restitution: 0.8 });
+          const modules = [simulationModule, gravity, boundary, collisions];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
           systemRef.current = system;

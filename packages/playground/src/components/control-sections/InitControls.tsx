@@ -8,7 +8,7 @@ import {
 import { ColorSelector } from "../ColorSelector";
 import { calculateMassFromSize } from "../../utils/particle";
 
-const DEFAULT_SPAWN_NUM_PARTICLES = 10000;
+const DEFAULT_SPAWN_NUM_PARTICLES = 3000;
 const DEFAULT_SPAWN_SHAPE = "grid";
 const DEFAULT_SPAWN_SPACING = 25;
 const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
