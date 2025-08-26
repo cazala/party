@@ -254,6 +254,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let count = u32(${countExpr});
   if (i >= count) { return; }
   let p = particles[i];
+  if (p.mass == 0.0) { return; }
   let cell = grid_cell_index(p.position);
   let offset = atomicAdd(&GRID_COUNTS[cell], 1u);
   if (offset < GRID_MAX_PER_CELL()) {
@@ -270,6 +271,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   if (index >= count) { return; }
 
   var particle = particles[index];
+  if (particle.mass == 0.0) { return; }
 
   ${forceStatements.join("\n\n  ")}
 

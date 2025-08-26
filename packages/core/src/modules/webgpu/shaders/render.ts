@@ -44,6 +44,12 @@ fn vs_main(
   );
   
   let particle = particles[instance_index];
+  if (particle.mass == 0.0) {
+    // Cull by sending outside clip space
+    out.position = vec4<f32>(2.0, 2.0, 1.0, 1.0);
+    out.uv = vec2<f32>(0.0, 0.0);
+    return out;
+  }
   // For instanced triangle-strip without a vertex buffer, vertex_index increments across instances.
   // Use local index per instance to select the quad corner.
   let local_index = vertex_index & 3u; // vertex_index % 4

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 interface WebGPUBoundaryLike {
   setRestitution: (value: number) => void;
   setFriction?: (value: number) => void;
+  setMode?: (mode: "bounce" | "warp" | "kill") => void;
 }
 
 export function WebGPUBoundaryControls({
@@ -12,6 +13,7 @@ export function WebGPUBoundaryControls({
 }) {
   const [restitution, setRestitution] = useState(0.6);
   const [friction, setFriction] = useState(0);
+  const [mode, setMode] = useState<"bounce" | "warp" | "kill">("bounce");
 
   useEffect(() => {
     // no-op: could hydrate from module if it exposed getters
@@ -19,6 +21,25 @@ export function WebGPUBoundaryControls({
 
   return (
     <div className="control-section">
+      <div className="control-group">
+        <label>
+          Mode
+          <select
+            value={mode}
+            onChange={(e) => {
+              const m = e.target.value as "bounce" | "warp" | "kill";
+              setMode(m);
+              boundary?.setMode?.(m);
+            }}
+            className="form-select"
+          >
+            <option value="bounce">Bounce</option>
+            <option value="warp">Warp</option>
+            <option value="kill">Kill</option>
+          </select>
+        </label>
+      </div>
+
       <div className="control-group">
         <label>
           Restitution: {restitution.toFixed(2)}

@@ -126,7 +126,11 @@ export function useWebGPUPlayground(
             friction: 0,
             damping: 0,
           });
-          const boundary = new Boundary({ restitution: 0.6, friction: 0.0 });
+          const boundary = new Boundary({
+            restitution: 0.6,
+            friction: 0.1,
+            mode: "bounce",
+          });
           const collisions = new Collisions({ restitution: 0.8 });
           const modules = [simulationModule, environment, boundary, collisions];
           const system = new WebGPUParticleSystem(renderer, modules);
