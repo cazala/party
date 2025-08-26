@@ -38,11 +38,23 @@ export class WebGPUParticleSystem {
 
   private renderPipeline: GPURenderPipeline | null = null;
   private computePipeline: GPUComputePipeline | null = null;
+  private gridClearPipeline: GPUComputePipeline | null = null;
+  private gridBuildPipeline: GPUComputePipeline | null = null;
+  private bindGroupLayout: GPUBindGroupLayout | null = null;
+  private pipelineLayout: GPUPipelineLayout | null = null;
 
   private particleCount: number = 0;
   private maxParticles: number = DEFAULTS.maxParticles;
 
   private computeBuild: ComputeProgramBuild | null = null;
+
+  // Grid buffers
+  private gridCountsBuffer: GPUBuffer | null = null;
+  private gridIndicesBuffer: GPUBuffer | null = null;
+  private gridCells: number = 0;
+  private gridMaxPerCell: number = 0;
+  // Index kept for potential future dynamic updates; suppress unused warning by using in a noop
+  private gridUniformIndex: number = -1;
 
   constructor(
     private renderer: WebGPURenderer,
@@ -126,6 +138,60 @@ export class WebGPUParticleSystem {
       size: 24, // 6 floats * 4 bytes
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
+
+    // Grid buffers (always enabled in compute builder)
+    const gridLayout = this.computeBuild.layouts.find(
+      (l) => l.moduleName === "grid"
+    );
+    if (gridLayout) {
+      this.gridUniformIndex = this.computeBuild.layouts.indexOf(gridLayout);
+      // Derive grid dimensions from current render size and default cell size; can be updated later via writeUniform
+      const width = (this.renderer as any).options?.width ?? 800;
+      const height = (this.renderer as any).options?.height ?? 600;
+      const minX = -width / 2;
+      const maxX = width / 2;
+      const minY = -height / 2;
+      const maxY = height / 2;
+      const cellSize = 16;
+      const cols = Math.max(1, Math.ceil((maxX - minX) / cellSize));
+      const rows = Math.max(1, Math.ceil((maxY - minY) / cellSize));
+      const maxPerCell = 64;
+      this.gridCells = cols * rows;
+      this.gridMaxPerCell = maxPerCell;
+      const countsSize = this.gridCells * 4;
+      const indicesSize = this.gridCells * this.gridMaxPerCell * 4;
+      this.gridCountsBuffer = this.device.createBuffer({
+        size: countsSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      this.gridIndicesBuffer = this.device.createBuffer({
+        size: indicesSize,
+        usage: GPUBufferUsage.STORAGE,
+      });
+      // Seed grid uniforms directly (grid is not a module)
+      const gridIdx = this.computeBuild.layouts.findIndex(
+        (l) => l.moduleName === "grid"
+      );
+      if (gridIdx !== -1) {
+        const gridBuf = this.moduleUniformBuffers[gridIdx];
+        const layout = this.computeBuild.layouts[gridIdx];
+        const values = new Float32Array(layout.vec4Count * 4);
+        const mapping = layout.mapping as Record<string, { flatIndex: number }>;
+        values[mapping.minX.flatIndex] = minX;
+        values[mapping.minY.flatIndex] = minY;
+        values[mapping.maxX.flatIndex] = maxX;
+        values[mapping.maxY.flatIndex] = maxY;
+        values[mapping.cols.flatIndex] = cols;
+        values[mapping.rows.flatIndex] = rows;
+        values[mapping.cellSize.flatIndex] = cellSize;
+        values[mapping.maxPerCell.flatIndex] = maxPerCell;
+        this.device.queue.writeBuffer(gridBuf as GPUBuffer, 0, values);
+      }
+      // Noop read to avoid unused warnings in some toolchains
+      if (this.gridUniformIndex < -1) {
+        console.debug("unused", this.gridUniformIndex);
+      }
+    }
   }
 
   private async createPipelines(): Promise<void> {
@@ -175,13 +241,52 @@ export class WebGPUParticleSystem {
       },
     });
 
-    // Create compute pipeline (updates positions/velocities)
+    // Create an explicit bind group layout and pipeline layout shared by all compute entry points
+    if (!this.computeBuild) throw new Error("Compute program not built");
+    const bglEntries: GPUBindGroupLayoutEntry[] = [];
+    bglEntries.push({
+      binding: 0,
+      visibility: GPUShaderStage.COMPUTE,
+      buffer: { type: "storage" },
+    });
+    for (const layout of this.computeBuild.layouts) {
+      bglEntries.push({
+        binding: layout.bindingIndex,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: "uniform" },
+      });
+    }
+    if (this.computeBuild.extraBindings.grid) {
+      bglEntries.push({
+        binding: this.computeBuild.extraBindings.grid.countsBinding,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: "storage" },
+      });
+      bglEntries.push({
+        binding: this.computeBuild.extraBindings.grid.indicesBinding,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: "storage" },
+      });
+    }
+    this.bindGroupLayout = this.device.createBindGroupLayout({
+      entries: bglEntries,
+    });
+    this.pipelineLayout = this.device.createPipelineLayout({
+      bindGroupLayouts: [this.bindGroupLayout],
+    });
+
+    // Create compute pipelines with the explicit layout
     this.computePipeline = this.device.createComputePipeline({
-      layout: "auto",
-      compute: {
-        module: computeShaderModule,
-        entryPoint: "main",
-      },
+      layout: this.pipelineLayout,
+      compute: { module: computeShaderModule, entryPoint: "main" },
+    });
+    this.gridClearPipeline = this.device.createComputePipeline({
+      layout: this.pipelineLayout,
+      compute: { module: computeShaderModule, entryPoint: "grid_clear" },
+    });
+    this.gridBuildPipeline = this.device.createComputePipeline({
+      layout: this.pipelineLayout,
+      compute: { module: computeShaderModule, entryPoint: "grid_build" },
     });
   }
 
@@ -211,21 +316,35 @@ export class WebGPUParticleSystem {
     });
 
     // Create compute bind group: particles storage + module uniforms
-    if (!this.computePipeline) {
-      throw new Error("Compute pipeline not created");
+    if (!this.bindGroupLayout) {
+      throw new Error("Bind group layout not created");
+    }
+    const entries: GPUBindGroupEntry[] = [
+      { binding: 0, resource: { buffer: this.particleBuffer } },
+      ...this.moduleUniformBuffers.map((buf, i) => ({
+        binding: i + 1,
+        resource: { buffer: buf as GPUBuffer },
+      })),
+    ];
+    if (
+      this.computeBuild?.extraBindings.grid &&
+      this.gridCountsBuffer &&
+      this.gridIndicesBuffer
+    ) {
+      entries.push(
+        {
+          binding: this.computeBuild.extraBindings.grid.countsBinding,
+          resource: { buffer: this.gridCountsBuffer },
+        },
+        {
+          binding: this.computeBuild.extraBindings.grid.indicesBinding,
+          resource: { buffer: this.gridIndicesBuffer },
+        }
+      );
     }
     this.computeBindGroup = this.device.createBindGroup({
-      layout: this.computePipeline.getBindGroupLayout(0),
-      entries: [
-        {
-          binding: 0,
-          resource: { buffer: this.particleBuffer },
-        },
-        ...this.moduleUniformBuffers.map((buf, i) => ({
-          binding: i + 1,
-          resource: { buffer: buf as GPUBuffer },
-        })),
-      ],
+      layout: this.bindGroupLayout,
+      entries,
     });
   }
 
@@ -356,17 +475,37 @@ export class WebGPUParticleSystem {
 
     const textureView = this.context.getCurrentTexture().createView();
 
-    // Run compute pass to integrate physics
+    // Run compute passes to build grid and integrate physics
     if (this.computePipeline && this.computeBindGroup) {
-      const computePass = commandEncoder.beginComputePass();
-      computePass.setPipeline(this.computePipeline);
-      computePass.setBindGroup(0, this.computeBindGroup);
       const workgroupSize = DEFAULTS.workgroupSize;
-      const numWorkgroups = Math.ceil(this.particleCount / workgroupSize);
-      if (numWorkgroups > 0) {
-        computePass.dispatchWorkgroups(numWorkgroups);
+
+      // Grid clear pass
+      if (this.gridClearPipeline && this.gridCells > 0) {
+        const pass = commandEncoder.beginComputePass();
+        pass.setBindGroup(0, this.computeBindGroup);
+        pass.setPipeline(this.gridClearPipeline);
+        const clearGroups = Math.ceil(this.gridCells / workgroupSize);
+        if (clearGroups > 0) pass.dispatchWorkgroups(clearGroups);
+        pass.end();
       }
-      computePass.end();
+
+      // Grid build pass
+      if (this.gridBuildPipeline && this.particleCount > 0) {
+        const pass = commandEncoder.beginComputePass();
+        pass.setBindGroup(0, this.computeBindGroup);
+        pass.setPipeline(this.gridBuildPipeline);
+        const buildGroups = Math.ceil(this.particleCount / workgroupSize);
+        if (buildGroups > 0) pass.dispatchWorkgroups(buildGroups);
+        pass.end();
+      }
+
+      // Main simulation pass
+      const simPass = commandEncoder.beginComputePass();
+      simPass.setBindGroup(0, this.computeBindGroup);
+      simPass.setPipeline(this.computePipeline);
+      const simGroups = Math.ceil(this.particleCount / workgroupSize);
+      if (simGroups > 0) simPass.dispatchWorkgroups(simGroups);
+      simPass.end();
     }
 
     const renderPass = commandEncoder.beginRenderPass({
