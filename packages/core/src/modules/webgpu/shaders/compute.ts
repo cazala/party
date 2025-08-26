@@ -71,6 +71,7 @@ export function buildComputeProgram(
 struct Particle {
   position: vec2<f32>,
   velocity: vec2<f32>,
+  acceleration: vec2<f32>,
   size: f32,
   mass: f32,
 }
@@ -273,7 +274,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   ${forceStatements.join("\n\n  ")}
 
   // Integrate position using delta time
+  // Apply acceleration to velocity, then velocity to position
+  particle.velocity += particle.acceleration * ${dtExpr};
   particle.position += particle.velocity * ${dtExpr};
+  // Reset acceleration to zero for next frame
+  particle.acceleration = vec2<f32>(0.0, 0.0);
   particles[index] = particle;
 }`;
 

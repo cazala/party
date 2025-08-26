@@ -7,7 +7,7 @@ export {
 export { WebGPURenderer } from "./WebGPURenderer";
 export {
   simulationModule,
-  Gravity,
+  Environment as WebGPUEnvironment,
   Boundary as WebGPUBoundary,
   Collisions as WebGPUCollisions,
   defaultComputeModules,

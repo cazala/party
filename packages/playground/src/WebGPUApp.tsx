@@ -8,6 +8,7 @@ import {
   InitControls,
   InitControlsRef,
 } from "./components/control-sections/InitControls";
+import { WebGPUEnvironmentControls } from "./components/control-sections/WebGPUEnvironmentControls";
 
 import "./styles/index.css";
 import "./components/Controls.css";
@@ -29,7 +30,7 @@ function WebGPUApp() {
     isInitialized,
     error,
     spawnParticles,
-    setGravityStrength,
+    environment,
     play,
     pause,
     clear,
@@ -151,7 +152,6 @@ function WebGPUApp() {
           <InitControls
             ref={initControlsRef}
             onInitParticles={spawnParticles}
-            onGravityStrengthChange={setGravityStrength}
             onGetInitConfig={() => ({
               numParticles: 10000,
               shape: "grid" as const,
@@ -178,6 +178,12 @@ function WebGPUApp() {
             width={isFullscreen ? size.width : size.width - LEFT_SIDEBAR_WIDTH}
             height={isFullscreen ? size.height : size.height - TOPBAR_HEIGHT}
           />
+        </div>
+        <div
+          className="right-sidebar"
+          style={{ display: isFullscreen ? "none" : "block" }}
+        >
+          <WebGPUEnvironmentControls environment={environment} />
         </div>
       </div>
     </div>

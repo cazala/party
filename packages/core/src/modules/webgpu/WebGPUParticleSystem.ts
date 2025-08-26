@@ -107,7 +107,7 @@ export class WebGPUParticleSystem {
 
   private async createBuffers(): Promise<void> {
     // Create storage buffer for particle data (position vec2, velocity vec2, size f32, mass f32)
-    const particleDataSize = this.maxParticles * 6 * 4; // 6 floats per particle * 4 bytes per float
+    const particleDataSize = this.maxParticles * 8 * 4; // 8 floats per particle * 4 bytes per float (pos2, vel2, accel2, size, mass)
     this.particleBuffer = this.device.createBuffer({
       size: particleDataSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
@@ -365,16 +365,19 @@ export class WebGPUParticleSystem {
   private updateParticleBuffer(particles: WebGPUParticle[]): void {
     if (!this.particleBuffer) return;
 
-    const data = new Float32Array(particles.length * 6);
+    const data = new Float32Array(particles.length * 8);
     for (let i = 0; i < particles.length; i++) {
       const particle = particles[i];
-      const offset = i * 6;
+      const offset = i * 8;
       data[offset] = particle.position[0];
       data[offset + 1] = particle.position[1];
       data[offset + 2] = particle.velocity[0];
       data[offset + 3] = particle.velocity[1];
-      data[offset + 4] = particle.size;
-      data[offset + 5] = particle.mass;
+      // acceleration starts at zero
+      data[offset + 4] = 0;
+      data[offset + 5] = 0;
+      data[offset + 6] = particle.size;
+      data[offset + 7] = particle.mass;
     }
 
     // Write to storage buffer

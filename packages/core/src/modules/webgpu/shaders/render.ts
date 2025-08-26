@@ -2,6 +2,7 @@ export const renderShaderWGSL = `
 struct Particle {
   position: vec2<f32>,
   velocity: vec2<f32>,
+  acceleration: vec2<f32>,
   size: f32,
   mass: f32,
 }

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import {
   WebGPURenderer,
-  Gravity,
   WebGPUParticleSystem,
   simulationModule,
 } from "@cazala/party";
+import { Environment } from "@cazala/party/modules/webgpu/shaders/modules/environment";
 import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary";
 import { Collisions } from "@cazala/party/modules/webgpu/shaders/modules/collisions";
 import { ToolMode } from "./useToolMode";
@@ -16,7 +16,7 @@ export function useWebGPUPlayground(
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
   const rendererRef = useRef<WebGPURenderer | null>(null);
   const systemRef = useRef<any | null>(null);
-  const gravityRef = useRef<Gravity | null>(null);
+  const environmentRef = useRef<Environment | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,8 +116,15 @@ export function useWebGPUPlayground(
 
         // Create a default particle system with default modules and attach it BEFORE exposing renderer
         try {
-          // Create a live Gravity instance to manage state
-          const gravity = new Gravity({ strength: 0, dirX: 0, dirY: 1 });
+          // Create a live Environment instance to manage state
+          const environment = new Environment({
+            strength: 0,
+            dirX: 0,
+            dirY: 1,
+            inertia: 0,
+            friction: 0,
+            damping: 0,
+          });
           const boundary = new Boundary({
             minX: -800,
             minY: -600,
@@ -126,11 +133,11 @@ export function useWebGPUPlayground(
             restitution: 0.6,
           });
           const collisions = new Collisions({ restitution: 0.8 });
-          const modules = [simulationModule, gravity, boundary, collisions];
+          const modules = [simulationModule, environment, boundary, collisions];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
           systemRef.current = system;
-          gravityRef.current = gravity;
+          environmentRef.current = environment;
         } catch (sysErr) {
           console.error(
             "Failed to create/attach WebGPU particle system:",
@@ -166,7 +173,7 @@ export function useWebGPUPlayground(
         rendererRef.current = null;
       }
       systemRef.current = null;
-      gravityRef.current = null;
+      environmentRef.current = null;
     };
   }, []); // Run once on mount, cleanup on unmount
 
@@ -271,11 +278,11 @@ export function useWebGPUPlayground(
     [isInitialized]
   );
 
-  // Update WebGPU gravity module uniform
+  // Update WebGPU environment gravity strength uniform
   const setGravityStrength = useCallback(
     (strength: number) => {
-      const gravity = gravityRef.current;
-      gravity?.setStrength(strength);
+      const env = environmentRef.current;
+      env?.setStrength(strength);
     },
     [isInitialized]
   );
@@ -315,7 +322,7 @@ export function useWebGPUPlayground(
   return {
     renderer: rendererRef.current,
     system: systemRef.current,
-    gravity: gravityRef.current,
+    environment: environmentRef.current,
     isInitialized,
     error,
     spawnParticles,
@@ -327,7 +334,6 @@ export function useWebGPUPlayground(
     getParticleCount,
     getFPS,
     // Dummy values for compatibility
-    environment: null,
     boundary: null,
     behavior: null,
     collisions: null,

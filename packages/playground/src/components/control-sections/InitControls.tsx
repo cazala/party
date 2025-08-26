@@ -65,7 +65,6 @@ interface InitControlsProps {
   };
   onParticleSizeChange?: (size: number) => void;
   onColorsChange?: (colors: string[]) => void;
-  onGravityStrengthChange?: (strength: number) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
 }
 
@@ -109,7 +108,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       onGetInitConfig,
       onParticleSizeChange,
       onColorsChange,
-      onGravityStrengthChange,
       getCurrentCamera,
     },
     ref
@@ -138,7 +136,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       angle: DEFAULT_VELOCITY_ANGLE,
     });
     const [enableJoints, setEnableJoints] = useState(DEFAULT_ENABLE_JOINTS);
-    const [gravityStrength, setGravityStrength] = useState(0);
 
     const skipResetRef = useRef(false);
 
@@ -403,25 +400,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
                   undefined,
                   newMass
                 );
-              }}
-              className="slider"
-            />
-          </label>
-        </div>
-
-        <div className="control-group">
-          <label>
-            Gravity Strength: {gravityStrength.toFixed(1)}
-            <input
-              type="range"
-              min="0"
-              max="500"
-              step="1"
-              value={gravityStrength}
-              onChange={(e) => {
-                const newGravity = parseFloat(e.target.value);
-                setGravityStrength(newGravity);
-                onGravityStrengthChange?.(newGravity);
               }}
               className="slider"
             />
