@@ -17,6 +17,7 @@ export function useWebGPUPlayground(
   const rendererRef = useRef<WebGPURenderer | null>(null);
   const systemRef = useRef<any | null>(null);
   const environmentRef = useRef<Environment | null>(null);
+  const boundaryRef = useRef<Boundary | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,19 +126,14 @@ export function useWebGPUPlayground(
             friction: 0,
             damping: 0,
           });
-          const boundary = new Boundary({
-            minX: -800,
-            minY: -600,
-            maxX: 800,
-            maxY: 600,
-            restitution: 0.6,
-          });
+          const boundary = new Boundary({ restitution: 0.6, friction: 0.0 });
           const collisions = new Collisions({ restitution: 0.8 });
           const modules = [simulationModule, environment, boundary, collisions];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
           systemRef.current = system;
           environmentRef.current = environment;
+          boundaryRef.current = boundary;
         } catch (sysErr) {
           console.error(
             "Failed to create/attach WebGPU particle system:",
@@ -174,6 +170,7 @@ export function useWebGPUPlayground(
       }
       systemRef.current = null;
       environmentRef.current = null;
+      boundaryRef.current = null;
     };
   }, []); // Run once on mount, cleanup on unmount
 
@@ -323,6 +320,7 @@ export function useWebGPUPlayground(
     renderer: rendererRef.current,
     system: systemRef.current,
     environment: environmentRef.current,
+    boundary: boundaryRef.current,
     isInitialized,
     error,
     spawnParticles,
@@ -334,7 +332,6 @@ export function useWebGPUPlayground(
     getParticleCount,
     getFPS,
     // Dummy values for compatibility
-    boundary: null,
     behavior: null,
     collisions: null,
     fluid: null,

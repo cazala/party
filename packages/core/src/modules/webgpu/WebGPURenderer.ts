@@ -42,6 +42,10 @@ export class WebGPURenderer {
     return this.webgpuDevice;
   }
 
+  getSize(): { width: number; height: number } {
+    return { width: this.options.width, height: this.options.height };
+  }
+
   attachSystem(system: WebGPUParticleSystem): WebGPURenderer {
     (this as unknown as WebGPURenderer).system = system as WebGPUParticleSystem;
     return this as unknown as WebGPURenderer;
@@ -86,6 +90,9 @@ export class WebGPURenderer {
   setCamera(x: number, y: number): void {
     this.camera.x = x;
     this.camera.y = y;
+    if (this.system) {
+      this.system.updateGridFromRenderer();
+    }
   }
 
   getCamera(): { x: number; y: number } {
@@ -94,6 +101,9 @@ export class WebGPURenderer {
 
   setZoom(zoom: number): void {
     this.zoom = zoom;
+    if (this.system) {
+      this.system.updateGridFromRenderer();
+    }
   }
 
   getZoom(): number {
@@ -105,6 +115,9 @@ export class WebGPURenderer {
     this.options.height = height;
     this.options.canvas.width = width;
     this.options.canvas.height = height;
+    if (this.system) {
+      this.system.updateGridForSize(width, height);
+    }
   }
 
   play(): void {
@@ -128,6 +141,9 @@ export class WebGPURenderer {
     const currentTime = performance.now();
     const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 1 / 30); // Cap at 30 FPS minimum
     this.lastTime = currentTime;
+
+    // Keep grid/world extents in sync with current view
+    this.system.updateGridFromRenderer();
 
     // Update physics via system
     this.system.update(deltaTime);

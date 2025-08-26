@@ -8,7 +8,7 @@ import {
   InitControls,
   InitControlsRef,
 } from "./components/control-sections/InitControls";
-import { WebGPUEnvironmentControls } from "./components/control-sections/WebGPUEnvironmentControls";
+import { WebGPUForceControls } from "./components/WebGPUForceControls";
 
 import "./styles/index.css";
 import "./components/Controls.css";
@@ -16,6 +16,7 @@ import "./components/TopBar.css";
 import "./App.css";
 
 const LEFT_SIDEBAR_WIDTH = 280;
+const RIGHT_SIDEBAR_WIDTH = 280;
 const TOPBAR_HEIGHT = 60;
 
 function WebGPUApp() {
@@ -31,6 +32,7 @@ function WebGPUApp() {
     error,
     spawnParticles,
     environment,
+    boundary,
     play,
     pause,
     clear,
@@ -51,10 +53,13 @@ function WebGPUApp() {
   // Update canvas size when window size changes
   useEffect(() => {
     if (renderer && isInitialized) {
-      renderer.setSize(
-        isFullscreen ? size.width : size.width - LEFT_SIDEBAR_WIDTH,
-        isFullscreen ? size.height : size.height - TOPBAR_HEIGHT
-      );
+      const targetWidth = isFullscreen
+        ? size.width
+        : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
+      const targetHeight = isFullscreen
+        ? size.height
+        : size.height - TOPBAR_HEIGHT;
+      renderer.setSize(targetWidth, targetHeight);
     }
   }, [renderer, isInitialized, size, isFullscreen]);
 
@@ -175,7 +180,11 @@ function WebGPUApp() {
             ref={canvasRef}
             id="canvas"
             className={isFullscreen ? "fullscreen" : ""}
-            width={isFullscreen ? size.width : size.width - LEFT_SIDEBAR_WIDTH}
+            width={
+              isFullscreen
+                ? size.width
+                : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH
+            }
             height={isFullscreen ? size.height : size.height - TOPBAR_HEIGHT}
           />
         </div>
@@ -183,7 +192,7 @@ function WebGPUApp() {
           className="right-sidebar"
           style={{ display: isFullscreen ? "none" : "block" }}
         >
-          <WebGPUEnvironmentControls environment={environment} />
+          <WebGPUForceControls environment={environment} boundary={boundary} />
         </div>
       </div>
     </div>

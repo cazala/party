@@ -53,8 +53,14 @@ export class WebGPUParticleSystem {
   private gridIndicesBuffer: GPUBuffer | null = null;
   private gridCells: number = 0;
   private gridMaxPerCell: number = 0;
-  // Index kept for potential future dynamic updates; suppress unused warning by using in a noop
-  private gridUniformIndex: number = -1;
+  // Track last view to detect changes and avoid unnecessary uniform/buffer updates
+  private lastView: {
+    width: number;
+    height: number;
+    cx: number;
+    cy: number;
+    zoom: number;
+  } | null = null;
 
   constructor(
     private renderer: WebGPURenderer,
@@ -144,54 +150,96 @@ export class WebGPUParticleSystem {
       (l) => l.moduleName === "grid"
     );
     if (gridLayout) {
-      this.gridUniformIndex = this.computeBuild.layouts.indexOf(gridLayout);
       // Derive grid dimensions from current render size and default cell size; can be updated later via writeUniform
-      const width = (this.renderer as any).options?.width ?? 800;
-      const height = (this.renderer as any).options?.height ?? 600;
-      const minX = -width / 2;
-      const maxX = width / 2;
-      const minY = -height / 2;
-      const maxY = height / 2;
-      const cellSize = 16;
-      const cols = Math.max(1, Math.ceil((maxX - minX) / cellSize));
-      const rows = Math.max(1, Math.ceil((maxY - minY) / cellSize));
-      const maxPerCell = 64;
-      this.gridCells = cols * rows;
-      this.gridMaxPerCell = maxPerCell;
-      const countsSize = this.gridCells * 4;
-      const indicesSize = this.gridCells * this.gridMaxPerCell * 4;
-      this.gridCountsBuffer = this.device.createBuffer({
-        size: countsSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-      });
-      this.gridIndicesBuffer = this.device.createBuffer({
-        size: indicesSize,
-        usage: GPUBufferUsage.STORAGE,
-      });
-      // Seed grid uniforms directly (grid is not a module)
-      const gridIdx = this.computeBuild.layouts.findIndex(
-        (l) => l.moduleName === "grid"
-      );
-      if (gridIdx !== -1) {
-        const gridBuf = this.moduleUniformBuffers[gridIdx];
-        const layout = this.computeBuild.layouts[gridIdx];
-        const values = new Float32Array(layout.vec4Count * 4);
-        const mapping = layout.mapping as Record<string, { flatIndex: number }>;
-        values[mapping.minX.flatIndex] = minX;
-        values[mapping.minY.flatIndex] = minY;
-        values[mapping.maxX.flatIndex] = maxX;
-        values[mapping.maxY.flatIndex] = maxY;
-        values[mapping.cols.flatIndex] = cols;
-        values[mapping.rows.flatIndex] = rows;
-        values[mapping.cellSize.flatIndex] = cellSize;
-        values[mapping.maxPerCell.flatIndex] = maxPerCell;
-        this.device.queue.writeBuffer(gridBuf as GPUBuffer, 0, values);
-      }
-      // Noop read to avoid unused warnings in some toolchains
-      if (this.gridUniformIndex < -1) {
-        console.debug("unused", this.gridUniformIndex);
-      }
+      const size = this.renderer.getSize
+        ? this.renderer.getSize()
+        : { width: 800, height: 600 };
+      this.configureGrid(size.width, size.height);
     }
+  }
+
+  private configureGrid(width: number, height: number): void {
+    const cam = this.renderer.getCamera
+      ? this.renderer.getCamera()
+      : { x: 0, y: 0 };
+    const zoom = this.renderer.getZoom ? this.renderer.getZoom() : 1;
+    const halfW = width / (2 * Math.max(zoom, 0.0001));
+    const halfH = height / (2 * Math.max(zoom, 0.0001));
+    const minX = cam.x - halfW;
+    const maxX = cam.x + halfW;
+    const minY = cam.y - halfH;
+    const maxY = cam.y + halfH;
+    this.lastView = { width, height, cx: cam.x, cy: cam.y, zoom };
+    const cellSize = 16;
+    const cols = Math.max(1, Math.ceil((maxX - minX) / cellSize));
+    const rows = Math.max(1, Math.ceil((maxY - minY) / cellSize));
+    const maxPerCell = 64;
+    this.gridCells = cols * rows;
+    this.gridMaxPerCell = maxPerCell;
+
+    // Recreate grid storage buffers sized to the new grid
+    this.gridCountsBuffer?.destroy();
+    this.gridIndicesBuffer?.destroy();
+    const countsSize = this.gridCells * 4;
+    const indicesSize = this.gridCells * this.gridMaxPerCell * 4;
+    this.gridCountsBuffer = this.device.createBuffer({
+      size: countsSize,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    this.gridIndicesBuffer = this.device.createBuffer({
+      size: indicesSize,
+      usage: GPUBufferUsage.STORAGE,
+    });
+
+    // Seed grid uniforms directly (grid is not a module)
+    const gridIdx = this.computeBuild!.layouts.findIndex(
+      (l) => l.moduleName === "grid"
+    );
+    if (gridIdx !== -1) {
+      const gridBuf = this.moduleUniformBuffers[gridIdx];
+      const layout = this.computeBuild!.layouts[gridIdx];
+      const values = new Float32Array(layout.vec4Count * 4);
+      const mapping = layout.mapping as Record<string, { flatIndex: number }>;
+      values[mapping.minX.flatIndex] = minX;
+      values[mapping.minY.flatIndex] = minY;
+      values[mapping.maxX.flatIndex] = maxX;
+      values[mapping.maxY.flatIndex] = maxY;
+      values[mapping.cols.flatIndex] = cols;
+      values[mapping.rows.flatIndex] = rows;
+      values[mapping.cellSize.flatIndex] = cellSize;
+      values[mapping.maxPerCell.flatIndex] = maxPerCell;
+      this.device.queue.writeBuffer(gridBuf as GPUBuffer, 0, values);
+    }
+
+    // Recreate compute bind group to include new storage buffers
+    if (this.bindGroupLayout) {
+      this.createBindGroups();
+    }
+  }
+
+  updateGridForSize(width: number, height: number): void {
+    const cam = this.renderer.getCamera
+      ? this.renderer.getCamera()
+      : { x: 0, y: 0 };
+    const zoom = this.renderer.getZoom ? this.renderer.getZoom() : 1;
+    if (
+      this.lastView &&
+      this.lastView.width === width &&
+      this.lastView.height === height &&
+      this.lastView.cx === cam.x &&
+      this.lastView.cy === cam.y &&
+      this.lastView.zoom === zoom
+    ) {
+      return;
+    }
+    this.configureGrid(width, height);
+  }
+
+  updateGridFromRenderer(): void {
+    const size = this.renderer.getSize
+      ? this.renderer.getSize()
+      : { width: 800, height: 600 };
+    this.updateGridForSize(size.width, size.height);
   }
 
   private async createPipelines(): Promise<void> {
