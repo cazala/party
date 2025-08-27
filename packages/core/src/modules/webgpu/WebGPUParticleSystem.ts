@@ -107,6 +107,17 @@ export class WebGPUParticleSystem {
           this.writeUniform(name, values);
         };
         mod.attachUniformWriter(writer);
+
+        // Attach a reader so modules can implement getters
+        const reader = () => {
+          const idx = this.getModuleIndex(name);
+          if (idx === -1) return {} as Partial<Record<string, number>>;
+          return { ...this.moduleUniformState[idx] } as Partial<
+            Record<string, number>
+          >;
+        };
+        // attach typed reader without using any
+        (mod as ComputeModule<string, string>).attachUniformReader(reader);
       }
     );
   }

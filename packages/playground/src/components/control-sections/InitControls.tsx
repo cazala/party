@@ -7,6 +7,7 @@ import {
 } from "react";
 import { ColorSelector } from "../ColorSelector";
 import { calculateMassFromSize } from "../../utils/particle";
+import { simulationModule } from "@cazala/party";
 
 const DEFAULT_SPAWN_NUM_PARTICLES = 3000;
 const DEFAULT_SPAWN_SHAPE = "grid";
@@ -144,8 +145,8 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
     const [enableJoints, setEnableJoints] = useState(DEFAULT_ENABLE_JOINTS);
 
     // Simulation tuning local state (defaults should match hook initialization)
-    const [minCorrectionVal, setMinCorrectionVal] = useState(1e-6);
-    const [maxCorrectionVal, setMaxCorrectionVal] = useState(500);
+    const [minCorrectionVal, setMinCorrectionVal] = useState(0);
+    const [maxCorrectionVal, setMaxCorrectionVal] = useState(10);
     const [restThresholdVal, setRestThresholdVal] = useState(5);
 
     const skipResetRef = useRef(false);

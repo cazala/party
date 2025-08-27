@@ -30,6 +30,7 @@ export abstract class ComputeModule<
 > {
   private _writer: ((values: Partial<Record<string, number>>) => void) | null =
     null;
+  private _reader: (() => Partial<Record<string, number>>) | null = null;
 
   attachUniformWriter(
     writer: (values: Partial<Record<string, number>>) => void
@@ -37,9 +38,20 @@ export abstract class ComputeModule<
     this._writer = writer;
   }
 
+  attachUniformReader(reader: () => Partial<Record<string, number>>): void {
+    this._reader = reader;
+  }
+
   protected write(values: Partial<Record<BindingKeys, number>>): void {
     // Binding keys are narrowed by the generic; cast to the writer's accepted shape
     this._writer?.(values as unknown as Partial<Record<string, number>>);
+  }
+
+  protected read(): Partial<Record<BindingKeys, number>> {
+    const vals = this._reader?.() as unknown as Partial<
+      Record<BindingKeys, number>
+    >;
+    return vals || {};
   }
 
   abstract descriptor(): ComputeModuleDescriptor<Name, BindingKeys>;

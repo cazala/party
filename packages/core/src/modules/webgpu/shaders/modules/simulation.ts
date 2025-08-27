@@ -8,14 +8,29 @@ type SimKeys =
   | "restThreshold";
 
 export class Simulation extends ComputeModule<"simulation", SimKeys> {
+  constructor() {
+    super();
+  }
+  getMinCorrection(): number {
+    const vals = this.read();
+    return (vals?.minCorrection as number) ?? 0;
+  }
+  getMaxCorrection(): number {
+    const vals = this.read();
+    return (vals.maxCorrection as number) ?? 0;
+  }
+  getRestThreshold(): number {
+    const vals = this.read();
+    return (vals?.restThreshold as number) ?? 0;
+  }
   setMinCorrection(value: number): void {
-    (this as any).write?.({ minCorrection: value });
+    this.write({ minCorrection: value });
   }
   setMaxCorrection(value: number): void {
-    (this as any).write?.({ maxCorrection: value });
+    this.write({ maxCorrection: value });
   }
   setRestThreshold(value: number): void {
-    (this as any).write?.({ restThreshold: value });
+    this.write({ restThreshold: value });
   }
 
   descriptor(): ComputeModuleDescriptor<"simulation", SimKeys> {

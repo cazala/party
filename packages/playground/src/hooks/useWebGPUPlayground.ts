@@ -134,9 +134,9 @@ export function useWebGPUPlayground(
           });
           const collisions = new Collisions({ restitution: 0.8 });
           // Initialize simulation correction parameters
-          simulationModule.setMinCorrection(1e-6);
-          simulationModule.setMaxCorrection(500.0);
-          simulationModule.setRestThreshold(5.0);
+          simulationModule.setMinCorrection(0);
+          simulationModule.setMaxCorrection(10);
+          simulationModule.setRestThreshold(5);
           const modules = [simulationModule, environment, boundary, collisions];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
