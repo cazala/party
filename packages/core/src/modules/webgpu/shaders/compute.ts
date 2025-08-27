@@ -7,7 +7,17 @@ export interface ComputeModuleDescriptor<
   name: Name;
   role: ComputeModuleRole;
   bindings?: readonly BindingKeys[];
+  state?: (args: {
+    particleVar: string;
+    dtVar: string;
+    getUniform: (id: BindingKeys) => string;
+  }) => string;
   apply?: (args: {
+    particleVar: string;
+    dtVar: string;
+    getUniform: (id: BindingKeys) => string;
+  }) => string;
+  constrain?: (args: {
     particleVar: string;
     dtVar: string;
     getUniform: (id: BindingKeys) => string;
@@ -223,7 +233,22 @@ struct Particle {
     `fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { loop { if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } if ((*it).k < (*it).maxK) { let id = GRID_INDICES[(*it).base + (*it).k]; (*it).k = (*it).k + 1u; if (id != selfIndex) { return id; } else { continue; } } (*it).c = (*it).c + 1; if ((*it).c > (*it).cx + (*it).reach) { (*it).c = (*it).cx - (*it).reach; (*it).r = (*it).r + 1; } if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } let cell = grid_cell_index_from_rc((*it).r, (*it).c); let cnt = atomicLoad(&GRID_COUNTS[cell]); (*it).maxK = min(cnt, GRID_MAX_PER_CELL()); (*it).base = cell * GRID_MAX_PER_CELL(); (*it).k = 0u; } }`,
   ];
 
-  const forceStatements: string[] = [];
+  const stateStatements: string[] = [];
+  const applyStatements: string[] = [];
+  const constrainStatements: string[] = [];
+  descriptors.forEach((mod) => {
+    if (mod.role !== "force" || !mod.state) return;
+    const layout = layouts.find((l) => l.moduleName === mod.name)!;
+    const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const snippet = mod.state({
+      particleVar: "particle",
+      dtVar: dtExpr,
+      getUniform,
+    });
+    if (snippet && snippet.trim().length) {
+      stateStatements.push(snippet.trim());
+    }
+  });
   descriptors.forEach((mod) => {
     if (mod.role !== "force" || !mod.apply) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
@@ -234,7 +259,20 @@ struct Particle {
       getUniform,
     });
     if (snippet && snippet.trim().length) {
-      forceStatements.push(snippet.trim());
+      applyStatements.push(snippet.trim());
+    }
+  });
+  descriptors.forEach((mod) => {
+    if (mod.role !== "force" || !mod.constrain) return;
+    const layout = layouts.find((l) => l.moduleName === mod.name)!;
+    const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const snippet = mod.constrain({
+      particleVar: "particle",
+      dtVar: dtExpr,
+      getUniform,
+    });
+    if (snippet && snippet.trim().length) {
+      constrainStatements.push(snippet.trim());
     }
   });
 
@@ -273,12 +311,55 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   var particle = particles[index];
   if (particle.mass == 0.0) { return; }
 
-  ${forceStatements.join("\n\n  ")}
+  // State stage
+  ${stateStatements.join("\n\n  ")}
+
+  // Apply stage
+  ${applyStatements.join("\n\n  ")}
 
   // Integrate position using delta time
   // Apply acceleration to velocity, then velocity to position
+  let prevPos = particle.position;
   particle.velocity += particle.acceleration * ${dtExpr};
   particle.position += particle.velocity * ${dtExpr};
+  let posAfterIntegration = particle.position;
+
+  // Constrain stage
+  ${constrainStatements.join("\n\n  ")}
+
+  // Correct velocity using post-constraint displacement if constraints changed position
+  let disp = particle.position - prevPos;
+  let disp2 = dot(disp, disp);
+  let corr = particle.position - posAfterIntegration;
+  let corr2 = dot(corr, corr);
+  if (corr2 > 1e-6 && ${dtExpr} > 0.0) {
+    // Apply only the correction component along the correction direction
+    let corrLenInv = inverseSqrt(corr2);
+    let corrDir = corr * corrLenInv;
+    let corrVel = corr / ${dtExpr};
+    let corrVelAlong = dot(corrVel, corrDir);
+    // Clamp only the along-axis correction to avoid explosions
+    let maxCorr = 80.0;
+    let corrVelAlongClamped = clamp(corrVelAlong, -maxCorr, maxCorr);
+    // Only allow correction to reduce the magnitude of the normal component, not increase it
+    let vNBefore = dot(particle.velocity, corrDir);
+    let vNAfterCandidate = vNBefore + corrVelAlongClamped;
+    let vNAfter = select(vNBefore, vNAfterCandidate, abs(vNAfterCandidate) < abs(vNBefore));
+    particle.velocity = particle.velocity + corrDir * (vNAfter - vNBefore);
+
+    // If normal velocity is very small after correction, zero it to let particles rest
+    let vN = dot(particle.velocity, corrDir);
+    let restThreshold = 10.0;
+    if (abs(vN) < restThreshold) {
+      particle.velocity = particle.velocity - vN * corrDir;
+    }
+  }
+  // If net displacement is tiny and velocity is tiny, zero out to rest
+  let v2_total = dot(particle.velocity, particle.velocity);
+  if (disp2 < 1e-8 && v2_total < 0.5) {
+    particle.velocity = vec2<f32>(0.0, 0.0);
+  }
+
   // Reset acceleration to zero for next frame
   particle.acceleration = vec2<f32>(0.0, 0.0);
   particles[index] = particle;

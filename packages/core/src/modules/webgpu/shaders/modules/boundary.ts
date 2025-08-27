@@ -64,7 +64,7 @@ export class Boundary extends ComputeModule<"boundary", BoundaryKeys> {
       name: "boundary",
       role: "force",
       bindings: ["restitution", "friction", "mode"] as const,
-      apply: ({ particleVar, getUniform }) => `{
+      constrain: ({ particleVar, getUniform }) => `{
   // Bounce using global grid extents
   let halfSize = ${particleVar}.size;
   let minX = GRID_MINX();
@@ -80,22 +80,22 @@ export class Boundary extends ComputeModule<"boundary", BoundaryKeys> {
     // X axis
     if (${particleVar}.position.x - halfSize < minX) {
       ${particleVar}.position.x = minX + halfSize;
-      ${particleVar}.velocity.x = abs(${particleVar}.velocity.x) * bounce;
+      ${particleVar}.velocity.x = -${particleVar}.velocity.x * bounce;
       ${particleVar}.velocity.y *= max(0.0, 1.0 - friction);
     } else if (${particleVar}.position.x + halfSize > maxX) {
       ${particleVar}.position.x = maxX - halfSize;
-      ${particleVar}.velocity.x = -abs(${particleVar}.velocity.x) * bounce;
+      ${particleVar}.velocity.x = -${particleVar}.velocity.x * bounce;
       ${particleVar}.velocity.y *= max(0.0, 1.0 - friction);
     }
 
     // Y axis
     if (${particleVar}.position.y - halfSize < minY) {
       ${particleVar}.position.y = minY + halfSize;
-      ${particleVar}.velocity.y = abs(${particleVar}.velocity.y) * bounce;
+      ${particleVar}.velocity.y = -${particleVar}.velocity.y * bounce;
       ${particleVar}.velocity.x *= max(0.0, 1.0 - friction);
     } else if (${particleVar}.position.y + halfSize > maxY) {
       ${particleVar}.position.y = maxY - halfSize;
-      ${particleVar}.velocity.y = -abs(${particleVar}.velocity.y) * bounce;
+      ${particleVar}.velocity.y = -${particleVar}.velocity.y * bounce;
       ${particleVar}.velocity.x *= max(0.0, 1.0 - friction);
     }
   } else if (mode == 1.0) {
