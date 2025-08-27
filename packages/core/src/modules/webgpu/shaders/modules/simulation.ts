@@ -1,11 +1,28 @@
 import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
-export class Simulation extends ComputeModule<"simulation", "dt" | "count"> {
-  descriptor(): ComputeModuleDescriptor<"simulation", "dt" | "count"> {
+type SimKeys =
+  | "dt"
+  | "count"
+  | "minCorrection"
+  | "maxCorrection"
+  | "restThreshold";
+
+export class Simulation extends ComputeModule<"simulation", SimKeys> {
+  setMinCorrection(value: number): void {
+    (this as any).write?.({ minCorrection: value });
+  }
+  setMaxCorrection(value: number): void {
+    (this as any).write?.({ maxCorrection: value });
+  }
+  setRestThreshold(value: number): void {
+    (this as any).write?.({ restThreshold: value });
+  }
+
+  descriptor(): ComputeModuleDescriptor<"simulation", SimKeys> {
     return {
       name: "simulation",
       role: "simulation",
-      // bindings auto-injected as ["dt","count"] by builder
+      // bindings auto-injected by builder
     };
   }
 }

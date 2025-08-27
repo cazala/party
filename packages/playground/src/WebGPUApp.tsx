@@ -1,4 +1,5 @@
 import { useWebGPUPlayground } from "./hooks/useWebGPUPlayground";
+import { simulationModule } from "@cazala/party";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useToolMode } from "./hooks/useToolMode";
 import { useFullscreen } from "./hooks/useFullscreen";
@@ -33,6 +34,7 @@ function WebGPUApp() {
     spawnParticles,
     environment,
     boundary,
+    collisions,
     play,
     pause,
     clear,
@@ -157,6 +159,9 @@ function WebGPUApp() {
           <InitControls
             ref={initControlsRef}
             onInitParticles={spawnParticles}
+            setMinCorrection={(v) => simulationModule.setMinCorrection(v)}
+            setMaxCorrection={(v) => simulationModule.setMaxCorrection(v)}
+            setRestThreshold={(v) => simulationModule.setRestThreshold(v)}
             onGetInitConfig={() => ({
               numParticles: 10000,
               shape: "grid" as const,
@@ -192,7 +197,11 @@ function WebGPUApp() {
           className="right-sidebar"
           style={{ display: isFullscreen ? "none" : "block" }}
         >
-          <WebGPUForceControls environment={environment} boundary={boundary} />
+          <WebGPUForceControls
+            environment={environment}
+            boundary={boundary}
+            collisions={collisions}
+          />
         </div>
       </div>
     </div>

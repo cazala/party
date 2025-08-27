@@ -102,7 +102,9 @@ struct Particle {
     const uniformsVar = `${mod.name}_uniforms`;
     const structName = `Uniforms_${capitalize(mod.name)}`;
     const ids =
-      mod.role === "simulation" ? ["dt", "count"] : mod.bindings || [];
+      mod.role === "simulation"
+        ? ["dt", "count", "minCorrection", "maxCorrection", "restThreshold"]
+        : mod.bindings || [];
     const floatCount = ids.length;
     const vec4Count = Math.max(1, Math.ceil(floatCount / 4));
     const sizeBytes = vec4Count * 16;
@@ -147,6 +149,12 @@ struct Particle {
   const countExpr = layouts.find((l) => l.moduleName === sim.name)!.mapping[
     "count"
   ].expr;
+  const minCorrectionExpr = layouts.find((l) => l.moduleName === sim.name)!
+    .mapping["minCorrection"].expr;
+  const maxCorrectionExpr = layouts.find((l) => l.moduleName === sim.name)!
+    .mapping["maxCorrection"].expr;
+  const restThresholdExpr = layouts.find((l) => l.moduleName === sim.name)!
+    .mapping["restThreshold"].expr;
 
   // Built-in spatial grid uniforms (available to all modules)
   const gridUniformsVar = `grid_uniforms`;
@@ -332,14 +340,16 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let disp2 = dot(disp, disp);
   let corr = particle.position - posAfterIntegration;
   let corr2 = dot(corr, corr);
-  if (corr2 > 1e-6 && ${dtExpr} > 0.0) {
+  let minCorrection = ${minCorrectionExpr};
+  let minCorrection2 = minCorrection * minCorrection;
+  if (corr2 > minCorrection2 && ${dtExpr} > 0.0) {
     // Apply only the correction component along the correction direction
     let corrLenInv = inverseSqrt(corr2);
     let corrDir = corr * corrLenInv;
     let corrVel = corr / ${dtExpr};
     let corrVelAlong = dot(corrVel, corrDir);
     // Clamp only the along-axis correction to avoid explosions
-    let maxCorr = 80.0;
+    let maxCorr = ${maxCorrectionExpr};
     let corrVelAlongClamped = clamp(corrVelAlong, -maxCorr, maxCorr);
     // Only allow correction to reduce the magnitude of the normal component, not increase it
     let vNBefore = dot(particle.velocity, corrDir);
@@ -349,7 +359,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     // If normal velocity is very small after correction, zero it to let particles rest
     let vN = dot(particle.velocity, corrDir);
-    let restThreshold = 10.0;
+    let restThreshold = ${restThresholdExpr};
     if (abs(vN) < restThreshold) {
       particle.velocity = particle.velocity - vN * corrDir;
     }

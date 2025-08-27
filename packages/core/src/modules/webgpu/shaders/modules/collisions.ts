@@ -28,7 +28,7 @@ export class Collisions extends ComputeModule<"collisions", CollisionKeys> {
       name: "collisions",
       role: "force",
       bindings: ["restitution"] as const,
-      constrain: ({ particleVar }) => `{
+      constrain: ({ particleVar, getUniform }) => `{
   // Grid neighbors iterator API using vec2 math, only updating the current particle
   var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size * 2.0);
   loop {
@@ -45,10 +45,23 @@ export class Collisions extends ComputeModule<"collisions", CollisionKeys> {
 
       // Position correction (move current particle only). We do not write to 'other'.
       let overlap = r - dist;
-      let totalMass = ${particleVar}.mass + other.mass;
-      let separationPerMass = overlap / totalMass;
-      let c1 = n * (separationPerMass * ${particleVar}.mass);
+      // Symmetric split: move current particle by half the overlap along normal.
+      // The neighbor will do the same in its pass in the opposite direction.
+      let c1 = n * (overlap * 0.5);
       ${particleVar}.position = ${particleVar}.position + c1;
+
+      // Velocity response (normal/tangent decomposition)
+      let v1 = ${particleVar}.velocity;
+      let v2 = other.velocity;
+      let v1n = dot(v1, n);
+      let v2n = dot(v2, n);
+      let v1t = v1 - n * v1n;
+      let m1 = ${particleVar}.mass;
+      let m2 = other.mass;
+      let e = ${getUniform("restitution")};
+      let v1nAfter = (v1n * (m1 - e * m2) + (1.0 + e) * m2 * v2n) / (m1 + m2);
+      let newV1 = v1t + n * v1nAfter;
+      ${particleVar}.velocity = newV1;
     }
   }
 }`,

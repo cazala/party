@@ -1,5 +1,6 @@
 import { WebGPUEnvironmentControls } from "./control-sections/WebGPUEnvironmentControls";
 import { WebGPUBoundaryControls } from "./control-sections/WebGPUBoundaryControls";
+import { WebGPUCollisionsControls } from "./control-sections/WebGPUCollisionsControls";
 
 interface WebGPUEnvironmentLike {
   setStrength: (value: number) => void;
@@ -14,14 +15,18 @@ interface WebGPUBoundaryLike {
   setFriction?: (value: number) => void;
 }
 
+interface WebGPUCollisionsLike {
+  setRestitution: (value: number) => void;
+}
+
 export function WebGPUForceControls({
   environment,
   boundary,
-  renderer,
+  collisions,
 }: {
   environment: WebGPUEnvironmentLike | null;
   boundary: WebGPUBoundaryLike | null;
-  renderer?: any | null;
+  collisions?: WebGPUCollisionsLike | null;
 }) {
   return (
     <div className="controls-panel">
@@ -38,6 +43,13 @@ export function WebGPUForceControls({
         <h4>Boundary</h4>
         <WebGPUBoundaryControls boundary={boundary} />
       </div>
+
+      {collisions && (
+        <div className="control-section">
+          <h4>Collisions</h4>
+          <WebGPUCollisionsControls collisions={collisions} />
+        </div>
+      )}
     </div>
   );
 }

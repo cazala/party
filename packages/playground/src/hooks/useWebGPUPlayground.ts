@@ -18,6 +18,7 @@ export function useWebGPUPlayground(
   const systemRef = useRef<any | null>(null);
   const environmentRef = useRef<Environment | null>(null);
   const boundaryRef = useRef<Boundary | null>(null);
+  const collisionsRef = useRef<Collisions | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,12 +133,17 @@ export function useWebGPUPlayground(
             mode: "bounce",
           });
           const collisions = new Collisions({ restitution: 0.8 });
+          // Initialize simulation correction parameters
+          simulationModule.setMinCorrection(1e-6);
+          simulationModule.setMaxCorrection(500.0);
+          simulationModule.setRestThreshold(5.0);
           const modules = [simulationModule, environment, boundary, collisions];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
           systemRef.current = system;
           environmentRef.current = environment;
           boundaryRef.current = boundary;
+          collisionsRef.current = collisions;
         } catch (sysErr) {
           console.error(
             "Failed to create/attach WebGPU particle system:",
@@ -320,11 +326,23 @@ export function useWebGPUPlayground(
     return rendererRef.current?.getFPS() || 0;
   }, [isInitialized]);
 
+  // Simulation tuning setters
+  const setMinCorrection = useCallback((v: number) => {
+    simulationModule.setMinCorrection(v);
+  }, []);
+  const setMaxCorrection = useCallback((v: number) => {
+    simulationModule.setMaxCorrection(v);
+  }, []);
+  const setRestThreshold = useCallback((v: number) => {
+    simulationModule.setRestThreshold(v);
+  }, []);
+
   return {
     renderer: rendererRef.current,
     system: systemRef.current,
     environment: environmentRef.current,
     boundary: boundaryRef.current,
+    collisions: collisionsRef.current,
     isInitialized,
     error,
     spawnParticles,
@@ -335,9 +353,11 @@ export function useWebGPUPlayground(
     resetParticles,
     getParticleCount,
     getFPS,
+    setMinCorrection,
+    setMaxCorrection,
+    setRestThreshold,
     // Dummy values for compatibility
     behavior: null,
-    collisions: null,
     fluid: null,
     interaction: null,
     sensors: null,
