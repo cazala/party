@@ -64,7 +64,7 @@ export class Boundary extends ComputeModule<"boundary", BoundaryKeys> {
       name: "boundary",
       role: "force",
       bindings: ["restitution", "friction", "mode"] as const,
-      constrain: ({ particleVar, getUniform }) => `{
+      apply: ({ particleVar, getUniform }) => `{
   // Bounce using global grid extents
   let halfSize = ${particleVar}.size;
   let minX = GRID_MINX();

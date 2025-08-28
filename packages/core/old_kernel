@@ -1,0 +1,65 @@
+const mainFn = `
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+  let index = global_id.x;
+  let count = u32(${countExpr});
+  if (index >= count) { return; }
+
+  var particle = particles[index];
+  if (particle.mass == 0.0) { return; }
+
+  // State stage
+  ${stateStatements.join("\n\n  ")}
+
+  // Apply stage
+  ${applyStatements.join("\n\n  ")}
+
+  // Integrate position using delta time
+  // Apply acceleration to velocity, then velocity to position
+  let prevPos = particle.position;
+  particle.velocity += particle.acceleration * ${dtExpr};
+  particle.position += particle.velocity * ${dtExpr};
+  let posAfterIntegration = particle.position;
+
+  // Constrain stage
+  ${constrainStatements.join("\n\n  ")}
+
+  // Correct velocity using post-constraint displacement if constraints changed position
+  let disp = particle.position - prevPos;
+  let disp2 = dot(disp, disp);
+  let corr = particle.position - posAfterIntegration;
+  let corr2 = dot(corr, corr);
+  let minCorrection = ${minCorrectionExpr};
+  let minCorrection2 = minCorrection * minCorrection;
+  if (corr2 > minCorrection2 && ${dtExpr} > 0.0) {
+    // Apply only the correction component along the correction direction
+    let corrLenInv = inverseSqrt(corr2);
+    let corrDir = corr * corrLenInv;
+    let corrVel = corr / ${dtExpr};
+    let corrVelAlong = dot(corrVel, corrDir);
+    // Clamp only the along-axis correction to avoid explosions
+    let maxCorr = ${maxCorrectionExpr};
+    let corrVelAlongClamped = clamp(corrVelAlong, -maxCorr, maxCorr);
+    // Only allow correction to reduce the magnitude of the normal component, not increase it
+    let vNBefore = dot(particle.velocity, corrDir);
+    let vNAfterCandidate = vNBefore + corrVelAlongClamped;
+    let vNAfter = select(vNBefore, vNAfterCandidate, abs(vNAfterCandidate) < abs(vNBefore));
+    particle.velocity = particle.velocity + corrDir * (vNAfter - vNBefore);
+
+    // If normal velocity is very small after correction, zero it to let particles rest
+    let vN = dot(particle.velocity, corrDir);
+    let restThreshold = ${restThresholdExpr};
+    if (abs(vN) < restThreshold) {
+      particle.velocity = particle.velocity - vN * corrDir;
+    }
+  }
+  // If net displacement is tiny and velocity is tiny, zero out to rest
+  let v2_total = dot(particle.velocity, particle.velocity);
+  if (disp2 < 1e-8 && v2_total < 0.5) {
+    particle.velocity = vec2<f32>(0.0, 0.0);
+  }
+
+  // Reset acceleration to zero for next frame
+  particle.acceleration = vec2<f32>(0.0, 0.0);
+  particles[index] = particle;
+}`;

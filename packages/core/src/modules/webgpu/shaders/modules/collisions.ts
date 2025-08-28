@@ -28,6 +28,36 @@ export class Collisions extends ComputeModule<"collisions", CollisionKeys> {
       name: "collisions",
       role: "force",
       bindings: ["restitution"] as const,
+      apply: ({ particleVar, getUniform }) => `{
+        // Grid neighbors iterator API using vec2 math, only updating the current particle
+        var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size * 2.0);
+        loop {
+          let j = neighbor_iter_next(&it, index);
+          if (j == NEIGHBOR_NONE) { break; }
+          var other = particles[j];
+      
+          let delta = ${particleVar}.position - other.position;
+          let r = other.size + ${particleVar}.size;
+          let dist2 = dot(delta, delta);
+          if (dist2 > 0.0001 && dist2 < r*r) {
+            let dist = sqrt(dist2);
+            let n = delta / dist;
+
+            // Velocity response (normal/tangent decomposition)
+            // let v1 = ${particleVar}.velocity;
+            // let v2 = other.velocity;
+            // let v1n = dot(v1, n);
+            // let v2n = dot(v2, n);
+            // let v1t = v1 - n * v1n;
+            // let m1 = ${particleVar}.mass;
+            // let m2 = other.mass;
+            // let e = ${getUniform("restitution")};
+            // let v1nAfter = (v1n * (m1 - e * m2) + (1.0 + e) * m2 * v2n) / max(m1 + m2, 1e-6);
+            // let newV1 = v1t + n * v1nAfter;
+            // ${particleVar}.velocity = newV1;
+          }
+    }
+  }`,
       constrain: ({ particleVar, getUniform }) => `{
   // Grid neighbors iterator API using vec2 math, only updating the current particle
   var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size * 2.0);
@@ -47,21 +77,20 @@ export class Collisions extends ComputeModule<"collisions", CollisionKeys> {
       let overlap = r - dist;
       // Symmetric split: move current particle by half the overlap along normal.
       // The neighbor will do the same in its pass in the opposite direction.
-      let c1 = n * (overlap * 0.5);
+      let c1 = n * (overlap * 0.55);
       ${particleVar}.position = ${particleVar}.position + c1;
 
-      // Velocity response (normal/tangent decomposition)
       let v1 = ${particleVar}.velocity;
-      let v2 = other.velocity;
-      let v1n = dot(v1, n);
-      let v2n = dot(v2, n);
-      let v1t = v1 - n * v1n;
-      let m1 = ${particleVar}.mass;
-      let m2 = other.mass;
-      let e = ${getUniform("restitution")};
-      let v1nAfter = (v1n * (m1 - e * m2) + (1.0 + e) * m2 * v2n) / (m1 + m2);
-      let newV1 = v1t + n * v1nAfter;
-      ${particleVar}.velocity = newV1;
+            let v2 = other.velocity;
+            let v1n = dot(v1, n);
+            let v2n = dot(v2, n);
+            let v1t = v1 - n * v1n;
+            let m1 = ${particleVar}.mass;
+            let m2 = other.mass;
+            let e = ${getUniform("restitution")};
+            let v1nAfter = (v1n * (m1 - e * m2) + (1.0 + e) * m2 * v2n) / max(m1 + m2, 1e-6);
+            let newV1 = v1t + n * v1nAfter;
+            ${particleVar}.velocity = newV1;
     }
   }
 }`,

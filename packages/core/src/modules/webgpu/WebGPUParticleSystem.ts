@@ -662,12 +662,15 @@ export class WebGPUParticleSystem {
           pass.end();
         }
 
-        // constrain
-        const p4 = commandEncoder.beginComputePass();
-        p4.setBindGroup(0, this.computeBindGroup);
-        p4.setPipeline(this.constrainPipeline);
-        if (groups > 0) p4.dispatchWorkgroups(groups);
-        p4.end();
+        // constrain — iterate to improve convergence
+        const constrainIterations = 10;
+        for (let iter = 0; iter < constrainIterations; iter++) {
+          const pc = commandEncoder.beginComputePass();
+          pc.setBindGroup(0, this.computeBindGroup);
+          pc.setPipeline(this.constrainPipeline);
+          if (groups > 0) pc.dispatchWorkgroups(groups);
+          pc.end();
+        }
 
         // correct
         const p5 = commandEncoder.beginComputePass();
