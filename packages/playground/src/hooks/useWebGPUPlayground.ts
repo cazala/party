@@ -134,7 +134,6 @@ export function useWebGPUPlayground(
           });
           const collisions = new Collisions({ restitution: 0.8 });
           // Initialize simulation parameters
-          simulationModule.setRestThreshold(5);
           const modules = [simulationModule, environment, boundary, collisions];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
@@ -324,11 +323,6 @@ export function useWebGPUPlayground(
     return rendererRef.current?.getFPS() || 0;
   }, [isInitialized]);
 
-  // Simulation tuning setters
-  const setRestThreshold = useCallback((v: number) => {
-    simulationModule.setRestThreshold(v);
-  }, []);
-
   // Constrain iterations control
   const constrainIterationsRef = useRef<number>(50);
   const setConstrainIterations = useCallback((v: number) => {
@@ -355,7 +349,6 @@ export function useWebGPUPlayground(
     resetParticles,
     getParticleCount,
     getFPS,
-    setRestThreshold,
     setConstrainIterations,
     // Dummy values for compatibility
     behavior: null,

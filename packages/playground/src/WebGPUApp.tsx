@@ -160,7 +160,6 @@ function WebGPUApp() {
           <InitControls
             ref={initControlsRef}
             onInitParticles={spawnParticles}
-            setRestThreshold={(v) => simulationModule.setRestThreshold(v)}
             setConstrainIterations={(v) => system?.setConstrainIterations(v)}
             onGetInitConfig={() => ({
               numParticles: 10000,

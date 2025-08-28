@@ -66,7 +66,6 @@ interface InitControlsProps {
   onParticleSizeChange?: (size: number) => void;
   onColorsChange?: (colors: string[]) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
-  setRestThreshold?: (v: number) => void;
   setConstrainIterations?: (v: number) => void;
 }
 
@@ -111,7 +110,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       onParticleSizeChange,
       onColorsChange,
       getCurrentCamera,
-      setRestThreshold,
       setConstrainIterations,
     },
     ref
@@ -142,7 +140,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
     const [enableJoints, setEnableJoints] = useState(DEFAULT_ENABLE_JOINTS);
 
     // Simulation tuning local state (defaults should match hook initialization)
-    const [restThresholdVal, setRestThresholdVal] = useState(5);
     const [constrainIterations, setConstrainIterationsVal] = useState(50);
 
     const skipResetRef = useRef(false);
@@ -637,24 +634,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
         )}
 
         {/* Simulation Tuning */}
-        <div className="control-group">
-          <label>
-            Rest Threshold: {restThresholdVal.toFixed(1)}
-            <input
-              type="range"
-              min="0"
-              max="50"
-              step="0.1"
-              value={restThresholdVal}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setRestThresholdVal(v);
-                setRestThreshold?.(v);
-              }}
-              className="slider"
-            />
-          </label>
-        </div>
         <div className="control-group">
           <label>
             Constrain Iterations: {constrainIterations}

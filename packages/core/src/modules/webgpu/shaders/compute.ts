@@ -177,8 +177,6 @@ struct Particle {
   const countExpr = layouts.find((l) => l.moduleName === sim.name)!.mapping[
     "count"
   ].expr;
-  const restThresholdExpr = layouts.find((l) => l.moduleName === sim.name)!
-    .mapping["restThreshold"].expr;
 
   // Built-in spatial grid uniforms (available to all modules)
   const gridUniformsVar = `grid_uniforms`;
@@ -425,11 +423,6 @@ fn correct_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let vNAfterCandidate = vNBefore + corrVelAlong;
     let vNAfter = select(vNBefore, vNAfterCandidate, abs(vNAfterCandidate) < abs(vNBefore));
     particle.velocity = particle.velocity + corrDir * (vNAfter - vNBefore);
-    let vN = dot(particle.velocity, corrDir);
-    let restThreshold = ${restThresholdExpr};
-    if (abs(vN) < restThreshold) {
-      particle.velocity = particle.velocity - vN * corrDir;
-    }
   }
   let v2_total = dot(particle.velocity, particle.velocity);
   if (disp2 < 1e-8 && v2_total < 0.5) {
