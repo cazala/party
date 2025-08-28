@@ -15,7 +15,7 @@ export function useWebGPUPlayground(
 ) {
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
   const rendererRef = useRef<WebGPURenderer | null>(null);
-  const systemRef = useRef<any | null>(null);
+  const systemRef = useRef<WebGPUParticleSystem | null>(null);
   const environmentRef = useRef<Environment | null>(null);
   const boundaryRef = useRef<Boundary | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
@@ -133,9 +133,7 @@ export function useWebGPUPlayground(
             mode: "bounce",
           });
           const collisions = new Collisions({ restitution: 0.8 });
-          // Initialize simulation correction parameters
-          simulationModule.setMinCorrection(0);
-          simulationModule.setMaxCorrection(10);
+          // Initialize simulation parameters
           simulationModule.setRestThreshold(5);
           const modules = [simulationModule, environment, boundary, collisions];
           const system = new WebGPUParticleSystem(renderer, modules);
@@ -327,14 +325,18 @@ export function useWebGPUPlayground(
   }, [isInitialized]);
 
   // Simulation tuning setters
-  const setMinCorrection = useCallback((v: number) => {
-    simulationModule.setMinCorrection(v);
-  }, []);
-  const setMaxCorrection = useCallback((v: number) => {
-    simulationModule.setMaxCorrection(v);
-  }, []);
   const setRestThreshold = useCallback((v: number) => {
     simulationModule.setRestThreshold(v);
+  }, []);
+
+  // Constrain iterations control
+  const constrainIterationsRef = useRef<number>(10);
+  const setConstrainIterations = useCallback((v: number) => {
+    constrainIterationsRef.current = Math.max(1, Math.floor(v));
+    // Expose to renderer/system via a side-channel
+    (rendererRef.current as any)?.system?.setConstrainIterations?.(
+      constrainIterationsRef.current
+    );
   }, []);
 
   return {
@@ -353,9 +355,8 @@ export function useWebGPUPlayground(
     resetParticles,
     getParticleCount,
     getFPS,
-    setMinCorrection,
-    setMaxCorrection,
     setRestThreshold,
+    setConstrainIterations,
     // Dummy values for compatibility
     behavior: null,
     fluid: null,

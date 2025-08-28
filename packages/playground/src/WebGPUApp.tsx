@@ -29,6 +29,7 @@ function WebGPUApp() {
 
   const {
     renderer,
+    system,
     isInitialized,
     error,
     spawnParticles,
@@ -159,9 +160,8 @@ function WebGPUApp() {
           <InitControls
             ref={initControlsRef}
             onInitParticles={spawnParticles}
-            setMinCorrection={(v) => simulationModule.setMinCorrection(v)}
-            setMaxCorrection={(v) => simulationModule.setMaxCorrection(v)}
             setRestThreshold={(v) => simulationModule.setRestThreshold(v)}
+            setConstrainIterations={(v) => system?.setConstrainIterations(v)}
             onGetInitConfig={() => ({
               numParticles: 10000,
               shape: "grid" as const,

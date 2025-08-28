@@ -7,7 +7,6 @@ import {
 } from "react";
 import { ColorSelector } from "../ColorSelector";
 import { calculateMassFromSize } from "../../utils/particle";
-import { simulationModule } from "@cazala/party";
 
 const DEFAULT_SPAWN_NUM_PARTICLES = 3000;
 const DEFAULT_SPAWN_SHAPE = "grid";
@@ -67,9 +66,8 @@ interface InitControlsProps {
   onParticleSizeChange?: (size: number) => void;
   onColorsChange?: (colors: string[]) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
-  setMinCorrection?: (v: number) => void;
-  setMaxCorrection?: (v: number) => void;
   setRestThreshold?: (v: number) => void;
+  setConstrainIterations?: (v: number) => void;
 }
 
 export interface InitControlsRef {
@@ -113,9 +111,8 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       onParticleSizeChange,
       onColorsChange,
       getCurrentCamera,
-      setMinCorrection,
-      setMaxCorrection,
       setRestThreshold,
+      setConstrainIterations,
     },
     ref
   ) => {
@@ -145,9 +142,8 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
     const [enableJoints, setEnableJoints] = useState(DEFAULT_ENABLE_JOINTS);
 
     // Simulation tuning local state (defaults should match hook initialization)
-    const [minCorrectionVal, setMinCorrectionVal] = useState(0);
-    const [maxCorrectionVal, setMaxCorrectionVal] = useState(10);
     const [restThresholdVal, setRestThresholdVal] = useState(5);
+    const [constrainIterations, setConstrainIterationsVal] = useState(10);
 
     const skipResetRef = useRef(false);
 
@@ -643,42 +639,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
         {/* Simulation Tuning */}
         <div className="control-group">
           <label>
-            Min Correction: {minCorrectionVal.toExponential(1)}
-            <input
-              type="range"
-              min="0"
-              max="10"
-              step="0.000001"
-              value={minCorrectionVal}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setMinCorrectionVal(v);
-                setMinCorrection?.(v);
-              }}
-              className="slider"
-            />
-          </label>
-        </div>
-        <div className="control-group">
-          <label>
-            Max Correction: {maxCorrectionVal.toFixed(0)}
-            <input
-              type="range"
-              min="10"
-              max="10000"
-              step="10"
-              value={maxCorrectionVal}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setMaxCorrectionVal(v);
-                setMaxCorrection?.(v);
-              }}
-              className="slider"
-            />
-          </label>
-        </div>
-        <div className="control-group">
-          <label>
             Rest Threshold: {restThresholdVal.toFixed(1)}
             <input
               type="range"
@@ -690,6 +650,24 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
                 const v = parseFloat(e.target.value);
                 setRestThresholdVal(v);
                 setRestThreshold?.(v);
+              }}
+              className="slider"
+            />
+          </label>
+        </div>
+        <div className="control-group">
+          <label>
+            Constrain Iterations: {constrainIterations}
+            <input
+              type="range"
+              min="1"
+              max="20"
+              step="1"
+              value={constrainIterations}
+              onChange={(e) => {
+                const v = parseInt(e.target.value);
+                setConstrainIterationsVal(v);
+                setConstrainIterations?.(v);
               }}
               className="slider"
             />

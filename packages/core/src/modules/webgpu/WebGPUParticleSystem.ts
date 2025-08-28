@@ -68,6 +68,9 @@ export class WebGPUParticleSystem {
     zoom: number;
   } | null = null;
 
+  // Constraint solver iterations per frame
+  private constrainIterations: number = 10;
+
   constructor(
     private renderer: WebGPURenderer,
     private modules: readonly ComputeModule<string, string>[]
@@ -96,6 +99,10 @@ export class WebGPUParticleSystem {
       return d.name === name;
     });
     return found;
+  }
+
+  setConstrainIterations(iters: number): void {
+    this.constrainIterations = Math.max(1, Math.floor(iters));
   }
 
   async initialize(): Promise<void> {
@@ -663,8 +670,7 @@ export class WebGPUParticleSystem {
         }
 
         // constrain — iterate to improve convergence
-        const constrainIterations = 10;
-        for (let iter = 0; iter < constrainIterations; iter++) {
+        for (let iter = 0; iter < this.constrainIterations; iter++) {
           const pc = commandEncoder.beginComputePass();
           pc.setBindGroup(0, this.computeBindGroup);
           pc.setPipeline(this.constrainPipeline);

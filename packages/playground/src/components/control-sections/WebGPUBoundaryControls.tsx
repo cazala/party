@@ -12,7 +12,7 @@ export function WebGPUBoundaryControls({
   boundary: WebGPUBoundaryLike | null;
 }) {
   const [restitution, setRestitution] = useState(0.6);
-  const [friction, setFriction] = useState(0);
+  const [friction, setFriction] = useState(0.1);
   const [mode, setMode] = useState<"bounce" | "warp" | "kill">("bounce");
 
   useEffect(() => {

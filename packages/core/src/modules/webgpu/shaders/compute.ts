@@ -116,7 +116,7 @@ struct Particle {
     const structName = `Uniforms_${capitalize(mod.name)}`;
     const ids =
       mod.role === "simulation"
-        ? ["dt", "count", "minCorrection", "maxCorrection", "restThreshold"]
+        ? ["dt", "count", "restThreshold"]
         : mod.bindings || [];
     const floatCount = ids.length;
     const vec4Count = Math.max(1, Math.ceil(floatCount / 4));
@@ -162,10 +162,6 @@ struct Particle {
   const countExpr = layouts.find((l) => l.moduleName === sim.name)!.mapping[
     "count"
   ].expr;
-  const minCorrectionExpr = layouts.find((l) => l.moduleName === sim.name)!
-    .mapping["minCorrection"].expr;
-  const maxCorrectionExpr = layouts.find((l) => l.moduleName === sim.name)!
-    .mapping["maxCorrection"].expr;
   const restThresholdExpr = layouts.find((l) => l.moduleName === sim.name)!
     .mapping["restThreshold"].expr;
 
@@ -401,17 +397,13 @@ fn correct_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let disp2 = dot(disp, disp);
   let corr = particle.position - posAfterIntegration;
   let corr2 = dot(corr, corr);
-  let minCorrection = ${minCorrectionExpr};
-  let minCorrection2 = minCorrection * minCorrection;
-  if (corr2 > minCorrection2 && ${dtExpr} > 0.0) {
+  if (corr2 > 0.0 && ${dtExpr} > 0.0) {
     let corrLenInv = inverseSqrt(corr2);
     let corrDir = corr * corrLenInv;
     let corrVel = corr / ${dtExpr};
     let corrVelAlong = dot(corrVel, corrDir);
-    let maxCorr = ${maxCorrectionExpr};
-    let corrVelAlongClamped = clamp(corrVelAlong, -maxCorr, maxCorr);
     let vNBefore = dot(particle.velocity, corrDir);
-    let vNAfterCandidate = vNBefore + corrVelAlongClamped;
+    let vNAfterCandidate = vNBefore + corrVelAlong;
     let vNAfter = select(vNBefore, vNAfterCandidate, abs(vNAfterCandidate) < abs(vNBefore));
     particle.velocity = particle.velocity + corrDir * (vNAfter - vNBefore);
     let vN = dot(particle.velocity, corrDir);
