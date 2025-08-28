@@ -330,7 +330,7 @@ export function useWebGPUPlayground(
   }, []);
 
   // Constrain iterations control
-  const constrainIterationsRef = useRef<number>(10);
+  const constrainIterationsRef = useRef<number>(50);
   const setConstrainIterations = useCallback((v: number) => {
     constrainIterationsRef.current = Math.max(1, Math.floor(v));
     // Expose to renderer/system via a side-channel

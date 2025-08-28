@@ -69,7 +69,7 @@ export class WebGPUParticleSystem {
   } | null = null;
 
   // Constraint solver iterations per frame
-  private constrainIterations: number = 10;
+  private constrainIterations: number = 50;
 
   constructor(
     private renderer: WebGPURenderer,

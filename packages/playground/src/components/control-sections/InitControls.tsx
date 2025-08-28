@@ -8,10 +8,10 @@ import {
 import { ColorSelector } from "../ColorSelector";
 import { calculateMassFromSize } from "../../utils/particle";
 
-const DEFAULT_SPAWN_NUM_PARTICLES = 3000;
+const DEFAULT_SPAWN_NUM_PARTICLES = 10000;
 const DEFAULT_SPAWN_SHAPE = "grid";
-const DEFAULT_SPAWN_SPACING = 25;
-const DEFAULT_SPAWN_PARTICLE_SIZE = 10;
+const DEFAULT_SPAWN_SPACING = 12;
+const DEFAULT_SPAWN_PARTICLE_SIZE = 5;
 const DEFAULT_SPAWN_RADIUS = 100;
 const DEFAULT_INNER_RADIUS = 50;
 const DEFAULT_SQUARE_SIZE = 200;
@@ -143,7 +143,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
 
     // Simulation tuning local state (defaults should match hook initialization)
     const [restThresholdVal, setRestThresholdVal] = useState(5);
-    const [constrainIterations, setConstrainIterationsVal] = useState(10);
+    const [constrainIterations, setConstrainIterationsVal] = useState(50);
 
     const skipResetRef = useRef(false);
 
@@ -661,7 +661,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
             <input
               type="range"
               min="1"
-              max="20"
+              max="100"
               step="1"
               value={constrainIterations}
               onChange={(e) => {
