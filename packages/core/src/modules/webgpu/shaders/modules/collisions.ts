@@ -80,17 +80,19 @@ export class Collisions extends ComputeModule<"collisions", CollisionKeys> {
       let c1 = n * (overlap * 0.55);
       ${particleVar}.position = ${particleVar}.position + c1;
 
+      // Impulse-based bounce to conserve kinetic energy along contact normal
       let v1 = ${particleVar}.velocity;
-            let v2 = other.velocity;
-            let v1n = dot(v1, n);
-            let v2n = dot(v2, n);
-            let v1t = v1 - n * v1n;
-            let m1 = ${particleVar}.mass;
-            let m2 = other.mass;
-            let e = ${getUniform("restitution")};
-            let v1nAfter = (v1n * (m1 - e * m2) + (1.0 + e) * m2 * v2n) / max(m1 + m2, 1e-6);
-            let newV1 = v1t + n * v1nAfter;
-            ${particleVar}.velocity = newV1;
+      let v2 = other.velocity;
+      let m1 = ${particleVar}.mass;
+      let m2 = other.mass;
+      let e = ${getUniform("restitution")};
+      let relN = dot(v1 - v2, n);
+      if (relN < 0.0) {
+        let denom = max((1.0 / max(m1, 1e-6)) + (1.0 / max(m2, 1e-6)), 1e-6);
+        let j = -(1.0 + e) * relN / denom;
+        let dv = min(j / max(m1, 1e-6), 1000.0);
+        ${particleVar}.velocity = v1 + n * dv;
+      }
     }
   }
 }`,
