@@ -75,6 +75,7 @@ export interface ComputeProgramBuild {
   layouts: ModuleUniformLayout[];
   extraBindings: {
     grid?: { countsBinding: number; indicesBinding: number };
+    simState?: { stateBinding: number };
   };
 }
 
@@ -228,10 +229,12 @@ struct Particle {
   );
   const gridCountsBinding = lastUniformBinding + 1;
   const gridIndicesBinding = lastUniformBinding + 2;
+  const simStateBinding = lastUniformBinding + 3;
 
   const gridDecls: string[] = [
     `@group(0) @binding(${gridCountsBinding}) var<storage, read_write> GRID_COUNTS: array<atomic<u32>>;`,
     `@group(0) @binding(${gridIndicesBinding}) var<storage, read_write> GRID_INDICES: array<u32>;`,
+    `@group(0) @binding(${simStateBinding}) var<storage, read_write> SIM_STATE: array<f32>;`,
   ];
 
   // Grid helpers and neighbor iteration
@@ -321,9 +324,16 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   }
 }`;
 
-  const mainFn = `
+  const stateHelpers = `
+const SIM_STATE_STRIDE: u32 = 4u; // prevX, prevY, posIntX, posIntY
+fn sim_state_index(pid: u32, slot: u32) -> u32 { return pid * SIM_STATE_STRIDE + slot; }
+fn sim_state_read(pid: u32, slot: u32) -> f32 { return SIM_STATE[sim_state_index(pid, slot)]; }
+fn sim_state_write(pid: u32, slot: u32, value: f32) { SIM_STATE[sim_state_index(pid, slot)] = value; }
+`;
+
+  const statePass = `
 @compute @workgroup_size(64)
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+fn state_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let index = global_id.x;
   let count = u32(${countExpr});
   if (index >= count) { return; }
@@ -331,23 +341,62 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   var particle = particles[index];
   if (particle.mass == 0.0) { return; }
 
-  // State stage
   ${stateStatements.join("\n\n  ")}
+  particles[index] = particle;
+}`;
 
-  // Apply stage
+  const applyPass = `
+@compute @workgroup_size(64)
+fn apply_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
+  let index = global_id.x;
+  let count = u32(${countExpr});
+  if (index >= count) { return; }
+  var particle = particles[index];
+  if (particle.mass == 0.0) { return; }
   ${applyStatements.join("\n\n  ")}
+  particles[index] = particle;
+}`;
 
-  // Integrate position using delta time
-  // Apply acceleration to velocity, then velocity to position
-  let prevPos = particle.position;
+  const integratePass = `
+@compute @workgroup_size(64)
+fn integrate_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
+  let index = global_id.x;
+  let count = u32(${countExpr});
+  if (index >= count) { return; }
+  var particle = particles[index];
+  if (particle.mass == 0.0) { return; }
+  sim_state_write(index, 0u, particle.position.x);
+  sim_state_write(index, 1u, particle.position.y);
   particle.velocity += particle.acceleration * ${dtExpr};
   particle.position += particle.velocity * ${dtExpr};
-  let posAfterIntegration = particle.position;
+  sim_state_write(index, 2u, particle.position.x);
+  sim_state_write(index, 3u, particle.position.y);
+  particle.acceleration = vec2<f32>(0.0, 0.0);
+  particles[index] = particle;
+}`;
 
-  // Constrain stage
+  const constrainPass = `
+@compute @workgroup_size(64)
+fn constrain_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
+  let index = global_id.x;
+  let count = u32(${countExpr});
+  if (index >= count) { return; }
+  var particle = particles[index];
+  if (particle.mass == 0.0) { return; }
   ${constrainStatements.join("\n\n  ")}
+  particles[index] = particle;
+}`;
 
-  // Correct velocity using post-constraint displacement if constraints changed position
+  const correctPass = `
+@compute @workgroup_size(64)
+fn correct_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
+  let index = global_id.x;
+  let count = u32(${countExpr});
+  if (index >= count) { return; }
+  var particle = particles[index];
+  if (particle.mass == 0.0) { return; }
+  let prevPos = vec2<f32>(sim_state_read(index, 0u), sim_state_read(index, 1u));
+  let posAfterIntegration = vec2<f32>(sim_state_read(index, 2u), sim_state_read(index, 3u));
   let disp = particle.position - prevPos;
   let disp2 = dot(disp, disp);
   let corr = particle.position - posAfterIntegration;
@@ -355,35 +404,26 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let minCorrection = ${minCorrectionExpr};
   let minCorrection2 = minCorrection * minCorrection;
   if (corr2 > minCorrection2 && ${dtExpr} > 0.0) {
-    // Apply only the correction component along the correction direction
     let corrLenInv = inverseSqrt(corr2);
     let corrDir = corr * corrLenInv;
     let corrVel = corr / ${dtExpr};
     let corrVelAlong = dot(corrVel, corrDir);
-    // Clamp only the along-axis correction to avoid explosions
     let maxCorr = ${maxCorrectionExpr};
     let corrVelAlongClamped = clamp(corrVelAlong, -maxCorr, maxCorr);
-    // Only allow correction to reduce the magnitude of the normal component, not increase it
     let vNBefore = dot(particle.velocity, corrDir);
     let vNAfterCandidate = vNBefore + corrVelAlongClamped;
     let vNAfter = select(vNBefore, vNAfterCandidate, abs(vNAfterCandidate) < abs(vNBefore));
     particle.velocity = particle.velocity + corrDir * (vNAfter - vNBefore);
-
-    // If normal velocity is very small after correction, zero it to let particles rest
     let vN = dot(particle.velocity, corrDir);
     let restThreshold = ${restThresholdExpr};
     if (abs(vN) < restThreshold) {
       particle.velocity = particle.velocity - vN * corrDir;
     }
   }
-  // If net displacement is tiny and velocity is tiny, zero out to rest
   let v2_total = dot(particle.velocity, particle.velocity);
   if (disp2 < 1e-8 && v2_total < 0.5) {
     particle.velocity = vec2<f32>(0.0, 0.0);
   }
-
-  // Reset acceleration to zero for next frame
-  particle.acceleration = vec2<f32>(0.0, 0.0);
   particles[index] = particle;
 }`;
 
@@ -394,7 +434,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     ...gridDecls,
     ...gridHelpers,
     gridPasses,
-    mainFn,
+    stateHelpers,
+    statePass,
+    applyPass,
+    integratePass,
+    // Only declare grid passes once; system can dispatch them multiple times
+    constrainPass,
+    correctPass,
   ]
     .filter((s) => s && s.length)
     .join("\n\n");
@@ -406,6 +452,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         countsBinding: gridCountsBinding,
         indicesBinding: gridIndicesBinding,
       },
+      simState: { stateBinding: simStateBinding },
     },
   };
 }

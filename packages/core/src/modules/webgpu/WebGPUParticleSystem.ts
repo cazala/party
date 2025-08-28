@@ -40,6 +40,11 @@ export class WebGPUParticleSystem {
   private computePipeline: GPUComputePipeline | null = null;
   private gridClearPipeline: GPUComputePipeline | null = null;
   private gridBuildPipeline: GPUComputePipeline | null = null;
+  private statePipeline: GPUComputePipeline | null = null;
+  private applyPipeline: GPUComputePipeline | null = null;
+  private integratePipeline: GPUComputePipeline | null = null;
+  private correctPipeline: GPUComputePipeline | null = null;
+  private constrainPipeline: GPUComputePipeline | null = null;
   private bindGroupLayout: GPUBindGroupLayout | null = null;
   private pipelineLayout: GPUPipelineLayout | null = null;
 
@@ -51,6 +56,7 @@ export class WebGPUParticleSystem {
   // Grid buffers
   private gridCountsBuffer: GPUBuffer | null = null;
   private gridIndicesBuffer: GPUBuffer | null = null;
+  private simStateBuffer: GPUBuffer | null = null;
   private gridCells: number = 0;
   private gridMaxPerCell: number = 0;
   // Track last view to detect changes and avoid unnecessary uniform/buffer updates
@@ -117,7 +123,7 @@ export class WebGPUParticleSystem {
           >;
         };
         // attach typed reader without using any
-        (mod as ComputeModule<string, string>).attachUniformReader(reader);
+        mod.attachUniformReader(reader);
       }
     );
   }
@@ -167,6 +173,16 @@ export class WebGPUParticleSystem {
         : { width: 800, height: 600 };
       this.configureGrid(size.width, size.height);
     }
+
+    // Create SIM_STATE buffer (prevX, prevY, posIntX, posIntY per particle)
+    if (this.computeBuild.extraBindings.simState) {
+      const stride = 4 * 4; // 4 floats * 4 bytes
+      const size = this.maxParticles * stride;
+      this.simStateBuffer = this.device.createBuffer({
+        size,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+    }
   }
 
   private configureGrid(width: number, height: number): void {
@@ -184,7 +200,7 @@ export class WebGPUParticleSystem {
     const cellSize = 16;
     const cols = Math.max(1, Math.ceil((maxX - minX) / cellSize));
     const rows = Math.max(1, Math.ceil((maxY - minY) / cellSize));
-    const maxPerCell = 64;
+    const maxPerCell = 256;
     this.gridCells = cols * rows;
     this.gridMaxPerCell = maxPerCell;
 
@@ -327,6 +343,13 @@ export class WebGPUParticleSystem {
         buffer: { type: "storage" },
       });
     }
+    if (this.computeBuild.extraBindings.simState) {
+      bglEntries.push({
+        binding: this.computeBuild.extraBindings.simState.stateBinding,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: "storage" },
+      });
+    }
     this.bindGroupLayout = this.device.createBindGroupLayout({
       entries: bglEntries,
     });
@@ -347,6 +370,31 @@ export class WebGPUParticleSystem {
       layout: this.pipelineLayout,
       compute: { module: computeShaderModule, entryPoint: "grid_build" },
     });
+    // Optional split passes if available
+    try {
+      this.statePipeline = this.device.createComputePipeline({
+        layout: this.pipelineLayout,
+        compute: { module: computeShaderModule, entryPoint: "state_pass" },
+      });
+      this.applyPipeline = this.device.createComputePipeline({
+        layout: this.pipelineLayout,
+        compute: { module: computeShaderModule, entryPoint: "apply_pass" },
+      });
+      this.integratePipeline = this.device.createComputePipeline({
+        layout: this.pipelineLayout,
+        compute: { module: computeShaderModule, entryPoint: "integrate_pass" },
+      });
+      this.constrainPipeline = this.device.createComputePipeline({
+        layout: this.pipelineLayout,
+        compute: { module: computeShaderModule, entryPoint: "constrain_pass" },
+      });
+      this.correctPipeline = this.device.createComputePipeline({
+        layout: this.pipelineLayout,
+        compute: { module: computeShaderModule, entryPoint: "correct_pass" },
+      });
+    } catch (_e) {
+      // Fallback to monolithic main if split entries not present
+    }
   }
 
   private createBindGroups(): void {
@@ -400,6 +448,12 @@ export class WebGPUParticleSystem {
           resource: { buffer: this.gridIndicesBuffer },
         }
       );
+    }
+    if (this.computeBuild?.extraBindings.simState && this.simStateBuffer) {
+      entries.push({
+        binding: this.computeBuild.extraBindings.simState.stateBinding,
+        resource: { buffer: this.simStateBuffer },
+      });
     }
     this.computeBindGroup = this.device.createBindGroup({
       layout: this.bindGroupLayout,
@@ -538,7 +592,7 @@ export class WebGPUParticleSystem {
     const textureView = this.context.getCurrentTexture().createView();
 
     // Run compute passes to build grid and integrate physics
-    if (this.computePipeline && this.computeBindGroup) {
+    if (this.computeBindGroup) {
       const workgroupSize = DEFAULTS.workgroupSize;
 
       // Grid clear pass
@@ -561,13 +615,74 @@ export class WebGPUParticleSystem {
         pass.end();
       }
 
-      // Main simulation pass
-      const simPass = commandEncoder.beginComputePass();
-      simPass.setBindGroup(0, this.computeBindGroup);
-      simPass.setPipeline(this.computePipeline);
-      const simGroups = Math.ceil(this.particleCount / workgroupSize);
-      if (simGroups > 0) simPass.dispatchWorkgroups(simGroups);
-      simPass.end();
+      const groups = Math.ceil(this.particleCount / workgroupSize);
+      // Split passes if available; otherwise fall back to main
+      if (
+        this.statePipeline &&
+        this.applyPipeline &&
+        this.integratePipeline &&
+        this.constrainPipeline &&
+        this.correctPipeline
+      ) {
+        // state
+        const p1 = commandEncoder.beginComputePass();
+        p1.setBindGroup(0, this.computeBindGroup);
+        p1.setPipeline(this.statePipeline);
+        if (groups > 0) p1.dispatchWorkgroups(groups);
+        p1.end();
+
+        // apply
+        const p2 = commandEncoder.beginComputePass();
+        p2.setBindGroup(0, this.computeBindGroup);
+        p2.setPipeline(this.applyPipeline);
+        if (groups > 0) p2.dispatchWorkgroups(groups);
+        p2.end();
+
+        // integrate
+        const p3 = commandEncoder.beginComputePass();
+        p3.setBindGroup(0, this.computeBindGroup);
+        p3.setPipeline(this.integratePipeline);
+        if (groups > 0) p3.dispatchWorkgroups(groups);
+        p3.end();
+
+        // Rebuild grid for updated positions
+        if (this.gridClearPipeline && this.gridCells > 0) {
+          const pass = commandEncoder.beginComputePass();
+          pass.setBindGroup(0, this.computeBindGroup);
+          pass.setPipeline(this.gridClearPipeline);
+          const clearGroups2 = Math.ceil(this.gridCells / workgroupSize);
+          if (clearGroups2 > 0) pass.dispatchWorkgroups(clearGroups2);
+          pass.end();
+        }
+        if (this.gridBuildPipeline && this.particleCount > 0) {
+          const pass = commandEncoder.beginComputePass();
+          pass.setBindGroup(0, this.computeBindGroup);
+          pass.setPipeline(this.gridBuildPipeline);
+          if (groups > 0) pass.dispatchWorkgroups(groups);
+          pass.end();
+        }
+
+        // constrain
+        const p4 = commandEncoder.beginComputePass();
+        p4.setBindGroup(0, this.computeBindGroup);
+        p4.setPipeline(this.constrainPipeline);
+        if (groups > 0) p4.dispatchWorkgroups(groups);
+        p4.end();
+
+        // correct
+        const p5 = commandEncoder.beginComputePass();
+        p5.setBindGroup(0, this.computeBindGroup);
+        p5.setPipeline(this.correctPipeline);
+        if (groups > 0) p5.dispatchWorkgroups(groups);
+        p5.end();
+      } else if (this.computePipeline) {
+        // Fallback monolithic
+        const simPass = commandEncoder.beginComputePass();
+        simPass.setBindGroup(0, this.computeBindGroup);
+        simPass.setPipeline(this.computePipeline);
+        if (groups > 0) simPass.dispatchWorkgroups(groups);
+        simPass.end();
+      }
     }
 
     const renderPass = commandEncoder.beginRenderPass({
