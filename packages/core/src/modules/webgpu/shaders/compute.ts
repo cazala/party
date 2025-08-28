@@ -329,6 +329,15 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   if (i >= count) { return; }
   let p = particles[i];
   if (p.mass == 0.0) { return; }
+  // Offscreen culling: skip grid binning for particles fully outside view (with small padding)
+  let minX = GRID_MINX();
+  let maxX = GRID_MAXX();
+  let minY = GRID_MINY();
+  let maxY = GRID_MAXY();
+  let pad = GRID_CELL_SIZE();
+  if (p.position.x + p.size < minX - pad || p.position.x - p.size > maxX + pad || p.position.y + p.size < minY - pad || p.position.y - p.size > maxY + pad) {
+    return;
+  }
   let cell = grid_cell_index(p.position);
   let offset = atomicAdd(&GRID_COUNTS[cell], 1u);
   if (offset < GRID_MAX_PER_CELL()) {
