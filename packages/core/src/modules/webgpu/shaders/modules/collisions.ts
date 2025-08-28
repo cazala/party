@@ -59,40 +59,72 @@ export class Collisions extends ComputeModule<"collisions", CollisionKeys> {
     }
   }`,
       constrain: ({ particleVar, getUniform }) => `{
-  // Grid neighbors iterator API using vec2 math, only updating the current particle
+  // Pass 1: find deepest overlap neighbor to reduce scan-order bias
   var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size * 2.0);
+  var bestJ: u32 = NEIGHBOR_NONE;
+  var bestN: vec2<f32> = vec2<f32>(0.0, 0.0);
+  var bestOverlap: f32 = 0.0;
   loop {
     let j = neighbor_iter_next(&it, index);
     if (j == NEIGHBOR_NONE) { break; }
     var other = particles[j];
-
-    let delta = ${particleVar}.position - other.position;
     let r = other.size + ${particleVar}.size;
+    let delta = ${particleVar}.position - other.position;
     let dist2 = dot(delta, delta);
     if (dist2 > 0.0001 && dist2 < r*r) {
       let dist = sqrt(dist2);
-      let n = delta / dist;
-
-      // Position correction (move current particle only). We do not write to 'other'.
       let overlap = r - dist;
-      // Symmetric split: move current particle by half the overlap along normal.
-      // The neighbor will do the same in its pass in the opposite direction.
-      let c1 = n * (overlap * 0.55);
-      ${particleVar}.position = ${particleVar}.position + c1;
-
-      // Impulse-based bounce to conserve kinetic energy along contact normal
-      let v1 = ${particleVar}.velocity;
-      let v2 = other.velocity;
-      let m1 = ${particleVar}.mass;
-      let m2 = other.mass;
-      let e = ${getUniform("restitution")};
-      let relN = dot(v1 - v2, n);
-      if (relN < 0.0) {
-        let denom = max((1.0 / max(m1, 1e-6)) + (1.0 / max(m2, 1e-6)), 1e-6);
-        let j = -(1.0 + e) * relN / denom;
-        let dv = min(j / max(m1, 1e-6), 1000.0);
-        ${particleVar}.velocity = v1 + n * dv;
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        bestJ = j;
+        bestN = delta / dist;
       }
+    }
+  }
+
+  if (bestJ != NEIGHBOR_NONE) {
+    var other = particles[bestJ];
+    var n = bestN;
+
+    // Pseudo-random helpers based on world position to avoid index-order bias
+    let h1 = dot(${particleVar}.position, vec2<f32>(12.9898, 78.233));
+    let rand1 = fract(sin(h1) * 43758.5453);
+    let h2 = dot(${particleVar}.position, vec2<f32>(93.9898, 67.345));
+    let rand2 = fract(sin(h2) * 15731.7431);
+
+    // Symmetry breaking: if nearly vertical or horizontal alignment, slightly rotate normal by tiny random angle
+    let ax = abs(n.x);
+    let ay = abs(n.y);
+    if (ax < 0.03 || ay < 0.03) {
+      let angle = (rand1 - 0.5) * 0.3;
+      let ca = cos(angle);
+      let sa = sin(angle);
+      let nx = n.x * ca - n.y * sa;
+      let ny = n.x * sa + n.y * ca;
+      n = normalize(vec2<f32>(nx, ny));
+    }
+
+    // Position correction (move current particle only). We do not write to 'other'.
+    var c1 = n * (bestOverlap * 0.55);
+    // Tiny tangential jitter with zero-mean using rand2 to reduce directional bias
+    let t = vec2<f32>(-n.y, n.x);
+    let jitterAmp = (rand2 - 0.5) * min(bestOverlap * 0.1, 0.5);
+    let jitter = t * jitterAmp;
+    c1 = c1 + jitter;
+    ${particleVar}.position = ${particleVar}.position + c1;
+
+    // Impulse-based bounce to conserve kinetic energy along contact normal
+    let v1 = ${particleVar}.velocity;
+    let v2 = other.velocity;
+    let m1 = ${particleVar}.mass;
+    let m2 = other.mass;
+    let e = ${getUniform("restitution")};
+    let relN = dot(v1 - v2, n);
+    if (relN < 0.0) {
+      let denom = max((1.0 / max(m1, 1e-6)) + (1.0 / max(m2, 1e-6)), 1e-6);
+      let j = -(1.0 + e) * relN / denom;
+      let dv = min(j / max(m1, 1e-6), 1000.0);
+      ${particleVar}.velocity = v1 + n * dv;
     }
   }
 }`,
