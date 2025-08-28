@@ -1,8 +1,8 @@
-export type ComputeModuleRole = "simulation" | "force";
+export type ComputeModuleRole = "simulation" | "force" | "grid";
 
 export interface ComputeModuleDescriptor<
   Name extends string,
-  BindingKeys extends string
+  BindingKeys extends string | "enabled"
 > {
   name: Name;
   role: ComputeModuleRole;
@@ -24,18 +24,22 @@ export interface ComputeModuleDescriptor<
   }) => string;
 }
 
+type BindingKeysBase = "enabled" | string;
+
 export abstract class ComputeModule<
   Name extends string,
-  BindingKeys extends string
+  BindingKeys extends BindingKeysBase
 > {
   private _writer: ((values: Partial<Record<string, number>>) => void) | null =
     null;
   private _reader: (() => Partial<Record<string, number>>) | null = null;
+  private _enabled: boolean = true;
 
   attachUniformWriter(
     writer: (values: Partial<Record<string, number>>) => void
   ): void {
     this._writer = writer;
+    writer({ enabled: this._enabled ? 1 : 0 });
   }
 
   attachUniformReader(reader: () => Partial<Record<string, number>>): void {
@@ -54,6 +58,18 @@ export abstract class ComputeModule<
     return vals || {};
   }
 
+  isEnabled(): boolean {
+    return this._enabled;
+  }
+
+  setEnabled(enabled: boolean): void {
+    this._enabled = !!enabled;
+    // Propagate to GPU uniform if available
+    if (this._writer) {
+      this._writer({ enabled: this._enabled ? 1 : 0 });
+    }
+  }
+
   abstract descriptor(): ComputeModuleDescriptor<Name, BindingKeys>;
 }
 
@@ -62,6 +78,7 @@ export abstract class ComputeModule<
 
 export interface ModuleUniformLayout {
   moduleName: string;
+  moduleRole: ComputeModuleRole;
   bindingIndex: number;
   uniformsVar: string;
   structName: string;
@@ -114,10 +131,7 @@ struct Particle {
     const bindingIndex = idx + 1; // 0 is particles
     const uniformsVar = `${mod.name}_uniforms`;
     const structName = `Uniforms_${capitalize(mod.name)}`;
-    const ids =
-      mod.role === "simulation"
-        ? ["dt", "count", "restThreshold"]
-        : mod.bindings || [];
+    const ids = [...(mod.bindings || []), "enabled"] as string[];
     const floatCount = ids.length;
     const vec4Count = Math.max(1, Math.ceil(floatCount / 4));
     const sizeBytes = vec4Count * 16;
@@ -147,6 +161,7 @@ struct Particle {
 
     layouts.push({
       moduleName: mod.name,
+      moduleRole: mod.role,
       bindingIndex,
       uniformsVar,
       structName,
@@ -209,6 +224,7 @@ struct Particle {
   const gridVarDecl = `@group(0) @binding(${gridBindingIndex}) var<uniform> ${gridUniformsVar}: ${gridStructName};`;
   layouts.push({
     moduleName: "grid",
+    moduleRole: "grid",
     bindingIndex: gridBindingIndex,
     uniformsVar: gridUniformsVar,
     structName: gridStructName,
@@ -255,7 +271,7 @@ struct Particle {
   const stateStatements: string[] = [];
   const applyStatements: string[] = [];
   const constrainStatements: string[] = [];
-  descriptors.forEach((mod) => {
+  descriptors.forEach((mod, i) => {
     if (mod.role !== "force" || !mod.state) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
@@ -265,10 +281,11 @@ struct Particle {
       getUniform,
     });
     if (snippet && snippet.trim().length) {
-      stateStatements.push(snippet.trim());
+      const enabledExpr = layout.mapping["enabled"].expr;
+      stateStatements.push(`if (${enabledExpr} != 0.0) ${snippet.trim()}`);
     }
   });
-  descriptors.forEach((mod) => {
+  descriptors.forEach((mod, i) => {
     if (mod.role !== "force" || !mod.apply) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
@@ -278,10 +295,11 @@ struct Particle {
       getUniform,
     });
     if (snippet && snippet.trim().length) {
-      applyStatements.push(snippet.trim());
+      const enabledExpr = layout.mapping["enabled"].expr;
+      applyStatements.push(`if (${enabledExpr} != 0.0) ${snippet.trim()}`);
     }
   });
-  descriptors.forEach((mod) => {
+  descriptors.forEach((mod, i) => {
     if (mod.role !== "force" || !mod.constrain) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
@@ -291,7 +309,8 @@ struct Particle {
       getUniform,
     });
     if (snippet && snippet.trim().length) {
-      constrainStatements.push(snippet.trim());
+      const enabledExpr = layout.mapping["enabled"].expr;
+      constrainStatements.push(`if (${enabledExpr} != 0.0) ${snippet.trim()}`);
     }
   });
 

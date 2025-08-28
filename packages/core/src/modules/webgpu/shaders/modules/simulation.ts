@@ -18,7 +18,7 @@ export class Simulation extends ComputeModule<"simulation", SimKeys> {
     return {
       name: "simulation",
       role: "simulation",
-      // bindings auto-injected by builder
+      bindings: ["dt", "count", "restThreshold"],
     };
   }
 }

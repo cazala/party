@@ -4,6 +4,7 @@ interface WebGPUBoundaryLike {
   setRestitution: (value: number) => void;
   setFriction?: (value: number) => void;
   setMode?: (mode: "bounce" | "warp" | "kill") => void;
+  setEnabled?: (value: boolean) => void;
 }
 
 export function WebGPUBoundaryControls({
@@ -14,6 +15,7 @@ export function WebGPUBoundaryControls({
   const [restitution, setRestitution] = useState(0.6);
   const [friction, setFriction] = useState(0.1);
   const [mode, setMode] = useState<"bounce" | "warp" | "kill">("bounce");
+  const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
     // no-op: could hydrate from module if it exposed getters
@@ -21,6 +23,19 @@ export function WebGPUBoundaryControls({
 
   return (
     <div className="control-section">
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => {
+              setEnabled(e.target.checked);
+              boundary?.setEnabled?.(e.target.checked);
+            }}
+          />
+          Enabled
+        </label>
+      </div>
       <div className="control-group">
         <label>
           Mode

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 interface WebGPUCollisionsLike {
   setRestitution: (value: number) => void;
+  setEnabled?: (value: boolean) => void;
 }
 
 export function WebGPUCollisionsControls({
@@ -10,6 +11,7 @@ export function WebGPUCollisionsControls({
   collisions: WebGPUCollisionsLike | null;
 }) {
   const [restitution, setRestitution] = useState(0.8);
+  const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
     // no-op: hydrate if getters exist later
@@ -17,6 +19,19 @@ export function WebGPUCollisionsControls({
 
   return (
     <div className="control-section">
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => {
+              setEnabled(e.target.checked);
+              collisions?.setEnabled?.(e.target.checked);
+            }}
+          />
+          Enabled
+        </label>
+      </div>
       <div className="control-group">
         <label>
           Restitution: {restitution.toFixed(2)}

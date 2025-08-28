@@ -6,6 +6,7 @@ interface WebGPUEnvironmentLike {
   setInertia?: (value: number) => void;
   setFriction?: (value: number) => void;
   setDamping?: (value: number) => void;
+  setEnabled?: (value: boolean) => void;
 }
 
 export function WebGPUEnvironmentControls({
@@ -18,6 +19,7 @@ export function WebGPUEnvironmentControls({
   const [inertia, setInertia] = useState(0);
   const [friction, setFriction] = useState(0);
   const [damping, setDamping] = useState(0);
+  const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
     // no-op: could hydrate from module if it exposed getters
@@ -25,6 +27,19 @@ export function WebGPUEnvironmentControls({
 
   return (
     <div className="control-section">
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => {
+              setEnabled(e.target.checked);
+              environment?.setEnabled?.(e.target.checked);
+            }}
+          />
+          Enabled
+        </label>
+      </div>
       <div className="control-group">
         <label>
           Gravity: {strength}

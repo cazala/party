@@ -160,6 +160,10 @@ export class WebGPUParticleSystem {
       for (const key of Object.keys(layout.mapping)) {
         state[key] = 0;
       }
+      // Default-enable non-simulation modules that have 'enabled'
+      if (layout.moduleName !== "simulation" && "enabled" in layout.mapping) {
+        state["enabled"] = 1;
+      }
       return state;
     });
 
@@ -631,19 +635,44 @@ export class WebGPUParticleSystem {
         this.constrainPipeline &&
         this.correctPipeline
       ) {
+        const descs = (
+          this.modules as readonly ComputeModule<string, string>[]
+        ).map((m) => WebGPUParticleSystem.toDescriptor(m));
+        const stateEnabled = descs.some(
+          (d, idx) =>
+            d.role === "force" &&
+            (this.modules[idx] as any).isEnabled?.() &&
+            !!d.state
+        );
+        const applyEnabled = descs.some(
+          (d, idx) =>
+            d.role === "force" &&
+            (this.modules[idx] as any).isEnabled?.() &&
+            !!d.apply
+        );
+        const constrainEnabled = descs.some(
+          (d, idx) =>
+            d.role === "force" &&
+            (this.modules[idx] as any).isEnabled?.() &&
+            !!d.constrain
+        );
         // state
-        const p1 = commandEncoder.beginComputePass();
-        p1.setBindGroup(0, this.computeBindGroup);
-        p1.setPipeline(this.statePipeline);
-        if (groups > 0) p1.dispatchWorkgroups(groups);
-        p1.end();
+        if (stateEnabled) {
+          const p1 = commandEncoder.beginComputePass();
+          p1.setBindGroup(0, this.computeBindGroup);
+          p1.setPipeline(this.statePipeline);
+          if (groups > 0) p1.dispatchWorkgroups(groups);
+          p1.end();
+        }
 
         // apply
-        const p2 = commandEncoder.beginComputePass();
-        p2.setBindGroup(0, this.computeBindGroup);
-        p2.setPipeline(this.applyPipeline);
-        if (groups > 0) p2.dispatchWorkgroups(groups);
-        p2.end();
+        if (applyEnabled) {
+          const p2 = commandEncoder.beginComputePass();
+          p2.setBindGroup(0, this.computeBindGroup);
+          p2.setPipeline(this.applyPipeline);
+          if (groups > 0) p2.dispatchWorkgroups(groups);
+          p2.end();
+        }
 
         // integrate
         const p3 = commandEncoder.beginComputePass();
@@ -670,12 +699,14 @@ export class WebGPUParticleSystem {
         }
 
         // constrain — iterate to improve convergence
-        for (let iter = 0; iter < this.constrainIterations; iter++) {
-          const pc = commandEncoder.beginComputePass();
-          pc.setBindGroup(0, this.computeBindGroup);
-          pc.setPipeline(this.constrainPipeline);
-          if (groups > 0) pc.dispatchWorkgroups(groups);
-          pc.end();
+        if (constrainEnabled) {
+          for (let iter = 0; iter < this.constrainIterations; iter++) {
+            const pc = commandEncoder.beginComputePass();
+            pc.setBindGroup(0, this.computeBindGroup);
+            pc.setPipeline(this.constrainPipeline);
+            if (groups > 0) pc.dispatchWorkgroups(groups);
+            pc.end();
+          }
         }
 
         // correct
