@@ -7,6 +7,10 @@ interface WebGPUEnvironmentLike {
   setFriction?: (value: number) => void;
   setDamping?: (value: number) => void;
   setEnabled?: (value: boolean) => void;
+  setGravityDirection?: (
+    dir: "up" | "down" | "left" | "right" | "inwards" | "outwards" | "custom"
+  ) => void;
+  setGravityAngle?: (radians: number) => void;
 }
 
 export function WebGPUEnvironmentControls({
@@ -15,7 +19,10 @@ export function WebGPUEnvironmentControls({
   environment: WebGPUEnvironmentLike | null;
 }) {
   const [strength, setStrength] = useState(0);
-  const [angle, setAngle] = useState(90); // degrees, default down
+  const [direction, setDirection] = useState<
+    "up" | "down" | "left" | "right" | "inwards" | "outwards" | "custom"
+  >("down");
+  const [angle, setAngle] = useState(90); // degrees, for custom only
   const [inertia, setInertia] = useState(0);
   const [friction, setFriction] = useState(0);
   const [damping, setDamping] = useState(0);
@@ -42,7 +49,7 @@ export function WebGPUEnvironmentControls({
       </div>
       <div className="control-group">
         <label>
-          Gravity: {strength}
+          Gravity Strength: {strength}
           <input
             type="range"
             min="0"
@@ -61,25 +68,47 @@ export function WebGPUEnvironmentControls({
 
       <div className="control-group">
         <label>
-          Direction Angle: {angle}°
-          <input
-            type="range"
-            min="0"
-            max="360"
-            step="1"
-            value={angle}
+          Gravity Direction
+          <select
+            value={direction}
             onChange={(e) => {
-              const deg = parseInt(e.target.value);
-              setAngle(deg);
-              const rad = (deg * Math.PI) / 180;
-              const x = Math.cos(rad);
-              const y = Math.sin(rad);
-              environment?.setDirection?.(x, y);
+              const dir = e.target.value as typeof direction;
+              setDirection(dir);
+              environment?.setGravityDirection?.(dir);
             }}
-            className="slider"
-          />
+            className="form-select"
+          >
+            <option value="down">Down</option>
+            <option value="up">Up</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+            <option value="inwards">Inwards</option>
+            <option value="outwards">Outwards</option>
+            <option value="custom">Custom</option>
+          </select>
         </label>
       </div>
+      {direction === "custom" && (
+        <div className="control-group">
+          <label>
+            Gravity Angle: {angle}°
+            <input
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              value={angle}
+              onChange={(e) => {
+                const deg = parseInt(e.target.value);
+                setAngle(deg);
+                const rad = (deg * Math.PI) / 180;
+                environment?.setGravityAngle?.(rad);
+              }}
+              className="slider"
+            />
+          </label>
+        </div>
+      )}
 
       <div className="control-group">
         <label>
