@@ -1,9 +1,12 @@
 import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
-type CollisionKeys = "restitution";
+type CollisionBindingKeys = "restitution";
 
 // Simple, brute-force elastic collision response applied only to current particle
-export class Collisions extends ComputeModule<"collisions", CollisionKeys> {
+export class Collisions extends ComputeModule<
+  "collisions",
+  CollisionBindingKeys
+> {
   private restitution: number;
 
   constructor(opts?: { restitution?: number }) {
@@ -23,7 +26,7 @@ export class Collisions extends ComputeModule<"collisions", CollisionKeys> {
     this.write({ restitution: this.restitution });
   }
 
-  descriptor(): ComputeModuleDescriptor<"collisions", CollisionKeys> {
+  descriptor(): ComputeModuleDescriptor<"collisions", CollisionBindingKeys> {
     return {
       name: "collisions",
       role: "force",

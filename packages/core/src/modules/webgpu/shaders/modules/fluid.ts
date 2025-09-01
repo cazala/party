@@ -1,6 +1,6 @@
 import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
-type FluidKeys =
+type FluidBindingKeys =
   | "influenceRadius"
   | "targetDensity"
   | "pressureMultiplier"
@@ -9,7 +9,13 @@ type FluidKeys =
   | "nearThreshold"
   | "enableNearPressure";
 
-export class Fluid extends ComputeModule<"fluid", FluidKeys> {
+type FluidStateKeys = "density" | "nearDensity";
+
+export class Fluid extends ComputeModule<
+  "fluid",
+  FluidBindingKeys,
+  FluidStateKeys
+> {
   private influenceRadius: number;
   private targetDensity: number;
   private pressureMultiplier: number;
@@ -85,10 +91,15 @@ export class Fluid extends ComputeModule<"fluid", FluidKeys> {
     this.write({ enableNearPressure: enabled ? 1 : 0 });
   }
 
-  descriptor(): ComputeModuleDescriptor<"fluid", FluidKeys> {
+  descriptor(): ComputeModuleDescriptor<
+    "fluid",
+    FluidBindingKeys,
+    FluidStateKeys
+  > {
     return {
       name: "fluid",
       role: "force",
+      states: ["density", "nearDensity"],
       bindings: [
         "influenceRadius",
         "targetDensity",
@@ -99,7 +110,7 @@ export class Fluid extends ComputeModule<"fluid", FluidKeys> {
         "enableNearPressure",
       ] as const,
       // State pass: precompute density and near-density per particle
-      state: ({ particleVar, dtVar, getUniform }) => `{
+      state: ({ particleVar, dtVar, getUniform, setState }) => `{
   // Predict current particle position for this frame (approximate)
   let rad = ${getUniform("influenceRadius")};
   let posPred = ${particleVar}.position + ${particleVar}.velocity * (${dtVar});
@@ -139,11 +150,11 @@ export class Fluid extends ComputeModule<"fluid", FluidKeys> {
   }
 
   // Store results in shared SIM_STATE for use in apply pass
-  sim_state_write(index, 0u, density);
-  sim_state_write(index, 1u, nearDensity);
+  ${setState("density", "density")};
+  ${setState("nearDensity", "nearDensity")};
 }`,
       // Apply pass: compute pressure and viscosity forces using precomputed densities
-      apply: ({ particleVar, dtVar, getUniform }) => `{
+      apply: ({ particleVar, dtVar, getUniform, getState }) => `{
   let rad = ${getUniform("influenceRadius")};
   let targetDensity = ${getUniform("targetDensity")};
   let pressureMul = ${getUniform("pressureMultiplier")};
@@ -152,7 +163,7 @@ export class Fluid extends ComputeModule<"fluid", FluidKeys> {
   let nearThreshold = ${getUniform("nearThreshold")};
   let useNear = ${getUniform("enableNearPressure")};
 
-  let myDensity = max(sim_state_read(index, 0u), 1e-6);
+  let myDensity = max(${getState("density")}, 1e-6);
 
   // Precompute radius powers for kernels
   let r2 = rad * rad;
@@ -179,8 +190,8 @@ export class Fluid extends ComputeModule<"fluid", FluidKeys> {
     let slope = (dist - rad) * scale;
 
     // Neighbor pressures from precomputed densities
-    let dN = max(sim_state_read(j, 0u), 1e-6);
-    let nearN = select(0.0, sim_state_read(j, 1u), useNear != 0.0);
+    let dN = max(${getState("density", "j")}, 1e-6);
+    let nearN = select(0.0, ${getState("nearDensity", "j")}, useNear != 0.0);
     let densityDiff = dN - targetDensity;
     let pressure = densityDiff * pressureMul;
     let nearPressure = nearN * nearMul;

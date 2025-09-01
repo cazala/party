@@ -1,6 +1,6 @@
 import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
-type EnvKeys =
+type EnvBindingKeys =
   | "strength"
   | "dirX"
   | "dirY"
@@ -18,7 +18,7 @@ export type GravityDirection =
   | "outwards"
   | "custom";
 
-export class Environment extends ComputeModule<"environment", EnvKeys> {
+export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
   private strength: number;
   private dirX: number;
   private dirY: number;
@@ -151,7 +151,7 @@ export class Environment extends ComputeModule<"environment", EnvKeys> {
     this.write({ damping: value });
   }
 
-  descriptor(): ComputeModuleDescriptor<"environment", EnvKeys> {
+  descriptor(): ComputeModuleDescriptor<"environment", EnvBindingKeys> {
     return {
       name: "environment",
       role: "force",

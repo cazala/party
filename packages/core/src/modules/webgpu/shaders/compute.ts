@@ -2,25 +2,33 @@ export type ComputeModuleRole = "simulation" | "force" | "grid";
 
 export interface ComputeModuleDescriptor<
   Name extends string,
-  BindingKeys extends string | "enabled"
+  BindingKeys extends string | "enabled",
+  StateKeys extends string = never
 > {
   name: Name;
   role: ComputeModuleRole;
   bindings?: readonly BindingKeys[];
+  states?: readonly StateKeys[];
   state?: (args: {
     particleVar: string;
     dtVar: string;
     getUniform: (id: BindingKeys) => string;
+    getState: (name: StateKeys, pidVar?: string) => string;
+    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
   }) => string;
   apply?: (args: {
     particleVar: string;
     dtVar: string;
     getUniform: (id: BindingKeys) => string;
+    getState: (name: StateKeys, pidVar?: string) => string;
+    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
   }) => string;
   constrain?: (args: {
     particleVar: string;
     dtVar: string;
     getUniform: (id: BindingKeys) => string;
+    getState: (name: StateKeys, pidVar?: string) => string;
+    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
   }) => string;
 }
 
@@ -28,7 +36,8 @@ type BindingKeysBase = "enabled" | string;
 
 export abstract class ComputeModule<
   Name extends string,
-  BindingKeys extends BindingKeysBase
+  BindingKeys extends BindingKeysBase,
+  StateKeys extends string = never
 > {
   private _writer: ((values: Partial<Record<string, number>>) => void) | null =
     null;
@@ -70,7 +79,7 @@ export abstract class ComputeModule<
     }
   }
 
-  abstract descriptor(): ComputeModuleDescriptor<Name, BindingKeys>;
+  abstract descriptor(): ComputeModuleDescriptor<Name, BindingKeys, StateKeys>;
 }
 
 // Deprecated: previously supported mixing descriptors and modules
@@ -103,7 +112,7 @@ function capitalize(text: string): string {
 // Note: all modules are instances of ComputeModule now
 
 export function buildComputeProgram(
-  modules: readonly ComputeModule<string, string>[]
+  modules: readonly ComputeModule<string, string, any>[]
 ): ComputeProgramBuild {
   // Normalize to descriptors (all are modules now)
   const descriptors = modules.map((m) => m.descriptor());
@@ -177,6 +186,23 @@ struct Particle {
   const countExpr = layouts.find((l) => l.moduleName === sim.name)!.mapping[
     "count"
   ].expr;
+  // SIM_STATE dynamic layout: system fields + module-declared fields
+  const systemStateFields = ["prevX", "prevY", "posIntX", "posIntY"] as const;
+  const stateSlots: Record<string, number> = {};
+  systemStateFields.forEach((f, i) => (stateSlots[f] = i));
+  let nextStateSlot = systemStateFields.length;
+  const moduleLocalSlot: Record<string, Record<string, number>> = {};
+  descriptors.forEach((mod) => {
+    moduleLocalSlot[mod.name] = {};
+    (mod.states || []).forEach((field) => {
+      const globalKey = `${mod.name}.${field}`;
+      if (stateSlots[globalKey] === undefined) {
+        stateSlots[globalKey] = nextStateSlot++;
+      }
+      moduleLocalSlot[mod.name][field] = stateSlots[globalKey];
+    });
+  });
+  const SIM_STATE_STRIDE_VAL = nextStateSlot;
 
   // Built-in spatial grid uniforms (available to all modules)
   const gridUniformsVar = `grid_uniforms`;
@@ -273,10 +299,32 @@ struct Particle {
     if (mod.role !== "force" || !mod.state) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const getState = (name: string, pidVar: string = "index") => {
+      const slot =
+        stateSlots[name] !== undefined
+          ? stateSlots[name]
+          : moduleLocalSlot[mod.name]?.[name];
+      if (slot === undefined) return "0.0";
+      return `sim_state_read(u32(${pidVar}), ${slot}u)`;
+    };
+    const setState = (
+      name: string,
+      valueExpr: string,
+      pidVar: string = "index"
+    ) => {
+      const slot =
+        stateSlots[name] !== undefined
+          ? stateSlots[name]
+          : moduleLocalSlot[mod.name]?.[name];
+      if (slot === undefined) return "";
+      return `sim_state_write(u32(${pidVar}), ${slot}u, ${valueExpr})`;
+    };
     const snippet = mod.state({
       particleVar: "particle",
       dtVar: dtExpr,
       getUniform,
+      getState,
+      setState,
     });
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
@@ -287,10 +335,32 @@ struct Particle {
     if (mod.role !== "force" || !mod.apply) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const getState = (name: string, pidVar: string = "index") => {
+      const slot =
+        stateSlots[name] !== undefined
+          ? stateSlots[name]
+          : moduleLocalSlot[mod.name]?.[name];
+      if (slot === undefined) return "0.0";
+      return `sim_state_read(u32(${pidVar}), ${slot}u)`;
+    };
+    const setState = (
+      name: string,
+      valueExpr: string,
+      pidVar: string = "index"
+    ) => {
+      const slot =
+        stateSlots[name] !== undefined
+          ? stateSlots[name]
+          : moduleLocalSlot[mod.name]?.[name];
+      if (slot === undefined) return "";
+      return `sim_state_write(u32(${pidVar}), ${slot}u, ${valueExpr})`;
+    };
     const snippet = mod.apply({
       particleVar: "particle",
       dtVar: dtExpr,
       getUniform,
+      getState,
+      setState,
     });
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
@@ -301,10 +371,32 @@ struct Particle {
     if (mod.role !== "force" || !mod.constrain) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const getState = (name: string, pidVar: string = "index") => {
+      const slot =
+        stateSlots[name] !== undefined
+          ? stateSlots[name]
+          : moduleLocalSlot[mod.name]?.[name];
+      if (slot === undefined) return "0.0";
+      return `sim_state_read(u32(${pidVar}), ${slot}u)`;
+    };
+    const setState = (
+      name: string,
+      valueExpr: string,
+      pidVar: string = "index"
+    ) => {
+      const slot =
+        stateSlots[name] !== undefined
+          ? stateSlots[name]
+          : moduleLocalSlot[mod.name]?.[name];
+      if (slot === undefined) return "";
+      return `sim_state_write(u32(${pidVar}), ${slot}u, ${valueExpr})`;
+    };
     const snippet = mod.constrain({
       particleVar: "particle",
       dtVar: dtExpr,
       getUniform,
+      getState,
+      setState,
     });
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
@@ -347,7 +439,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }`;
 
   const stateHelpers = `
-const SIM_STATE_STRIDE: u32 = 4u; // prevX, prevY, posIntX, posIntY
+const SIM_STATE_STRIDE: u32 = ${SIM_STATE_STRIDE_VAL}u; // auto-generated stride
 fn sim_state_index(pid: u32, slot: u32) -> u32 { return pid * SIM_STATE_STRIDE + slot; }
 fn sim_state_read(pid: u32, slot: u32) -> f32 { return SIM_STATE[sim_state_index(pid, slot)]; }
 fn sim_state_write(pid: u32, slot: u32, value: f32) { SIM_STATE[sim_state_index(pid, slot)] = value; }
@@ -387,12 +479,12 @@ fn integrate_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
   if (index >= count) { return; }
   var particle = particles[index];
   if (particle.mass == 0.0) { return; }
-  sim_state_write(index, 0u, particle.position.x);
-  sim_state_write(index, 1u, particle.position.y);
+  sim_state_write(index, ${stateSlots["prevX"]}u, particle.position.x);
+  sim_state_write(index, ${stateSlots["prevY"]}u, particle.position.y);
   particle.velocity += particle.acceleration * ${dtExpr};
   particle.position += particle.velocity * ${dtExpr};
-  sim_state_write(index, 2u, particle.position.x);
-  sim_state_write(index, 3u, particle.position.y);
+  sim_state_write(index, ${stateSlots["posIntX"]}u, particle.position.x);
+  sim_state_write(index, ${stateSlots["posIntY"]}u, particle.position.y);
   particle.acceleration = vec2<f32>(0.0, 0.0);
   particles[index] = particle;
 }`;
@@ -417,8 +509,8 @@ fn correct_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
   if (index >= count) { return; }
   var particle = particles[index];
   if (particle.mass == 0.0) { return; }
-  let prevPos = vec2<f32>(sim_state_read(index, 0u), sim_state_read(index, 1u));
-  let posAfterIntegration = vec2<f32>(sim_state_read(index, 2u), sim_state_read(index, 3u));
+  let prevPos = vec2<f32>(sim_state_read(index, ${stateSlots["prevX"]}u), sim_state_read(index, ${stateSlots["prevY"]}u));
+  let posAfterIntegration = vec2<f32>(sim_state_read(index, ${stateSlots["posIntX"]}u), sim_state_read(index, ${stateSlots["posIntY"]}u));
   let disp = particle.position - prevPos;
   let disp2 = dot(disp, disp);
   let corr = particle.position - posAfterIntegration;

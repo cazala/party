@@ -1,10 +1,10 @@
 import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
-type BoundaryKeys = "restitution" | "friction" | "mode";
+type BoundaryBindingKeys = "restitution" | "friction" | "mode";
 
 export type BoundaryMode = "bounce" | "warp" | "kill";
 
-export class Boundary extends ComputeModule<"boundary", BoundaryKeys> {
+export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
   private restitution: number;
   private friction: number;
   private mode: BoundaryMode;
@@ -59,7 +59,7 @@ export class Boundary extends ComputeModule<"boundary", BoundaryKeys> {
     });
   }
 
-  descriptor(): ComputeModuleDescriptor<"boundary", BoundaryKeys> {
+  descriptor(): ComputeModuleDescriptor<"boundary", BoundaryBindingKeys> {
     return {
       name: "boundary",
       role: "force",
