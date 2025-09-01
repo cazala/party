@@ -154,7 +154,7 @@ export class Fluid extends ComputeModule<
   ${setState("nearDensity", "nearDensity")};
 }`,
       // Apply pass: compute pressure and viscosity forces using precomputed densities
-      apply: ({ particleVar, dtVar, getUniform, getState }) => `{
+      apply: ({ particleVar, getUniform, getState }) => `{
   let rad = ${getUniform("influenceRadius")};
   let targetDensity = ${getUniform("targetDensity")};
   let pressureMul = ${getUniform("pressureMultiplier")};
