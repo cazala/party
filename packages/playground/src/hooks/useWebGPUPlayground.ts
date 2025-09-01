@@ -7,6 +7,7 @@ import {
 import { Environment } from "@cazala/party/modules/webgpu/shaders/modules/environment";
 import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary";
 import { Collisions } from "@cazala/party/modules/webgpu/shaders/modules/collisions";
+import { Fluid } from "@cazala/party/modules/webgpu/shaders/modules/fluid";
 import { ToolMode } from "./useToolMode";
 
 export function useWebGPUPlayground(
@@ -19,6 +20,7 @@ export function useWebGPUPlayground(
   const environmentRef = useRef<Environment | null>(null);
   const boundaryRef = useRef<Boundary | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
+  const fluidRef = useRef<Fluid | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -133,14 +135,22 @@ export function useWebGPUPlayground(
             mode: "bounce",
           });
           const collisions = new Collisions({ restitution: 0.8 });
+          const fluid = new Fluid({ enabled: false });
           // Initialize simulation parameters
-          const modules = [simulationModule, environment, boundary, collisions];
+          const modules = [
+            simulationModule,
+            environment,
+            boundary,
+            collisions,
+            fluid,
+          ];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
           systemRef.current = system;
           environmentRef.current = environment;
           boundaryRef.current = boundary;
           collisionsRef.current = collisions;
+          fluidRef.current = fluid;
         } catch (sysErr) {
           console.error(
             "Failed to create/attach WebGPU particle system:",
@@ -339,6 +349,7 @@ export function useWebGPUPlayground(
     environment: environmentRef.current,
     boundary: boundaryRef.current,
     collisions: collisionsRef.current,
+    fluid: fluidRef.current,
     isInitialized,
     error,
     spawnParticles,
@@ -352,7 +363,6 @@ export function useWebGPUPlayground(
     setConstrainIterations,
     // Dummy values for compatibility
     behavior: null,
-    fluid: null,
     interaction: null,
     sensors: null,
     joints: null,

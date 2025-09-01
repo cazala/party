@@ -1,5 +1,4 @@
 import { useWebGPUPlayground } from "./hooks/useWebGPUPlayground";
-import { simulationModule } from "@cazala/party";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useToolMode } from "./hooks/useToolMode";
 import { useFullscreen } from "./hooks/useFullscreen";
@@ -36,6 +35,7 @@ function WebGPUApp() {
     environment,
     boundary,
     collisions,
+    fluid,
     play,
     pause,
     clear,
@@ -200,6 +200,7 @@ function WebGPUApp() {
             environment={environment}
             boundary={boundary}
             collisions={collisions}
+            fluid={fluid}
           />
         </div>
       </div>

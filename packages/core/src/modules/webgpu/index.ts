@@ -10,5 +10,6 @@ export {
   Environment as WebGPUEnvironment,
   Boundary as WebGPUBoundary,
   Collisions as WebGPUCollisions,
+  Fluid as WebGPUFluid,
   defaultComputeModules,
 } from "./shaders/modules";

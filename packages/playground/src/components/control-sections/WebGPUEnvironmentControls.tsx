@@ -53,7 +53,7 @@ export function WebGPUEnvironmentControls({
           <input
             type="range"
             min="0"
-            max="2000"
+            max="3000"
             step="1"
             value={strength}
             onChange={(e) => {

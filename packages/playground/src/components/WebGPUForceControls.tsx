@@ -1,6 +1,7 @@
 import { WebGPUEnvironmentControls } from "./control-sections/WebGPUEnvironmentControls";
 import { WebGPUBoundaryControls } from "./control-sections/WebGPUBoundaryControls";
 import { WebGPUCollisionsControls } from "./control-sections/WebGPUCollisionsControls";
+import { WebGPUFluidControls } from "./control-sections/WebGPUFluidControls";
 
 interface WebGPUEnvironmentLike {
   setStrength: (value: number) => void;
@@ -19,14 +20,27 @@ interface WebGPUCollisionsLike {
   setRestitution: (value: number) => void;
 }
 
+interface WebGPUFluidLike {
+  setEnabled: (enabled: boolean) => void;
+  setInfluenceRadius: (v: number) => void;
+  setTargetDensity: (v: number) => void;
+  setPressureMultiplier: (v: number) => void;
+  setViscosity: (v: number) => void;
+  setNearPressureMultiplier: (v: number) => void;
+  setNearThreshold: (v: number) => void;
+  setEnableNearPressure: (enabled: boolean) => void;
+}
+
 export function WebGPUForceControls({
   environment,
   boundary,
   collisions,
+  fluid,
 }: {
   environment: WebGPUEnvironmentLike | null;
   boundary: WebGPUBoundaryLike | null;
   collisions?: WebGPUCollisionsLike | null;
+  fluid?: WebGPUFluidLike | null;
 }) {
   return (
     <div className="controls-panel">
@@ -48,6 +62,13 @@ export function WebGPUForceControls({
         <div className="control-section">
           <h4>Collisions</h4>
           <WebGPUCollisionsControls collisions={collisions} />
+        </div>
+      )}
+
+      {fluid && (
+        <div className="control-section">
+          <h4>Fluids</h4>
+          <WebGPUFluidControls fluid={fluid} />
         </div>
       )}
     </div>
