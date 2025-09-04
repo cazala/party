@@ -14,11 +14,13 @@ interface WebGPUFluidLike {
 export function WebGPUFluidControls({
   fluid,
   hideEnabled = false,
+  enabled = true,
 }: {
   fluid: WebGPUFluidLike | null;
   hideEnabled?: boolean;
+  enabled?: boolean;
 }) {
-  const [enabled, setEnabled] = useState(false);
+  const [internalEnabled, setInternalEnabled] = useState(false);
   const [influenceRadius, setInfluenceRadius] = useState(100);
   const [targetDensity, setTargetDensity] = useState(1);
   const [pressureMultiplier, setPressureMultiplier] = useState(15);
@@ -38,9 +40,9 @@ export function WebGPUFluidControls({
           <label>
             <input
               type="checkbox"
-              checked={enabled}
+              checked={internalEnabled}
               onChange={(e) => {
-                setEnabled(e.target.checked);
+                setInternalEnabled(e.target.checked);
                 fluid?.setEnabled(e.target.checked);
               }}
             />

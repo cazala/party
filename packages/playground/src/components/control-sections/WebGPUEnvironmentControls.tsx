@@ -16,9 +16,11 @@ interface WebGPUEnvironmentLike {
 export function WebGPUEnvironmentControls({
   environment,
   hideEnabled = false,
+  enabled = true,
 }: {
   environment: WebGPUEnvironmentLike | null;
   hideEnabled?: boolean;
+  enabled?: boolean;
 }) {
   const [strength, setStrength] = useState(0);
   const [direction, setDirection] = useState<
@@ -28,7 +30,7 @@ export function WebGPUEnvironmentControls({
   const [inertia, setInertia] = useState(0);
   const [friction, setFriction] = useState(0);
   const [damping, setDamping] = useState(0);
-  const [enabled, setEnabled] = useState(true);
+  const [internalEnabled, setInternalEnabled] = useState(true);
 
   useEffect(() => {
     // no-op: could hydrate from module if it exposed getters
@@ -41,9 +43,9 @@ export function WebGPUEnvironmentControls({
           <label>
             <input
               type="checkbox"
-              checked={enabled}
+              checked={internalEnabled}
               onChange={(e) => {
-                setEnabled(e.target.checked);
+                setInternalEnabled(e.target.checked);
                 environment?.setEnabled?.(e.target.checked);
               }}
             />
@@ -65,7 +67,8 @@ export function WebGPUEnvironmentControls({
               setStrength(v);
               environment?.setStrength(v);
             }}
-            className="slider"
+            disabled={!enabled}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -80,6 +83,7 @@ export function WebGPUEnvironmentControls({
               setDirection(dir);
               environment?.setGravityDirection?.(dir);
             }}
+            disabled={!enabled}
             className="form-select"
           >
             <option value="down">Down</option>
@@ -108,7 +112,8 @@ export function WebGPUEnvironmentControls({
                 const rad = (deg * Math.PI) / 180;
                 environment?.setGravityAngle?.(rad);
               }}
-              className="slider"
+              disabled={!enabled}
+              className={`slider ${!enabled ? "disabled" : ""}`}
             />
           </label>
         </div>
@@ -128,7 +133,8 @@ export function WebGPUEnvironmentControls({
               setInertia(v);
               environment?.setInertia?.(v);
             }}
-            className="slider"
+            disabled={!enabled}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -147,7 +153,8 @@ export function WebGPUEnvironmentControls({
               setFriction(v);
               environment?.setFriction?.(v);
             }}
-            className="slider"
+            disabled={!enabled}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -166,7 +173,8 @@ export function WebGPUEnvironmentControls({
               setDamping(v);
               environment?.setDamping?.(v);
             }}
-            className="slider"
+            disabled={!enabled}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>

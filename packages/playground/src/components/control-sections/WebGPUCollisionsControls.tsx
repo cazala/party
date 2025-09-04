@@ -8,12 +8,14 @@ interface WebGPUCollisionsLike {
 export function WebGPUCollisionsControls({
   collisions,
   hideEnabled = false,
+  enabled = true,
 }: {
   collisions: WebGPUCollisionsLike | null;
   hideEnabled?: boolean;
+  enabled?: boolean;
 }) {
   const [restitution, setRestitution] = useState(0.8);
-  const [enabled, setEnabled] = useState(true);
+  const [internalEnabled, setInternalEnabled] = useState(true);
 
   useEffect(() => {
     // no-op: hydrate if getters exist later
@@ -26,9 +28,9 @@ export function WebGPUCollisionsControls({
           <label>
             <input
               type="checkbox"
-              checked={enabled}
+              checked={internalEnabled}
               onChange={(e) => {
-                setEnabled(e.target.checked);
+                setInternalEnabled(e.target.checked);
                 collisions?.setEnabled?.(e.target.checked);
               }}
             />
@@ -50,7 +52,8 @@ export function WebGPUCollisionsControls({
               setRestitution(v);
               collisions?.setRestitution(v);
             }}
-            className="slider"
+            disabled={!enabled}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>

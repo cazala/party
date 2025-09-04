@@ -16,11 +16,13 @@ interface WebGPUBehaviorLike {
 export function WebGPUBehaviorControls({
   behavior,
   hideEnabled = false,
+  enabled = true,
 }: {
   behavior: WebGPUBehaviorLike | null;
   hideEnabled?: boolean;
+  enabled?: boolean;
 }) {
-  const [enabled, setEnabled] = useState(true);
+  const [internalEnabled, setInternalEnabled] = useState(true);
   const [wander, setWander] = useState(0);
   const [cohesion, setCohesion] = useState(0);
   const [alignment, setAlignment] = useState(0);
@@ -42,9 +44,9 @@ export function WebGPUBehaviorControls({
           <label>
             <input
               type="checkbox"
-              checked={enabled}
+              checked={internalEnabled}
               onChange={(e) => {
-                setEnabled(e.target.checked);
+                setInternalEnabled(e.target.checked);
                 behavior?.setEnabled?.(e.target.checked);
               }}
             />

@@ -10,14 +10,16 @@ interface WebGPUBoundaryLike {
 export function WebGPUBoundaryControls({
   boundary,
   hideEnabled = false,
+  enabled = true,
 }: {
   boundary: WebGPUBoundaryLike | null;
   hideEnabled?: boolean;
+  enabled?: boolean;
 }) {
   const [restitution, setRestitution] = useState(0.6);
   const [friction, setFriction] = useState(0.1);
   const [mode, setMode] = useState<"bounce" | "warp" | "kill">("bounce");
-  const [enabled, setEnabled] = useState(true);
+  const [internalEnabled, setInternalEnabled] = useState(true);
 
   useEffect(() => {
     // no-op: could hydrate from module if it exposed getters
@@ -30,9 +32,9 @@ export function WebGPUBoundaryControls({
           <label>
             <input
               type="checkbox"
-              checked={enabled}
+              checked={internalEnabled}
               onChange={(e) => {
-                setEnabled(e.target.checked);
+                setInternalEnabled(e.target.checked);
                 boundary?.setEnabled?.(e.target.checked);
               }}
             />
@@ -50,6 +52,7 @@ export function WebGPUBoundaryControls({
               setMode(m);
               boundary?.setMode?.(m);
             }}
+            disabled={!enabled}
             className="form-select"
           >
             <option value="bounce">Bounce</option>
@@ -73,7 +76,8 @@ export function WebGPUBoundaryControls({
               setRestitution(v);
               boundary?.setRestitution(v);
             }}
-            className="slider"
+            disabled={!enabled}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -92,7 +96,8 @@ export function WebGPUBoundaryControls({
               setFriction(v);
               boundary?.setFriction?.(v);
             }}
-            className="slider"
+            disabled={!enabled}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
