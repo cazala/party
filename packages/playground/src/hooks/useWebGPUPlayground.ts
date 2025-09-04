@@ -109,14 +109,20 @@ export function useWebGPUPlayground(
     zoomState.animationId = requestAnimationFrame(animateZoom);
   }, []);
 
+  const zoomSensitivityRef = useRef(0.01); // Default zoom sensitivity
+
+  const setZoomSensitivity = useCallback((sensitivity: number) => {
+    zoomSensitivityRef.current = Math.max(0.001, Math.min(0.1, sensitivity));
+  }, []);
+
   const handleZoom = useCallback(
     (deltaY: number, centerX: number, centerY: number) => {
       const renderer = rendererRef.current;
       const zoomState = zoomStateRef.current;
       if (!renderer) return;
 
-      // Much smaller zoom steps for smoother control
-      const zoomSensitivity = 0.01; // Reduced from 0.1 (10x smoother)
+      // Use configurable zoom sensitivity
+      const zoomSensitivity = zoomSensitivityRef.current;
       const zoomDirection = deltaY > 0 ? -zoomSensitivity : zoomSensitivity;
 
       const currentTargetZoom = zoomState.isAnimating
@@ -517,5 +523,6 @@ export function useWebGPUPlayground(
     isCreatingJoint: false,
     handleJointToSpawn: () => {},
     handleZoom, // Expose zoom handler for wheel events
+    setZoomSensitivity, // Expose zoom sensitivity configuration
   };
 }

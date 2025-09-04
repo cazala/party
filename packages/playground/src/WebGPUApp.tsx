@@ -42,6 +42,7 @@ function WebGPUApp() {
     clear,
     resetParticles,
     handleZoom,
+    setZoomSensitivity,
   } = useWebGPUPlayground(canvasRef, toolMode);
 
   const { isFullscreen, toggleFullscreen } = useFullscreen({
@@ -191,6 +192,7 @@ function WebGPUApp() {
           <CollapsibleSection title="Simulation">
             <SimulationControls
               setConstrainIterations={(v) => system?.setConstrainIterations(v)}
+              setZoomSensitivity={setZoomSensitivity}
             />
           </CollapsibleSection>
         </div>
@@ -205,6 +207,18 @@ function WebGPUApp() {
                 : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH
             }
             height={isFullscreen ? size.height : size.height - TOPBAR_HEIGHT}
+            onWheel={(e) => {
+              if (!handleZoom) return;
+              
+              e.preventDefault();
+              
+              // Get canvas bounds for coordinate calculation
+              const rect = e.currentTarget.getBoundingClientRect();
+              const centerX = e.clientX - rect.left - rect.width / 2;
+              const centerY = e.clientY - rect.top - rect.height / 2;
+              
+              handleZoom(e.deltaY, centerX, centerY);
+            }}
           />
         </div>
         <div
