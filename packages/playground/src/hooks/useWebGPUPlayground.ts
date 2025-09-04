@@ -26,6 +26,134 @@ export function useWebGPUPlayground(
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ---------------------------------------------------------------------------
+  // Zoom handling
+  // ---------------------------------------------------------------------------
+  const zoomStateRef = useRef({
+    targetZoom: 1,
+    targetCameraX: 0,
+    targetCameraY: 0,
+    isAnimating: false,
+    animationId: null as number | null,
+  });
+
+  const animateZoom = useCallback(() => {
+    const renderer = rendererRef.current;
+    const boundary = boundaryRef.current;
+    const system = systemRef.current;
+    const zoomState = zoomStateRef.current;
+
+    if (!renderer || !boundary || !system) return;
+
+    const currentZoom = renderer.getZoom?.() || 1;
+    const camera = renderer.getCamera?.() || { x: 0, y: 0 };
+
+    // Smooth interpolation with easing
+    const easeFactor = 0.15; // Higher = faster, lower = smoother
+    const zoomDiff = zoomState.targetZoom - currentZoom;
+    const cameraDiffX = zoomState.targetCameraX - camera.x;
+    const cameraDiffY = zoomState.targetCameraY - camera.y;
+
+    // Check if we're close enough to the target (within 0.01% difference)
+    const threshold = 0.001;
+    if (
+      Math.abs(zoomDiff) < threshold &&
+      Math.abs(cameraDiffX) < threshold &&
+      Math.abs(cameraDiffY) < threshold
+    ) {
+      // Animation complete - set exact target values
+      renderer.setZoom?.(zoomState.targetZoom);
+      renderer.setCamera?.(zoomState.targetCameraX, zoomState.targetCameraY);
+      if ('setCamera' in boundary) {
+        (boundary as any).setCamera(
+          zoomState.targetCameraX,
+          zoomState.targetCameraY,
+          zoomState.targetZoom
+        );
+      }
+
+      // Update system camera for frustum culling if method exists
+      if ('updateCamera' in system) {
+        (system as any).updateCamera(
+          zoomState.targetCameraX,
+          zoomState.targetCameraY,
+          zoomState.targetZoom
+        );
+      }
+
+      zoomState.isAnimating = false;
+      if (zoomState.animationId) {
+        cancelAnimationFrame(zoomState.animationId);
+        zoomState.animationId = null;
+      }
+      return;
+    }
+
+    // Apply smooth interpolation
+    const newZoom = currentZoom + zoomDiff * easeFactor;
+    const newCameraX = camera.x + cameraDiffX * easeFactor;
+    const newCameraY = camera.y + cameraDiffY * easeFactor;
+
+    renderer.setZoom?.(newZoom);
+    renderer.setCamera?.(newCameraX, newCameraY);
+    if ('setCamera' in boundary) {
+      (boundary as any).setCamera(newCameraX, newCameraY, newZoom);
+    }
+
+    // Update system camera for frustum culling if method exists
+    if ('updateCamera' in system) {
+      (system as any).updateCamera(newCameraX, newCameraY, newZoom);
+    }
+
+    // Continue animation
+    zoomState.animationId = requestAnimationFrame(animateZoom);
+  }, []);
+
+  const handleZoom = useCallback(
+    (deltaY: number, centerX: number, centerY: number) => {
+      const renderer = rendererRef.current;
+      const zoomState = zoomStateRef.current;
+      if (!renderer) return;
+
+      // Much smaller zoom steps for smoother control
+      const zoomSensitivity = 0.01; // Reduced from 0.1 (10x smoother)
+      const zoomDirection = deltaY > 0 ? -zoomSensitivity : zoomSensitivity;
+
+      const currentTargetZoom = zoomState.isAnimating
+        ? zoomState.targetZoom
+        : (renderer.getZoom?.() || 1);
+      const newTargetZoom = Math.max(
+        0.1,
+        Math.min(2, currentTargetZoom + zoomDirection)
+      );
+
+      // Calculate camera adjustment to zoom towards the cursor position
+      const currentTargetCamera = zoomState.isAnimating
+        ? { x: zoomState.targetCameraX, y: zoomState.targetCameraY }
+        : (renderer.getCamera?.() || { x: 0, y: 0 });
+
+      const zoomDelta = newTargetZoom / currentTargetZoom;
+      const newTargetCameraX =
+        currentTargetCamera.x +
+        (centerX - currentTargetCamera.x) * (1 - zoomDelta);
+      const newTargetCameraY =
+        currentTargetCamera.y +
+        (centerY - currentTargetCamera.y) * (1 - zoomDelta);
+
+      // Update target values
+      zoomState.targetZoom = newTargetZoom;
+      zoomState.targetCameraX = newTargetCameraX;
+      zoomState.targetCameraY = newTargetCameraY;
+
+      // Start animation if not already running
+      if (!zoomState.isAnimating) {
+        zoomState.isAnimating = true;
+        zoomState.animationId = requestAnimationFrame(animateZoom);
+      }
+    },
+    [animateZoom]
+  );
+
   console.log(
     "WebGPU hook instance:",
     instanceId.current,
@@ -193,6 +321,14 @@ export function useWebGPUPlayground(
       systemRef.current = null;
       environmentRef.current = null;
       boundaryRef.current = null;
+
+      // Cleanup zoom animation
+      const zoomState = zoomStateRef.current;
+      if (zoomState.animationId) {
+        cancelAnimationFrame(zoomState.animationId);
+        zoomState.animationId = null;
+        zoomState.isAnimating = false;
+      }
     };
   }, []); // Run once on mount, cleanup on unmount
 
@@ -372,7 +508,7 @@ export function useWebGPUPlayground(
     sensors: null,
     joints: null,
     spatialGrid: null,
-    zoomStateRef: { current: { x: 0, y: 0, zoom: 1 } },
+    zoomStateRef, // Expose zoom state for session loading
     undoRedo: null,
     setSpawnConfig: () => {},
     setEmitterConfig: () => {},
@@ -380,5 +516,6 @@ export function useWebGPUPlayground(
     handleGrabToJoint: () => {},
     isCreatingJoint: false,
     handleJointToSpawn: () => {},
+    handleZoom, // Expose zoom handler for wheel events
   };
 }

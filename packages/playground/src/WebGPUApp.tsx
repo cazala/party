@@ -41,6 +41,7 @@ function WebGPUApp() {
     pause,
     clear,
     resetParticles,
+    handleZoom,
   } = useWebGPUPlayground(canvasRef, toolMode);
 
   const { isFullscreen, toggleFullscreen } = useFullscreen({
@@ -71,6 +72,28 @@ function WebGPUApp() {
       play();
     }
   }, [isInitialized, renderer, play]);
+
+  // Add wheel event listener for zoom
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !handleZoom) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault(); // Prevent page scroll
+
+      const rect = canvas.getBoundingClientRect();
+      const centerX = e.clientX - rect.left;
+      const centerY = e.clientY - rect.top;
+
+      handleZoom(e.deltaY, centerX, centerY);
+    };
+
+    canvas.addEventListener('wheel', onWheel);
+
+    return () => {
+      canvas.removeEventListener('wheel', onWheel);
+    };
+  }, [handleZoom]);
 
   // Add a timeout for initialization
   useEffect(() => {
