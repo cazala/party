@@ -73,7 +73,7 @@ export class WebGPUParticleSystem {
 
   constructor(
     private renderer: WebGPURenderer,
-    private modules: readonly ComputeModule<string, string>[]
+    private modules: readonly ComputeModule<string, string, any>[]
   ) {
     const webgpuDevice = renderer.getWebGPUDevice();
     if (!webgpuDevice.device || !webgpuDevice.context) {
@@ -84,16 +84,16 @@ export class WebGPUParticleSystem {
   }
 
   private static toDescriptor(
-    m: ComputeModule<string, string>
-  ): ComputeModuleDescriptor<string, string> {
+    m: ComputeModule<string, string, any>
+  ): ComputeModuleDescriptor<string, string, any> {
     return m.descriptor();
   }
 
   getModule<Name extends string>(
     name: Name
-  ): ComputeModule<string, string> | undefined {
+  ): ComputeModule<string, string, any> | undefined {
     const found = (
-      this.modules as readonly ComputeModule<string, string>[]
+      this.modules as readonly ComputeModule<string, string, any>[]
     ).find((m) => {
       const d = WebGPUParticleSystem.toDescriptor(m);
       return d.name === name;
@@ -509,12 +509,12 @@ export class WebGPUParticleSystem {
   }
 
   private getModuleIndex(name: string): number {
-    return (this.modules as readonly ComputeModule<string, string>[]).findIndex(
-      (m) => {
-        const d = WebGPUParticleSystem.toDescriptor(m);
-        return d.name === name;
-      }
-    );
+    return (
+      this.modules as readonly ComputeModule<string, string, any>[]
+    ).findIndex((m) => {
+      const d = WebGPUParticleSystem.toDescriptor(m);
+      return d.name === name;
+    });
   }
 
   private writeSimulationUniforms(
@@ -636,7 +636,7 @@ export class WebGPUParticleSystem {
         this.correctPipeline
       ) {
         const descs = (
-          this.modules as readonly ComputeModule<string, string>[]
+          this.modules as readonly ComputeModule<string, string, any>[]
         ).map((m) => WebGPUParticleSystem.toDescriptor(m));
         const stateEnabled = descs.some(
           (d, idx) =>

@@ -164,7 +164,7 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
         "damping",
         "mode",
       ] as const,
-      apply: ({ particleVar, dtVar, getUniform }) => `{
+      apply: ({ particleVar, dtVar, getUniform }) => `
   // Gravity as force: acceleration += dir * strength
   let mode = ${getUniform("mode")};
   var gdir = vec2<f32>(${getUniform("dirX")}, ${getUniform("dirY")});
@@ -199,7 +199,7 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
   if (damping != 0.0) {
     ${particleVar}.velocity *= (1.0 - damping * 0.2);
   }
-}`,
+`,
     };
   }
 }

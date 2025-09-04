@@ -328,7 +328,7 @@ struct Particle {
     });
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
-      stateStatements.push(`if (${enabledExpr} != 0.0) ${snippet.trim()}`);
+      stateStatements.push(`if (${enabledExpr} != 0.0) { ${snippet.trim()} }`);
     }
   });
   descriptors.forEach((mod, i) => {
@@ -364,7 +364,7 @@ struct Particle {
     });
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
-      applyStatements.push(`if (${enabledExpr} != 0.0) ${snippet.trim()}`);
+      applyStatements.push(`if (${enabledExpr} != 0.0) { ${snippet.trim()} }`);
     }
   });
   descriptors.forEach((mod, i) => {
@@ -400,7 +400,9 @@ struct Particle {
     });
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
-      constrainStatements.push(`if (${enabledExpr} != 0.0) ${snippet.trim()}`);
+      constrainStatements.push(
+        `if (${enabledExpr} != 0.0) { ${snippet.trim()} }`
+      );
     }
   });
 
@@ -455,7 +457,9 @@ fn state_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
   var particle = particles[index];
   if (particle.mass == 0.0) { return; }
 
+  {
   ${stateStatements.join("\n\n  ")}
+  }
   particles[index] = particle;
 }`;
 
@@ -467,7 +471,9 @@ fn apply_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
   if (index >= count) { return; }
   var particle = particles[index];
   if (particle.mass == 0.0) { return; }
+  {
   ${applyStatements.join("\n\n  ")}
+  }
   particles[index] = particle;
 }`;
 
@@ -497,7 +503,9 @@ fn constrain_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
   if (index >= count) { return; }
   var particle = particles[index];
   if (particle.mass == 0.0) { return; }
+  {
   ${constrainStatements.join("\n\n  ")}
+  }
   particles[index] = particle;
 }`;
 
@@ -532,6 +540,13 @@ fn correct_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
   particles[index] = particle;
 }`;
 
+  // Provide a no-op main entry to satisfy monolithic pipeline when present
+  const mainPass = `
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) _gid: vec3<u32>) {
+  // no-op
+}`;
+
   const code = [
     particleStruct,
     storageDecl,
@@ -546,6 +561,7 @@ fn correct_pass(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // Only declare grid passes once; system can dispatch them multiple times
     constrainPass,
     correctPass,
+    mainPass,
   ]
     .filter((s) => s && s.length)
     .join("\n\n");

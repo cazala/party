@@ -41,7 +41,7 @@ export function WebGPUFluidControls({
               fluid?.setEnabled(e.target.checked);
             }}
           />
-          Enable Fluids (WebGPU)
+          Enabled
         </label>
       </div>
 

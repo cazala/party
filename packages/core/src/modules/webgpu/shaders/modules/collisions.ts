@@ -31,7 +31,7 @@ export class Collisions extends ComputeModule<
       name: "collisions",
       role: "force",
       bindings: ["restitution"] as const,
-      apply: ({ particleVar, getUniform }) => `{
+      apply: ({ particleVar, getUniform }) => `
         // Grid neighbors iterator API using vec2 math, only updating the current particle
         var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size * 2.0);
         loop {
@@ -60,8 +60,8 @@ export class Collisions extends ComputeModule<
             // ${particleVar}.velocity = newV1;
           }
     }
-  }`,
-      constrain: ({ particleVar, getUniform }) => `{
+  `,
+      constrain: ({ particleVar, getUniform }) => `
   // Pass 1: find deepest overlap neighbor to reduce scan-order bias
   var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size * 2.0);
   var bestJ: u32 = NEIGHBOR_NONE;
@@ -130,7 +130,7 @@ export class Collisions extends ComputeModule<
       ${particleVar}.velocity = v1 + n * dv;
     }
   }
-}`,
+`,
     };
   }
 }

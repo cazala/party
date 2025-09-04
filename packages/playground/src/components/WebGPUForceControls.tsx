@@ -2,6 +2,7 @@ import { WebGPUEnvironmentControls } from "./control-sections/WebGPUEnvironmentC
 import { WebGPUBoundaryControls } from "./control-sections/WebGPUBoundaryControls";
 import { WebGPUCollisionsControls } from "./control-sections/WebGPUCollisionsControls";
 import { WebGPUFluidControls } from "./control-sections/WebGPUFluidControls";
+import { WebGPUBehaviorControls } from "./control-sections/WebGPUBehaviorControls";
 
 interface WebGPUEnvironmentLike {
   setStrength: (value: number) => void;
@@ -36,11 +37,13 @@ export function WebGPUForceControls({
   boundary,
   collisions,
   fluid,
+  behavior,
 }: {
   environment: WebGPUEnvironmentLike | null;
   boundary: WebGPUBoundaryLike | null;
   collisions?: WebGPUCollisionsLike | null;
   fluid?: WebGPUFluidLike | null;
+  behavior?: any | null;
 }) {
   return (
     <div className="controls-panel">
@@ -69,6 +72,13 @@ export function WebGPUForceControls({
         <div className="control-section">
           <h4>Fluids</h4>
           <WebGPUFluidControls fluid={fluid} />
+        </div>
+      )}
+
+      {behavior && (
+        <div className="control-section">
+          <h4>Behavior</h4>
+          <WebGPUBehaviorControls behavior={behavior} />
         </div>
       )}
     </div>
