@@ -19,7 +19,6 @@ const DEFAULT_CORNER_RADIUS = 0;
 const DEFAULT_VELOCITY_SPEED = 0;
 const DEFAULT_VELOCITY_DIRECTION = "random";
 const DEFAULT_VELOCITY_ANGLE = 0;
-const DEFAULT_ENABLE_JOINTS = false;
 
 interface InitVelocityConfig {
   speed: number;
@@ -46,7 +45,6 @@ interface InitControlsProps {
     squareSize?: number,
     cornerRadius?: number,
     particleMass?: number,
-    enableJoints?: boolean
   ) => void;
   onGetInitConfig?: () => {
     numParticles: number;
@@ -61,12 +59,10 @@ interface InitControlsProps {
     squareSize?: number;
     cornerRadius?: number;
     particleMass?: number;
-    enableJoints?: boolean;
   };
   onParticleSizeChange?: (size: number) => void;
   onColorsChange?: (colors: string[]) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
-  setConstrainIterations?: (v: number) => void;
 }
 
 export interface InitControlsRef {
@@ -82,7 +78,6 @@ export interface InitControlsRef {
     cornerRadius: number;
     colors: string[];
     velocityConfig: InitVelocityConfig;
-    enableJoints: boolean;
   };
   setState: (
     state: Partial<{
@@ -97,7 +92,6 @@ export interface InitControlsRef {
       cornerRadius: number;
       colors: string[];
       velocityConfig: InitVelocityConfig;
-      enableJoints: boolean;
     }>
   ) => void;
 }
@@ -110,7 +104,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       onParticleSizeChange,
       onColorsChange,
       getCurrentCamera,
-      setConstrainIterations,
     },
     ref
   ) => {
@@ -137,10 +130,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       direction: DEFAULT_VELOCITY_DIRECTION,
       angle: DEFAULT_VELOCITY_ANGLE,
     });
-    const [enableJoints, setEnableJoints] = useState(DEFAULT_ENABLE_JOINTS);
-
-    // Simulation tuning local state (defaults should match hook initialization)
-    const [constrainIterations, setConstrainIterationsVal] = useState(50);
 
     const skipResetRef = useRef(false);
 
@@ -160,7 +149,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           cornerRadius,
           colors,
           velocityConfig,
-          enableJoints,
         }),
         setState: (state) => {
           skipResetRef.current = true;
@@ -181,8 +169,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           if (state.colors !== undefined) setColors(state.colors);
           if (state.velocityConfig !== undefined)
             setVelocityConfig(state.velocityConfig);
-          if (state.enableJoints !== undefined)
-            setEnableJoints(state.enableJoints);
         },
       }),
       [
@@ -198,7 +184,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
         cornerRadius,
         colors,
         velocityConfig,
-        enableJoints,
       ]
     );
 
@@ -225,8 +210,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           innerRadius,
           squareSize,
           cornerRadius,
-          particleMass,
-          enableJoints
+          particleMass
         );
       }
     }, [
@@ -242,7 +226,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       cornerRadius,
       colors,
       velocityConfig,
-      enableJoints,
       skipResetRef,
     ]);
 
@@ -261,7 +244,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           innerRadius,
           squareSize,
           cornerRadius,
-          enableJoints,
         });
         (window as any).__getInitConfig = getConfig;
       }
@@ -278,7 +260,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       cornerRadius,
       colors,
       velocityConfig,
-      enableJoints,
       getCurrentCamera,
     ]);
 
@@ -291,8 +272,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       newInnerRadius?: number,
       newSquareSize?: number,
       newCornerRadius?: number,
-      newParticleMass?: number,
-      newEnableJoints?: boolean
+      newParticleMass?: number
     ) => {
       const particles = newNumParticles ?? numParticles;
       const shape = newShape ?? spawnShape;
@@ -303,7 +283,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       const innerRad = newInnerRadius ?? innerRadius;
       const sqSize = newSquareSize ?? squareSize;
       const cornRad = newCornerRadius ?? cornerRadius;
-      const cloth = newEnableJoints ?? enableJoints;
 
       if (newNumParticles !== undefined) setNumParticles(newNumParticles);
       if (newShape !== undefined) setSpawnShape(newShape);
@@ -314,7 +293,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       if (newInnerRadius !== undefined) setInnerRadius(newInnerRadius);
       if (newSquareSize !== undefined) setSquareSize(newSquareSize);
       if (newCornerRadius !== undefined) setCornerRadius(newCornerRadius);
-      if (newEnableJoints !== undefined) setEnableJoints(newEnableJoints);
 
       if (onInitParticles) {
         onInitParticles(
@@ -328,14 +306,13 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           innerRad,
           sqSize,
           cornRad,
-          mass,
-          cloth
+          mass
         );
       }
     };
 
     return (
-      <div className="control-section">
+      <div>
         <div className="control-group">
           <label>
             Number of Particles: {numParticles}
@@ -458,29 +435,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
                   }
                   className="slider"
                 />
-              </label>
-            </div>
-            <div className="control-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={enableJoints}
-                  onChange={(e) =>
-                    handleSpawnChange(
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      e.target.checked
-                    )
-                  }
-                />
-                Joints
               </label>
             </div>
           </>
@@ -633,25 +587,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           </>
         )}
 
-        {/* Simulation Tuning */}
-        <div className="control-group">
-          <label>
-            Constrain Iterations: {constrainIterations}
-            <input
-              type="range"
-              min="1"
-              max="100"
-              step="1"
-              value={constrainIterations}
-              onChange={(e) => {
-                const v = parseInt(e.target.value);
-                setConstrainIterationsVal(v);
-                setConstrainIterations?.(v);
-              }}
-              className="slider"
-            />
-          </label>
-        </div>
 
         <ColorSelector colors={colors} onColorsChange={handleColorsChange} />
 

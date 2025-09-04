@@ -2,13 +2,15 @@ import { useWebGPUPlayground } from "./hooks/useWebGPUPlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useToolMode } from "./hooks/useToolMode";
 import { useFullscreen } from "./hooks/useFullscreen";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { TopBar } from "./components/TopBar";
 import {
   InitControls,
   InitControlsRef,
 } from "./components/control-sections/InitControls";
 import { WebGPUForceControls } from "./components/WebGPUForceControls";
+import { CollapsibleSection } from "./components/CollapsibleSection";
+import { SimulationControls } from "./components/control-sections/SimulationControls";
 
 import "./styles/index.css";
 import "./components/Controls.css";
@@ -23,8 +25,6 @@ function WebGPUApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const initControlsRef = useRef<InitControlsRef>(null);
   const { toolMode } = useToolMode();
-  const [particleCount, setParticleCount] = useState(0);
-  const [fps, setFPS] = useState(0);
 
   const {
     renderer,
@@ -41,8 +41,6 @@ function WebGPUApp() {
     pause,
     clear,
     resetParticles,
-    getParticleCount,
-    getFPS,
   } = useWebGPUPlayground(canvasRef, toolMode);
 
   const { isFullscreen, toggleFullscreen } = useFullscreen({
@@ -67,16 +65,6 @@ function WebGPUApp() {
     }
   }, [renderer, isInitialized, size, isFullscreen]);
 
-  // Update particle count and FPS
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setParticleCount(getParticleCount());
-      setFPS(getFPS());
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [getParticleCount, getFPS]);
-
   // Auto-play when initialized
   useEffect(() => {
     if (isInitialized && renderer) {
@@ -95,15 +83,7 @@ function WebGPUApp() {
     return () => clearTimeout(timeout);
   }, [isInitialized, error]);
 
-  let content = (
-    <div className="control-section">
-      <h3>WebGPU Particle System</h3>
-      <div className="control-group">
-        <p>Particles: {particleCount.toLocaleString()}</p>
-        <p>FPS: {fps.toFixed(1)}</p>
-      </div>
-    </div>
-  );
+  let content = null;
 
   if (error) {
     content = (
@@ -151,34 +131,45 @@ function WebGPUApp() {
         }}
       >
         <div
-          className="left-sidebar"
+          className="left-sidebar controls-panel"
           style={{
             display: isFullscreen ? "none" : "block",
           }}
         >
           {content}
 
-          <InitControls
-            ref={initControlsRef}
-            onInitParticles={spawnParticles}
-            setConstrainIterations={(v) => system?.setConstrainIterations(v)}
-            onGetInitConfig={() => ({
-              numParticles: 10000,
-              shape: "grid" as const,
-              spacing: 25,
-              particleSize: 5,
-              radius: 100,
-              colors: undefined,
-              velocityConfig: {
-                speed: 0,
-                direction: "random" as const,
-                angle: 0,
-              },
-              innerRadius: 50,
-              squareSize: 200,
-              cornerRadius: 0,
-            })}
-          />
+          <div className="controls-header">
+            <h3>System</h3>
+          </div>
+
+          <CollapsibleSection title="INIT" defaultOpen={true}>
+            <InitControls
+              ref={initControlsRef}
+              onInitParticles={spawnParticles}
+              onGetInitConfig={() => ({
+                numParticles: 10000,
+                shape: "grid" as const,
+                spacing: 25,
+                particleSize: 5,
+                radius: 100,
+                colors: undefined,
+                velocityConfig: {
+                  speed: 0,
+                  direction: "random" as const,
+                  angle: 0,
+                },
+                innerRadius: 50,
+                squareSize: 200,
+                cornerRadius: 0,
+              })}
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Simulation">
+            <SimulationControls
+              setConstrainIterations={(v) => system?.setConstrainIterations(v)}
+            />
+          </CollapsibleSection>
         </div>
         <div className="canvas-container">
           <canvas
