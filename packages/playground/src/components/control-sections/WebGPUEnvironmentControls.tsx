@@ -15,8 +15,10 @@ interface WebGPUEnvironmentLike {
 
 export function WebGPUEnvironmentControls({
   environment,
+  hideEnabled = false,
 }: {
   environment: WebGPUEnvironmentLike | null;
+  hideEnabled?: boolean;
 }) {
   const [strength, setStrength] = useState(0);
   const [direction, setDirection] = useState<
@@ -34,19 +36,21 @@ export function WebGPUEnvironmentControls({
 
   return (
     <div className="control-section">
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => {
-              setEnabled(e.target.checked);
-              environment?.setEnabled?.(e.target.checked);
-            }}
-          />
-          Enabled
-        </label>
-      </div>
+      {!hideEnabled && (
+        <div className="control-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => {
+                setEnabled(e.target.checked);
+                environment?.setEnabled?.(e.target.checked);
+              }}
+            />
+            Enabled
+          </label>
+        </div>
+      )}
       <div className="control-group">
         <label>
           Gravity Strength: {strength}

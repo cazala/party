@@ -7,8 +7,10 @@ interface WebGPUCollisionsLike {
 
 export function WebGPUCollisionsControls({
   collisions,
+  hideEnabled = false,
 }: {
   collisions: WebGPUCollisionsLike | null;
+  hideEnabled?: boolean;
 }) {
   const [restitution, setRestitution] = useState(0.8);
   const [enabled, setEnabled] = useState(true);
@@ -19,19 +21,21 @@ export function WebGPUCollisionsControls({
 
   return (
     <div className="control-section">
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => {
-              setEnabled(e.target.checked);
-              collisions?.setEnabled?.(e.target.checked);
-            }}
-          />
-          Enabled
-        </label>
-      </div>
+      {!hideEnabled && (
+        <div className="control-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => {
+                setEnabled(e.target.checked);
+                collisions?.setEnabled?.(e.target.checked);
+              }}
+            />
+            Enabled
+          </label>
+        </div>
+      )}
       <div className="control-group">
         <label>
           Restitution: {restitution.toFixed(2)}

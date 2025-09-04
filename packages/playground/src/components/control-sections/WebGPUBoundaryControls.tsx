@@ -9,8 +9,10 @@ interface WebGPUBoundaryLike {
 
 export function WebGPUBoundaryControls({
   boundary,
+  hideEnabled = false,
 }: {
   boundary: WebGPUBoundaryLike | null;
+  hideEnabled?: boolean;
 }) {
   const [restitution, setRestitution] = useState(0.6);
   const [friction, setFriction] = useState(0.1);
@@ -23,19 +25,21 @@ export function WebGPUBoundaryControls({
 
   return (
     <div className="control-section">
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => {
-              setEnabled(e.target.checked);
-              boundary?.setEnabled?.(e.target.checked);
-            }}
-          />
-          Enabled
-        </label>
-      </div>
+      {!hideEnabled && (
+        <div className="control-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => {
+                setEnabled(e.target.checked);
+                boundary?.setEnabled?.(e.target.checked);
+              }}
+            />
+            Enabled
+          </label>
+        </div>
+      )}
       <div className="control-group">
         <label>
           Mode

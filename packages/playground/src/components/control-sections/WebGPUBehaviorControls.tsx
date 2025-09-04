@@ -15,8 +15,10 @@ interface WebGPUBehaviorLike {
 
 export function WebGPUBehaviorControls({
   behavior,
+  hideEnabled = false,
 }: {
   behavior: WebGPUBehaviorLike | null;
+  hideEnabled?: boolean;
 }) {
   const [enabled, setEnabled] = useState(true);
   const [wander, setWander] = useState(0);
@@ -35,19 +37,21 @@ export function WebGPUBehaviorControls({
 
   return (
     <div className="control-section">
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => {
-              setEnabled(e.target.checked);
-              behavior?.setEnabled?.(e.target.checked);
-            }}
-          />
-          Enabled
-        </label>
-      </div>
+      {!hideEnabled && (
+        <div className="control-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => {
+                setEnabled(e.target.checked);
+                behavior?.setEnabled?.(e.target.checked);
+              }}
+            />
+            Enabled
+          </label>
+        </div>
+      )}
 
       <div className="control-group">
         <label>

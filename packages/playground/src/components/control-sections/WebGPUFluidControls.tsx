@@ -13,8 +13,10 @@ interface WebGPUFluidLike {
 
 export function WebGPUFluidControls({
   fluid,
+  hideEnabled = false,
 }: {
   fluid: WebGPUFluidLike | null;
+  hideEnabled?: boolean;
 }) {
   const [enabled, setEnabled] = useState(false);
   const [influenceRadius, setInfluenceRadius] = useState(100);
@@ -31,19 +33,21 @@ export function WebGPUFluidControls({
 
   return (
     <div className="control-section">
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => {
-              setEnabled(e.target.checked);
-              fluid?.setEnabled(e.target.checked);
-            }}
-          />
-          Enabled
-        </label>
-      </div>
+      {!hideEnabled && (
+        <div className="control-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => {
+                setEnabled(e.target.checked);
+                fluid?.setEnabled(e.target.checked);
+              }}
+            />
+            Enabled
+          </label>
+        </div>
+      )}
 
       <div className="control-group">
         <label>

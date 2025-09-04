@@ -3,6 +3,8 @@ import { WebGPUBoundaryControls } from "./control-sections/WebGPUBoundaryControl
 import { WebGPUCollisionsControls } from "./control-sections/WebGPUCollisionsControls";
 import { WebGPUFluidControls } from "./control-sections/WebGPUFluidControls";
 import { WebGPUBehaviorControls } from "./control-sections/WebGPUBehaviorControls";
+import { CollapsibleSection } from "./CollapsibleSection";
+import { useState } from "react";
 
 interface WebGPUEnvironmentLike {
   setStrength: (value: number) => void;
@@ -10,15 +12,18 @@ interface WebGPUEnvironmentLike {
   setInertia?: (value: number) => void;
   setFriction?: (value: number) => void;
   setDamping?: (value: number) => void;
+  setEnabled?: (value: boolean) => void;
 }
 
 interface WebGPUBoundaryLike {
   setRestitution: (value: number) => void;
   setFriction?: (value: number) => void;
+  setEnabled?: (value: boolean) => void;
 }
 
 interface WebGPUCollisionsLike {
   setRestitution: (value: number) => void;
+  setEnabled?: (value: boolean) => void;
 }
 
 interface WebGPUFluidLike {
@@ -32,6 +37,19 @@ interface WebGPUFluidLike {
   setEnableNearPressure: (enabled: boolean) => void;
 }
 
+interface WebGPUBehaviorLike {
+  setWanderWeight: (v: number) => void;
+  setCohesionWeight: (v: number) => void;
+  setAlignmentWeight: (v: number) => void;
+  setSeparationWeight: (v: number) => void;
+  setChaseWeight: (v: number) => void;
+  setAvoidWeight: (v: number) => void;
+  setSeparationRange: (v: number) => void;
+  setViewRadius: (v: number) => void;
+  setViewAngle: (v: number) => void;
+  setEnabled?: (v: boolean) => void;
+}
+
 export function WebGPUForceControls({
   environment,
   boundary,
@@ -43,43 +61,94 @@ export function WebGPUForceControls({
   boundary: WebGPUBoundaryLike | null;
   collisions?: WebGPUCollisionsLike | null;
   fluid?: WebGPUFluidLike | null;
-  behavior?: any | null;
+  behavior?: WebGPUBehaviorLike | null;
 }) {
+  const [environmentEnabled, setEnvironmentEnabled] = useState(true);
+  const [boundaryEnabled, setBoundaryEnabled] = useState(true);
+  const [collisionsEnabled, setCollisionsEnabled] = useState(true);
+  const [fluidEnabled, setFluidEnabled] = useState(false);
+  const [behaviorEnabled, setBehaviorEnabled] = useState(true);
+
+  const createEnabledHeader = (
+    enabled: boolean,
+    setEnabled: (value: boolean) => void,
+    module: any
+  ) => (
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <label
+        style={{ display: "flex", alignItems: "center", gap: "4px", margin: 0 }}
+      >
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => {
+            setEnabled(e.target.checked);
+            module?.setEnabled?.(e.target.checked);
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+        <span
+          style={{ fontSize: "14px", fontWeight: "normal", cursor: "pointer" }}
+        >
+          Enabled
+        </span>
+      </label>
+    </div>
+  );
+
   return (
     <div className="controls-panel">
       <div className="controls-header">
         <h3>Forces</h3>
       </div>
 
-      <div className="control-section">
-        <h4 style={{ marginTop: 0 }}>Environment</h4>
-        <WebGPUEnvironmentControls environment={environment} />
-      </div>
+      <CollapsibleSection title="Environment" defaultOpen={true}>
+        <div style={{ marginBottom: "12px" }}>
+          {createEnabledHeader(
+            environmentEnabled,
+            setEnvironmentEnabled,
+            environment
+          )}
+        </div>
+        <WebGPUEnvironmentControls environment={environment} hideEnabled />
+      </CollapsibleSection>
 
-      <div className="control-section">
-        <h4>Boundary</h4>
-        <WebGPUBoundaryControls boundary={boundary} />
-      </div>
+      <CollapsibleSection title="Boundary">
+        <div style={{ marginBottom: "12px" }}>
+          {createEnabledHeader(boundaryEnabled, setBoundaryEnabled, boundary)}
+        </div>
+        <WebGPUBoundaryControls boundary={boundary} hideEnabled />
+      </CollapsibleSection>
 
       {collisions && (
-        <div className="control-section">
-          <h4>Collisions</h4>
-          <WebGPUCollisionsControls collisions={collisions} />
-        </div>
+        <CollapsibleSection title="Collisions">
+          <div style={{ marginBottom: "12px" }}>
+            {createEnabledHeader(
+              collisionsEnabled,
+              setCollisionsEnabled,
+              collisions
+            )}
+          </div>
+          <WebGPUCollisionsControls collisions={collisions} hideEnabled />
+        </CollapsibleSection>
       )}
 
       {fluid && (
-        <div className="control-section">
-          <h4>Fluids</h4>
-          <WebGPUFluidControls fluid={fluid} />
-        </div>
+        <CollapsibleSection title="Fluids">
+          <div style={{ marginBottom: "12px" }}>
+            {createEnabledHeader(fluidEnabled, setFluidEnabled, fluid)}
+          </div>
+          <WebGPUFluidControls fluid={fluid} hideEnabled />
+        </CollapsibleSection>
       )}
 
       {behavior && (
-        <div className="control-section">
-          <h4>Behavior</h4>
-          <WebGPUBehaviorControls behavior={behavior} />
-        </div>
+        <CollapsibleSection title="Behavior">
+          <div style={{ marginBottom: "12px" }}>
+            {createEnabledHeader(behaviorEnabled, setBehaviorEnabled, behavior)}
+          </div>
+          <WebGPUBehaviorControls behavior={behavior} hideEnabled />
+        </CollapsibleSection>
       )}
     </div>
   );
