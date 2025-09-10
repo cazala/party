@@ -37,6 +37,7 @@ function WebGPUApp() {
     collisions,
     fluid,
     behavior,
+    sensors,
     play,
     pause,
     clear,
@@ -231,6 +232,7 @@ function WebGPUApp() {
             collisions={collisions}
             fluid={fluid}
             behavior={behavior}
+            sensors={sensors}
           />
         </div>
       </div>

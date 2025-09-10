@@ -9,6 +9,7 @@ export interface ComputeModuleDescriptor<
   role: ComputeModuleRole;
   bindings?: readonly BindingKeys[];
   states?: readonly StateKeys[];
+  global?: () => string;
   state?: (args: {
     particleVar: string;
     dtVar: string;
@@ -292,10 +293,22 @@ struct Particle {
     `fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { loop { if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } if ((*it).k < (*it).maxK) { let id = GRID_INDICES[(*it).base + (*it).k]; (*it).k = (*it).k + 1u; if (id != selfIndex) { return id; } else { continue; } } (*it).c = (*it).c + 1; if ((*it).c > (*it).cx + (*it).reach) { (*it).c = (*it).cx - (*it).reach; (*it).r = (*it).r + 1; } if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } let cell = grid_cell_index_from_rc((*it).r, (*it).c); let cnt = atomicLoad(&GRID_COUNTS[cell]); (*it).maxK = min(cnt, GRID_MAX_PER_CELL()); (*it).base = cell * GRID_MAX_PER_CELL(); (*it).k = 0u; } }`,
   ];
 
+  // Collect global functions from modules
+  const globalFunctions: string[] = [];
+  descriptors.forEach((mod) => {
+    if (mod.global) {
+      const globalCode = mod.global();
+      if (globalCode && globalCode.trim().length > 0) {
+        globalFunctions.push(`// Global functions for ${mod.name} module`);
+        globalFunctions.push(globalCode.trim());
+      }
+    }
+  });
+
   const stateStatements: string[] = [];
   const applyStatements: string[] = [];
   const constrainStatements: string[] = [];
-  descriptors.forEach((mod, i) => {
+  descriptors.forEach((mod) => {
     if (mod.role !== "force" || !mod.state) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
@@ -331,7 +344,7 @@ struct Particle {
       stateStatements.push(`if (${enabledExpr} != 0.0) { ${snippet.trim()} }`);
     }
   });
-  descriptors.forEach((mod, i) => {
+  descriptors.forEach((mod) => {
     if (mod.role !== "force" || !mod.apply) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
@@ -367,7 +380,7 @@ struct Particle {
       applyStatements.push(`if (${enabledExpr} != 0.0) { ${snippet.trim()} }`);
     }
   });
-  descriptors.forEach((mod, i) => {
+  descriptors.forEach((mod) => {
     if (mod.role !== "force" || !mod.constrain) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
@@ -553,6 +566,7 @@ fn main(@builtin(global_invocation_id) _gid: vec3<u32>) {
     ...uniformDecls,
     ...gridDecls,
     ...gridHelpers,
+    ...globalFunctions,
     gridPasses,
     stateHelpers,
     statePass,

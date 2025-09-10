@@ -9,6 +9,7 @@ import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary"
 import { Collisions } from "@cazala/party/modules/webgpu/shaders/modules/collisions";
 import { Fluid } from "@cazala/party/modules/webgpu/shaders/modules/fluid";
 import { Behavior as WebGPUBehavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior";
+import { Sensors } from "@cazala/party/modules/webgpu/shaders/modules/sensors";
 import { ToolMode } from "./useToolMode";
 
 export function useWebGPUPlayground(
@@ -23,6 +24,7 @@ export function useWebGPUPlayground(
   const collisionsRef = useRef<Collisions | null>(null);
   const fluidRef = useRef<Fluid | null>(null);
   const behaviorRef = useRef<WebGPUBehavior | null>(null);
+  const sensorsRef = useRef<Sensors | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -273,6 +275,11 @@ export function useWebGPUPlayground(
           const collisions = new Collisions({ restitution: 0.8 });
           const fluid = new Fluid({ enabled: false });
           const behavior = new WebGPUBehavior({ enabled: true });
+          const sensors = new Sensors({ 
+            enableTrail: false,
+            enableSensors: false,
+            particleColor: "#ffffff" 
+          });
           // Initialize simulation parameters
           const modules = [
             simulationModule,
@@ -281,6 +288,7 @@ export function useWebGPUPlayground(
             collisions,
             behavior,
             fluid,
+            sensors,
           ];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
@@ -290,6 +298,7 @@ export function useWebGPUPlayground(
           collisionsRef.current = collisions;
           fluidRef.current = fluid;
           behaviorRef.current = behavior;
+          sensorsRef.current = sensors;
         } catch (sysErr) {
           console.error(
             "Failed to create/attach WebGPU particle system:",
@@ -327,6 +336,10 @@ export function useWebGPUPlayground(
       systemRef.current = null;
       environmentRef.current = null;
       boundaryRef.current = null;
+      collisionsRef.current = null;
+      fluidRef.current = null;
+      behaviorRef.current = null;
+      sensorsRef.current = null;
 
       // Cleanup zoom animation
       const zoomState = zoomStateRef.current;
@@ -498,6 +511,7 @@ export function useWebGPUPlayground(
     collisions: collisionsRef.current,
     fluid: fluidRef.current,
     behavior: behaviorRef.current,
+    sensors: sensorsRef.current,
     isInitialized,
     error,
     spawnParticles,
@@ -511,7 +525,6 @@ export function useWebGPUPlayground(
     setConstrainIterations,
     // Dummy values for compatibility
     interaction: null,
-    sensors: null,
     joints: null,
     spatialGrid: null,
     zoomStateRef, // Expose zoom state for session loading
