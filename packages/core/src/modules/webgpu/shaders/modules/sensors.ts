@@ -325,112 +325,114 @@ fn sensor_is_activated(
   }
 }`,
       apply: ({ particleVar, getUniform }) => `
-// Only apply sensor forces if module is enabled, sensors are enabled, and particle is not pinned
-if (${getUniform("enabled")} != 0.0 && ${getUniform("enableSensors")} != 0.0 && ${particleVar}.mass != 0.0) {
-  // Get sensor configuration
-  let sensorDist = ${getUniform("sensorDistance")};
-  let sensorAngle = ${getUniform("sensorAngle")};
-  let sensorRadius = ${getUniform("sensorRadius")};
-  let sensorThreshold = ${getUniform("sensorThreshold")};
-  let sensorStrength = ${getUniform("sensorStrength")};
-  let colorThreshold = ${getUniform("colorSimilarityThreshold")};
-  let followBehavior = ${getUniform("followBehavior")};
-  let fleeBehavior = ${getUniform("fleeBehavior")};
-  let fleeAngleOffset = ${getUniform("fleeAngle")};
+// Early exit if module is disabled, sensors are disabled, or particle is pinned
+if (${getUniform("enabled")} == 0.0 || ${getUniform("enableSensors")} == 0.0 || ${particleVar}.mass == 0.0) {
+  return;
+}
+
+// Get sensor configuration
+let sensorDist = ${getUniform("sensorDistance")};
+let sensorAngle = ${getUniform("sensorAngle")};
+let sensorRadius = ${getUniform("sensorRadius")};
+let sensorThreshold = ${getUniform("sensorThreshold")};
+let sensorStrength = ${getUniform("sensorStrength")};
+let colorThreshold = ${getUniform("colorSimilarityThreshold")};
+let followBehavior = ${getUniform("followBehavior")};
+let fleeBehavior = ${getUniform("fleeBehavior")};
+let fleeAngleOffset = ${getUniform("fleeAngle")};
+
+// Get particle color for color-based behaviors
+let particleColor = vec3<f32>(
+  ${getUniform("particleColorR")},
+  ${getUniform("particleColorG")},
+  ${getUniform("particleColorB")}
+);
+
+// Calculate particle velocity direction (normalized)
+let velocityMag = length(${particleVar}.velocity);
+var velocityDir = vec2<f32>(1.0, 0.0); // default direction
+if (velocityMag > 0.01) {
+  velocityDir = normalize(${particleVar}.velocity);
+} else {
+  // Use pseudo-random direction when particle has no velocity
+  let h = dot(${particleVar}.position, vec2<f32>(12.9898, 78.233));
+  let r = fract(sin(h) * 43758.5453) * 2.0 * 3.14159265; // 0 to 2π
+  velocityDir = vec2<f32>(cos(r), sin(r));
+}
+
+// Calculate sensor positions
+// Left sensor: rotate velocity direction by -sensorAngle
+let cosLeft = cos(-sensorAngle);
+let sinLeft = sin(-sensorAngle);
+let leftDir = vec2<f32>(
+  velocityDir.x * cosLeft - velocityDir.y * sinLeft,
+  velocityDir.x * sinLeft + velocityDir.y * cosLeft
+);
+let leftSensorPos = ${particleVar}.position + leftDir * sensorDist;
+
+// Right sensor: rotate velocity direction by +sensorAngle  
+let cosRight = cos(sensorAngle);
+let sinRight = sin(sensorAngle);
+let rightDir = vec2<f32>(
+  velocityDir.x * cosRight - velocityDir.y * sinRight,
+  velocityDir.x * sinRight + velocityDir.y * cosRight
+);
+let rightSensorPos = ${particleVar}.position + rightDir * sensorDist;
+
+// Sample sensor data using spatial grid (simulate pixel/trail reading)
+let leftIntensity = sensor_sample_intensity(leftSensorPos, sensorRadius, index);
+let rightIntensity = sensor_sample_intensity(rightSensorPos, sensorRadius, index);
+let leftColor = sensor_sample_color(leftSensorPos, sensorRadius, index);
+let rightColor = sensor_sample_color(rightSensorPos, sensorRadius, index);
+
+// Evaluate sensor activation for follow behavior
+var followForce = vec2<f32>(0.0, 0.0);
+if (followBehavior != 3.0) { // not "none"
+  let leftFollowActive = sensor_is_activated(leftIntensity, leftColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
+  let rightFollowActive = sensor_is_activated(rightIntensity, rightColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
   
-  // Get particle color for color-based behaviors
-  let particleColor = vec3<f32>(
-    ${getUniform("particleColorR")},
-    ${getUniform("particleColorG")},
-    ${getUniform("particleColorB")}
-  );
-
-  // Calculate particle velocity direction (normalized)
-  let velocityMag = length(${particleVar}.velocity);
-  var velocityDir = vec2<f32>(1.0, 0.0); // default direction
-  if (velocityMag > 0.01) {
-    velocityDir = normalize(${particleVar}.velocity);
-  } else {
-    // Use pseudo-random direction when particle has no velocity
-    let h = dot(${particleVar}.position, vec2<f32>(12.9898, 78.233));
-    let r = fract(sin(h) * 43758.5453) * 2.0 * 3.14159265; // 0 to 2π
-    velocityDir = vec2<f32>(cos(r), sin(r));
+  // Determine winning sensor for follow behavior
+  if (leftFollowActive && !rightFollowActive) {
+    followForce = leftDir;
+  } else if (rightFollowActive && !leftFollowActive) {
+    followForce = rightDir;
   }
+  // If both or neither are active, no follow force
+}
 
-  // Calculate sensor positions
-  // Left sensor: rotate velocity direction by -sensorAngle
-  let cosLeft = cos(-sensorAngle);
-  let sinLeft = sin(-sensorAngle);
-  let leftDir = vec2<f32>(
-    velocityDir.x * cosLeft - velocityDir.y * sinLeft,
-    velocityDir.x * sinLeft + velocityDir.y * cosLeft
-  );
-  let leftSensorPos = ${particleVar}.position + leftDir * sensorDist;
-
-  // Right sensor: rotate velocity direction by +sensorAngle  
-  let cosRight = cos(sensorAngle);
-  let sinRight = sin(sensorAngle);
-  let rightDir = vec2<f32>(
-    velocityDir.x * cosRight - velocityDir.y * sinRight,
-    velocityDir.x * sinRight + velocityDir.y * cosRight
-  );
-  let rightSensorPos = ${particleVar}.position + rightDir * sensorDist;
-
-  // Sample sensor data using spatial grid (simulate pixel/trail reading)
-  let leftIntensity = sensor_sample_intensity(leftSensorPos, sensorRadius, index);
-  let rightIntensity = sensor_sample_intensity(rightSensorPos, sensorRadius, index);
-  let leftColor = sensor_sample_color(leftSensorPos, sensorRadius, index);
-  let rightColor = sensor_sample_color(rightSensorPos, sensorRadius, index);
-
-  // Evaluate sensor activation for follow behavior
-  var followForce = vec2<f32>(0.0, 0.0);
-  if (followBehavior != 3.0) { // not "none"
-    let leftFollowActive = sensor_is_activated(leftIntensity, leftColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
-    let rightFollowActive = sensor_is_activated(rightIntensity, rightColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
-    
-    // Determine winning sensor for follow behavior
-    if (leftFollowActive && !rightFollowActive) {
-      followForce = leftDir;
-    } else if (rightFollowActive && !leftFollowActive) {
-      followForce = rightDir;
-    }
-    // If both or neither are active, no follow force
+// Evaluate sensor activation for flee behavior  
+var fleeForce = vec2<f32>(0.0, 0.0);
+if (fleeBehavior != 3.0) { // not "none"
+  let leftFleeActive = sensor_is_activated(leftIntensity, leftColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
+  let rightFleeActive = sensor_is_activated(rightIntensity, rightColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
+  
+  // Determine winning sensor for flee behavior and apply flee angle
+  if (leftFleeActive && !rightFleeActive) {
+    // Flee from left sensor: rotate left direction by -fleeAngle (turn right)
+    let cosFleeLeft = cos(-fleeAngleOffset);
+    let sinFleeLeft = sin(-fleeAngleOffset);
+    fleeForce = vec2<f32>(
+      leftDir.x * cosFleeLeft - leftDir.y * sinFleeLeft,
+      leftDir.x * sinFleeLeft + leftDir.y * cosFleeLeft
+    );
+  } else if (rightFleeActive && !leftFleeActive) {
+    // Flee from right sensor: rotate right direction by +fleeAngle (turn left)
+    let cosFleeRight = cos(fleeAngleOffset);
+    let sinFleeRight = sin(fleeAngleOffset);
+    fleeForce = vec2<f32>(
+      rightDir.x * cosFleeRight - rightDir.y * sinFleeRight,
+      rightDir.x * sinFleeRight + rightDir.y * cosFleeRight
+    );
   }
+  // If both or neither are active, no flee force
+}
 
-  // Evaluate sensor activation for flee behavior  
-  var fleeForce = vec2<f32>(0.0, 0.0);
-  if (fleeBehavior != 3.0) { // not "none"
-    let leftFleeActive = sensor_is_activated(leftIntensity, leftColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
-    let rightFleeActive = sensor_is_activated(rightIntensity, rightColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
-    
-    // Determine winning sensor for flee behavior and apply flee angle
-    if (leftFleeActive && !rightFleeActive) {
-      // Flee from left sensor: rotate left direction by -fleeAngle (turn right)
-      let cosFleeLeft = cos(-fleeAngleOffset);
-      let sinFleeLeft = sin(-fleeAngleOffset);
-      fleeForce = vec2<f32>(
-        leftDir.x * cosFleeLeft - leftDir.y * sinFleeLeft,
-        leftDir.x * sinFleeLeft + leftDir.y * cosFleeLeft
-      );
-    } else if (rightFleeActive && !leftFleeActive) {
-      // Flee from right sensor: rotate right direction by +fleeAngle (turn left)
-      let cosFleeRight = cos(fleeAngleOffset);
-      let sinFleeRight = sin(fleeAngleOffset);
-      fleeForce = vec2<f32>(
-        rightDir.x * cosFleeRight - rightDir.y * sinFleeRight,
-        rightDir.x * sinFleeRight + rightDir.y * cosFleeRight
-      );
-    }
-    // If both or neither are active, no flee force
-  }
-
-  // Combine and apply forces
-  var totalForce = followForce + fleeForce;
-  if (length(totalForce) > 0.0) {
-    let normalizedForce = normalize(totalForce);
-    // Add sensor force to existing velocity instead of replacing it
-    ${particleVar}.velocity += normalizedForce * (sensorStrength / 5.0);
-  }
+// Combine and apply forces
+var totalForce = followForce + fleeForce;
+if (length(totalForce) > 0.0) {
+  let normalizedForce = normalize(totalForce);
+  // Add sensor force to existing velocity instead of replacing it
+  ${particleVar}.velocity += normalizedForce * (sensorStrength / 5.0);
 }
 `,
     };

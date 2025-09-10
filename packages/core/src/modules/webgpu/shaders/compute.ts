@@ -305,9 +305,16 @@ struct Particle {
     }
   });
 
+  // Generate module functions and collect function calls
+  const moduleFunctions: string[] = [];
   const stateStatements: string[] = [];
   const applyStatements: string[] = [];
   const constrainStatements: string[] = [];
+
+  // Helper function to create module function name
+  const getModuleFunctionName = (passType: string, moduleName: string) => 
+    `${passType}_${moduleName}`;
+
   descriptors.forEach((mod) => {
     if (mod.role !== "force" || !mod.state) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
@@ -341,9 +348,19 @@ struct Particle {
     });
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
-      stateStatements.push(`if (${enabledExpr} != 0.0) { ${snippet.trim()} }`);
+      const functionName = getModuleFunctionName("state", mod.name);
+      
+      // Generate module function
+      moduleFunctions.push(`
+fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
+  ${snippet.trim()}
+}`);
+
+      // Add function call to statements
+      stateStatements.push(`if (${enabledExpr} != 0.0) { ${functionName}(&particle, index); }`);
     }
   });
+
   descriptors.forEach((mod) => {
     if (mod.role !== "force" || !mod.apply) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
@@ -377,9 +394,19 @@ struct Particle {
     });
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
-      applyStatements.push(`if (${enabledExpr} != 0.0) { ${snippet.trim()} }`);
+      const functionName = getModuleFunctionName("apply", mod.name);
+      
+      // Generate module function
+      moduleFunctions.push(`
+fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
+  ${snippet.trim()}
+}`);
+
+      // Add function call to statements
+      applyStatements.push(`if (${enabledExpr} != 0.0) { ${functionName}(&particle, index); }`);
     }
   });
+
   descriptors.forEach((mod) => {
     if (mod.role !== "force" || !mod.constrain) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
@@ -413,9 +440,16 @@ struct Particle {
     });
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
-      constrainStatements.push(
-        `if (${enabledExpr} != 0.0) { ${snippet.trim()} }`
-      );
+      const functionName = getModuleFunctionName("constrain", mod.name);
+      
+      // Generate module function
+      moduleFunctions.push(`
+fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
+  ${snippet.trim()}
+}`);
+
+      // Add function call to statements
+      constrainStatements.push(`if (${enabledExpr} != 0.0) { ${functionName}(&particle, index); }`);
     }
   });
 
@@ -567,6 +601,7 @@ fn main(@builtin(global_invocation_id) _gid: vec3<u32>) {
     ...gridDecls,
     ...gridHelpers,
     ...globalFunctions,
+    ...moduleFunctions,
     gridPasses,
     stateHelpers,
     statePass,
