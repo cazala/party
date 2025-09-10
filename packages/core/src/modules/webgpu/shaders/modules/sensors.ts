@@ -243,8 +243,12 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
       ] as const,
       global: () => `
 // Sensor helper functions (defined at global scope)
+// Note: These functions will need texture access from the compute shader
+// For now, we'll simulate using particle density until trail textures are integrated
+
 fn sensor_sample_intensity(pos: vec2<f32>, radius: f32, selfIndex: u32) -> f32 {
-  // Simulate intensity sampling using nearby particle density
+  // TODO: Replace with actual trail texture sampling once texture binding is added to compute shaders
+  // For now, simulate intensity sampling using nearby particle density
   var intensity: f32 = 0.0;
   var it = neighbor_iter_init(pos, radius);
   loop {
@@ -261,7 +265,8 @@ fn sensor_sample_intensity(pos: vec2<f32>, radius: f32, selfIndex: u32) -> f32 {
 }
 
 fn sensor_sample_color(pos: vec2<f32>, radius: f32, selfIndex: u32) -> vec3<f32> {
-  // Simulate color sampling by averaging nearby particle colors
+  // TODO: Replace with actual trail texture sampling once texture binding is added to compute shaders
+  // For now, simulate color sampling by averaging nearby particle colors
   var colorSum = vec3<f32>(0.0, 0.0, 0.0);
   var count: f32 = 0.0;
   var it = neighbor_iter_init(pos, radius);

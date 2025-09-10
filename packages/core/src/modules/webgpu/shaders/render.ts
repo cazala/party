@@ -11,7 +11,7 @@ struct RenderUniforms {
   canvas_size: vec2<f32>,
   camera_position: vec2<f32>,
   zoom: f32,
-  _padding: f32,
+  enable_trails: f32,
 }
 
 struct VertexOutput {
@@ -21,6 +21,8 @@ struct VertexOutput {
 
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<uniform> render_uniforms: RenderUniforms;
+@group(0) @binding(2) var trail_texture: texture_2d<f32>;
+@group(0) @binding(3) var trail_sampler: sampler;
 
 @vertex
 fn vs_main(
@@ -72,10 +74,30 @@ fn vs_main(
 }
 
 @fragment
-fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+fn fs_main(
+  @location(0) uv: vec2<f32>,
+  @builtin(position) frag_coord: vec4<f32>
+) -> @location(0) vec4<f32> {
   let center = vec2<f32>(0.5, 0.5);
   let dist = distance(uv, center);
   let radius = 0.5;
   let alpha = 1.0 - smoothstep(radius - 0.05, radius, dist);
-  return vec4<f32>(1.0, 1.0, 1.0, alpha);
+  
+  // Particle color (white for now)
+  var particle_color = vec4<f32>(1.0, 1.0, 1.0, alpha);
+  
+  // If trails are enabled, blend with trail texture
+  if (render_uniforms.enable_trails > 0.0) {
+    // Sample trail texture at fragment position
+    let trail_uv = frag_coord.xy / render_uniforms.canvas_size;
+    let trail_color = textureSample(trail_texture, trail_sampler, trail_uv);
+    
+    // Additive blending for trails (particles add to existing trails)
+    particle_color = vec4<f32>(
+      particle_color.rgb + trail_color.rgb,
+      max(particle_color.a, trail_color.a)
+    );
+  }
+  
+  return particle_color;
 }`;
