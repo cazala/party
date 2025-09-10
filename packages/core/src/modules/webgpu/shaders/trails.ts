@@ -26,12 +26,11 @@ fn trail_decay(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let background = vec4<f32>(trail_uniforms.background_color, 0.0);
   let decay_factor = trail_uniforms.decay_rate;
   
-  // Interpolate between current color and background
-  let decayed_color = mix(current_color, background, decay_factor);
-  
   // Ensure minimum decay to prevent permanent trails
   let min_decay = 0.001;
   let effective_decay = max(decay_factor, min_decay);
+  
+  // Interpolate between current color and background
   let final_color = mix(current_color, background, effective_decay);
   
   textureStore(output_texture, coords, final_color);

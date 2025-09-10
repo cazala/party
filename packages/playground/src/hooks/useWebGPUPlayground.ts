@@ -66,7 +66,7 @@ export function useWebGPUPlayground(
       // Animation complete - set exact target values
       renderer.setZoom?.(zoomState.targetZoom);
       renderer.setCamera?.(zoomState.targetCameraX, zoomState.targetCameraY);
-      if ('setCamera' in boundary) {
+      if ("setCamera" in boundary) {
         (boundary as any).setCamera(
           zoomState.targetCameraX,
           zoomState.targetCameraY,
@@ -75,7 +75,7 @@ export function useWebGPUPlayground(
       }
 
       // Update system camera for frustum culling if method exists
-      if ('updateCamera' in system) {
+      if ("updateCamera" in system) {
         (system as any).updateCamera(
           zoomState.targetCameraX,
           zoomState.targetCameraY,
@@ -98,12 +98,12 @@ export function useWebGPUPlayground(
 
     renderer.setZoom?.(newZoom);
     renderer.setCamera?.(newCameraX, newCameraY);
-    if ('setCamera' in boundary) {
+    if ("setCamera" in boundary) {
       (boundary as any).setCamera(newCameraX, newCameraY, newZoom);
     }
 
     // Update system camera for frustum culling if method exists
-    if ('updateCamera' in system) {
+    if ("updateCamera" in system) {
       (system as any).updateCamera(newCameraX, newCameraY, newZoom);
     }
 
@@ -129,7 +129,7 @@ export function useWebGPUPlayground(
 
       const currentTargetZoom = zoomState.isAnimating
         ? zoomState.targetZoom
-        : (renderer.getZoom?.() || 1);
+        : renderer.getZoom?.() || 1;
       const newTargetZoom = Math.max(
         0.1,
         Math.min(2, currentTargetZoom + zoomDirection)
@@ -138,7 +138,7 @@ export function useWebGPUPlayground(
       // Calculate camera adjustment to zoom towards the cursor position
       const currentTargetCamera = zoomState.isAnimating
         ? { x: zoomState.targetCameraX, y: zoomState.targetCameraY }
-        : (renderer.getCamera?.() || { x: 0, y: 0 });
+        : renderer.getCamera?.() || { x: 0, y: 0 };
 
       const zoomDelta = newTargetZoom / currentTargetZoom;
       const newTargetCameraX =
@@ -275,10 +275,11 @@ export function useWebGPUPlayground(
           const collisions = new Collisions({ restitution: 0.8 });
           const fluid = new Fluid({ enabled: false });
           const behavior = new WebGPUBehavior({ enabled: true });
-          const sensors = new Sensors({ 
+          const sensors = new Sensors({
+            enabled: false,
             enableTrail: false,
             enableSensors: false,
-            particleColor: "#ffffff" 
+            particleColor: "#ffffff",
           });
           // Initialize simulation parameters
           const modules = [

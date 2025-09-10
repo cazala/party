@@ -18,7 +18,8 @@ type SensorBindingKeys =
   | "fleeAngle"
   | "particleColorR"
   | "particleColorG"
-  | "particleColorB";
+  | "particleColorB"
+  | "enabled";
 
 export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
   // Trail configuration
@@ -46,6 +47,7 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
   private particleColorB: number;
 
   constructor(opts?: {
+    enabled?: boolean;
     enableTrail?: boolean;
     trailDecay?: number;
     trailDiffuse?: number;
@@ -65,8 +67,8 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
 
     // Trail configuration (defaults from original)
     this.enableTrail = opts?.enableTrail ?? false;
-    this.trailDecay = opts?.trailDecay ?? 0.1;
-    this.trailDiffuse = opts?.trailDiffuse ?? 1;
+    this.trailDecay = opts?.trailDecay ?? 0.01; // Slower decay for visible trails
+    this.trailDiffuse = opts?.trailDiffuse ?? 0.5; // Less blur by default
 
     // Sensor configuration (defaults from original)
     this.enableSensors = opts?.enableSensors ?? false;
@@ -87,6 +89,10 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
     this.particleColorR = color.r / 255.0;
     this.particleColorG = color.g / 255.0;
     this.particleColorB = color.b / 255.0;
+
+    if (opts?.enabled !== undefined) {
+      this.setEnabled(!!opts.enabled);
+    }
   }
 
   private hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -136,6 +142,7 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
       particleColorR: this.particleColorR,
       particleColorG: this.particleColorG,
       particleColorB: this.particleColorB,
+      enabled: this.isEnabled() ? 1 : 0, // Preserve module enabled state
     });
   }
 
@@ -241,8 +248,7 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
         "particleColorG",
         "particleColorB",
       ] as const,
-      global: () => `
-// Sensor helper functions (defined at global scope)
+      global: () => `// Sensor helper functions (defined at global scope)
 // Note: These functions will need texture access from the compute shader
 // For now, we'll simulate using particle density until trail textures are integrated
 
@@ -317,14 +323,10 @@ fn sensor_is_activated(
   } else { // "none" (behavior == 3.0)
     return false;
   }
-}
-`,
+}`,
       apply: ({ particleVar, getUniform }) => `
-  // Early exit if sensors are disabled or particle is pinned (mass = 0 indicates pinned)
-  if (${getUniform("enableSensors")} == 0.0 || ${particleVar}.mass == 0.0) {
-    return;
-  }
-
+// Only apply sensor forces if module is enabled, sensors are enabled, and particle is not pinned
+if (${getUniform("enabled")} != 0.0 && ${getUniform("enableSensors")} != 0.0 && ${particleVar}.mass != 0.0) {
   // Get sensor configuration
   let sensorDist = ${getUniform("sensorDistance")};
   let sensorAngle = ${getUniform("sensorAngle")};
@@ -426,8 +428,10 @@ fn sensor_is_activated(
   var totalForce = followForce + fleeForce;
   if (length(totalForce) > 0.0) {
     let normalizedForce = normalize(totalForce);
-    ${particleVar}.velocity = normalizedForce * (sensorStrength / 5.0);
+    // Add sensor force to existing velocity instead of replacing it
+    ${particleVar}.velocity += normalizedForce * (sensorStrength / 5.0);
   }
+}
 `,
     };
   }

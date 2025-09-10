@@ -83,21 +83,6 @@ fn fs_main(
   let radius = 0.5;
   let alpha = 1.0 - smoothstep(radius - 0.05, radius, dist);
   
-  // Particle color (white for now)
-  var particle_color = vec4<f32>(1.0, 1.0, 1.0, alpha);
-  
-  // If trails are enabled, blend with trail texture
-  if (render_uniforms.enable_trails > 0.0) {
-    // Sample trail texture at fragment position
-    let trail_uv = frag_coord.xy / render_uniforms.canvas_size;
-    let trail_color = textureSample(trail_texture, trail_sampler, trail_uv);
-    
-    // Additive blending for trails (particles add to existing trails)
-    particle_color = vec4<f32>(
-      particle_color.rgb + trail_color.rgb,
-      max(particle_color.a, trail_color.a)
-    );
-  }
-  
-  return particle_color;
+  // Just output particle color - let GPU blending handle trail accumulation
+  return vec4<f32>(1.0, 1.0, 1.0, alpha);
 }`;
