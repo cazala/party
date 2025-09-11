@@ -8,7 +8,6 @@ import {
 } from "./shaders/compute";
 import { trailDecayShaderWGSL, trailBlurShaderWGSL } from "./shaders/trails";
 import { copyShaderWGSL } from "./shaders/copy";
-import { fadeShaderWGSL } from "./shaders/fade";
 import { DEFAULTS } from "./config";
 
 export interface WebGPUParticle {
@@ -43,9 +42,6 @@ export class WebGPUParticleSystem {
   private trailRenderPipeline: GPURenderPipeline | null = null;
   private copyPipeline: GPURenderPipeline | null = null;
   private copyBindGroup: GPUBindGroup | null = null;
-  private fadePipeline: GPURenderPipeline | null = null;
-  private fadeUniformBuffer: GPUBuffer | null = null;
-  private fadeBindGroup: GPUBindGroup | null = null;
   private renderBindGroupLayout: GPUBindGroupLayout | null = null;
   private computePipeline: GPUComputePipeline | null = null;
   private gridClearPipeline: GPUComputePipeline | null = null;
@@ -532,12 +528,12 @@ export class WebGPUParticleSystem {
             format: this.renderer.getWebGPUDevice().format, // Canvas format
             blend: {
               color: {
-                srcFactor: "one",
-                dstFactor: "zero",
+                srcFactor: "src-alpha",
+                dstFactor: "one-minus-src-alpha",
               },
               alpha: {
                 srcFactor: "one",
-                dstFactor: "zero",
+                dstFactor: "one-minus-src-alpha",
               },
             },
           },
@@ -562,52 +558,6 @@ export class WebGPUParticleSystem {
           resource: this.trailSampler!,
         },
       ],
-    });
-
-    // Create fade pipeline (fullscreen quad with uniform color/alpha)
-    const fadeBindGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: { type: "uniform" },
-        },
-      ],
-    });
-    const fadePipelineLayout = this.device.createPipelineLayout({
-      bindGroupLayouts: [fadeBindGroupLayout],
-    });
-    const fadeModule = this.device.createShaderModule({ code: fadeShaderWGSL });
-    this.fadePipeline = this.device.createRenderPipeline({
-      layout: fadePipelineLayout,
-      vertex: { module: fadeModule, entryPoint: "vs_main" },
-      fragment: {
-        module: fadeModule,
-        entryPoint: "fs_main",
-        targets: [
-          {
-            format: this.renderer.getWebGPUDevice().format,
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-              },
-              alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
-            },
-          },
-        ],
-      },
-      primitive: { topology: "triangle-strip" },
-    });
-
-    // Create fade uniform buffer and bind group
-    this.fadeUniformBuffer = this.device.createBuffer({
-      size: 16,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-    this.fadeBindGroup = this.device.createBindGroup({
-      layout: fadeBindGroupLayout,
-      entries: [{ binding: 0, resource: { buffer: this.fadeUniformBuffer } }],
     });
 
     // Create an explicit bind group layout and pipeline layout shared by all compute entry points
@@ -695,7 +645,7 @@ export class WebGPUParticleSystem {
   }
 
   private async createTrailPipelines(): Promise<void> {
-    console.log("Creating trail pipelines...");
+    // Create trail pipelines
 
     // Create trail decay shader module
     let trailDecayModule;
@@ -703,7 +653,6 @@ export class WebGPUParticleSystem {
       trailDecayModule = this.device.createShaderModule({
         code: trailDecayShaderWGSL,
       });
-      console.log("Trail decay shader compiled successfully");
     } catch (error) {
       console.error("Trail decay shader compilation failed:", error);
       throw error;
@@ -770,7 +719,6 @@ export class WebGPUParticleSystem {
         layout: trailDecayPipelineLayout,
         compute: { module: trailDecayModule, entryPoint: "trail_decay" },
       });
-      console.log("Trail decay pipeline created successfully");
     } catch (error) {
       console.error("Trail decay pipeline creation failed:", error);
       throw error;
@@ -1025,14 +973,7 @@ export class WebGPUParticleSystem {
       0.0, // _padding
     ]);
 
-    // Debug trail uniforms
-    if (decayRate > 0) {
-      console.log(
-        `Trail decay: ${decayRate}, size: ${size.width}x${
-          size.height
-        }, diffuse: ${sensorsUniforms.trailDiffuse || 0.0}`
-      );
-    }
+    // (no debug logging)
 
     this.device.queue.writeBuffer(this.trailDecayUniformBuffer, 0, decayData);
 
@@ -1044,33 +985,15 @@ export class WebGPUParticleSystem {
       0.0, // _padding
     ]);
     this.device.queue.writeBuffer(this.trailBlurUniformBuffer, 0, blurData);
-
-    // Update fade uniforms (apply small alpha of background each frame for trail fade)
-    if (this.fadeUniformBuffer) {
-      const fadeAlpha = Math.min(Math.max(decayRate, 0), 1) * 0.5; // conservative scaling
-      const fadeData = new Float32Array([
-        DEFAULTS.clearColor.r,
-        DEFAULTS.clearColor.g,
-        DEFAULTS.clearColor.b,
-        fadeAlpha,
-      ]);
-      this.device.queue.writeBuffer(this.fadeUniformBuffer, 0, fadeData);
-    }
   }
 
   private processTrails(commandEncoder: GPUCommandEncoder): void {
-    console.log("processTrails called");
-
     if (
       !this.trailDecayPipeline ||
       !this.trailDecayBindGroupA ||
       !this.trailDecayBindGroupB
     ) {
-      console.log("Missing trail pipelines or bind groups:", {
-        pipeline: !!this.trailDecayPipeline,
-        bindGroupA: !!this.trailDecayBindGroupA,
-        bindGroupB: !!this.trailDecayBindGroupB,
-      });
+      // Missing trail pipelines or bind groups
       return;
     }
 
@@ -1079,10 +1002,6 @@ export class WebGPUParticleSystem {
     const size = this.renderer.getSize();
     const workgroupsX = Math.ceil(size.width / 8);
     const workgroupsY = Math.ceil(size.height / 8);
-
-    console.log(
-      `Trail decay: size=${size.width}x${size.height}, workgroups=${workgroupsX}x${workgroupsY}, currentTexture=${this.currentTrailTexture}`
-    );
 
     // Note: currentTrailTexture was already swapped after particle rendering
     // Apply trail decay (ping-pong from current texture to other texture)
@@ -1096,15 +1015,9 @@ export class WebGPUParticleSystem {
         ? this.trailDecayBindGroupB // Read from B, write to A
         : this.trailDecayBindGroupA; // Read from A, write to B
 
-    console.log(
-      `Using bind group: ${this.currentTrailTexture === "A" ? "B->A" : "A->B"}`
-    );
-
     decayPass.setBindGroup(0, decayBindGroup);
     decayPass.dispatchWorkgroups(workgroupsX, workgroupsY);
     decayPass.end();
-
-    console.log("Trail decay pass completed");
 
     // Apply blur if diffuse > 0 (blur from current texture back to other texture)
     const sensorsModule = this.getModule("sensors");
@@ -1421,30 +1334,12 @@ export class WebGPUParticleSystem {
       this.processTrails(commandEncoder);
     }
 
-    // If trails are enabled, fade canvas slightly toward background, copy trails, then render particles on top
+    // If trails are enabled, copy final trail texture to canvas, then render particles on top
     if (enableTrails > 0.0) {
-      // 1) Apply subtle background fade over canvas to decay trails
-      if (this.fadePipeline && this.fadeBindGroup) {
-        const fadePass = commandEncoder.beginRenderPass({
-          colorAttachments: [
-            {
-              view: textureView,
-              clearValue: DEFAULTS.clearColor,
-              loadOp: "clear",
-              storeOp: "store",
-            },
-          ],
-        });
-        fadePass.setPipeline(this.fadePipeline);
-        fadePass.setBindGroup(0, this.fadeBindGroup);
-        fadePass.draw(4, 1);
-        fadePass.end();
-      }
-
-      // 2) Copy decayed trail texture to canvas (loads faded background)
+      // 1) Copy decayed trail texture to canvas (clears first)
       this.copyTrailToCanvas(commandEncoder, textureView);
 
-      // 3) Render particles on top at full brightness (unaffected by decay)
+      // 2) Render particles on top at full brightness (unaffected by decay)
       const canvasRenderPass = commandEncoder.beginRenderPass({
         colorAttachments: [
           {
