@@ -81,6 +81,8 @@ export class WebGPURenderer {
   clearParticles(): void {
     if (!this.system) return;
     this.system.clear();
+    (this.system as any).clearTrials?.();
+    (this.system as any).clearTrails?.();
   }
 
   getParticleCount(): number {

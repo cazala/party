@@ -964,6 +964,37 @@ export class WebGPUParticleSystem {
     copyPass.end();
   }
 
+  public clearTrails(): void {
+    if (!this.trailTextureViewA || !this.trailTextureViewB) return;
+    const encoder = this.device.createCommandEncoder();
+
+    const passA = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: this.trailTextureViewA,
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    passA.end();
+
+    const passB = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: this.trailTextureViewB,
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    passB.end();
+
+    this.device.queue.submit([encoder.finish()]);
+  }
+
   private updateTrailUniforms(): void {
     if (!this.trailDecayUniformBuffer || !this.trailBlurUniformBuffer) return;
 
