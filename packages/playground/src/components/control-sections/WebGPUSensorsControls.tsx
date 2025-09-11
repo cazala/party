@@ -22,7 +22,7 @@ interface WebGPUSensorsLike {
 
 // Default constants matching the WebGPU sensors implementation
 const DEFAULT_TRAIL_ENABLED = false;
-const DEFAULT_TRAIL_DECAY = 0.1;
+const DEFAULT_TRAIL_DECAY = 0.01;
 const DEFAULT_TRAIL_DIFFUSE = 1;
 const DEFAULT_SENSORS_ENABLED = false;
 const DEFAULT_SENSOR_DISTANCE = 30;
@@ -49,7 +49,7 @@ export function WebGPUSensorsControls({
   enabled?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(true);
-  
+
   // Trail state
   const [trailEnabled, setTrailEnabled] = useState(DEFAULT_TRAIL_ENABLED);
   const [trailDecay, setTrailDecay] = useState(DEFAULT_TRAIL_DECAY);
@@ -58,17 +58,27 @@ export function WebGPUSensorsControls({
   // Sensor state
   const [sensorsEnabled, setSensorsEnabled] = useState(DEFAULT_SENSORS_ENABLED);
   const [sensorDistance, setSensorDistance] = useState(DEFAULT_SENSOR_DISTANCE);
-  const [sensorAngle, setSensorAngle] = useState(radToDeg(DEFAULT_SENSOR_ANGLE));
+  const [sensorAngle, setSensorAngle] = useState(
+    radToDeg(DEFAULT_SENSOR_ANGLE)
+  );
   const [sensorRadius, setSensorRadius] = useState(DEFAULT_SENSOR_RADIUS);
-  const [sensorThreshold, setSensorThreshold] = useState(DEFAULT_SENSOR_THRESHOLD);
+  const [sensorThreshold, setSensorThreshold] = useState(
+    DEFAULT_SENSOR_THRESHOLD
+  );
   const [sensorStrength, setSensorStrength] = useState(DEFAULT_SENSOR_STRENGTH);
-  const [colorSimilarityThreshold, setColorSimilarityThreshold] = useState(DEFAULT_COLOR_SIMILARITY_THRESHOLD);
+  const [colorSimilarityThreshold, setColorSimilarityThreshold] = useState(
+    DEFAULT_COLOR_SIMILARITY_THRESHOLD
+  );
   const [fleeAngle, setFleeAngle] = useState(radToDeg(DEFAULT_FLEE_ANGLE));
 
   // Behavior state
-  const [followBehavior, setFollowBehavior] = useState<SensorBehavior>(DEFAULT_FOLLOW_BEHAVIOR);
-  const [fleeBehavior, setFleeBehavior] = useState<SensorBehavior>(DEFAULT_FLEE_BEHAVIOR);
-  
+  const [followBehavior, setFollowBehavior] = useState<SensorBehavior>(
+    DEFAULT_FOLLOW_BEHAVIOR
+  );
+  const [fleeBehavior, setFleeBehavior] = useState<SensorBehavior>(
+    DEFAULT_FLEE_BEHAVIOR
+  );
+
   // Particle color
   const [particleColor, setParticleColor] = useState("#ffffff");
 
@@ -200,12 +210,12 @@ export function WebGPUSensorsControls({
 
       <div className="control-group">
         <label>
-          Trail Decay: {trailDecay.toFixed(3)}
+          Trail Decay: {trailDecay.toFixed(2)}
           <input
             type="range"
-            min="0.001"
-            max="2"
-            step="0.001"
+            min="0.01"
+            max="0.1"
+            step="0.01"
             value={trailDecay}
             disabled={!enabled || !trailEnabled}
             onChange={(e) =>
@@ -263,7 +273,9 @@ export function WebGPUSensorsControls({
             onChange={(e) =>
               handleSensorsChange("sensorDistance", parseFloat(e.target.value))
             }
-            className={`slider ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+            className={`slider ${
+              !enabled || !sensorsEnabled ? "disabled" : ""
+            }`}
           />
         </label>
       </div>
@@ -281,7 +293,9 @@ export function WebGPUSensorsControls({
             onChange={(e) =>
               handleSensorsChange("sensorAngle", parseFloat(e.target.value))
             }
-            className={`slider ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+            className={`slider ${
+              !enabled || !sensorsEnabled ? "disabled" : ""
+            }`}
           />
         </label>
       </div>
@@ -299,7 +313,9 @@ export function WebGPUSensorsControls({
             onChange={(e) =>
               handleSensorsChange("sensorRadius", parseFloat(e.target.value))
             }
-            className={`slider ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+            className={`slider ${
+              !enabled || !sensorsEnabled ? "disabled" : ""
+            }`}
           />
         </label>
       </div>
@@ -317,7 +333,9 @@ export function WebGPUSensorsControls({
             onChange={(e) =>
               handleSensorsChange("sensorThreshold", parseFloat(e.target.value))
             }
-            className={`slider ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+            className={`slider ${
+              !enabled || !sensorsEnabled ? "disabled" : ""
+            }`}
           />
         </label>
       </div>
@@ -335,7 +353,9 @@ export function WebGPUSensorsControls({
             onChange={(e) =>
               handleSensorsChange("sensorStrength", parseFloat(e.target.value))
             }
-            className={`slider ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+            className={`slider ${
+              !enabled || !sensorsEnabled ? "disabled" : ""
+            }`}
           />
         </label>
       </div>
@@ -348,9 +368,14 @@ export function WebGPUSensorsControls({
             value={followBehavior}
             disabled={!enabled || !sensorsEnabled}
             onChange={(e) =>
-              handleSensorsChange("followBehavior", e.target.value as SensorBehavior)
+              handleSensorsChange(
+                "followBehavior",
+                e.target.value as SensorBehavior
+              )
             }
-            className={`form-select ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+            className={`form-select ${
+              !enabled || !sensorsEnabled ? "disabled" : ""
+            }`}
           >
             {behaviorOptions.map((option) => (
               <option key={option} value={option}>
@@ -368,9 +393,14 @@ export function WebGPUSensorsControls({
             value={fleeBehavior}
             disabled={!enabled || !sensorsEnabled}
             onChange={(e) =>
-              handleSensorsChange("fleeBehavior", e.target.value as SensorBehavior)
+              handleSensorsChange(
+                "fleeBehavior",
+                e.target.value as SensorBehavior
+              )
             }
-            className={`form-select ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+            className={`form-select ${
+              !enabled || !sensorsEnabled ? "disabled" : ""
+            }`}
           >
             {behaviorOptions.map((option) => (
               <option key={option} value={option}>
@@ -394,9 +424,14 @@ export function WebGPUSensorsControls({
               value={colorSimilarityThreshold}
               disabled={!enabled || !sensorsEnabled}
               onChange={(e) =>
-                handleSensorsChange("colorSimilarityThreshold", parseFloat(e.target.value))
+                handleSensorsChange(
+                  "colorSimilarityThreshold",
+                  parseFloat(e.target.value)
+                )
               }
-              className={`slider ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+              className={`slider ${
+                !enabled || !sensorsEnabled ? "disabled" : ""
+              }`}
             />
           </label>
         </div>
@@ -413,7 +448,9 @@ export function WebGPUSensorsControls({
               onChange={(e) =>
                 handleSensorsChange("particleColor", e.target.value)
               }
-              className={`form-control ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+              className={`form-control ${
+                !enabled || !sensorsEnabled ? "disabled" : ""
+              }`}
             />
           </label>
         </div>
@@ -433,7 +470,9 @@ export function WebGPUSensorsControls({
               onChange={(e) =>
                 handleSensorsChange("fleeAngle", parseFloat(e.target.value))
               }
-              className={`slider ${!enabled || !sensorsEnabled ? "disabled" : ""}`}
+              className={`slider ${
+                !enabled || !sensorsEnabled ? "disabled" : ""
+              }`}
             />
           </label>
         </div>

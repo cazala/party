@@ -253,8 +253,10 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
 
 fn world_to_uv(pos: vec2<f32>) -> vec2<f32> {
   // Transform world position into UV in [0,1] using grid uniforms
+  // Trails are rendered with Y already flipped in the vertex shader,
+  // so sampling should NOT flip Y again here.
   let u = (pos.x - GRID_MINX()) / (GRID_MAXX() - GRID_MINX());
-  let v = 1.0 - (pos.y - GRID_MINY()) / (GRID_MAXY() - GRID_MINY());
+  let v = (pos.y - GRID_MINY()) / (GRID_MAXY() - GRID_MINY());
   return clamp(vec2<f32>(u, v), vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0));
 }
 
