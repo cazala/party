@@ -18,22 +18,28 @@ fn trail_decay(@builtin(global_invocation_id) global_id: vec3<u32>) {
   if (coords.x >= i32(dimensions.x) || coords.y >= i32(dimensions.y)) {
     return;
   }
-  
-  // Read current pixel color
-  let current_color = textureLoad(input_texture, coords, 0);
-  
-  // Apply trail decay by interpolating toward background color
-  let background = vec4<f32>(trail_uniforms.background_color, 0.0);
-  let decay_factor = trail_uniforms.decay_rate;
-  
-  // Ensure minimum decay to prevent permanent trails
-  let min_decay = 0.001;
-  let effective_decay = max(decay_factor, min_decay);
-  
-  // Interpolate between current color and background
-  let final_color = mix(current_color, background, effective_decay);
-  
-  textureStore(output_texture, coords, final_color);
+  // Read current trail color
+  let current = textureLoad(input_texture, coords, 0);
+
+  // If no decay, just copy through
+  let d = clamp(trail_uniforms.decay_rate, 0.0, 1.0);
+  if (d <= 0.00001) {
+    textureStore(output_texture, coords, current);
+    return;
+  }
+
+  // Blend RGB toward background color and fade alpha
+  let bg = trail_uniforms.background_color;
+  let out_rgb = mix(current.rgb, bg, d);
+  let out_a = current.a * (1.0 - d);
+
+  // Snap only when all components are below one LSB to avoid lingering dark gray
+  let eps = 1.0 / 255.0;
+  if (all(abs(out_rgb - bg) < vec3<f32>(eps)) && out_a < eps) {
+    textureStore(output_texture, coords, vec4<f32>(bg, 0.0));
+  } else {
+    textureStore(output_texture, coords, vec4<f32>(out_rgb, out_a));
+  }
 }
 `;
 
@@ -93,6 +99,7 @@ fn trail_blur(@builtin(global_invocation_id) global_id: vec3<u32>) {
     blurred_color = textureLoad(input_texture, coords, 0);
   }
   
+  // No snapping: write blurred result directly
   textureStore(output_texture, coords, blurred_color);
 }
 `;
