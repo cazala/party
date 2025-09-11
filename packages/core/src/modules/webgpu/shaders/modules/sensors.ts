@@ -249,48 +249,72 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
         "particleColorB",
       ] as const,
       global: () => `// Sensor helper functions (defined at global scope)
-// Note: These functions will need texture access from the compute shader
-// For now, we'll simulate using particle density until trail textures are integrated
+// Now sample from the trail texture bound to the compute pipeline
 
-fn sensor_sample_intensity(pos: vec2<f32>, radius: f32, selfIndex: u32) -> f32 {
-  // TODO: Replace with actual trail texture sampling once texture binding is added to compute shaders
-  // For now, simulate intensity sampling using nearby particle density
-  var intensity: f32 = 0.0;
-  var it = neighbor_iter_init(pos, radius);
-  loop {
-    let j = neighbor_iter_next(&it, selfIndex);
-    if (j == NEIGHBOR_NONE) { break; }
-    let other = particles[j];
-    let dist = distance(pos, other.position);
-    if (dist < radius && dist > 0.0) {
-      // Intensity based on proximity and particle size
-      intensity += other.size / max(dist, 0.1);
-    }
-  }
-  return min(intensity, 1.0); // clamp to [0,1]
+fn world_to_uv(pos: vec2<f32>) -> vec2<f32> {
+  // Transform world position into UV in [0,1] using grid uniforms
+  let u = (pos.x - GRID_MINX()) / (GRID_MAXX() - GRID_MINX());
+  let v = 1.0 - (pos.y - GRID_MINY()) / (GRID_MAXY() - GRID_MINY());
+  return clamp(vec2<f32>(u, v), vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0));
 }
 
-fn sensor_sample_color(pos: vec2<f32>, radius: f32, selfIndex: u32) -> vec3<f32> {
-  // TODO: Replace with actual trail texture sampling once texture binding is added to compute shaders
-  // For now, simulate color sampling by averaging nearby particle colors
-  var colorSum = vec3<f32>(0.0, 0.0, 0.0);
+fn uv_to_texel(uv: vec2<f32>) -> vec2<i32> {
+  // Derive dimensions from texture
+  let dim = textureDimensions(trail_texture);
+  let x = i32(clamp(floor(uv.x * f32(dim.x)), 0.0, f32(dim.x - 1)));
+  let y = i32(clamp(floor(uv.y * f32(dim.y)), 0.0, f32(dim.y - 1)));
+  return vec2<i32>(x, y);
+}
+
+fn sensor_sample_intensity(pos: vec2<f32>, radius: f32, _selfIndex: u32) -> f32 {
+  // Sample a small disk in the trail texture and average luminance
+  let uv = world_to_uv(pos);
+  let dim = textureDimensions(trail_texture);
+  // Convert world radius to approximate pixels using grid extent
+  let pxPerWorld = f32(dim.x) / (GRID_MAXX() - GRID_MINX());
+  let pxRadius = clamp(radius * pxPerWorld, 1.0, 16.0);
+  let center = uv_to_texel(uv);
+  var sum: f32 = 0.0;
   var count: f32 = 0.0;
-  var it = neighbor_iter_init(pos, radius);
-  loop {
-    let j = neighbor_iter_next(&it, selfIndex);
-    if (j == NEIGHBOR_NONE) { break; }
-    let other = particles[j];
-    let dist = distance(pos, other.position);
-    if (dist < radius) {
-      // For now, assume white particles (would need particle color data)
-      colorSum += vec3<f32>(1.0, 1.0, 1.0);
+  let r = i32(clamp(pxRadius, 1.0, 8.0));
+  for (var dy = -r; dy <= r; dy++) {
+    for (var dx = -r; dx <= r; dx++) {
+      let tc = vec2<i32>(center.x + dx, center.y + dy);
+      if (tc.x < 0 || tc.y < 0 || tc.x >= i32(dim.x) || tc.y >= i32(dim.y)) { continue; }
+      let c = textureLoad(trail_texture, tc, 0);
+      let lum = dot(c.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+      sum += lum;
       count += 1.0;
     }
   }
   if (count > 0.0) {
-    return colorSum / count;
+    return clamp(sum / count, 0.0, 1.0);
   }
-  return vec3<f32>(0.0, 0.0, 0.0); // black if no particles nearby
+  return 0.0;
+}
+
+fn sensor_sample_color(pos: vec2<f32>, radius: f32, _selfIndex: u32) -> vec3<f32> {
+  let uv = world_to_uv(pos);
+  let dim = textureDimensions(trail_texture);
+  let pxPerWorld = f32(dim.x) / (GRID_MAXX() - GRID_MINX());
+  let pxRadius = clamp(radius * pxPerWorld, 1.0, 16.0);
+  let center = uv_to_texel(uv);
+  var sum = vec3<f32>(0.0, 0.0, 0.0);
+  var count: f32 = 0.0;
+  let r = i32(clamp(pxRadius, 1.0, 8.0));
+  for (var dy = -r; dy <= r; dy++) {
+    for (var dx = -r; dx <= r; dx++) {
+      let tc = vec2<i32>(center.x + dx, center.y + dy);
+      if (tc.x < 0 || tc.y < 0 || tc.x >= i32(dim.x) || tc.y >= i32(dim.y)) { continue; }
+      let c = textureLoad(trail_texture, tc, 0);
+      sum += c.rgb;
+      count += 1.0;
+    }
+  }
+  if (count > 0.0) {
+    return clamp(sum / count, vec3<f32>(0.0), vec3<f32>(1.0));
+  }
+  return vec3<f32>(0.0, 0.0, 0.0);
 }
 
 fn sensor_is_activated(
@@ -326,7 +350,9 @@ fn sensor_is_activated(
 }`,
       apply: ({ particleVar, getUniform }) => `
 // Early exit if module is disabled, sensors are disabled, or particle is pinned
-if (${getUniform("enabled")} == 0.0 || ${getUniform("enableSensors")} == 0.0 || ${particleVar}.mass == 0.0) {
+if (${getUniform("enabled")} == 0.0 || ${getUniform(
+        "enableSensors"
+      )} == 0.0 || ${particleVar}.mass == 0.0) {
   return;
 }
 
@@ -385,29 +411,31 @@ let rightIntensity = sensor_sample_intensity(rightSensorPos, sensorRadius, index
 let leftColor = sensor_sample_color(leftSensorPos, sensorRadius, index);
 let rightColor = sensor_sample_color(rightSensorPos, sensorRadius, index);
 
-// Evaluate sensor activation for follow behavior
+// Evaluate sensor activation for follow behavior: steer toward higher intensity
 var followForce = vec2<f32>(0.0, 0.0);
 if (followBehavior != 3.0) { // not "none"
-  let leftFollowActive = sensor_is_activated(leftIntensity, leftColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
-  let rightFollowActive = sensor_is_activated(rightIntensity, rightColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
-  
-  // Determine winning sensor for follow behavior
-  if (leftFollowActive && !rightFollowActive) {
-    followForce = leftDir;
-  } else if (rightFollowActive && !leftFollowActive) {
-    followForce = rightDir;
+  var leftScore = leftIntensity;
+  var rightScore = rightIntensity;
+  // Optionally gate by threshold
+  leftScore = select(0.0, leftScore, leftScore > sensorThreshold);
+  rightScore = select(0.0, rightScore, rightScore > sensorThreshold);
+
+  if (leftScore > rightScore) {
+    followForce = leftDir * (leftScore - rightScore);
+  } else if (rightScore > leftScore) {
+    followForce = rightDir * (rightScore - leftScore);
   }
-  // If both or neither are active, no follow force
 }
 
 // Evaluate sensor activation for flee behavior  
 var fleeForce = vec2<f32>(0.0, 0.0);
 if (fleeBehavior != 3.0) { // not "none"
-  let leftFleeActive = sensor_is_activated(leftIntensity, leftColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
-  let rightFleeActive = sensor_is_activated(rightIntensity, rightColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
-  
-  // Determine winning sensor for flee behavior and apply flee angle
-  if (leftFleeActive && !rightFleeActive) {
+  var leftScore = leftIntensity;
+  var rightScore = rightIntensity;
+  leftScore = select(0.0, leftScore, leftScore > sensorThreshold);
+  rightScore = select(0.0, rightScore, rightScore > sensorThreshold);
+
+  if (leftScore > rightScore) {
     // Flee from left sensor: rotate left direction by -fleeAngle (turn right)
     let cosFleeLeft = cos(-fleeAngleOffset);
     let sinFleeLeft = sin(-fleeAngleOffset);
@@ -415,7 +443,7 @@ if (fleeBehavior != 3.0) { // not "none"
       leftDir.x * cosFleeLeft - leftDir.y * sinFleeLeft,
       leftDir.x * sinFleeLeft + leftDir.y * cosFleeLeft
     );
-  } else if (rightFleeActive && !leftFleeActive) {
+  } else if (rightScore > leftScore) {
     // Flee from right sensor: rotate right direction by +fleeAngle (turn left)
     let cosFleeRight = cos(fleeAngleOffset);
     let sinFleeRight = sin(fleeAngleOffset);
@@ -428,11 +456,12 @@ if (fleeBehavior != 3.0) { // not "none"
 }
 
 // Combine and apply forces
+// Set velocity based on sensor decision (do not integrate acceleration)
 var totalForce = followForce + fleeForce;
 if (length(totalForce) > 0.0) {
-  let normalizedForce = normalize(totalForce);
-  // Add sensor force to existing velocity instead of replacing it
-  ${particleVar}.velocity += normalizedForce * (sensorStrength / 5.0);
+  let dir = normalize(totalForce);
+  // Match CPU: set velocity to direction scaled by sensorStrength/5
+  ${particleVar}.velocity = dir * (sensorStrength / 5.0);
 }
 `,
     };

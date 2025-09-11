@@ -103,6 +103,7 @@ export interface ComputeProgramBuild {
   extraBindings: {
     grid?: { countsBinding: number; indicesBinding: number };
     simState?: { stateBinding: number };
+    trailTexture?: { textureBinding: number };
   };
 }
 
@@ -259,7 +260,7 @@ struct Particle {
   });
   uniformDecls.push(gridStructWGSL, gridVarDecl);
 
-  // Grid storage buffers after all uniforms
+  // Grid storage buffers and additional resources after all uniforms
   const lastUniformBinding = layouts.reduce(
     (max, l) => Math.max(max, l.bindingIndex),
     0
@@ -267,11 +268,13 @@ struct Particle {
   const gridCountsBinding = lastUniformBinding + 1;
   const gridIndicesBinding = lastUniformBinding + 2;
   const simStateBinding = lastUniformBinding + 3;
+  const trailTextureBinding = lastUniformBinding + 4;
 
   const gridDecls: string[] = [
     `@group(0) @binding(${gridCountsBinding}) var<storage, read_write> GRID_COUNTS: array<atomic<u32>>;`,
     `@group(0) @binding(${gridIndicesBinding}) var<storage, read_write> GRID_INDICES: array<u32>;`,
     `@group(0) @binding(${simStateBinding}) var<storage, read_write> SIM_STATE: array<f32>;`,
+    `@group(0) @binding(${trailTextureBinding}) var trail_texture: texture_2d<f32>;`,
   ];
 
   // Grid helpers and neighbor iteration
@@ -312,7 +315,7 @@ struct Particle {
   const constrainStatements: string[] = [];
 
   // Helper function to create module function name
-  const getModuleFunctionName = (passType: string, moduleName: string) => 
+  const getModuleFunctionName = (passType: string, moduleName: string) =>
     `${passType}_${moduleName}`;
 
   descriptors.forEach((mod) => {
@@ -349,7 +352,7 @@ struct Particle {
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
       const functionName = getModuleFunctionName("state", mod.name);
-      
+
       // Generate module function
       moduleFunctions.push(`
 fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
@@ -357,7 +360,9 @@ fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
 }`);
 
       // Add function call to statements
-      stateStatements.push(`if (${enabledExpr} != 0.0) { ${functionName}(&particle, index); }`);
+      stateStatements.push(
+        `if (${enabledExpr} != 0.0) { ${functionName}(&particle, index); }`
+      );
     }
   });
 
@@ -395,7 +400,7 @@ fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
       const functionName = getModuleFunctionName("apply", mod.name);
-      
+
       // Generate module function
       moduleFunctions.push(`
 fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
@@ -403,7 +408,9 @@ fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
 }`);
 
       // Add function call to statements
-      applyStatements.push(`if (${enabledExpr} != 0.0) { ${functionName}(&particle, index); }`);
+      applyStatements.push(
+        `if (${enabledExpr} != 0.0) { ${functionName}(&particle, index); }`
+      );
     }
   });
 
@@ -441,7 +448,7 @@ fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
     if (snippet && snippet.trim().length) {
       const enabledExpr = layout.mapping["enabled"].expr;
       const functionName = getModuleFunctionName("constrain", mod.name);
-      
+
       // Generate module function
       moduleFunctions.push(`
 fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
@@ -449,7 +456,9 @@ fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
 }`);
 
       // Add function call to statements
-      constrainStatements.push(`if (${enabledExpr} != 0.0) { ${functionName}(&particle, index); }`);
+      constrainStatements.push(
+        `if (${enabledExpr} != 0.0) { ${functionName}(&particle, index); }`
+      );
     }
   });
 
@@ -623,6 +632,7 @@ fn main(@builtin(global_invocation_id) _gid: vec3<u32>) {
         indicesBinding: gridIndicesBinding,
       },
       simState: { stateBinding: simStateBinding },
+      trailTexture: { textureBinding: trailTextureBinding },
     },
   };
 }

@@ -594,6 +594,13 @@ export class WebGPUParticleSystem {
         buffer: { type: "storage" },
       });
     }
+    if (this.computeBuild.extraBindings.trailTexture) {
+      bglEntries.push({
+        binding: this.computeBuild.extraBindings.trailTexture.textureBinding,
+        visibility: GPUShaderStage.COMPUTE,
+        texture: { sampleType: "float" },
+      });
+    }
     this.bindGroupLayout = this.device.createBindGroupLayout({
       entries: bglEntries,
     });
@@ -844,6 +851,13 @@ export class WebGPUParticleSystem {
       entries.push({
         binding: this.computeBuild.extraBindings.simState.stateBinding,
         resource: { buffer: this.simStateBuffer },
+      });
+    }
+    // Bind current trail texture as sampled texture for sensors
+    if (this.computeBuild?.extraBindings.trailTexture) {
+      entries.push({
+        binding: this.computeBuild.extraBindings.trailTexture.textureBinding,
+        resource: this.getCurrentTrailTextureView(),
       });
     }
     this.computeBindGroup = this.device.createBindGroup({
@@ -1138,6 +1152,11 @@ export class WebGPUParticleSystem {
     const commandEncoder = this.device.createCommandEncoder();
 
     const textureView = this.context.getCurrentTexture().createView();
+
+    // Recreate compute bind group to update trail texture binding for sensors
+    if (this.bindGroupLayout) {
+      this.createBindGroups();
+    }
 
     // Run compute passes to build grid and integrate physics
     if (this.computeBindGroup) {
