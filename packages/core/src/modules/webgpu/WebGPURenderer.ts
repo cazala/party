@@ -102,7 +102,13 @@ export class WebGPURenderer {
   }
 
   setZoom(zoom: number): void {
-    this.zoom = zoom;
+    // Clamp zoom to avoid excessive grid sizes that overflow storage buffer limits
+    const size = this.getSize();
+    const maxBytes = 120 * 1024 * 1024; // safety threshold below typical 128MB default
+    const minZoomByGrid = Math.sqrt((4 * size.width * size.height) / maxBytes);
+    const minZoom = Math.max(0.01, minZoomByGrid);
+    const clamped = Math.max(minZoom, Math.min(zoom, 5));
+    this.zoom = clamped;
     if (this.system) {
       this.system.updateGridFromRenderer();
     }

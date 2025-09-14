@@ -130,6 +130,7 @@ export function useWebGPUPlayground(
       const currentTargetZoom = zoomState.isAnimating
         ? zoomState.targetZoom
         : renderer.getZoom?.() || 1;
+      // Clamp target zoom to renderer's min/max (renderer will further clamp)
       const newTargetZoom = Math.max(
         0.1,
         Math.min(2, currentTargetZoom + zoomDirection)
