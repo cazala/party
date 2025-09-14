@@ -66,22 +66,6 @@ export function useWebGPUPlayground(
       // Animation complete - set exact target values
       renderer.setZoom?.(zoomState.targetZoom);
       renderer.setCamera?.(zoomState.targetCameraX, zoomState.targetCameraY);
-      if ("setCamera" in boundary) {
-        (boundary as any).setCamera(
-          zoomState.targetCameraX,
-          zoomState.targetCameraY,
-          zoomState.targetZoom
-        );
-      }
-
-      // Update system camera for frustum culling if method exists
-      if ("updateCamera" in system) {
-        (system as any).updateCamera(
-          zoomState.targetCameraX,
-          zoomState.targetCameraY,
-          zoomState.targetZoom
-        );
-      }
 
       zoomState.isAnimating = false;
       if (zoomState.animationId) {
@@ -98,14 +82,6 @@ export function useWebGPUPlayground(
 
     renderer.setZoom?.(newZoom);
     renderer.setCamera?.(newCameraX, newCameraY);
-    if ("setCamera" in boundary) {
-      (boundary as any).setCamera(newCameraX, newCameraY, newZoom);
-    }
-
-    // Update system camera for frustum culling if method exists
-    if ("updateCamera" in system) {
-      (system as any).updateCamera(newCameraX, newCameraY, newZoom);
-    }
 
     // Continue animation
     zoomState.animationId = requestAnimationFrame(animateZoom);
@@ -403,6 +379,10 @@ export function useWebGPUPlayground(
       const size = particleSize || 5;
       const mass = particleMass || 1;
 
+      const cam = rendererRef.current.getCamera
+        ? rendererRef.current.getCamera()
+        : { x: 0, y: 0 };
+
       if (shape === "grid") {
         const cols = Math.ceil(Math.sqrt(numParticles));
         const rows = Math.ceil(numParticles / cols);
@@ -413,8 +393,8 @@ export function useWebGPUPlayground(
           const col = i % cols;
           const row = Math.floor(i / cols);
           particles.push({
-            x: offsetX + col * spacing,
-            y: offsetY + row * spacing,
+            x: cam.x + offsetX + col * spacing,
+            y: cam.y + offsetY + row * spacing,
             vx: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
             vy: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
             size,
@@ -425,8 +405,8 @@ export function useWebGPUPlayground(
         const bounds = 400; // Random area size
         for (let i = 0; i < numParticles; i++) {
           particles.push({
-            x: (Math.random() - 0.5) * bounds,
-            y: (Math.random() - 0.5) * bounds,
+            x: cam.x + (Math.random() - 0.5) * bounds,
+            y: cam.y + (Math.random() - 0.5) * bounds,
             vx: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
             vy: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
             size,
@@ -438,8 +418,8 @@ export function useWebGPUPlayground(
         for (let i = 0; i < numParticles; i++) {
           const angle = (i / numParticles) * Math.PI * 2;
           particles.push({
-            x: Math.cos(angle) * r,
-            y: Math.sin(angle) * r,
+            x: cam.x + Math.cos(angle) * r,
+            y: cam.y + Math.sin(angle) * r,
             vx: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
             vy: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
             size,

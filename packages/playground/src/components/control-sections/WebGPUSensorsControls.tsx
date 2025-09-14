@@ -214,7 +214,7 @@ export function WebGPUSensorsControls({
           <input
             type="range"
             min="0.01"
-            max="0.1"
+            max="0.2"
             step="0.01"
             value={trailDecay}
             disabled={!enabled || !trailEnabled}
