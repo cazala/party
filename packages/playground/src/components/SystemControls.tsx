@@ -62,7 +62,6 @@ interface SystemControlsProps {
     cornerRadius?: number,
     particleMass?: number
   ) => void;
-  onGravityStrengthChange?: (strength: number) => void;
   onGetInitConfig?: () => {
     numParticles: number;
     shape: "grid" | "random" | "circle" | "donut" | "square";
@@ -99,7 +98,6 @@ export const SystemControls = forwardRef<
       spatialGrid,
       interaction,
       onInitParticles,
-      onGravityStrengthChange,
       onGetInitConfig,
       onSpawnConfigChange,
       onEmitterConfigChange,

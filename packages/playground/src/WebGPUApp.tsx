@@ -90,10 +90,10 @@ function WebGPUApp() {
       handleZoom(e.deltaY, centerX, centerY);
     };
 
-    canvas.addEventListener('wheel', onWheel);
+    canvas.addEventListener("wheel", onWheel, { passive: false });
 
     return () => {
-      canvas.removeEventListener('wheel', onWheel);
+      canvas.removeEventListener("wheel", onWheel);
     };
   }, [handleZoom]);
 
@@ -208,18 +208,6 @@ function WebGPUApp() {
                 : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH
             }
             height={isFullscreen ? size.height : size.height - TOPBAR_HEIGHT}
-            onWheel={(e) => {
-              if (!handleZoom) return;
-              
-              e.preventDefault();
-              
-              // Get canvas bounds for coordinate calculation
-              const rect = e.currentTarget.getBoundingClientRect();
-              const centerX = e.clientX - rect.left - rect.width / 2;
-              const centerY = e.clientY - rect.top - rect.height / 2;
-              
-              handleZoom(e.deltaY, centerX, centerY);
-            }}
           />
         </div>
         <div
