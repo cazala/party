@@ -3,6 +3,7 @@ import {
   WebGPURenderer,
   WebGPUParticleSystem,
   simulationModule,
+  WebGPUSpawner,
 } from "@cazala/party";
 import { Environment } from "@cazala/party/modules/webgpu/shaders/modules/environment";
 import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary";
@@ -374,62 +375,37 @@ export function useWebGPUPlayground(
       // Clear existing particles
       rendererRef.current.clearParticles();
 
-      // Generate particles based on shape
-      const particles = [];
-      const size = particleSize || 5;
-      const mass = particleMass || 1;
+      // Generate particles using WebGPUSpawner (camera-centered)
+      const spawner = new WebGPUSpawner();
 
       const cam = rendererRef.current.getCamera
         ? rendererRef.current.getCamera()
         : { x: 0, y: 0 };
+      const spawn = spawner.initParticles({
+        count: numParticles,
+        shape,
+        center: cam,
+        spacing,
+        radius: radius || 100,
+        innerRadius: _innerRadius || 50,
+        squareSize: _squareSize || 200,
+        cornerRadius: _cornerRadius || 0,
+        size: particleSize || 5,
+        mass: particleMass || 1,
+        bounds: { width: 400, height: 400 },
+        velocity: velocityConfig
+          ? {
+              speed: velocityConfig.speed,
+              direction: velocityConfig.direction,
+              angle:
+                velocityConfig.direction === "custom"
+                  ? (velocityConfig.angle * Math.PI) / 180
+                  : undefined,
+            }
+          : undefined,
+      });
 
-      if (shape === "grid") {
-        const cols = Math.ceil(Math.sqrt(numParticles));
-        const rows = Math.ceil(numParticles / cols);
-        const offsetX = (-(cols - 1) * spacing) / 2;
-        const offsetY = (-(rows - 1) * spacing) / 2;
-
-        for (let i = 0; i < numParticles; i++) {
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-          particles.push({
-            x: cam.x + offsetX + col * spacing,
-            y: cam.y + offsetY + row * spacing,
-            vx: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
-            vy: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
-            size,
-            mass,
-          });
-        }
-      } else if (shape === "random") {
-        const bounds = 400; // Random area size
-        for (let i = 0; i < numParticles; i++) {
-          particles.push({
-            x: cam.x + (Math.random() - 0.5) * bounds,
-            y: cam.y + (Math.random() - 0.5) * bounds,
-            vx: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
-            vy: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
-            size,
-            mass,
-          });
-        }
-      } else if (shape === "circle") {
-        const r = radius || 100;
-        for (let i = 0; i < numParticles; i++) {
-          const angle = (i / numParticles) * Math.PI * 2;
-          particles.push({
-            x: cam.x + Math.cos(angle) * r,
-            y: cam.y + Math.sin(angle) * r,
-            vx: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
-            vy: (Math.random() - 0.5) * (velocityConfig?.speed || 0),
-            size,
-            mass,
-          });
-        }
-      }
-      // Add other shapes as needed
-
-      rendererRef.current.spawnParticles(particles);
+      rendererRef.current.spawnParticles(spawn);
     },
     [isInitialized]
   );

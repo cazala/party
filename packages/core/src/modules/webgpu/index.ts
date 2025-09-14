@@ -6,6 +6,13 @@ export {
 } from "./WebGPUParticleSystem";
 export { WebGPURenderer } from "./WebGPURenderer";
 export {
+  WebGPUSpawner,
+  type WebGPUSpawnOptions,
+  type WebGPUVelocityConfig,
+  type WebGPUVelocityDirection,
+  type WebGPUSpawnedParticle,
+} from "./WebGPUSpawner";
+export {
   simulationModule,
   Environment as WebGPUEnvironment,
   Boundary as WebGPUBoundary,

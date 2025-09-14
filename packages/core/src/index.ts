@@ -83,3 +83,10 @@ export {
   WebGPUCollisions,
   defaultComputeModules,
 } from "./modules/webgpu";
+export {
+  WebGPUSpawner,
+  type WebGPUSpawnOptions,
+  type WebGPUVelocityConfig,
+  type WebGPUVelocityDirection,
+  type WebGPUSpawnedParticle,
+} from "./modules/webgpu";
