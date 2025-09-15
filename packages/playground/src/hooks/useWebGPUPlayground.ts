@@ -381,6 +381,16 @@ export function useWebGPUPlayground(
       const cam = rendererRef.current.getCamera
         ? rendererRef.current.getCamera()
         : { x: 0, y: 0 };
+      // Compute world-space bounds matching the current viewport (fill screen)
+      const size = rendererRef.current.getSize
+        ? rendererRef.current.getSize()
+        : { width: 800, height: 600 };
+      const zoom = rendererRef.current.getZoom
+        ? rendererRef.current.getZoom()
+        : 1;
+      const worldWidth = size.width / Math.max(zoom, 0.0001);
+      const worldHeight = size.height / Math.max(zoom, 0.0001);
+
       const spawn = spawner.initParticles({
         count: numParticles,
         shape,
@@ -392,7 +402,7 @@ export function useWebGPUPlayground(
         cornerRadius: _cornerRadius || 0,
         size: particleSize || 5,
         mass: particleMass || 1,
-        bounds: { width: 400, height: 400 },
+        bounds: { width: worldWidth, height: worldHeight },
         velocity: velocityConfig
           ? {
               speed: velocityConfig.speed,
