@@ -7,7 +7,8 @@ type FluidBindingKeys =
   | "viscosity"
   | "nearPressureMultiplier"
   | "nearThreshold"
-  | "enableNearPressure";
+  | "enableNearPressure"
+  | "maxAcceleration";
 
 type FluidStateKeys = "density" | "nearDensity";
 
@@ -23,6 +24,7 @@ export class Fluid extends ComputeModule<
   private nearPressureMultiplier: number;
   private nearThreshold: number;
   private enableNearPressure: boolean;
+  private maxAcceleration: number;
 
   constructor(opts?: {
     enabled?: boolean;
@@ -33,6 +35,7 @@ export class Fluid extends ComputeModule<
     nearPressureMultiplier?: number;
     nearThreshold?: number;
     enableNearPressure?: boolean;
+    maxAcceleration?: number;
   }) {
     super();
     this.influenceRadius = opts?.influenceRadius ?? 100;
@@ -42,6 +45,7 @@ export class Fluid extends ComputeModule<
     this.nearPressureMultiplier = opts?.nearPressureMultiplier ?? 30;
     this.nearThreshold = opts?.nearThreshold ?? 50;
     this.enableNearPressure = opts?.enableNearPressure ?? true;
+    this.maxAcceleration = opts?.maxAcceleration ?? 80; // cap fluid acceleration to reduce fly-away droplets
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
     }
@@ -59,6 +63,7 @@ export class Fluid extends ComputeModule<
       nearPressureMultiplier: this.nearPressureMultiplier,
       nearThreshold: this.nearThreshold,
       enableNearPressure: this.enableNearPressure ? 1 : 0,
+      maxAcceleration: this.maxAcceleration,
     });
   }
 
@@ -91,6 +96,11 @@ export class Fluid extends ComputeModule<
     this.write({ enableNearPressure: enabled ? 1 : 0 });
   }
 
+  setMaxAcceleration(v: number): void {
+    this.maxAcceleration = v;
+    this.write({ maxAcceleration: v });
+  }
+
   descriptor(): ComputeModuleDescriptor<
     "fluid",
     FluidBindingKeys,
@@ -108,6 +118,7 @@ export class Fluid extends ComputeModule<
         "nearPressureMultiplier",
         "nearThreshold",
         "enableNearPressure",
+        "maxAcceleration",
       ] as const,
       // State pass: precompute density and near-density per particle
       state: ({ particleVar, dtVar, getUniform, setState }) => `{
@@ -230,8 +241,8 @@ export class Fluid extends ComputeModule<
     force = force + (viscosityForce * 1000.0) / myDensity;
   }
 
-  // Clamp force magnitude to avoid instabilities
-  let maxLen = 100.0;
+  // Clamp force magnitude to avoid instabilities (tunable)
+  let maxLen = ${getUniform("maxAcceleration")};
   let f2 = dot(force, force);
   if (f2 > maxLen * maxLen) {
     let fLen = sqrt(f2);

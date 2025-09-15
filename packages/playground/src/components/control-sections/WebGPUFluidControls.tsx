@@ -9,6 +9,7 @@ interface WebGPUFluidLike {
   setNearPressureMultiplier: (v: number) => void;
   setNearThreshold: (v: number) => void;
   setEnableNearPressure: (enabled: boolean) => void;
+  setMaxAcceleration?: (v: number) => void;
 }
 
 export function WebGPUFluidControls({
@@ -28,6 +29,7 @@ export function WebGPUFluidControls({
   const [nearPressureMultiplier, setNearPressureMultiplier] = useState(30);
   const [nearThreshold, setNearThreshold] = useState(50);
   const [enableNearPressure, setEnableNearPressure] = useState(true);
+  const [maxAcceleration, setMaxAcceleration] = useState(80);
 
   useEffect(() => {
     // Could hydrate current values if the module exposed getters. For now, keep UI state local.
@@ -65,6 +67,26 @@ export function WebGPUFluidControls({
               const v = parseFloat(e.target.value);
               setInfluenceRadius(v);
               fluid?.setInfluenceRadius(v);
+            }}
+            className={`slider ${!enabled ? "disabled" : ""}`}
+          />
+        </label>
+      </div>
+
+      <div className="control-group">
+        <label>
+          Max Accel: {maxAcceleration.toFixed(0)}
+          <input
+            type="range"
+            min="10"
+            max="500"
+            step="1"
+            value={maxAcceleration}
+            disabled={!enabled}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              setMaxAcceleration(v);
+              fluid?.setMaxAcceleration?.(v);
             }}
             className={`slider ${!enabled ? "disabled" : ""}`}
           />
