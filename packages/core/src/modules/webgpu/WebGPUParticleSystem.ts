@@ -1184,11 +1184,6 @@ export class WebGPUParticleSystem {
       enableTrails,
     });
 
-    // If trails are disabled, ensure trail textures are cleared so sensors do not react to stale trails
-    if (enableTrails <= 0.0) {
-      this.clearTrails();
-    }
-
     // Create command encoder for rendering
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1371,7 +1366,44 @@ export class WebGPUParticleSystem {
       // Swap textures after particle rendering
       this.swapTrailTextures();
     } else {
-      // Render directly to canvas
+      // Trails disabled: draw current particles into the trail texture (no persistence)
+      // so sensors can still sample from trail_texture, then render particles to canvas.
+
+      // Create a bind group similar to trails-enabled path (texture sample not used in shader)
+      const trailReadTexture =
+        this.currentTrailTexture === "A"
+          ? this.trailTextureViewB!
+          : this.trailTextureViewA!;
+      const trailRenderBindGroup = this.device.createBindGroup({
+        layout: this.renderBindGroupLayout!,
+        entries: [
+          { binding: 0, resource: { buffer: this.particleBuffer! } },
+          { binding: 1, resource: { buffer: this.renderUniformBuffer! } },
+          { binding: 2, resource: trailReadTexture },
+          { binding: 3, resource: this.trailSampler! },
+        ],
+      });
+
+      // Clear the current trail texture and render particles (single frame, no accumulation)
+      const trailRenderPass = commandEncoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: this.getCurrentTrailTextureView(),
+            clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
+            loadOp: "clear",
+            storeOp: "store",
+          },
+        ],
+      });
+      trailRenderPass.setPipeline(this.trailRenderPipeline!);
+      trailRenderPass.setBindGroup(0, trailRenderBindGroup);
+      trailRenderPass.draw(4, this.particleCount);
+      trailRenderPass.end();
+
+      // Swap textures for consistency with sensors sampling order
+      this.swapTrailTextures();
+
+      // Render particles directly to canvas
       const canvasRenderPass = commandEncoder.beginRenderPass({
         colorAttachments: [
           {
@@ -1382,7 +1414,6 @@ export class WebGPUParticleSystem {
           },
         ],
       });
-
       canvasRenderPass.setPipeline(this.renderPipeline);
       canvasRenderPass.setBindGroup(0, this.renderBindGroup);
       canvasRenderPass.draw(4, this.particleCount);
