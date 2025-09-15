@@ -54,15 +54,6 @@ struct BlurUniforms {
 @group(0) @binding(1) var output_texture: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(2) var<uniform> blur_uniforms: BlurUniforms;
 
-// Gaussian blur kernel weights (5x5)
-const blur_weights = array<f32, 25>(
-  1.0/256.0,  4.0/256.0,  6.0/256.0,  4.0/256.0, 1.0/256.0,
-  4.0/256.0, 16.0/256.0, 24.0/256.0, 16.0/256.0, 4.0/256.0,
-  6.0/256.0, 24.0/256.0, 36.0/256.0, 24.0/256.0, 6.0/256.0,
-  4.0/256.0, 16.0/256.0, 24.0/256.0, 16.0/256.0, 4.0/256.0,
-  1.0/256.0,  4.0/256.0,  6.0/256.0,  4.0/256.0, 1.0/256.0
-);
-
 @compute @workgroup_size(8, 8)
 fn trail_blur(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let coords = vec2<i32>(i32(global_id.x), i32(global_id.y));
@@ -72,34 +63,42 @@ fn trail_blur(@builtin(global_invocation_id) global_id: vec3<u32>) {
     return;
   }
   
-  var blurred_color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
-  let radius = i32(blur_uniforms.blur_radius);
-  
-  // Apply 5x5 Gaussian blur if radius > 0
-  if (radius > 0) {
-    var weight_index = 0;
-    for (var dy = -2; dy <= 2; dy++) {
-      for (var dx = -2; dx <= 2; dx++) {
-        let sample_coords = coords + vec2<i32>(dx, dy);
-        
-        // Clamp to texture bounds
-        let clamped_coords = clamp(
-          sample_coords, 
-          vec2<i32>(0, 0), 
-          vec2<i32>(i32(dimensions.x) - 1, i32(dimensions.y) - 1)
-        );
-        
-        let sample_color = textureLoad(input_texture, clamped_coords, 0);
-        blurred_color += sample_color * blur_weights[weight_index];
-        weight_index++;
-      }
-    }
-  } else {
+  let radius_i = clamp(i32(round(blur_uniforms.blur_radius)), 0, 12);
+  if (radius_i <= 0) {
     // No blur, just copy the pixel
-    blurred_color = textureLoad(input_texture, coords, 0);
+    let c = textureLoad(input_texture, coords, 0);
+    textureStore(output_texture, coords, c);
+    return;
   }
-  
-  // No snapping: write blurred result directly
-  textureStore(output_texture, coords, blurred_color);
+
+  // Variable-radius Gaussian blur. Sigma derived from radius.
+  let sigma = max(0.5, f32(radius_i) * 0.5);
+  let twoSigma2 = 2.0 * sigma * sigma;
+
+  var sum = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+  var wsum: f32 = 0.0;
+  for (var dy = -radius_i; dy <= radius_i; dy++) {
+    for (var dx = -radius_i; dx <= radius_i; dx++) {
+      let d2 = f32(dx*dx + dy*dy);
+      let w = exp(-d2 / twoSigma2);
+      if (w < 1e-5) { continue; }
+
+      let sample_coords = coords + vec2<i32>(dx, dy);
+      let clamped_coords = clamp(
+        sample_coords,
+        vec2<i32>(0, 0),
+        vec2<i32>(i32(dimensions.x) - 1, i32(dimensions.y) - 1)
+      );
+      let c = textureLoad(input_texture, clamped_coords, 0);
+      sum += c * w;
+      wsum += w;
+    }
+  }
+
+  if (wsum > 0.0) {
+    textureStore(output_texture, coords, sum / vec4<f32>(wsum));
+  } else {
+    textureStore(output_texture, coords, textureLoad(input_texture, coords, 0));
+  }
 }
 `;
