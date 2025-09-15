@@ -38,6 +38,7 @@ function WebGPUApp() {
     fluid,
     behavior,
     sensors,
+    trails,
     play,
     pause,
     clear,
@@ -221,6 +222,7 @@ function WebGPUApp() {
             fluid={fluid}
             behavior={behavior}
             sensors={sensors}
+            trails={trails}
           />
         </div>
       </div>

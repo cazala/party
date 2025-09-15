@@ -1,38 +1,25 @@
 import { useEffect, useState } from "react";
 
-export type SensorBehavior = "any" | "same" | "different" | "none";
-
 interface WebGPUSensorsLike {
-  setEnableTrail: (v: boolean) => void;
-  setTrailDecay: (v: number) => void;
-  setTrailDiffuse: (v: number) => void;
-  setEnableSensors: (v: boolean) => void;
+  setEnabled?: (v: boolean) => void;
   setSensorDistance: (v: number) => void;
   setSensorAngle: (v: number) => void;
   setSensorRadius: (v: number) => void;
   setSensorThreshold: (v: number) => void;
   setSensorStrength: (v: number) => void;
-  setColorSimilarityThreshold: (v: number) => void;
-  setFollowBehavior: (v: SensorBehavior) => void;
-  setFleeBehavior: (v: SensorBehavior) => void;
-  setFleeAngle: (v: number) => void;
-  setEnabled?: (v: boolean) => void;
+  setColorSimilarityThreshold?: (v: number) => void;
+  setFollowBehavior?: (v: string) => void;
+  setFleeBehavior?: (v: string) => void;
+  setFleeAngle?: (v: number) => void;
 }
 
 // Default constants matching the WebGPU sensors implementation
-const DEFAULT_TRAIL_ENABLED = false;
-const DEFAULT_TRAIL_DECAY = 0.01;
-const DEFAULT_TRAIL_DIFFUSE = 1;
-const DEFAULT_SENSORS_ENABLED = false;
 const DEFAULT_SENSOR_DISTANCE = 30;
 const DEFAULT_SENSOR_ANGLE = Math.PI / 6; // 30 degrees in radians
 const DEFAULT_SENSOR_RADIUS = 3;
 const DEFAULT_SENSOR_THRESHOLD = 0.1;
 const DEFAULT_SENSOR_STRENGTH = 1000;
-const DEFAULT_COLOR_SIMILARITY_THRESHOLD = 0.4;
-const DEFAULT_FOLLOW_BEHAVIOR: SensorBehavior = "any";
-const DEFAULT_FLEE_BEHAVIOR: SensorBehavior = "none";
-const DEFAULT_FLEE_ANGLE = Math.PI / 2; // 90 degrees in radians
+// removed behavior/color controls
 
 // Helper functions
 const radToDeg = (rad: number): number => (rad * 180) / Math.PI;
@@ -49,13 +36,8 @@ export function WebGPUSensorsControls({
 }) {
   const [internalEnabled, setInternalEnabled] = useState(true);
 
-  // Trail state
-  const [trailEnabled, setTrailEnabled] = useState(DEFAULT_TRAIL_ENABLED);
-  const [trailDecay, setTrailDecay] = useState(DEFAULT_TRAIL_DECAY);
-  const [trailDiffuse, setTrailDiffuse] = useState(DEFAULT_TRAIL_DIFFUSE);
-
   // Sensor state
-  const [sensorsEnabled, setSensorsEnabled] = useState(DEFAULT_SENSORS_ENABLED);
+  // Using only the top-level Enabled
   const [sensorDistance, setSensorDistance] = useState(DEFAULT_SENSOR_DISTANCE);
   const [sensorAngle, setSensorAngle] = useState(
     radToDeg(DEFAULT_SENSOR_ANGLE)
@@ -65,18 +47,6 @@ export function WebGPUSensorsControls({
     DEFAULT_SENSOR_THRESHOLD
   );
   const [sensorStrength, setSensorStrength] = useState(DEFAULT_SENSOR_STRENGTH);
-  const [colorSimilarityThreshold, setColorSimilarityThreshold] = useState(
-    DEFAULT_COLOR_SIMILARITY_THRESHOLD
-  );
-  const [fleeAngle, setFleeAngle] = useState(radToDeg(DEFAULT_FLEE_ANGLE));
-
-  // Behavior state
-  const [followBehavior, setFollowBehavior] = useState<SensorBehavior>(
-    DEFAULT_FOLLOW_BEHAVIOR
-  );
-  const [fleeBehavior, setFleeBehavior] = useState<SensorBehavior>(
-    DEFAULT_FLEE_BEHAVIOR
-  );
 
   // Particle color control removed; particle color is inherent per particle
 
@@ -84,35 +54,16 @@ export function WebGPUSensorsControls({
     // Could hydrate from module if getters existed
   }, [sensors]);
 
-  useEffect(() => {
-    if (!trailEnabled && sensorsEnabled) {
-      handleSensorsChange("enableSensors", false);
-    }
-  }, [trailEnabled, sensorsEnabled]);
+  // no dependency between trails and sensors now
 
   const handleSensorsChange = (
     property: string,
-    value: number | boolean | SensorBehavior | string
+    value: number | boolean | string
   ) => {
     if (!sensors || !enabled) return;
 
     switch (property) {
-      case "enableTrail":
-        setTrailEnabled(value as boolean);
-        sensors.setEnableTrail(value as boolean);
-        break;
-      case "trailDecay":
-        setTrailDecay(value as number);
-        sensors.setTrailDecay(value as number);
-        break;
-      case "trailDiffuse":
-        setTrailDiffuse(value as number);
-        sensors.setTrailDiffuse(value as number);
-        break;
-      case "enableSensors":
-        setSensorsEnabled(value as boolean);
-        sensors.setEnableSensors(value as boolean);
-        break;
+      // no inner enable toggle
       case "sensorDistance":
         setSensorDistance(value as number);
         sensors.setSensorDistance(value as number);
@@ -134,40 +85,30 @@ export function WebGPUSensorsControls({
         sensors.setSensorStrength(value as number);
         break;
       case "colorSimilarityThreshold":
-        setColorSimilarityThreshold(value as number);
-        sensors.setColorSimilarityThreshold(value as number);
-        break;
-      case "fleeAngle":
-        setFleeAngle(value as number); // Store degrees in UI state
-        sensors.setFleeAngle(degToRad(value as number)); // Convert to radians for core library
+        sensors.setColorSimilarityThreshold?.(value as number);
         break;
       case "followBehavior":
-        setFollowBehavior(value as SensorBehavior);
-        sensors.setFollowBehavior(value as SensorBehavior);
+        sensors.setFollowBehavior?.(value as string);
         break;
       case "fleeBehavior":
-        setFleeBehavior(value as SensorBehavior);
-        sensors.setFleeBehavior(value as SensorBehavior);
+        sensors.setFleeBehavior?.(value as string);
+        break;
+      case "fleeAngle":
+        sensors.setFleeAngle?.(degToRad(value as number));
         break;
       // No particleColor case; color sampling happens in shader
     }
   };
 
-  const behaviorOptions: SensorBehavior[] = [
-    "none",
-    "any",
-    "same",
-    "different",
-  ];
-
-  // Helper functions for conditional visibility
+  // Visibility helpers for conditional controls
+  const [followValue, setFollowValue] = useState<string>("any");
+  const [fleeValue, setFleeValue] = useState<string>("none");
   const showColorSimilarity =
-    followBehavior === "same" ||
-    followBehavior === "different" ||
-    fleeBehavior === "same" ||
-    fleeBehavior === "different";
-  const showFleeAngle = fleeBehavior !== "none";
-  // Particle color control removed
+    followValue === "same" ||
+    followValue === "different" ||
+    fleeValue === "same" ||
+    fleeValue === "different";
+  const showFleeAngle = fleeValue !== "none";
 
   return (
     <div className="control-section">
@@ -187,73 +128,7 @@ export function WebGPUSensorsControls({
         </div>
       )}
 
-      {/* Trail Section */}
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={trailEnabled}
-            disabled={!enabled}
-            onChange={(e) =>
-              handleSensorsChange("enableTrail", e.target.checked)
-            }
-            className="checkbox"
-          />
-          Enable Trail
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Trail Decay: {trailDecay.toFixed(2)}
-          <input
-            type="range"
-            min="0.01"
-            max="0.2"
-            step="0.01"
-            value={trailDecay}
-            disabled={!enabled || !trailEnabled}
-            onChange={(e) =>
-              handleSensorsChange("trailDecay", parseFloat(e.target.value))
-            }
-            className={`slider ${!enabled || !trailEnabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Trail Diffuse: {trailDiffuse}px
-          <input
-            type="range"
-            min="0"
-            max="5"
-            step="1"
-            value={trailDiffuse}
-            disabled={!enabled || !trailEnabled}
-            onChange={(e) =>
-              handleSensorsChange("trailDiffuse", parseFloat(e.target.value))
-            }
-            className={`slider ${!enabled || !trailEnabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      {/* Sensors Section */}
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={sensorsEnabled}
-            disabled={!enabled || !trailEnabled}
-            onChange={(e) =>
-              handleSensorsChange("enableSensors", e.target.checked)
-            }
-            className="checkbox"
-          />
-          Enable Sensors
-        </label>
-      </div>
+      {/* No inner Enabled checkbox; only top-level */}
 
       <div className="control-group">
         <label>
@@ -264,13 +139,11 @@ export function WebGPUSensorsControls({
             max="100"
             step="1"
             value={sensorDistance}
-            disabled={!enabled || !sensorsEnabled}
+            disabled={!enabled}
             onChange={(e) =>
               handleSensorsChange("sensorDistance", parseFloat(e.target.value))
             }
-            className={`slider ${
-              !enabled || !sensorsEnabled ? "disabled" : ""
-            }`}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -284,13 +157,11 @@ export function WebGPUSensorsControls({
             max="90"
             step="1"
             value={sensorAngle}
-            disabled={!enabled || !sensorsEnabled}
+            disabled={!enabled}
             onChange={(e) =>
               handleSensorsChange("sensorAngle", parseFloat(e.target.value))
             }
-            className={`slider ${
-              !enabled || !sensorsEnabled ? "disabled" : ""
-            }`}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -304,13 +175,11 @@ export function WebGPUSensorsControls({
             max="20"
             step="1"
             value={sensorRadius}
-            disabled={!enabled || !sensorsEnabled}
+            disabled={!enabled}
             onChange={(e) =>
               handleSensorsChange("sensorRadius", parseFloat(e.target.value))
             }
-            className={`slider ${
-              !enabled || !sensorsEnabled ? "disabled" : ""
-            }`}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -324,13 +193,11 @@ export function WebGPUSensorsControls({
             max="1"
             step="0.01"
             value={sensorThreshold}
-            disabled={!enabled || !sensorsEnabled}
+            disabled={!enabled}
             onChange={(e) =>
               handleSensorsChange("sensorThreshold", parseFloat(e.target.value))
             }
-            className={`slider ${
-              !enabled || !sensorsEnabled ? "disabled" : ""
-            }`}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
@@ -344,39 +211,32 @@ export function WebGPUSensorsControls({
             max="5000"
             step="10"
             value={sensorStrength}
-            disabled={!enabled || !sensorsEnabled}
+            disabled={!enabled}
             onChange={(e) =>
               handleSensorsChange("sensorStrength", parseFloat(e.target.value))
             }
-            className={`slider ${
-              !enabled || !sensorsEnabled ? "disabled" : ""
-            }`}
+            className={`slider ${!enabled ? "disabled" : ""}`}
           />
         </label>
       </div>
 
-      {/* Behavior Controls */}
+      {/* Behavior controls (same/different) */}
       <div className="control-group">
         <label>
           Follow:
           <select
-            value={followBehavior}
-            disabled={!enabled || !sensorsEnabled}
-            onChange={(e) =>
-              handleSensorsChange(
-                "followBehavior",
-                e.target.value as SensorBehavior
-              )
-            }
-            className={`form-select ${
-              !enabled || !sensorsEnabled ? "disabled" : ""
-            }`}
+            disabled={!enabled}
+            value={followValue}
+            onChange={(e) => {
+              setFollowValue(e.target.value);
+              handleSensorsChange("followBehavior", e.target.value);
+            }}
+            className={`form-select ${!enabled ? "disabled" : ""}`}
           >
-            {behaviorOptions.map((option) => (
-              <option key={option} value={option}>
-                {option.charAt(0).toUpperCase() + option.slice(1)}
-              </option>
-            ))}
+            <option value="none">None</option>
+            <option value="any">Any</option>
+            <option value="same">Same</option>
+            <option value="different">Different</option>
           </select>
         </label>
       </div>
@@ -385,72 +245,58 @@ export function WebGPUSensorsControls({
         <label>
           Flee:
           <select
-            value={fleeBehavior}
-            disabled={!enabled || !sensorsEnabled}
-            onChange={(e) =>
-              handleSensorsChange(
-                "fleeBehavior",
-                e.target.value as SensorBehavior
-              )
-            }
-            className={`form-select ${
-              !enabled || !sensorsEnabled ? "disabled" : ""
-            }`}
+            disabled={!enabled}
+            value={fleeValue}
+            onChange={(e) => {
+              setFleeValue(e.target.value);
+              handleSensorsChange("fleeBehavior", e.target.value);
+            }}
+            className={`form-select ${!enabled ? "disabled" : ""}`}
           >
-            {behaviorOptions.map((option) => (
-              <option key={option} value={option}>
-                {option.charAt(0).toUpperCase() + option.slice(1)}
-              </option>
-            ))}
+            <option value="none">None</option>
+            <option value="any">Any</option>
+            <option value="same">Same</option>
+            <option value="different">Different</option>
           </select>
         </label>
       </div>
 
-      {/* Conditional Controls */}
       {showColorSimilarity && (
         <div className="control-group">
           <label>
-            Color Similarity: {colorSimilarityThreshold.toFixed(2)}
+            Color Similarity:
             <input
               type="range"
               min="0"
               max="1"
               step="0.01"
-              value={colorSimilarityThreshold}
-              disabled={!enabled || !sensorsEnabled}
+              disabled={!enabled}
               onChange={(e) =>
                 handleSensorsChange(
                   "colorSimilarityThreshold",
                   parseFloat(e.target.value)
                 )
               }
-              className={`slider ${
-                !enabled || !sensorsEnabled ? "disabled" : ""
-              }`}
+              className={`slider ${!enabled ? "disabled" : ""}`}
             />
           </label>
         </div>
       )}
 
-      {/* Particle Color control removed */}
-
       {showFleeAngle && (
         <div className="control-group">
           <label>
-            Flee Angle: {Math.round(fleeAngle)}°
+            Flee Angle:
             <input
               type="range"
               min="0"
               max="180"
               step="1"
-              value={fleeAngle}
-              disabled={!enabled || !sensorsEnabled}
+              disabled={!enabled}
               onChange={(e) =>
                 handleSensorsChange("fleeAngle", parseFloat(e.target.value))
               }
-              className={`slider ${
-                !enabled || !sensorsEnabled ? "disabled" : ""
-              }`}
+              className={`slider ${!enabled ? "disabled" : ""}`}
             />
           </label>
         </div>

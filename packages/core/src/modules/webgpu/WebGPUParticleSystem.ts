@@ -1005,15 +1005,13 @@ export class WebGPUParticleSystem {
   private updateTrailUniforms(): void {
     if (!this.trailDecayUniformBuffer || !this.trailBlurUniformBuffer) return;
 
-    const sensorsModule = this.getModule("sensors");
-    const sensorsUniforms = sensorsModule
-      ? (sensorsModule as any).read?.()
-      : {};
+    const trailsModule = this.getModule("trails");
+    const trailsUniforms = trailsModule ? (trailsModule as any).read?.() : {};
 
     const size = this.renderer.getSize();
 
     // Update trail decay uniforms
-    const decayRate = sensorsUniforms.trailDecay || 0.1;
+    const decayRate = trailsUniforms.trailDecay || 0.1;
     const decayData = new Float32Array([
       size.width, // canvas_size.x
       size.height, // canvas_size.y
@@ -1033,7 +1031,7 @@ export class WebGPUParticleSystem {
     const blurData = new Float32Array([
       size.width, // canvas_size.x
       size.height, // canvas_size.y
-      sensorsUniforms.trailDiffuse || 0.0, // blur_radius
+      trailsUniforms.trailDiffuse || 0.0, // blur_radius
       0.0, // _padding
     ]);
     this.device.queue.writeBuffer(this.trailBlurUniformBuffer, 0, blurData);
@@ -1072,9 +1070,9 @@ export class WebGPUParticleSystem {
     decayPass.end();
 
     // Apply blur if diffuse > 0 (blur from current texture back to other texture)
-    const sensorsModule = this.getModule("sensors");
-    const trailDiffuse = sensorsModule
-      ? (sensorsModule as any).read?.().trailDiffuse || 0
+    const trailsModule = this.getModule("trails");
+    const trailDiffuse = trailsModule
+      ? (trailsModule as any).read?.().trailDiffuse || 0
       : 0;
 
     if (
@@ -1174,10 +1172,10 @@ export class WebGPUParticleSystem {
     )
       return;
 
-    // Check if sensors module has trails enabled
-    const sensorsModule = this.getModule("sensors");
+    // Check if trails module is enabled
+    const trailsModule = this.getModule("trails");
     const enableTrails =
-      sensorsModule && (sensorsModule as any).read?.().enableTrail ? 1.0 : 0.0;
+      trailsModule && (trailsModule as any).isEnabled?.() ? 1.0 : 0.0;
 
     this.updateRender({
       canvasSize,
@@ -1185,6 +1183,11 @@ export class WebGPUParticleSystem {
       zoom,
       enableTrails,
     });
+
+    // If trails are disabled, ensure trail textures are cleared so sensors do not react to stale trails
+    if (enableTrails <= 0.0) {
+      this.clearTrails();
+    }
 
     // Create command encoder for rendering
     const commandEncoder = this.device.createCommandEncoder();

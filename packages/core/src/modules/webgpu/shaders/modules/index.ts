@@ -5,8 +5,18 @@ import { Collisions } from "./collisions";
 import { Fluid } from "./fluid";
 import { Behavior } from "./behavior";
 import { Sensors } from "./sensors";
+import { Trails } from "./trails";
 
-export { simulationModule, Environment, Boundary, Collisions, Fluid, Behavior, Sensors };
+export {
+  simulationModule,
+  Environment,
+  Boundary,
+  Collisions,
+  Fluid,
+  Behavior,
+  Sensors,
+  Trails,
+};
 
 export const defaultComputeModules = [
   simulationModule,
@@ -15,5 +25,6 @@ export const defaultComputeModules = [
   new Collisions(),
   new Behavior(),
   new Fluid(),
+  new Trails(),
   new Sensors(),
 ];

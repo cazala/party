@@ -3,10 +3,6 @@ import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 export type SensorBehavior = "any" | "same" | "different" | "none";
 
 type SensorBindingKeys =
-  | "enableTrail"
-  | "trailDecay"
-  | "trailDiffuse"
-  | "enableSensors"
   | "sensorDistance"
   | "sensorAngle"
   | "sensorRadius"
@@ -19,31 +15,18 @@ type SensorBindingKeys =
   | "enabled";
 
 export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
-  // Trail configuration
-  private enableTrail: boolean;
-  private trailDecay: number;
-  private trailDiffuse: number;
-
-  // Sensor configuration
-  private enableSensors: boolean;
   private sensorDistance: number;
   private sensorAngle: number;
   private sensorRadius: number;
   private sensorThreshold: number;
   private sensorStrength: number;
   private colorSimilarityThreshold: number;
-
-  // Behavior configuration
   private followBehavior: SensorBehavior;
   private fleeBehavior: SensorBehavior;
   private fleeAngle: number;
 
   constructor(opts?: {
     enabled?: boolean;
-    enableTrail?: boolean;
-    trailDecay?: number;
-    trailDiffuse?: number;
-    enableSensors?: boolean;
     sensorDistance?: number;
     sensorAngle?: number;
     sensorRadius?: number;
@@ -56,21 +39,12 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
   }) {
     super();
 
-    // Trail configuration (defaults from original)
-    this.enableTrail = opts?.enableTrail ?? false;
-    this.trailDecay = opts?.trailDecay ?? 0.01; // Slower decay for visible trails
-    this.trailDiffuse = opts?.trailDiffuse ?? 0.5; // Less blur by default
-
-    // Sensor configuration (defaults from original)
-    this.enableSensors = opts?.enableSensors ?? false;
     this.sensorDistance = opts?.sensorDistance ?? 30;
     this.sensorAngle = opts?.sensorAngle ?? Math.PI / 6; // 30 degrees
     this.sensorRadius = opts?.sensorRadius ?? 3;
     this.sensorThreshold = opts?.sensorThreshold ?? 0.1;
     this.sensorStrength = opts?.sensorStrength ?? 1000;
     this.colorSimilarityThreshold = opts?.colorSimilarityThreshold ?? 0.4;
-
-    // Behavior configuration (defaults from original)
     this.followBehavior = opts?.followBehavior ?? "any";
     this.fleeBehavior = opts?.fleeBehavior ?? "none";
     this.fleeAngle = opts?.fleeAngle ?? Math.PI / 2; // 90 degrees
@@ -78,6 +52,24 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
     }
+  }
+
+  attachUniformWriter(
+    writer: (values: Partial<Record<string, number>>) => void
+  ): void {
+    super.attachUniformWriter(writer);
+    this.write({
+      sensorDistance: this.sensorDistance,
+      sensorAngle: this.sensorAngle,
+      sensorRadius: this.sensorRadius,
+      sensorThreshold: this.sensorThreshold,
+      sensorStrength: this.sensorStrength,
+      colorSimilarityThreshold: this.colorSimilarityThreshold,
+      followBehavior: this.behaviorToUniform(this.followBehavior),
+      fleeBehavior: this.behaviorToUniform(this.fleeBehavior),
+      fleeAngle: this.fleeAngle,
+      enabled: this.isEnabled() ? 1 : 0,
+    });
   }
 
   private behaviorToUniform(behavior: SensorBehavior): number {
@@ -93,50 +85,6 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
       default:
         return 3;
     }
-  }
-
-  attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
-  ): void {
-    super.attachUniformWriter(writer);
-    this.write({
-      enableTrail: this.enableTrail ? 1 : 0,
-      trailDecay: this.trailDecay,
-      trailDiffuse: this.trailDiffuse,
-      enableSensors: this.enableSensors ? 1 : 0,
-      sensorDistance: this.sensorDistance,
-      sensorAngle: this.sensorAngle,
-      sensorRadius: this.sensorRadius,
-      sensorThreshold: this.sensorThreshold,
-      sensorStrength: this.sensorStrength,
-      colorSimilarityThreshold: this.colorSimilarityThreshold,
-      followBehavior: this.behaviorToUniform(this.followBehavior),
-      fleeBehavior: this.behaviorToUniform(this.fleeBehavior),
-      fleeAngle: this.fleeAngle,
-      enabled: this.isEnabled() ? 1 : 0, // Preserve module enabled state
-    });
-  }
-
-  // Setters for trail configuration
-  setEnableTrail(value: boolean): void {
-    this.enableTrail = value;
-    this.write({ enableTrail: value ? 1 : 0 });
-  }
-
-  setTrailDecay(value: number): void {
-    this.trailDecay = value;
-    this.write({ trailDecay: value });
-  }
-
-  setTrailDiffuse(value: number): void {
-    this.trailDiffuse = value;
-    this.write({ trailDiffuse: value });
-  }
-
-  // Setters for sensor configuration
-  setEnableSensors(value: boolean): void {
-    this.enableSensors = value;
-    this.write({ enableSensors: value ? 1 : 0 });
   }
 
   setSensorDistance(value: number): void {
@@ -169,7 +117,6 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
     this.write({ colorSimilarityThreshold: value });
   }
 
-  // Setters for behavior configuration
   setFollowBehavior(behavior: SensorBehavior): void {
     this.followBehavior = behavior;
     this.write({ followBehavior: this.behaviorToUniform(behavior) });
@@ -190,10 +137,6 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
       name: "sensors",
       role: "force",
       bindings: [
-        "enableTrail",
-        "trailDecay",
-        "trailDiffuse",
-        "enableSensors",
         "sensorDistance",
         "sensorAngle",
         "sensorRadius",
@@ -205,7 +148,7 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
         "fleeAngle",
       ] as const,
       global: () => `// Sensor helper functions (defined at global scope)
-// Now sample from the trail texture bound to the compute pipeline
+// Sample from the trail texture bound to the compute pipeline
 
 fn world_to_uv(pos: vec2<f32>) -> vec2<f32> {
   // Transform world position into UV in [0,1] using grid uniforms
@@ -305,12 +248,11 @@ fn sensor_is_activated(
   } else { // "none" (behavior == 3.0)
     return false;
   }
-}`,
+}
+`,
       apply: ({ particleVar, getUniform }) => `
-// Early exit if module is disabled, sensors are disabled, or particle is pinned
-if (${getUniform("enabled")} == 0.0 || ${getUniform(
-        "enableSensors"
-      )} == 0.0 || ${particleVar}.mass == 0.0) {
+// Early exit if module is disabled or particle is pinned
+if (${getUniform("enabled")} == 0.0 || ${particleVar}.mass == 0.0) {
   return;
 }
 
@@ -359,7 +301,7 @@ let rightDir = vec2<f32>(
 );
 let rightSensorPos = ${particleVar}.position + rightDir * sensorDist;
 
-// Sample sensor data using spatial grid (simulate pixel/trail reading)
+// Sample sensor data from trail texture
 let leftIntensity = sensor_sample_intensity(leftSensorPos, sensorRadius, index);
 let rightIntensity = sensor_sample_intensity(rightSensorPos, sensorRadius, index);
 let leftColor = sensor_sample_color(leftSensorPos, sensorRadius, index);
@@ -423,7 +365,7 @@ if (fleeBehavior == 0.0) { // "any" (ignore color, compare intensities)
       rightDir.x * sinFleeRight + rightDir.y * cosFleeRight
     );
   }
-} // else "none" -> no flee force
+}
 
 // Combine and apply forces
 // Set velocity based on sensor decision (do not integrate acceleration)

@@ -4,6 +4,7 @@ import { WebGPUCollisionsControls } from "./control-sections/WebGPUCollisionsCon
 import { WebGPUFluidControls } from "./control-sections/WebGPUFluidControls";
 import { WebGPUBehaviorControls } from "./control-sections/WebGPUBehaviorControls";
 import { WebGPUSensorsControls } from "./control-sections/WebGPUSensorsControls";
+import { WebGPUTrailsControls } from "./control-sections/WebGPUTrailsControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useState } from "react";
 
@@ -52,20 +53,18 @@ interface WebGPUBehaviorLike {
 }
 
 interface WebGPUSensorsLike {
-  setEnableTrail: (v: boolean) => void;
-  setTrailDecay: (v: number) => void;
-  setTrailDiffuse: (v: number) => void;
-  setEnableSensors: (v: boolean) => void;
+  setEnabled?: (v: boolean) => void;
   setSensorDistance: (v: number) => void;
   setSensorAngle: (v: number) => void;
   setSensorRadius: (v: number) => void;
   setSensorThreshold: (v: number) => void;
   setSensorStrength: (v: number) => void;
-  setColorSimilarityThreshold: (v: number) => void;
-  setFollowBehavior: (v: any) => void;
-  setFleeBehavior: (v: any) => void;
-  setFleeAngle: (v: number) => void;
+}
+
+interface WebGPUTrailsLike {
   setEnabled?: (v: boolean) => void;
+  setTrailDecay: (v: number) => void;
+  setTrailDiffuse: (v: number) => void;
 }
 
 export function WebGPUForceControls({
@@ -75,6 +74,7 @@ export function WebGPUForceControls({
   fluid,
   behavior,
   sensors,
+  trails,
 }: {
   environment: WebGPUEnvironmentLike | null;
   boundary: WebGPUBoundaryLike | null;
@@ -82,6 +82,7 @@ export function WebGPUForceControls({
   fluid?: WebGPUFluidLike | null;
   behavior?: WebGPUBehaviorLike | null;
   sensors?: WebGPUSensorsLike | null;
+  trails?: WebGPUTrailsLike | null;
 }) {
   const [environmentEnabled, setEnvironmentEnabled] = useState(true);
   const [boundaryEnabled, setBoundaryEnabled] = useState(true);
@@ -89,6 +90,7 @@ export function WebGPUForceControls({
   const [fluidEnabled, setFluidEnabled] = useState(false);
   const [behaviorEnabled, setBehaviorEnabled] = useState(true);
   const [sensorsEnabled, setSensorsEnabled] = useState(false);
+  const [trailsEnabled, setTrailsEnabled] = useState(false);
 
   const createEnabledHeader = (
     enabled: boolean,
@@ -188,6 +190,19 @@ export function WebGPUForceControls({
             behavior={behavior}
             hideEnabled
             enabled={behaviorEnabled}
+          />
+        </CollapsibleSection>
+      )}
+
+      {trails && (
+        <CollapsibleSection title="Trails">
+          <div style={{ marginBottom: "12px" }}>
+            {createEnabledHeader(trailsEnabled, setTrailsEnabled, trails)}
+          </div>
+          <WebGPUTrailsControls
+            trails={trails}
+            hideEnabled
+            enabled={trailsEnabled}
           />
         </CollapsibleSection>
       )}

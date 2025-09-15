@@ -11,6 +11,7 @@ import { Collisions } from "@cazala/party/modules/webgpu/shaders/modules/collisi
 import { Fluid } from "@cazala/party/modules/webgpu/shaders/modules/fluid";
 import { Behavior as WebGPUBehavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior";
 import { Sensors } from "@cazala/party/modules/webgpu/shaders/modules/sensors";
+import { Trails } from "@cazala/party/modules/webgpu/shaders/modules/trails";
 import { ToolMode } from "./useToolMode";
 
 export function useWebGPUPlayground(
@@ -26,6 +27,7 @@ export function useWebGPUPlayground(
   const fluidRef = useRef<Fluid | null>(null);
   const behaviorRef = useRef<WebGPUBehavior | null>(null);
   const sensorsRef = useRef<Sensors | null>(null);
+  const trailsRef = useRef<Trails | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -253,11 +255,8 @@ export function useWebGPUPlayground(
           const collisions = new Collisions({ restitution: 0.8 });
           const fluid = new Fluid({ enabled: false });
           const behavior = new WebGPUBehavior({ enabled: true });
-          const sensors = new Sensors({
-            enabled: false,
-            enableTrail: false,
-            enableSensors: false,
-          });
+          const trails = new Trails({ enabled: false });
+          const sensors = new Sensors({ enabled: false });
           // Initialize simulation parameters
           const modules = [
             simulationModule,
@@ -266,6 +265,7 @@ export function useWebGPUPlayground(
             collisions,
             behavior,
             fluid,
+            trails,
             sensors,
           ];
           const system = new WebGPUParticleSystem(renderer, modules);
@@ -277,6 +277,7 @@ export function useWebGPUPlayground(
           fluidRef.current = fluid;
           behaviorRef.current = behavior;
           sensorsRef.current = sensors;
+          trailsRef.current = trails;
         } catch (sysErr) {
           console.error(
             "Failed to create/attach WebGPU particle system:",
@@ -508,6 +509,7 @@ export function useWebGPUPlayground(
     fluid: fluidRef.current,
     behavior: behaviorRef.current,
     sensors: sensorsRef.current,
+    trails: trailsRef.current,
     isInitialized,
     error,
     spawnParticles,
