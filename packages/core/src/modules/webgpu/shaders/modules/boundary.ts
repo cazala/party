@@ -7,7 +7,7 @@ type BoundaryBindingKeys =
   | "repelDistance"
   | "repelStrength";
 
-export type BoundaryMode = "bounce" | "warp" | "kill";
+export type BoundaryMode = "bounce" | "warp" | "kill" | "none";
 
 export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
   private restitution: number;
@@ -64,6 +64,8 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
         return 1;
       case "kill":
         return 2;
+      case "none":
+        return 3;
       default:
         return 0;
     }
@@ -121,6 +123,13 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
       if (distTop < 0.0) { fy += repelStrength; }
       if (distBottom < 0.0) { fy -= repelStrength; }
     } else {
+      // Outside of bounds: apply full-strength push back in
+      if (distLeft < 0.0) { fx += repelStrength; }
+      if (distRight < 0.0) { fx -= repelStrength; }
+      if (distTop < 0.0) { fy += repelStrength; }
+      if (distBottom < 0.0) { fy -= repelStrength; }
+
+      // Inside within repel distance: scale by proximity
       if (distLeft < repelDist && distLeft > 0.0) {
         let ratio = (repelDist - distLeft) / repelDist;
         fx += ratio * repelStrength;
@@ -189,6 +198,8 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
     ) {
       ${particleVar}.mass = 0.0;
     }
+  } else if (mode == 3.0) {
+    // none: no boundary constraints; repel force above still applies
   }
 }`,
     };

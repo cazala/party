@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 interface WebGPUBoundaryLike {
   setRestitution: (value: number) => void;
   setFriction?: (value: number) => void;
-  setMode?: (mode: "bounce" | "warp" | "kill") => void;
+  setMode?: (mode: "bounce" | "warp" | "kill" | "none") => void;
   setEnabled?: (value: boolean) => void;
   setRepelDistance?: (v: number) => void;
   setRepelStrength?: (v: number) => void;
@@ -20,7 +20,9 @@ export function WebGPUBoundaryControls({
 }) {
   const [restitution, setRestitution] = useState(0.6);
   const [friction, setFriction] = useState(0.1);
-  const [mode, setMode] = useState<"bounce" | "warp" | "kill">("bounce");
+  const [mode, setMode] = useState<"bounce" | "warp" | "kill" | "none">(
+    "bounce"
+  );
   const [internalEnabled, setInternalEnabled] = useState(true);
   const [repelDistance, setRepelDistance] = useState(0);
   const [repelStrength, setRepelStrength] = useState(0);
@@ -52,7 +54,7 @@ export function WebGPUBoundaryControls({
           <select
             value={mode}
             onChange={(e) => {
-              const m = e.target.value as "bounce" | "warp" | "kill";
+              const m = e.target.value as "bounce" | "warp" | "kill" | "none";
               setMode(m);
               boundary?.setMode?.(m);
             }}
@@ -62,6 +64,7 @@ export function WebGPUBoundaryControls({
             <option value="bounce">Bounce</option>
             <option value="warp">Warp</option>
             <option value="kill">Kill</option>
+            <option value="none">None</option>
           </select>
         </label>
       </div>
