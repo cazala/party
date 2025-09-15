@@ -16,9 +16,6 @@ type SensorBindingKeys =
   | "followBehavior"
   | "fleeBehavior"
   | "fleeAngle"
-  | "particleColorR"
-  | "particleColorG"
-  | "particleColorB"
   | "enabled";
 
 export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
@@ -41,11 +38,6 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
   private fleeBehavior: SensorBehavior;
   private fleeAngle: number;
 
-  // Particle color (RGB components 0-1)
-  private particleColorR: number;
-  private particleColorG: number;
-  private particleColorB: number;
-
   constructor(opts?: {
     enabled?: boolean;
     enableTrail?: boolean;
@@ -61,7 +53,6 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
     followBehavior?: SensorBehavior;
     fleeBehavior?: SensorBehavior;
     fleeAngle?: number;
-    particleColor?: string; // hex color like "#ff0000"
   }) {
     super();
 
@@ -84,26 +75,9 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
     this.fleeBehavior = opts?.fleeBehavior ?? "none";
     this.fleeAngle = opts?.fleeAngle ?? Math.PI / 2; // 90 degrees
 
-    // Parse particle color from hex to RGB (0-1 range)
-    const color = this.hexToRgb(opts?.particleColor ?? "#ffffff");
-    this.particleColorR = color.r / 255.0;
-    this.particleColorG = color.g / 255.0;
-    this.particleColorB = color.b / 255.0;
-
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
     }
-  }
-
-  private hexToRgb(hex: string): { r: number; g: number; b: number } {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result
-      ? {
-          r: parseInt(result[1], 16),
-          g: parseInt(result[2], 16),
-          b: parseInt(result[3], 16),
-        }
-      : { r: 255, g: 255, b: 255 }; // default to white
   }
 
   private behaviorToUniform(behavior: SensorBehavior): number {
@@ -139,9 +113,6 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
       followBehavior: this.behaviorToUniform(this.followBehavior),
       fleeBehavior: this.behaviorToUniform(this.fleeBehavior),
       fleeAngle: this.fleeAngle,
-      particleColorR: this.particleColorR,
-      particleColorG: this.particleColorG,
-      particleColorB: this.particleColorB,
       enabled: this.isEnabled() ? 1 : 0, // Preserve module enabled state
     });
   }
@@ -214,18 +185,6 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
     this.write({ fleeAngle: value });
   }
 
-  setParticleColor(hexColor: string): void {
-    const color = this.hexToRgb(hexColor);
-    this.particleColorR = color.r / 255.0;
-    this.particleColorG = color.g / 255.0;
-    this.particleColorB = color.b / 255.0;
-    this.write({
-      particleColorR: this.particleColorR,
-      particleColorG: this.particleColorG,
-      particleColorB: this.particleColorB,
-    });
-  }
-
   descriptor(): ComputeModuleDescriptor<"sensors", SensorBindingKeys> {
     return {
       name: "sensors",
@@ -244,9 +203,6 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
         "followBehavior",
         "fleeBehavior",
         "fleeAngle",
-        "particleColorR",
-        "particleColorG",
-        "particleColorB",
       ] as const,
       global: () => `// Sensor helper functions (defined at global scope)
 // Now sample from the trail texture bound to the compute pipeline
@@ -370,11 +326,7 @@ let fleeBehavior = ${getUniform("fleeBehavior")};
 let fleeAngleOffset = ${getUniform("fleeAngle")};
 
 // Get particle color for color-based behaviors
-let particleColor = vec3<f32>(
-  ${getUniform("particleColorR")},
-  ${getUniform("particleColorG")},
-  ${getUniform("particleColorB")}
-);
+let particleColor = ${particleVar}.color.rgb;
 
 // Calculate particle velocity direction (normalized)
 let velocityMag = length(${particleVar}.velocity);
@@ -413,31 +365,28 @@ let rightIntensity = sensor_sample_intensity(rightSensorPos, sensorRadius, index
 let leftColor = sensor_sample_color(leftSensorPos, sensorRadius, index);
 let rightColor = sensor_sample_color(rightSensorPos, sensorRadius, index);
 
-// Evaluate sensor activation for follow behavior: steer toward higher intensity
+// Evaluate sensor activation for follow behavior
 var followForce = vec2<f32>(0.0, 0.0);
-if (followBehavior != 3.0) { // not "none"
-  var leftScore = leftIntensity;
-  var rightScore = rightIntensity;
-  // Optionally gate by threshold
-  leftScore = select(0.0, leftScore, leftScore > sensorThreshold);
-  rightScore = select(0.0, rightScore, rightScore > sensorThreshold);
-
-  if (leftScore > rightScore) {
-    followForce = leftDir * (leftScore - rightScore);
-  } else if (rightScore > leftScore) {
-    followForce = rightDir * (rightScore - leftScore);
+if (followBehavior == 0.0) { // "any" (ignore color, compare intensities)
+  if (leftIntensity > rightIntensity && leftIntensity > sensorThreshold) {
+    followForce = leftDir;
+  } else if (rightIntensity > leftIntensity && rightIntensity > sensorThreshold) {
+    followForce = rightDir;
   }
-}
+} else if (followBehavior == 1.0 || followBehavior == 2.0) { // "same" or "different"
+  let leftActive = sensor_is_activated(leftIntensity, leftColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
+  let rightActive = sensor_is_activated(rightIntensity, rightColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
+  if (leftActive && !rightActive) {
+    followForce = leftDir;
+  } else if (rightActive && !leftActive) {
+    followForce = rightDir;
+  }
+} // else "none" -> no follow force
 
-// Evaluate sensor activation for flee behavior  
+// Evaluate sensor activation for flee behavior
 var fleeForce = vec2<f32>(0.0, 0.0);
-if (fleeBehavior != 3.0) { // not "none"
-  var leftScore = leftIntensity;
-  var rightScore = rightIntensity;
-  leftScore = select(0.0, leftScore, leftScore > sensorThreshold);
-  rightScore = select(0.0, rightScore, rightScore > sensorThreshold);
-
-  if (leftScore > rightScore) {
+if (fleeBehavior == 0.0) { // "any" (ignore color, compare intensities)
+  if (leftIntensity > rightIntensity && leftIntensity > sensorThreshold) {
     // Flee from left sensor: rotate left direction by -fleeAngle (turn right)
     let cosFleeLeft = cos(-fleeAngleOffset);
     let sinFleeLeft = sin(-fleeAngleOffset);
@@ -445,7 +394,7 @@ if (fleeBehavior != 3.0) { // not "none"
       leftDir.x * cosFleeLeft - leftDir.y * sinFleeLeft,
       leftDir.x * sinFleeLeft + leftDir.y * cosFleeLeft
     );
-  } else if (rightScore > leftScore) {
+  } else if (rightIntensity > leftIntensity && rightIntensity > sensorThreshold) {
     // Flee from right sensor: rotate right direction by +fleeAngle (turn left)
     let cosFleeRight = cos(fleeAngleOffset);
     let sinFleeRight = sin(fleeAngleOffset);
@@ -454,8 +403,27 @@ if (fleeBehavior != 3.0) { // not "none"
       rightDir.x * sinFleeRight + rightDir.y * cosFleeRight
     );
   }
-  // If both or neither are active, no flee force
-}
+} else if (fleeBehavior == 1.0 || fleeBehavior == 2.0) { // "same" or "different"
+  let leftActive = sensor_is_activated(leftIntensity, leftColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
+  let rightActive = sensor_is_activated(rightIntensity, rightColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
+  if (leftActive && !rightActive) {
+    // Flee from left sensor: rotate left direction by -fleeAngle (turn right)
+    let cosFleeLeft = cos(-fleeAngleOffset);
+    let sinFleeLeft = sin(-fleeAngleOffset);
+    fleeForce = vec2<f32>(
+      leftDir.x * cosFleeLeft - leftDir.y * sinFleeLeft,
+      leftDir.x * sinFleeLeft + leftDir.y * cosFleeLeft
+    );
+  } else if (rightActive && !leftActive) {
+    // Flee from right sensor: rotate right direction by +fleeAngle (turn left)
+    let cosFleeRight = cos(fleeAngleOffset);
+    let sinFleeRight = sin(fleeAngleOffset);
+    fleeForce = vec2<f32>(
+      rightDir.x * cosFleeRight - rightDir.y * sinFleeRight,
+      rightDir.x * sinFleeRight + rightDir.y * cosFleeRight
+    );
+  }
+} // else "none" -> no flee force
 
 // Combine and apply forces
 // Set velocity based on sensor decision (do not integrate acceleration)

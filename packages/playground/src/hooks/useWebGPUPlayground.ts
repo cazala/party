@@ -257,7 +257,6 @@ export function useWebGPUPlayground(
             enabled: false,
             enableTrail: false,
             enableSensors: false,
-            particleColor: "#ffffff",
           });
           // Initialize simulation parameters
           const modules = [

@@ -65,7 +65,6 @@ interface WebGPUSensorsLike {
   setFollowBehavior: (v: any) => void;
   setFleeBehavior: (v: any) => void;
   setFleeAngle: (v: number) => void;
-  setParticleColor: (v: string) => void;
   setEnabled?: (v: boolean) => void;
 }
 
@@ -132,14 +131,22 @@ export function WebGPUForceControls({
             environment
           )}
         </div>
-        <WebGPUEnvironmentControls environment={environment} hideEnabled enabled={environmentEnabled} />
+        <WebGPUEnvironmentControls
+          environment={environment}
+          hideEnabled
+          enabled={environmentEnabled}
+        />
       </CollapsibleSection>
 
       <CollapsibleSection title="Boundary">
         <div style={{ marginBottom: "12px" }}>
           {createEnabledHeader(boundaryEnabled, setBoundaryEnabled, boundary)}
         </div>
-        <WebGPUBoundaryControls boundary={boundary} hideEnabled enabled={boundaryEnabled} />
+        <WebGPUBoundaryControls
+          boundary={boundary}
+          hideEnabled
+          enabled={boundaryEnabled}
+        />
       </CollapsibleSection>
 
       {collisions && (
@@ -151,7 +158,11 @@ export function WebGPUForceControls({
               collisions
             )}
           </div>
-          <WebGPUCollisionsControls collisions={collisions} hideEnabled enabled={collisionsEnabled} />
+          <WebGPUCollisionsControls
+            collisions={collisions}
+            hideEnabled
+            enabled={collisionsEnabled}
+          />
         </CollapsibleSection>
       )}
 
@@ -160,7 +171,11 @@ export function WebGPUForceControls({
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(fluidEnabled, setFluidEnabled, fluid)}
           </div>
-          <WebGPUFluidControls fluid={fluid} hideEnabled enabled={fluidEnabled} />
+          <WebGPUFluidControls
+            fluid={fluid}
+            hideEnabled
+            enabled={fluidEnabled}
+          />
         </CollapsibleSection>
       )}
 
@@ -169,7 +184,11 @@ export function WebGPUForceControls({
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(behaviorEnabled, setBehaviorEnabled, behavior)}
           </div>
-          <WebGPUBehaviorControls behavior={behavior} hideEnabled enabled={behaviorEnabled} />
+          <WebGPUBehaviorControls
+            behavior={behavior}
+            hideEnabled
+            enabled={behaviorEnabled}
+          />
         </CollapsibleSection>
       )}
 
@@ -178,7 +197,11 @@ export function WebGPUForceControls({
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(sensorsEnabled, setSensorsEnabled, sensors)}
           </div>
-          <WebGPUSensorsControls sensors={sensors} hideEnabled enabled={sensorsEnabled} />
+          <WebGPUSensorsControls
+            sensors={sensors}
+            hideEnabled
+            enabled={sensorsEnabled}
+          />
         </CollapsibleSection>
       )}
     </div>

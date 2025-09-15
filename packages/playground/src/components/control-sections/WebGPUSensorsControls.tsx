@@ -16,7 +16,6 @@ interface WebGPUSensorsLike {
   setFollowBehavior: (v: SensorBehavior) => void;
   setFleeBehavior: (v: SensorBehavior) => void;
   setFleeAngle: (v: number) => void;
-  setParticleColor: (v: string) => void;
   setEnabled?: (v: boolean) => void;
 }
 
@@ -79,8 +78,7 @@ export function WebGPUSensorsControls({
     DEFAULT_FLEE_BEHAVIOR
   );
 
-  // Particle color
-  const [particleColor, setParticleColor] = useState("#ffffff");
+  // Particle color control removed; particle color is inherent per particle
 
   useEffect(() => {
     // Could hydrate from module if getters existed
@@ -151,10 +149,7 @@ export function WebGPUSensorsControls({
         setFleeBehavior(value as SensorBehavior);
         sensors.setFleeBehavior(value as SensorBehavior);
         break;
-      case "particleColor":
-        setParticleColor(value as string);
-        sensors.setParticleColor(value as string);
-        break;
+      // No particleColor case; color sampling happens in shader
     }
   };
 
@@ -172,7 +167,7 @@ export function WebGPUSensorsControls({
     fleeBehavior === "same" ||
     fleeBehavior === "different";
   const showFleeAngle = fleeBehavior !== "none";
-  const showParticleColor = showColorSimilarity;
+  // Particle color control removed
 
   return (
     <div className="control-section">
@@ -437,24 +432,7 @@ export function WebGPUSensorsControls({
         </div>
       )}
 
-      {showParticleColor && (
-        <div className="control-group">
-          <label>
-            Particle Color:
-            <input
-              type="color"
-              value={particleColor}
-              disabled={!enabled || !sensorsEnabled}
-              onChange={(e) =>
-                handleSensorsChange("particleColor", e.target.value)
-              }
-              className={`form-control ${
-                !enabled || !sensorsEnabled ? "disabled" : ""
-              }`}
-            />
-          </label>
-        </div>
-      )}
+      {/* Particle Color control removed */}
 
       {showFleeAngle && (
         <div className="control-group">
