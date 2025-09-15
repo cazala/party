@@ -15,6 +15,7 @@ export interface WebGPUParticle {
   velocity: [number, number];
   size: number;
   mass: number;
+  color: [number, number, number, number];
 }
 
 // Module-specific uniform interfaces are kept internal; uniforms are written dynamically.
@@ -158,8 +159,8 @@ export class WebGPUParticleSystem {
   }
 
   private async createBuffers(): Promise<void> {
-    // Create storage buffer for particle data (position vec2, velocity vec2, size f32, mass f32)
-    const particleDataSize = this.maxParticles * 8 * 4; // 8 floats per particle * 4 bytes per float (pos2, vel2, accel2, size, mass)
+    // Create storage buffer for particle data (pos2, vel2, accel2, size, mass, color4)
+    const particleDataSize = this.maxParticles * 12 * 4; // 12 floats per particle * 4 bytes per float
     this.particleBuffer = this.device.createBuffer({
       size: particleDataSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
@@ -883,10 +884,11 @@ export class WebGPUParticleSystem {
   private updateParticleBuffer(particles: WebGPUParticle[]): void {
     if (!this.particleBuffer) return;
 
-    const data = new Float32Array(particles.length * 8);
+    const STRIDE = 12; // pos2, vel2, accel2, size, mass, color4
+    const data = new Float32Array(particles.length * STRIDE);
     for (let i = 0; i < particles.length; i++) {
       const particle = particles[i];
-      const offset = i * 8;
+      const offset = i * STRIDE;
       data[offset] = particle.position[0];
       data[offset + 1] = particle.position[1];
       data[offset + 2] = particle.velocity[0];
@@ -896,6 +898,11 @@ export class WebGPUParticleSystem {
       data[offset + 5] = 0;
       data[offset + 6] = particle.size;
       data[offset + 7] = particle.mass;
+      const c = particle.color ?? [1, 1, 1, 1];
+      data[offset + 8] = c[0];
+      data[offset + 9] = c[1];
+      data[offset + 10] = c[2];
+      data[offset + 11] = c[3];
     }
 
     // Write to storage buffer

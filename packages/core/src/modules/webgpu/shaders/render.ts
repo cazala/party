@@ -5,6 +5,7 @@ struct Particle {
   acceleration: vec2<f32>,
   size: f32,
   mass: f32,
+  color: vec4<f32>,
 }
 
 struct RenderUniforms {
@@ -17,6 +18,7 @@ struct RenderUniforms {
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) uv: vec2<f32>,
+  @location(1) color: vec4<f32>,
 }
 
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
@@ -50,6 +52,7 @@ fn vs_main(
     // Cull by sending outside clip space
     out.position = vec4<f32>(2.0, 2.0, 1.0, 1.0);
     out.uv = vec2<f32>(0.0, 0.0);
+    out.color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     return out;
   }
   // For instanced triangle-strip without a vertex buffer, vertex_index increments across instances.
@@ -70,12 +73,14 @@ fn vs_main(
   
   out.position = vec4<f32>(ndc_pos + scaled_quad, 0.0, 1.0);
   out.uv = quad_uvs[local_index];
+  out.color = particle.color;
   return out;
 }
 
 @fragment
 fn fs_main(
   @location(0) uv: vec2<f32>,
+  @location(1) color: vec4<f32>,
   @builtin(position) frag_coord: vec4<f32>
 ) -> @location(0) vec4<f32> {
   let center = vec2<f32>(0.5, 0.5);
@@ -83,6 +88,6 @@ fn fs_main(
   let radius = 0.5;
   let alpha = 1.0 - smoothstep(radius - 0.05, radius, dist);
   
-  // Just output particle color - let GPU blending handle trail accumulation
-  return vec4<f32>(1.0, 1.0, 1.0, alpha);
+  // Use per-particle color, modulated by radial alpha
+  return vec4<f32>(color.rgb, color.a * alpha);
 }`;

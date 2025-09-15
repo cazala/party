@@ -125,6 +125,7 @@ struct Particle {
   acceleration: vec2<f32>,
   size: f32,
   mass: f32,
+  color: vec4<f32>,
 }
 `;
 

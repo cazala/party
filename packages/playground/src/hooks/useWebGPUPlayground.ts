@@ -405,7 +405,36 @@ export function useWebGPUPlayground(
           : undefined,
       });
 
-      rendererRef.current.spawnParticles(spawn);
+      // Apply UI-selected colors randomly to spawned particles if provided
+      const hexToRgba01 = (hex: string): [number, number, number, number] => {
+        let h = hex.trim();
+        if (h.startsWith("#")) h = h.slice(1);
+        if (h.length === 3) {
+          const r = parseInt(h[0] + h[0], 16);
+          const g = parseInt(h[1] + h[1], 16);
+          const b = parseInt(h[2] + h[2], 16);
+          return [r / 255, g / 255, b / 255, 1];
+        }
+        if (h.length >= 6) {
+          const r = parseInt(h.slice(0, 2), 16);
+          const g = parseInt(h.slice(2, 4), 16);
+          const b = parseInt(h.slice(4, 6), 16);
+          return [r / 255, g / 255, b / 255, 1];
+        }
+        return [1, 1, 1, 1];
+      };
+
+      const palette = _colors && _colors.length > 0 ? _colors : null;
+      const withColors = palette
+        ? spawn.map((p) => {
+            const c = palette[(Math.random() * palette.length) | 0];
+            return { ...p, color: hexToRgba01(c) } as typeof p & {
+              color: [number, number, number, number];
+            };
+          })
+        : spawn;
+
+      rendererRef.current.spawnParticles(withColors as any);
     },
     [isInitialized]
   );

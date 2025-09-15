@@ -61,6 +61,7 @@ export class WebGPURenderer {
       vy?: number;
       size?: number;
       mass?: number;
+      color?: [number, number, number, number];
     }>
   ): void {
     if (!this.system) {
@@ -73,6 +74,7 @@ export class WebGPURenderer {
       velocity: [p.vx || 0, p.vy || 0],
       size: p.size || 5,
       mass: p.mass || 1,
+      color: p.color || [1, 1, 1, 1],
     }));
 
     this.system.setParticles(webgpuParticles);
