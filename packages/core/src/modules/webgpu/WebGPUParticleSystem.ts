@@ -595,9 +595,9 @@ export class WebGPUParticleSystem {
         buffer: { type: "storage" },
       });
     }
-    if (this.computeBuild.extraBindings.trailTexture) {
+    if (this.computeBuild.extraBindings.sceneTexture) {
       bglEntries.push({
-        binding: this.computeBuild.extraBindings.trailTexture.textureBinding,
+        binding: this.computeBuild.extraBindings.sceneTexture.textureBinding,
         visibility: GPUShaderStage.COMPUTE,
         texture: { sampleType: "float" },
       });
@@ -855,9 +855,9 @@ export class WebGPUParticleSystem {
       });
     }
     // Bind current trail texture as sampled texture for sensors
-    if (this.computeBuild?.extraBindings.trailTexture) {
+    if (this.computeBuild?.extraBindings.sceneTexture) {
       entries.push({
-        binding: this.computeBuild.extraBindings.trailTexture.textureBinding,
+        binding: this.computeBuild.extraBindings.sceneTexture.textureBinding,
         resource: this.getCurrentTrailTextureView(),
       });
     }
@@ -1367,7 +1367,7 @@ export class WebGPUParticleSystem {
       this.swapTrailTextures();
     } else {
       // Trails disabled: draw current particles into the trail texture (no persistence)
-      // so sensors can still sample from trail_texture, then render particles to canvas.
+      // so sensors can still sample from scene_texture, then render particles to canvas.
 
       // Create a bind group similar to trails-enabled path (texture sample not used in shader)
       const trailReadTexture =

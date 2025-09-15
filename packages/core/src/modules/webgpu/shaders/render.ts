@@ -23,8 +23,8 @@ struct VertexOutput {
 
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<uniform> render_uniforms: RenderUniforms;
-@group(0) @binding(2) var trail_texture: texture_2d<f32>;
-@group(0) @binding(3) var trail_sampler: sampler;
+@group(0) @binding(2) var scene_texture: texture_2d<f32>;
+@group(0) @binding(3) var scene_sampler: sampler;
 
 @vertex
 fn vs_main(

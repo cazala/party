@@ -103,7 +103,8 @@ export interface ComputeProgramBuild {
   extraBindings: {
     grid?: { countsBinding: number; indicesBinding: number };
     simState?: { stateBinding: number };
-    trailTexture?: { textureBinding: number };
+    // Renamed from trailTexture -> sceneTexture to reflect broader use
+    sceneTexture?: { textureBinding: number };
   };
 }
 
@@ -269,13 +270,13 @@ struct Particle {
   const gridCountsBinding = lastUniformBinding + 1;
   const gridIndicesBinding = lastUniformBinding + 2;
   const simStateBinding = lastUniformBinding + 3;
-  const trailTextureBinding = lastUniformBinding + 4;
+  const sceneTextureBinding = lastUniformBinding + 4;
 
   const gridDecls: string[] = [
     `@group(0) @binding(${gridCountsBinding}) var<storage, read_write> GRID_COUNTS: array<atomic<u32>>;`,
     `@group(0) @binding(${gridIndicesBinding}) var<storage, read_write> GRID_INDICES: array<u32>;`,
     `@group(0) @binding(${simStateBinding}) var<storage, read_write> SIM_STATE: array<f32>;`,
-    `@group(0) @binding(${trailTextureBinding}) var trail_texture: texture_2d<f32>;`,
+    `@group(0) @binding(${sceneTextureBinding}) var scene_texture: texture_2d<f32>;`,
   ];
 
   // Grid helpers and neighbor iteration
@@ -633,7 +634,7 @@ fn main(@builtin(global_invocation_id) _gid: vec3<u32>) {
         indicesBinding: gridIndicesBinding,
       },
       simState: { stateBinding: simStateBinding },
-      trailTexture: { textureBinding: trailTextureBinding },
+      sceneTexture: { textureBinding: sceneTextureBinding },
     },
   };
 }

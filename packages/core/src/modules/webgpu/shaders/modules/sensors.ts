@@ -148,7 +148,7 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
         "fleeAngle",
       ] as const,
       global: () => `// Sensor helper functions (defined at global scope)
-// Sample from the trail texture bound to the compute pipeline
+// Sample from the scene texture bound to the compute pipeline
 
 fn world_to_uv(pos: vec2<f32>) -> vec2<f32> {
   // Transform world position into UV in [0,1] using grid uniforms
@@ -161,7 +161,7 @@ fn world_to_uv(pos: vec2<f32>) -> vec2<f32> {
 
 fn uv_to_texel(uv: vec2<f32>) -> vec2<i32> {
   // Derive dimensions from texture
-  let dim = textureDimensions(trail_texture);
+  let dim = textureDimensions(scene_texture);
   let x = i32(clamp(floor(uv.x * f32(dim.x)), 0.0, f32(dim.x - 1)));
   let y = i32(clamp(floor(uv.y * f32(dim.y)), 0.0, f32(dim.y - 1)));
   return vec2<i32>(x, y);
@@ -170,7 +170,7 @@ fn uv_to_texel(uv: vec2<f32>) -> vec2<i32> {
 fn sensor_sample_intensity(pos: vec2<f32>, radius: f32, _selfIndex: u32) -> f32 {
   // Sample a small disk in the trail texture and average luminance
   let uv = world_to_uv(pos);
-  let dim = textureDimensions(trail_texture);
+  let dim = textureDimensions(scene_texture);
   // Convert world radius to approximate pixels using grid extent
   let pxPerWorld = f32(dim.x) / (GRID_MAXX() - GRID_MINX());
   let pxRadius = clamp(radius * pxPerWorld, 1.0, 16.0);
@@ -182,7 +182,7 @@ fn sensor_sample_intensity(pos: vec2<f32>, radius: f32, _selfIndex: u32) -> f32 
     for (var dx = -r; dx <= r; dx++) {
       let tc = vec2<i32>(center.x + dx, center.y + dy);
       if (tc.x < 0 || tc.y < 0 || tc.x >= i32(dim.x) || tc.y >= i32(dim.y)) { continue; }
-      let c = textureLoad(trail_texture, tc, 0);
+      let c = textureLoad(scene_texture, tc, 0);
       let lum = dot(c.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
       sum += lum;
       count += 1.0;
@@ -196,7 +196,7 @@ fn sensor_sample_intensity(pos: vec2<f32>, radius: f32, _selfIndex: u32) -> f32 
 
 fn sensor_sample_color(pos: vec2<f32>, radius: f32, _selfIndex: u32) -> vec3<f32> {
   let uv = world_to_uv(pos);
-  let dim = textureDimensions(trail_texture);
+  let dim = textureDimensions(scene_texture);
   let pxPerWorld = f32(dim.x) / (GRID_MAXX() - GRID_MINX());
   let pxRadius = clamp(radius * pxPerWorld, 1.0, 16.0);
   let center = uv_to_texel(uv);
@@ -207,7 +207,7 @@ fn sensor_sample_color(pos: vec2<f32>, radius: f32, _selfIndex: u32) -> vec3<f32
     for (var dx = -r; dx <= r; dx++) {
       let tc = vec2<i32>(center.x + dx, center.y + dy);
       if (tc.x < 0 || tc.y < 0 || tc.x >= i32(dim.x) || tc.y >= i32(dim.y)) { continue; }
-      let c = textureLoad(trail_texture, tc, 0);
+      let c = textureLoad(scene_texture, tc, 0);
       sum += c.rgb;
       count += 1.0;
     }
@@ -217,6 +217,7 @@ fn sensor_sample_color(pos: vec2<f32>, radius: f32, _selfIndex: u32) -> vec3<f32
   }
   return vec3<f32>(0.0, 0.0, 0.0);
 }
+
 
 fn sensor_is_activated(
   intensity: f32,
@@ -301,7 +302,7 @@ let rightDir = vec2<f32>(
 );
 let rightSensorPos = ${particleVar}.position + rightDir * sensorDist;
 
-// Sample sensor data from trail texture
+// Sample sensor data from scene texture (works for trails-on and trails-off paths)
 let leftIntensity = sensor_sample_intensity(leftSensorPos, sensorRadius, index);
 let rightIntensity = sensor_sample_intensity(rightSensorPos, sensorRadius, index);
 let leftColor = sensor_sample_color(leftSensorPos, sensorRadius, index);
