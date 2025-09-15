@@ -2,7 +2,7 @@ import { useWebGPUPlayground } from "./hooks/useWebGPUPlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useToolMode } from "./hooks/useToolMode";
 import { useFullscreen } from "./hooks/useFullscreen";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TopBar } from "./components/TopBar";
 import {
   InitControls,
@@ -11,6 +11,7 @@ import {
 import { WebGPUForceControls } from "./components/WebGPUForceControls";
 import { CollapsibleSection } from "./components/CollapsibleSection";
 import { SimulationControls } from "./components/control-sections/SimulationControls";
+import { WebGPUToolBar } from "./components/WebGPUToolBar";
 
 import "./styles/index.css";
 import "./components/Controls.css";
@@ -24,6 +25,7 @@ const TOPBAR_HEIGHT = 60;
 function WebGPUApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const initControlsRef = useRef<InitControlsRef>(null);
+  const [tool, setTool] = useState<"cursor" | "spawn">("cursor");
   const { toolMode } = useToolMode();
 
   const {
@@ -220,6 +222,14 @@ function WebGPUApp() {
           </CollapsibleSection>
         </div>
         <div className="canvas-container">
+          <WebGPUToolBar
+            tool={tool}
+            onChange={(t) => {
+              setTool(t);
+              (window as any).__webgpu_tool = t;
+            }}
+            style={{ display: isFullscreen ? "none" : "block" }}
+          />
           <canvas
             ref={canvasRef}
             id="canvas"

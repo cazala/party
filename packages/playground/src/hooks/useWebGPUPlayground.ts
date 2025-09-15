@@ -352,8 +352,13 @@ export function useWebGPUPlayground(
         : { width: 800, height: 600 };
       const cam = renderer.getCamera ? renderer.getCamera() : { x: 0, y: 0 };
       const zoom = renderer.getZoom ? renderer.getZoom() : 1;
-      const dx = sx - size.width / 2;
-      const dy = sy - size.height / 2;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = size.width / Math.max(rect.width, 1e-6);
+      const scaleY = size.height / Math.max(rect.height, 1e-6);
+      const px = sx * scaleX;
+      const py = sy * scaleY;
+      const dx = px - size.width / 2;
+      const dy = py - size.height / 2;
       const wx = cam.x + dx / Math.max(zoom, 1e-6);
       const wy = cam.y + dy / Math.max(zoom, 1e-6);
       return { x: wx, y: wy };
@@ -373,6 +378,26 @@ export function useWebGPUPlayground(
 
     const onMouseDown = (e: MouseEvent) => {
       updateMousePos(e);
+      // Spawn tool should not trigger interaction
+      const tool = (window as any).__webgpu_tool as
+        | "cursor"
+        | "spawn"
+        | undefined;
+      if (tool === "spawn") {
+        // Translate to world coords and append a particle
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const size = 5;
+        const mass = 1;
+        const { x, y } = screenToWorld(sx, sy);
+        const sys = systemRef.current as any;
+        if (sys?.addParticle) {
+          sys.addParticle({ position: [x, y], velocity: [0, 0], size, mass });
+        }
+        rendererRef.current?.play();
+        return;
+      }
       if (e.button === 0) {
         interaction.setInputButton(0);
       } else if (e.button === 2) {

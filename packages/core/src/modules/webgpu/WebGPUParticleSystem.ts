@@ -873,12 +873,30 @@ export class WebGPUParticleSystem {
     this.updateParticleBuffer(clampedParticles);
   }
 
-  addParticle(_particle: WebGPUParticle): void {
-    if (this.particleCount < this.maxParticles) {
-      // For adding single particles, we'd need to read current buffer, add particle, and write back
-      // For now, just use setParticles for simplicity
-      console.warn("addParticle not implemented - use setParticles instead");
-    }
+  addParticle(particle: WebGPUParticle): void {
+    if (!this.particleBuffer) return;
+    if (this.particleCount >= this.maxParticles) return;
+
+    const STRIDE = 12; // pos2, vel2, accel2, size, mass, color4
+    const offsetFloats = this.particleCount * STRIDE;
+    const data = new Float32Array(STRIDE);
+    data[0] = particle.position[0];
+    data[1] = particle.position[1];
+    data[2] = particle.velocity?.[0] ?? 0;
+    data[3] = particle.velocity?.[1] ?? 0;
+    data[4] = 0; // ax
+    data[5] = 0; // ay
+    data[6] = particle.size ?? 5;
+    data[7] = particle.mass ?? 1;
+    const c = particle.color ?? [1, 1, 1, 1];
+    data[8] = c[0];
+    data[9] = c[1];
+    data[10] = c[2];
+    data[11] = c[3];
+
+    // Write only the slice for the new particle
+    this.device.queue.writeBuffer(this.particleBuffer, offsetFloats * 4, data);
+    this.particleCount = this.particleCount + 1;
   }
 
   private updateParticleBuffer(particles: WebGPUParticle[]): void {
