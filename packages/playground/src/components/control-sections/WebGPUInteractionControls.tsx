@@ -18,10 +18,10 @@ export function WebGPUInteractionControls({
   enabled?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(true);
-  const [action, setAction] = useState<"click" | "right_click">("right_click");
+  const [action, setAction] = useState<"click" | "right_click">("click");
   const [mode, setMode] = useState<"attract" | "repel">("attract");
-  const [strength, setStrength] = useState(5000);
-  const [radius, setRadius] = useState(200);
+  const [strength, setStrength] = useState(10000);
+  const [radius, setRadius] = useState(500);
 
   return (
     <div className="control-section">
@@ -105,7 +105,7 @@ export function WebGPUInteractionControls({
           <input
             type="range"
             min="10"
-            max="500"
+            max="1000"
             step="1"
             value={radius}
             onChange={(e) => {

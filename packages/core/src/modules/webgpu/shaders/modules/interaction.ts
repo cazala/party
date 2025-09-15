@@ -34,8 +34,8 @@ export class Interaction extends ComputeModule<
     super();
     this.action = opts?.action === "right_click" ? 1 : 0;
     this.mode = opts?.mode === "repel" ? 1 : 0;
-    this.strength = opts?.strength ?? 5000;
-    this.radius = opts?.radius ?? 200;
+    this.strength = opts?.strength ?? 10000;
+    this.radius = opts?.radius ?? 500;
     this.mouseX = 0;
     this.mouseY = 0;
     this.inputButton = 2; // none

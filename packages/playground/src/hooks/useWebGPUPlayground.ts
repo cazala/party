@@ -259,7 +259,11 @@ export function useWebGPUPlayground(
           const behavior = new WebGPUBehavior({ enabled: true });
           const trails = new Trails({ enabled: false });
           const sensors = new Sensors({ enabled: false });
-          const interaction = new Interaction({ enabled: false });
+          const interaction = new Interaction({
+            enabled: false,
+            strength: 10000,
+            radius: 500,
+          });
           // Initialize simulation parameters
           const modules = [
             simulationModule,
