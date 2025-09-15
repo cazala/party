@@ -11,6 +11,16 @@ type BehaviorBindingKeys =
   | "viewRadius"
   | "viewAngle";
 
+export const DEFAULT_BEHAVIOR_WANDER_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_COHESION_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_SEPARATION_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_CHASE_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_AVOID_WEIGHT = 0;
+export const DEFAULT_BEHAVIOR_SEPARATION_RANGE = 30;
+export const DEFAULT_BEHAVIOR_VIEW_RADIUS = 100;
+export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 2 * Math.PI;
+
 export class Behavior extends ComputeModule<"behavior", BehaviorBindingKeys> {
   private wanderWeight: number;
   private cohesionWeight: number;
@@ -35,15 +45,19 @@ export class Behavior extends ComputeModule<"behavior", BehaviorBindingKeys> {
     enabled?: boolean;
   }) {
     super();
-    this.wanderWeight = opts?.wanderWeight ?? 0;
-    this.cohesionWeight = opts?.cohesionWeight ?? 0;
-    this.alignmentWeight = opts?.alignmentWeight ?? 0;
-    this.separationWeight = opts?.separationWeight ?? 0;
-    this.chaseWeight = opts?.chaseWeight ?? 0;
-    this.avoidWeight = opts?.avoidWeight ?? 0;
-    this.separationRange = opts?.separationRange ?? 30;
-    this.viewRadius = opts?.viewRadius ?? 100;
-    this.viewAngle = opts?.viewAngle ?? 2 * Math.PI;
+    this.wanderWeight = opts?.wanderWeight ?? DEFAULT_BEHAVIOR_WANDER_WEIGHT;
+    this.cohesionWeight =
+      opts?.cohesionWeight ?? DEFAULT_BEHAVIOR_COHESION_WEIGHT;
+    this.alignmentWeight =
+      opts?.alignmentWeight ?? DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT;
+    this.separationWeight =
+      opts?.separationWeight ?? DEFAULT_BEHAVIOR_SEPARATION_WEIGHT;
+    this.chaseWeight = opts?.chaseWeight ?? DEFAULT_BEHAVIOR_CHASE_WEIGHT;
+    this.avoidWeight = opts?.avoidWeight ?? DEFAULT_BEHAVIOR_AVOID_WEIGHT;
+    this.separationRange =
+      opts?.separationRange ?? DEFAULT_BEHAVIOR_SEPARATION_RANGE;
+    this.viewRadius = opts?.viewRadius ?? DEFAULT_BEHAVIOR_VIEW_RADIUS;
+    this.viewAngle = opts?.viewAngle ?? DEFAULT_BEHAVIOR_VIEW_ANGLE;
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
 

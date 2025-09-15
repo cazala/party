@@ -1,35 +1,31 @@
 import { useEffect, useState } from "react";
-
-interface WebGPUEnvironmentLike {
-  setStrength: (value: number) => void;
-  setDirection?: (x: number, y: number) => void;
-  setInertia?: (value: number) => void;
-  setFriction?: (value: number) => void;
-  setDamping?: (value: number) => void;
-  setEnabled?: (value: boolean) => void;
-  setGravityDirection?: (
-    dir: "up" | "down" | "left" | "right" | "inwards" | "outwards" | "custom"
-  ) => void;
-  setGravityAngle?: (radians: number) => void;
-}
+import {
+  DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH,
+  DEFAULT_ENVIRONMENT_INERTIA,
+  DEFAULT_ENVIRONMENT_FRICTION,
+  DEFAULT_ENVIRONMENT_DAMPING,
+  Environment,
+} from "@cazala/party/modules/webgpu/shaders/modules/environment";
 
 export function WebGPUEnvironmentControls({
   environment,
   hideEnabled = false,
   enabled = true,
 }: {
-  environment: WebGPUEnvironmentLike | null;
+  environment: Environment | null;
   hideEnabled?: boolean;
   enabled?: boolean;
 }) {
-  const [strength, setStrength] = useState(0);
+  const [strength, setStrength] = useState(
+    DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH
+  );
   const [direction, setDirection] = useState<
     "up" | "down" | "left" | "right" | "inwards" | "outwards" | "custom"
   >("down");
   const [angle, setAngle] = useState(90); // degrees, for custom only
-  const [inertia, setInertia] = useState(0);
-  const [friction, setFriction] = useState(0);
-  const [damping, setDamping] = useState(0);
+  const [inertia, setInertia] = useState(DEFAULT_ENVIRONMENT_INERTIA);
+  const [friction, setFriction] = useState(DEFAULT_ENVIRONMENT_FRICTION);
+  const [damping, setDamping] = useState(DEFAULT_ENVIRONMENT_DAMPING);
   const [internalEnabled, setInternalEnabled] = useState(true);
 
   useEffect(() => {
@@ -65,7 +61,7 @@ export function WebGPUEnvironmentControls({
             onChange={(e) => {
               const v = parseFloat(e.target.value);
               setStrength(v);
-              environment?.setStrength(v);
+              environment?.setGravityStrength(v);
             }}
             disabled={!enabled}
             className={`slider ${!enabled ? "disabled" : ""}`}

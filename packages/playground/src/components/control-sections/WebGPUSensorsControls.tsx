@@ -1,24 +1,16 @@
 import { useEffect, useState } from "react";
+import {
+  DEFAULT_SENSORS_SENSOR_DISTANCE,
+  DEFAULT_SENSORS_SENSOR_ANGLE,
+  DEFAULT_SENSORS_SENSOR_RADIUS,
+  DEFAULT_SENSORS_SENSOR_THRESHOLD,
+  DEFAULT_SENSORS_SENSOR_STRENGTH,
+  DEFAULT_SENSORS_FOLLOW_BEHAVIOR,
+  DEFAULT_SENSORS_FLEE_BEHAVIOR,
+  Sensors,
+  type SensorBehavior,
+} from "@cazala/party/modules/webgpu/shaders/modules/sensors";
 
-interface WebGPUSensorsLike {
-  setEnabled?: (v: boolean) => void;
-  setSensorDistance: (v: number) => void;
-  setSensorAngle: (v: number) => void;
-  setSensorRadius: (v: number) => void;
-  setSensorThreshold: (v: number) => void;
-  setSensorStrength: (v: number) => void;
-  setColorSimilarityThreshold?: (v: number) => void;
-  setFollowBehavior?: (v: string) => void;
-  setFleeBehavior?: (v: string) => void;
-  setFleeAngle?: (v: number) => void;
-}
-
-// Default constants matching the WebGPU sensors implementation
-const DEFAULT_SENSOR_DISTANCE = 30;
-const DEFAULT_SENSOR_ANGLE = Math.PI / 6; // 30 degrees in radians
-const DEFAULT_SENSOR_RADIUS = 3;
-const DEFAULT_SENSOR_THRESHOLD = 0.1;
-const DEFAULT_SENSOR_STRENGTH = 1000;
 // removed behavior/color controls
 
 // Helper functions
@@ -30,7 +22,7 @@ export function WebGPUSensorsControls({
   hideEnabled = false,
   enabled = true,
 }: {
-  sensors: WebGPUSensorsLike | null;
+  sensors: Sensors | null;
   hideEnabled?: boolean;
   enabled?: boolean;
 }) {
@@ -38,15 +30,21 @@ export function WebGPUSensorsControls({
 
   // Sensor state
   // Using only the top-level Enabled
-  const [sensorDistance, setSensorDistance] = useState(DEFAULT_SENSOR_DISTANCE);
+  const [sensorDistance, setSensorDistance] = useState(
+    DEFAULT_SENSORS_SENSOR_DISTANCE
+  );
   const [sensorAngle, setSensorAngle] = useState(
-    radToDeg(DEFAULT_SENSOR_ANGLE)
+    radToDeg(DEFAULT_SENSORS_SENSOR_ANGLE)
   );
-  const [sensorRadius, setSensorRadius] = useState(DEFAULT_SENSOR_RADIUS);
+  const [sensorRadius, setSensorRadius] = useState(
+    DEFAULT_SENSORS_SENSOR_RADIUS
+  );
   const [sensorThreshold, setSensorThreshold] = useState(
-    DEFAULT_SENSOR_THRESHOLD
+    DEFAULT_SENSORS_SENSOR_THRESHOLD
   );
-  const [sensorStrength, setSensorStrength] = useState(DEFAULT_SENSOR_STRENGTH);
+  const [sensorStrength, setSensorStrength] = useState(
+    DEFAULT_SENSORS_SENSOR_STRENGTH
+  );
 
   // Particle color control removed; particle color is inherent per particle
 
@@ -88,10 +86,10 @@ export function WebGPUSensorsControls({
         sensors.setColorSimilarityThreshold?.(value as number);
         break;
       case "followBehavior":
-        sensors.setFollowBehavior?.(value as string);
+        sensors.setFollowBehavior?.(value as SensorBehavior);
         break;
       case "fleeBehavior":
-        sensors.setFleeBehavior?.(value as string);
+        sensors.setFleeBehavior?.(value as SensorBehavior);
         break;
       case "fleeAngle":
         sensors.setFleeAngle?.(degToRad(value as number));
@@ -101,8 +99,12 @@ export function WebGPUSensorsControls({
   };
 
   // Visibility helpers for conditional controls
-  const [followValue, setFollowValue] = useState<string>("any");
-  const [fleeValue, setFleeValue] = useState<string>("none");
+  const [followValue, setFollowValue] = useState<string>(
+    DEFAULT_SENSORS_FOLLOW_BEHAVIOR
+  );
+  const [fleeValue, setFleeValue] = useState<string>(
+    DEFAULT_SENSORS_FLEE_BEHAVIOR
+  );
   const showColorSimilarity =
     followValue === "same" ||
     followValue === "different" ||

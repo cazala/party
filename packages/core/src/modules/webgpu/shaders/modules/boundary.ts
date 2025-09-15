@@ -9,6 +9,12 @@ type BoundaryBindingKeys =
 
 export type BoundaryMode = "bounce" | "warp" | "kill" | "none";
 
+export const DEFAULT_BOUNDARY_RESTITUTION = 0.9;
+export const DEFAULT_BOUNDARY_FRICTION = 0.1;
+export const DEFAULT_BOUNDARY_MODE: BoundaryMode = "bounce";
+export const DEFAULT_BOUNDARY_REPEL_DISTANCE = 0.0;
+export const DEFAULT_BOUNDARY_REPEL_STRENGTH = 0.0;
+
 export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
   private restitution: number;
   private friction: number;
@@ -24,11 +30,11 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
     repelStrength?: number;
   }) {
     super();
-    this.restitution = opts?.restitution ?? 0.9;
-    this.friction = opts?.friction ?? 0.1;
-    this.mode = opts?.mode ?? "bounce";
-    this.repelDistance = opts?.repelDistance ?? 0.0;
-    this.repelStrength = opts?.repelStrength ?? 0.0;
+    this.restitution = opts?.restitution ?? DEFAULT_BOUNDARY_RESTITUTION;
+    this.friction = opts?.friction ?? DEFAULT_BOUNDARY_FRICTION;
+    this.mode = opts?.mode ?? DEFAULT_BOUNDARY_MODE;
+    this.repelDistance = opts?.repelDistance ?? DEFAULT_BOUNDARY_REPEL_DISTANCE;
+    this.repelStrength = opts?.repelStrength ?? DEFAULT_BOUNDARY_REPEL_STRENGTH;
   }
 
   setRestitution(value: number): void {

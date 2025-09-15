@@ -1,20 +1,21 @@
 import { useEffect, useState } from "react";
-
-interface WebGPUCollisionsLike {
-  setRestitution: (value: number) => void;
-  setEnabled?: (value: boolean) => void;
-}
+import {
+  DEFAULT_COLLISIONS_RESTITUTION,
+  Collisions,
+} from "@cazala/party/modules/webgpu/shaders/modules/collisions";
 
 export function WebGPUCollisionsControls({
   collisions,
   hideEnabled = false,
   enabled = true,
 }: {
-  collisions: WebGPUCollisionsLike | null;
+  collisions: Collisions | null;
   hideEnabled?: boolean;
   enabled?: boolean;
 }) {
-  const [restitution, setRestitution] = useState(0.8);
+  const [restitution, setRestitution] = useState(
+    DEFAULT_COLLISIONS_RESTITUTION
+  );
   const [internalEnabled, setInternalEnabled] = useState(true);
 
   useEffect(() => {

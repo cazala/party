@@ -242,7 +242,7 @@ export function useWebGPUPlayground(
         try {
           // Create a live Environment instance to manage state
           const environment = new Environment({
-            strength: 0,
+            gravityStrength: 0,
             dirX: 0,
             dirY: 1,
             inertia: 0,
@@ -526,7 +526,7 @@ export function useWebGPUPlayground(
   const setGravityStrength = useCallback(
     (strength: number) => {
       const env = environmentRef.current;
-      env?.setStrength(strength);
+      env?.setGravityStrength(strength);
     },
     [isInitialized]
   );

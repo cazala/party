@@ -2,6 +2,8 @@ import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
 type CollisionBindingKeys = "restitution";
 
+export const DEFAULT_COLLISIONS_RESTITUTION = 0.9;
+
 // Simple, brute-force elastic collision response applied only to current particle
 export class Collisions extends ComputeModule<
   "collisions",
@@ -11,7 +13,7 @@ export class Collisions extends ComputeModule<
 
   constructor(opts?: { restitution?: number }) {
     super();
-    this.restitution = opts?.restitution ?? 0.9;
+    this.restitution = opts?.restitution ?? DEFAULT_COLLISIONS_RESTITUTION;
   }
 
   setRestitution(value: number): void {

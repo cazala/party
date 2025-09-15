@@ -1,7 +1,14 @@
 import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
+export const DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH = 0;
+export const DEFAULT_ENVIRONMENT_GRAVITY_DIRECTION: GravityDirection = "down";
+export const DEFAULT_ENVIRONMENT_GRAVITY_ANGLE = Math.PI / 2; // radians, default down
+export const DEFAULT_ENVIRONMENT_INERTIA = 0;
+export const DEFAULT_ENVIRONMENT_FRICTION = 0;
+export const DEFAULT_ENVIRONMENT_DAMPING = 0;
+
 type EnvBindingKeys =
-  | "strength"
+  | "gravityStrength"
   | "dirX"
   | "dirY"
   | "inertia"
@@ -19,7 +26,7 @@ export type GravityDirection =
   | "custom";
 
 export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
-  private strength: number;
+  private gravityStrength: number;
   private dirX: number;
   private dirY: number;
   private inertia: number;
@@ -30,7 +37,7 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
   private mode: number = 0; // 0 fixed, 1 inwards, 2 outwards
 
   constructor(opts?: {
-    strength?: number;
+    gravityStrength?: number;
     dirX?: number;
     dirY?: number;
     inertia?: number;
@@ -40,9 +47,11 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
     gravityAngle?: number; // radians, only used when direction is custom
   }) {
     super();
-    this.strength = opts?.strength ?? 0;
-    this.gravityDirection = opts?.gravityDirection ?? "down";
-    this.gravityAngle = opts?.gravityAngle ?? Math.PI / 2;
+    this.gravityStrength =
+      opts?.gravityStrength ?? DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH;
+    this.gravityDirection =
+      opts?.gravityDirection ?? DEFAULT_ENVIRONMENT_GRAVITY_DIRECTION;
+    this.gravityAngle = opts?.gravityAngle ?? DEFAULT_ENVIRONMENT_GRAVITY_ANGLE;
     // Initialize direction
     const initial = this.directionFromOptions(
       this.gravityDirection,
@@ -58,9 +67,9 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
         : 0;
     this.dirX = initial.x;
     this.dirY = initial.y;
-    this.inertia = opts?.inertia ?? 0;
-    this.friction = opts?.friction ?? 0;
-    this.damping = opts?.damping ?? 0;
+    this.inertia = opts?.inertia ?? DEFAULT_ENVIRONMENT_INERTIA;
+    this.friction = opts?.friction ?? DEFAULT_ENVIRONMENT_FRICTION;
+    this.damping = opts?.damping ?? DEFAULT_ENVIRONMENT_DAMPING;
   }
 
   private directionFromOptions(
@@ -102,7 +111,7 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
   ): void {
     super.attachUniformWriter(writer);
     this.write({
-      strength: this.strength,
+      gravityStrength: this.gravityStrength,
       dirX: this.dirX,
       dirY: this.dirY,
       inertia: this.inertia,
@@ -112,9 +121,9 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
     });
   }
 
-  setStrength(value: number): void {
-    this.strength = value;
-    this.write({ strength: value });
+  setGravityStrength(value: number): void {
+    this.gravityStrength = value;
+    this.write({ gravityStrength: value });
   }
   setDirection(x: number, y: number): void {
     this.dirX = x;
@@ -156,7 +165,7 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
       name: "environment",
       role: "force",
       bindings: [
-        "strength",
+        "gravityStrength",
         "dirX",
         "dirY",
         "inertia",
@@ -179,7 +188,9 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
   }
   let glen = length(gdir);
   if (glen > 0.0) {
-    ${particleVar}.acceleration += (gdir / glen) * ${getUniform("strength")};
+    ${particleVar}.acceleration += (gdir / glen) * ${getUniform(
+        "gravityStrength"
+      )};
   }
 
   // Inertia: acceleration += velocity * dt * inertia

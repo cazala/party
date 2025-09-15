@@ -10,6 +10,15 @@ type FluidBindingKeys =
   | "enableNearPressure"
   | "maxAcceleration";
 
+export const DEFAULT_FLUID_INFLUENCE_RADIUS = 100;
+export const DEFAULT_FLUID_TARGET_DENSITY = 1;
+export const DEFAULT_FLUID_PRESSURE_MULTIPLIER = 15;
+export const DEFAULT_FLUID_VISCOSITY = 0.6;
+export const DEFAULT_FLUID_NEAR_PRESSURE_MULTIPLIER = 30;
+export const DEFAULT_FLUID_NEAR_THRESHOLD = 50;
+export const DEFAULT_FLUID_ENABLE_NEAR_PRESSURE = true;
+export const DEFAULT_FLUID_MAX_ACCELERATION = 80;
+
 type FluidStateKeys = "density" | "nearDensity";
 
 export class Fluid extends ComputeModule<
@@ -38,14 +47,19 @@ export class Fluid extends ComputeModule<
     maxAcceleration?: number;
   }) {
     super();
-    this.influenceRadius = opts?.influenceRadius ?? 100;
-    this.targetDensity = opts?.targetDensity ?? 1;
-    this.pressureMultiplier = opts?.pressureMultiplier ?? 15;
-    this.viscosity = opts?.viscosity ?? 0.6;
-    this.nearPressureMultiplier = opts?.nearPressureMultiplier ?? 30;
-    this.nearThreshold = opts?.nearThreshold ?? 50;
-    this.enableNearPressure = opts?.enableNearPressure ?? true;
-    this.maxAcceleration = opts?.maxAcceleration ?? 80; // cap fluid acceleration to reduce fly-away droplets
+    this.influenceRadius =
+      opts?.influenceRadius ?? DEFAULT_FLUID_INFLUENCE_RADIUS;
+    this.targetDensity = opts?.targetDensity ?? DEFAULT_FLUID_TARGET_DENSITY;
+    this.pressureMultiplier =
+      opts?.pressureMultiplier ?? DEFAULT_FLUID_PRESSURE_MULTIPLIER;
+    this.viscosity = opts?.viscosity ?? DEFAULT_FLUID_VISCOSITY;
+    this.nearPressureMultiplier =
+      opts?.nearPressureMultiplier ?? DEFAULT_FLUID_NEAR_PRESSURE_MULTIPLIER;
+    this.nearThreshold = opts?.nearThreshold ?? DEFAULT_FLUID_NEAR_THRESHOLD;
+    this.enableNearPressure =
+      opts?.enableNearPressure ?? DEFAULT_FLUID_ENABLE_NEAR_PRESSURE;
+    this.maxAcceleration =
+      opts?.maxAcceleration ?? DEFAULT_FLUID_MAX_ACCELERATION; // cap fluid acceleration to reduce fly-away droplets
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
     }

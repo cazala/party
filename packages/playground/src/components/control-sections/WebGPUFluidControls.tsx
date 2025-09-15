@@ -1,35 +1,48 @@
 import { useEffect, useState } from "react";
-
-interface WebGPUFluidLike {
-  setEnabled: (enabled: boolean) => void;
-  setInfluenceRadius: (v: number) => void;
-  setTargetDensity: (v: number) => void;
-  setPressureMultiplier: (v: number) => void;
-  setViscosity: (v: number) => void;
-  setNearPressureMultiplier: (v: number) => void;
-  setNearThreshold: (v: number) => void;
-  setEnableNearPressure: (enabled: boolean) => void;
-  setMaxAcceleration?: (v: number) => void;
-}
+import {
+  DEFAULT_FLUID_INFLUENCE_RADIUS,
+  DEFAULT_FLUID_TARGET_DENSITY,
+  DEFAULT_FLUID_PRESSURE_MULTIPLIER,
+  DEFAULT_FLUID_VISCOSITY,
+  DEFAULT_FLUID_NEAR_PRESSURE_MULTIPLIER,
+  DEFAULT_FLUID_NEAR_THRESHOLD,
+  DEFAULT_FLUID_ENABLE_NEAR_PRESSURE,
+  DEFAULT_FLUID_MAX_ACCELERATION,
+  Fluid,
+} from "@cazala/party/modules/webgpu/shaders/modules/fluid";
 
 export function WebGPUFluidControls({
   fluid,
   hideEnabled = false,
   enabled = true,
 }: {
-  fluid: WebGPUFluidLike | null;
+  fluid: Fluid | null;
   hideEnabled?: boolean;
   enabled?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(false);
-  const [influenceRadius, setInfluenceRadius] = useState(100);
-  const [targetDensity, setTargetDensity] = useState(1);
-  const [pressureMultiplier, setPressureMultiplier] = useState(15);
-  const [viscosity, setViscosity] = useState(0.6);
-  const [nearPressureMultiplier, setNearPressureMultiplier] = useState(30);
-  const [nearThreshold, setNearThreshold] = useState(50);
-  const [enableNearPressure, setEnableNearPressure] = useState(true);
-  const [maxAcceleration, setMaxAcceleration] = useState(80);
+  const [influenceRadius, setInfluenceRadius] = useState(
+    DEFAULT_FLUID_INFLUENCE_RADIUS
+  );
+  const [targetDensity, setTargetDensity] = useState(
+    DEFAULT_FLUID_TARGET_DENSITY
+  );
+  const [pressureMultiplier, setPressureMultiplier] = useState(
+    DEFAULT_FLUID_PRESSURE_MULTIPLIER
+  );
+  const [viscosity, setViscosity] = useState(DEFAULT_FLUID_VISCOSITY);
+  const [nearPressureMultiplier, setNearPressureMultiplier] = useState(
+    DEFAULT_FLUID_NEAR_PRESSURE_MULTIPLIER
+  );
+  const [nearThreshold, setNearThreshold] = useState(
+    DEFAULT_FLUID_NEAR_THRESHOLD
+  );
+  const [enableNearPressure, setEnableNearPressure] = useState(
+    DEFAULT_FLUID_ENABLE_NEAR_PRESSURE
+  );
+  const [maxAcceleration, setMaxAcceleration] = useState(
+    DEFAULT_FLUID_MAX_ACCELERATION
+  );
 
   useEffect(() => {
     // Could hydrate current values if the module exposed getters. For now, keep UI state local.

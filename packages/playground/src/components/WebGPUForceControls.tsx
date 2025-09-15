@@ -8,73 +8,14 @@ import { WebGPUTrailsControls } from "./control-sections/WebGPUTrailsControls";
 import { WebGPUInteractionControls } from "./control-sections/WebGPUInteractionControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useState } from "react";
-
-interface WebGPUEnvironmentLike {
-  setStrength: (value: number) => void;
-  setDirection?: (x: number, y: number) => void;
-  setInertia?: (value: number) => void;
-  setFriction?: (value: number) => void;
-  setDamping?: (value: number) => void;
-  setEnabled?: (value: boolean) => void;
-}
-
-interface WebGPUBoundaryLike {
-  setRestitution: (value: number) => void;
-  setFriction?: (value: number) => void;
-  setEnabled?: (value: boolean) => void;
-}
-
-interface WebGPUCollisionsLike {
-  setRestitution: (value: number) => void;
-  setEnabled?: (value: boolean) => void;
-}
-
-interface WebGPUFluidLike {
-  setEnabled: (enabled: boolean) => void;
-  setInfluenceRadius: (v: number) => void;
-  setTargetDensity: (v: number) => void;
-  setPressureMultiplier: (v: number) => void;
-  setViscosity: (v: number) => void;
-  setNearPressureMultiplier: (v: number) => void;
-  setNearThreshold: (v: number) => void;
-  setEnableNearPressure: (enabled: boolean) => void;
-}
-
-interface WebGPUBehaviorLike {
-  setWanderWeight: (v: number) => void;
-  setCohesionWeight: (v: number) => void;
-  setAlignmentWeight: (v: number) => void;
-  setSeparationWeight: (v: number) => void;
-  setChaseWeight: (v: number) => void;
-  setAvoidWeight: (v: number) => void;
-  setSeparationRange: (v: number) => void;
-  setViewRadius: (v: number) => void;
-  setViewAngle: (v: number) => void;
-  setEnabled?: (v: boolean) => void;
-}
-
-interface WebGPUSensorsLike {
-  setEnabled?: (v: boolean) => void;
-  setSensorDistance: (v: number) => void;
-  setSensorAngle: (v: number) => void;
-  setSensorRadius: (v: number) => void;
-  setSensorThreshold: (v: number) => void;
-  setSensorStrength: (v: number) => void;
-}
-
-interface WebGPUTrailsLike {
-  setEnabled?: (v: boolean) => void;
-  setTrailDecay: (v: number) => void;
-  setTrailDiffuse: (v: number) => void;
-}
-
-interface WebGPUInteractionLike {
-  setEnabled?: (v: boolean) => void;
-  setAction: (v: "click" | "right_click") => void;
-  setMode: (v: "attract" | "repel") => void;
-  setStrength: (v: number) => void;
-  setRadius: (v: number) => void;
-}
+import { Environment } from "@cazala/party/modules/webgpu/shaders/modules/environment";
+import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary";
+import { Collisions } from "@cazala/party/modules/webgpu/shaders/modules/collisions";
+import { Fluid } from "@cazala/party/modules/webgpu/shaders/modules/fluid";
+import { Behavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior";
+import { Sensors } from "@cazala/party/modules/webgpu/shaders/modules/sensors";
+import { Trails } from "@cazala/party/modules/webgpu/shaders/modules/trails";
+import { Interaction } from "@cazala/party/modules/webgpu/shaders/modules/interaction";
 
 export function WebGPUForceControls({
   environment,
@@ -86,14 +27,14 @@ export function WebGPUForceControls({
   trails,
   interaction,
 }: {
-  environment: WebGPUEnvironmentLike | null;
-  boundary: WebGPUBoundaryLike | null;
-  collisions?: WebGPUCollisionsLike | null;
-  fluid?: WebGPUFluidLike | null;
-  behavior?: WebGPUBehaviorLike | null;
-  sensors?: WebGPUSensorsLike | null;
-  trails?: WebGPUTrailsLike | null;
-  interaction?: WebGPUInteractionLike | null;
+  environment: Environment | null;
+  boundary: Boundary | null;
+  collisions?: Collisions | null;
+  fluid?: Fluid | null;
+  behavior?: Behavior | null;
+  sensors?: Sensors | null;
+  trails?: Trails | null;
+  interaction?: Interaction | null;
 }) {
   const [environmentEnabled, setEnvironmentEnabled] = useState(true);
   const [boundaryEnabled, setBoundaryEnabled] = useState(true);

@@ -2,6 +2,9 @@ import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
 type TrailBindingKeys = "trailDecay" | "trailDiffuse";
 
+export const DEFAULT_TRAILS_TRAIL_DECAY = 0.01;
+export const DEFAULT_TRAILS_TRAIL_DIFFUSE = 0.0;
+
 export class Trails extends ComputeModule<"trails", TrailBindingKeys> {
   private trailDecay: number;
   private trailDiffuse: number;
@@ -12,8 +15,8 @@ export class Trails extends ComputeModule<"trails", TrailBindingKeys> {
     trailDiffuse?: number;
   }) {
     super();
-    this.trailDecay = opts?.trailDecay ?? 0.01;
-    this.trailDiffuse = opts?.trailDiffuse ?? 0.0;
+    this.trailDecay = opts?.trailDecay ?? DEFAULT_TRAILS_TRAIL_DECAY;
+    this.trailDiffuse = opts?.trailDiffuse ?? DEFAULT_TRAILS_TRAIL_DIFFUSE;
 
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);

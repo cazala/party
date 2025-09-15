@@ -1,37 +1,38 @@
 import { useEffect, useState } from "react";
-
-interface WebGPUBehaviorLike {
-  setWanderWeight: (v: number) => void;
-  setCohesionWeight: (v: number) => void;
-  setAlignmentWeight: (v: number) => void;
-  setSeparationWeight: (v: number) => void;
-  setChaseWeight: (v: number) => void;
-  setAvoidWeight: (v: number) => void;
-  setSeparationRange: (v: number) => void;
-  setViewRadius: (v: number) => void;
-  setViewAngle: (v: number) => void;
-  setEnabled?: (v: boolean) => void;
-}
+import {
+  DEFAULT_BEHAVIOR_WANDER_WEIGHT,
+  DEFAULT_BEHAVIOR_COHESION_WEIGHT,
+  DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT,
+  DEFAULT_BEHAVIOR_SEPARATION_WEIGHT,
+  DEFAULT_BEHAVIOR_CHASE_WEIGHT,
+  DEFAULT_BEHAVIOR_AVOID_WEIGHT,
+  DEFAULT_BEHAVIOR_SEPARATION_RANGE,
+  DEFAULT_BEHAVIOR_VIEW_RADIUS,
+  DEFAULT_BEHAVIOR_VIEW_ANGLE,
+  Behavior,
+} from "@cazala/party/modules/webgpu/shaders/modules/behavior";
 
 export function WebGPUBehaviorControls({
   behavior,
   hideEnabled = false,
   enabled = true,
 }: {
-  behavior: WebGPUBehaviorLike | null;
+  behavior: Behavior | null;
   hideEnabled?: boolean;
   enabled?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(true);
-  const [wander, setWander] = useState(0);
-  const [cohesion, setCohesion] = useState(0);
-  const [alignment, setAlignment] = useState(0);
-  const [separation, setSeparation] = useState(0);
-  const [chase, setChase] = useState(0);
-  const [avoid, setAvoid] = useState(0);
-  const [sepRange, setSepRange] = useState(30);
-  const [viewRadius, setVR] = useState(100);
-  const [viewAngle, setVA] = useState(Math.PI * 2);
+  const [wander, setWander] = useState(DEFAULT_BEHAVIOR_WANDER_WEIGHT);
+  const [cohesion, setCohesion] = useState(DEFAULT_BEHAVIOR_COHESION_WEIGHT);
+  const [alignment, setAlignment] = useState(DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT);
+  const [separation, setSeparation] = useState(
+    DEFAULT_BEHAVIOR_SEPARATION_WEIGHT
+  );
+  const [chase, setChase] = useState(DEFAULT_BEHAVIOR_CHASE_WEIGHT);
+  const [avoid, setAvoid] = useState(DEFAULT_BEHAVIOR_AVOID_WEIGHT);
+  const [sepRange, setSepRange] = useState(DEFAULT_BEHAVIOR_SEPARATION_RANGE);
+  const [viewRadius, setVR] = useState(DEFAULT_BEHAVIOR_VIEW_RADIUS);
+  const [viewAngle, setVA] = useState(DEFAULT_BEHAVIOR_VIEW_ANGLE);
 
   useEffect(() => {
     // could hydrate from module if getters existed

@@ -9,6 +9,11 @@ type InteractionBindingKeys =
   | "mouseY"
   | "inputButton";
 
+export const DEFAULT_INTERACTION_ACTION: "click" | "right_click" = "click";
+export const DEFAULT_INTERACTION_MODE: "attract" | "repel" = "attract";
+export const DEFAULT_INTERACTION_STRENGTH = 10000;
+export const DEFAULT_INTERACTION_RADIUS = 500;
+
 // action: 0 -> click (left), 1 -> right_click
 // mode: 0 -> attract, 1 -> repel
 
@@ -32,10 +37,11 @@ export class Interaction extends ComputeModule<
     radius?: number;
   }) {
     super();
-    this.action = opts?.action === "right_click" ? 1 : 0;
-    this.mode = opts?.mode === "repel" ? 1 : 0;
-    this.strength = opts?.strength ?? 10000;
-    this.radius = opts?.radius ?? 500;
+    this.action =
+      (opts?.action ?? DEFAULT_INTERACTION_ACTION) === "right_click" ? 1 : 0;
+    this.mode = (opts?.mode ?? DEFAULT_INTERACTION_MODE) === "repel" ? 1 : 0;
+    this.strength = opts?.strength ?? DEFAULT_INTERACTION_STRENGTH;
+    this.radius = opts?.radius ?? DEFAULT_INTERACTION_RADIUS;
     this.mouseX = 0;
     this.mouseY = 0;
     this.inputButton = 2; // none

@@ -14,6 +14,16 @@ type SensorBindingKeys =
   | "fleeAngle"
   | "enabled";
 
+export const DEFAULT_SENSORS_SENSOR_DISTANCE = 30;
+export const DEFAULT_SENSORS_SENSOR_ANGLE = Math.PI / 6; // 30 degrees
+export const DEFAULT_SENSORS_SENSOR_RADIUS = 3;
+export const DEFAULT_SENSORS_SENSOR_THRESHOLD = 0.1;
+export const DEFAULT_SENSORS_SENSOR_STRENGTH = 1000;
+export const DEFAULT_SENSORS_COLOR_SIMILARITY_THRESHOLD = 0.4;
+export const DEFAULT_SENSORS_FOLLOW_BEHAVIOR: SensorBehavior = "any";
+export const DEFAULT_SENSORS_FLEE_BEHAVIOR: SensorBehavior = "none";
+export const DEFAULT_SENSORS_FLEE_ANGLE = Math.PI / 2;
+
 export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
   private sensorDistance: number;
   private sensorAngle: number;
@@ -39,15 +49,21 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
   }) {
     super();
 
-    this.sensorDistance = opts?.sensorDistance ?? 30;
-    this.sensorAngle = opts?.sensorAngle ?? Math.PI / 6; // 30 degrees
-    this.sensorRadius = opts?.sensorRadius ?? 3;
-    this.sensorThreshold = opts?.sensorThreshold ?? 0.1;
-    this.sensorStrength = opts?.sensorStrength ?? 1000;
-    this.colorSimilarityThreshold = opts?.colorSimilarityThreshold ?? 0.4;
-    this.followBehavior = opts?.followBehavior ?? "any";
-    this.fleeBehavior = opts?.fleeBehavior ?? "none";
-    this.fleeAngle = opts?.fleeAngle ?? Math.PI / 2; // 90 degrees
+    this.sensorDistance =
+      opts?.sensorDistance ?? DEFAULT_SENSORS_SENSOR_DISTANCE;
+    this.sensorAngle = opts?.sensorAngle ?? DEFAULT_SENSORS_SENSOR_ANGLE; // 30 degrees
+    this.sensorRadius = opts?.sensorRadius ?? DEFAULT_SENSORS_SENSOR_RADIUS;
+    this.sensorThreshold =
+      opts?.sensorThreshold ?? DEFAULT_SENSORS_SENSOR_THRESHOLD;
+    this.sensorStrength =
+      opts?.sensorStrength ?? DEFAULT_SENSORS_SENSOR_STRENGTH;
+    this.colorSimilarityThreshold =
+      opts?.colorSimilarityThreshold ??
+      DEFAULT_SENSORS_COLOR_SIMILARITY_THRESHOLD;
+    this.followBehavior =
+      opts?.followBehavior ?? DEFAULT_SENSORS_FOLLOW_BEHAVIOR;
+    this.fleeBehavior = opts?.fleeBehavior ?? DEFAULT_SENSORS_FLEE_BEHAVIOR;
+    this.fleeAngle = opts?.fleeAngle ?? DEFAULT_SENSORS_FLEE_ANGLE; // 90 degrees
 
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);

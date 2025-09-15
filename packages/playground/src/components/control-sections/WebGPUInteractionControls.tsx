@@ -1,4 +1,10 @@
 import { useState } from "react";
+import {
+  DEFAULT_INTERACTION_ACTION,
+  DEFAULT_INTERACTION_MODE,
+  DEFAULT_INTERACTION_STRENGTH,
+  DEFAULT_INTERACTION_RADIUS,
+} from "@cazala/party/modules/webgpu/shaders/modules/interaction";
 
 interface WebGPUInteractionLike {
   setEnabled?: (v: boolean) => void;
@@ -18,10 +24,14 @@ export function WebGPUInteractionControls({
   enabled?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(true);
-  const [action, setAction] = useState<"click" | "right_click">("click");
-  const [mode, setMode] = useState<"attract" | "repel">("attract");
-  const [strength, setStrength] = useState(10000);
-  const [radius, setRadius] = useState(500);
+  const [action, setAction] = useState<"click" | "right_click">(
+    DEFAULT_INTERACTION_ACTION
+  );
+  const [mode, setMode] = useState<"attract" | "repel">(
+    DEFAULT_INTERACTION_MODE
+  );
+  const [strength, setStrength] = useState(DEFAULT_INTERACTION_STRENGTH);
+  const [radius, setRadius] = useState(DEFAULT_INTERACTION_RADIUS);
 
   return (
     <div className="control-section">

@@ -1,28 +1,24 @@
 import { useEffect, useState } from "react";
-
-interface WebGPUTrailsLike {
-  setTrailDecay: (v: number) => void;
-  setTrailDiffuse: (v: number) => void;
-  setEnabled?: (v: boolean) => void;
-}
-
-const DEFAULT_TRAIL_ENABLED = false;
-const DEFAULT_TRAIL_DECAY = 0.01;
-const DEFAULT_TRAIL_DIFFUSE = 0;
+import {
+  DEFAULT_TRAILS_TRAIL_DECAY,
+  DEFAULT_TRAILS_TRAIL_DIFFUSE,
+  Trails,
+} from "@cazala/party/modules/webgpu/shaders/modules/trails";
 
 export function WebGPUTrailsControls({
   trails,
   hideEnabled = false,
   enabled = true,
 }: {
-  trails: WebGPUTrailsLike | null;
+  trails: Trails | null;
   hideEnabled?: boolean;
   enabled?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(true);
-  const [trailEnabled, setTrailEnabled] = useState(DEFAULT_TRAIL_ENABLED);
-  const [trailDecay, setTrailDecay] = useState(DEFAULT_TRAIL_DECAY);
-  const [trailDiffuse, setTrailDiffuse] = useState(DEFAULT_TRAIL_DIFFUSE);
+  const [trailDecay, setTrailDecay] = useState(DEFAULT_TRAILS_TRAIL_DECAY);
+  const [trailDiffuse, setTrailDiffuse] = useState(
+    DEFAULT_TRAILS_TRAIL_DIFFUSE
+  );
 
   useEffect(() => {
     // hydrate if getters exist in future
@@ -32,7 +28,7 @@ export function WebGPUTrailsControls({
     if (!trails || !enabled) return;
     switch (property) {
       case "enable":
-        setTrailEnabled(value as boolean);
+        setInternalEnabled(value as boolean);
         trails.setEnabled?.(value as boolean);
         break;
       case "trailDecay":

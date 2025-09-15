@@ -1,31 +1,34 @@
 import { useEffect, useState } from "react";
-
-interface WebGPUBoundaryLike {
-  setRestitution: (value: number) => void;
-  setFriction?: (value: number) => void;
-  setMode?: (mode: "bounce" | "warp" | "kill" | "none") => void;
-  setEnabled?: (value: boolean) => void;
-  setRepelDistance?: (v: number) => void;
-  setRepelStrength?: (v: number) => void;
-}
+import {
+  DEFAULT_BOUNDARY_RESTITUTION,
+  DEFAULT_BOUNDARY_FRICTION,
+  DEFAULT_BOUNDARY_MODE,
+  DEFAULT_BOUNDARY_REPEL_DISTANCE,
+  DEFAULT_BOUNDARY_REPEL_STRENGTH,
+  Boundary,
+} from "@cazala/party/modules/webgpu/shaders/modules/boundary";
 
 export function WebGPUBoundaryControls({
   boundary,
   hideEnabled = false,
   enabled = true,
 }: {
-  boundary: WebGPUBoundaryLike | null;
+  boundary: Boundary | null;
   hideEnabled?: boolean;
   enabled?: boolean;
 }) {
-  const [restitution, setRestitution] = useState(0.6);
-  const [friction, setFriction] = useState(0.1);
+  const [restitution, setRestitution] = useState(DEFAULT_BOUNDARY_RESTITUTION);
+  const [friction, setFriction] = useState(DEFAULT_BOUNDARY_FRICTION);
   const [mode, setMode] = useState<"bounce" | "warp" | "kill" | "none">(
-    "bounce"
+    DEFAULT_BOUNDARY_MODE
   );
   const [internalEnabled, setInternalEnabled] = useState(true);
-  const [repelDistance, setRepelDistance] = useState(0);
-  const [repelStrength, setRepelStrength] = useState(0);
+  const [repelDistance, setRepelDistance] = useState(
+    DEFAULT_BOUNDARY_REPEL_DISTANCE
+  );
+  const [repelStrength, setRepelStrength] = useState(
+    DEFAULT_BOUNDARY_REPEL_STRENGTH
+  );
 
   useEffect(() => {
     // no-op: could hydrate from module if it exposed getters
