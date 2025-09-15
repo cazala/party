@@ -6,6 +6,7 @@ import { Fluid } from "./fluid";
 import { Behavior } from "./behavior";
 import { Sensors } from "./sensors";
 import { Trails } from "./trails";
+import { Interaction } from "./interaction";
 
 export {
   simulationModule,
@@ -16,6 +17,7 @@ export {
   Behavior,
   Sensors,
   Trails,
+  Interaction,
 };
 
 export const defaultComputeModules = [
@@ -27,4 +29,5 @@ export const defaultComputeModules = [
   new Fluid(),
   new Trails(),
   new Sensors(),
+  new Interaction(),
 ];

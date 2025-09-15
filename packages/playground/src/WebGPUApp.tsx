@@ -39,6 +39,7 @@ function WebGPUApp() {
     behavior,
     sensors,
     trails,
+    interaction,
     play,
     pause,
     clear,
@@ -223,6 +224,7 @@ function WebGPUApp() {
             behavior={behavior}
             sensors={sensors}
             trails={trails}
+            interaction={interaction}
           />
         </div>
       </div>

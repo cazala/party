@@ -5,6 +5,7 @@ import { WebGPUFluidControls } from "./control-sections/WebGPUFluidControls";
 import { WebGPUBehaviorControls } from "./control-sections/WebGPUBehaviorControls";
 import { WebGPUSensorsControls } from "./control-sections/WebGPUSensorsControls";
 import { WebGPUTrailsControls } from "./control-sections/WebGPUTrailsControls";
+import { WebGPUInteractionControls } from "./control-sections/WebGPUInteractionControls";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useState } from "react";
 
@@ -67,6 +68,14 @@ interface WebGPUTrailsLike {
   setTrailDiffuse: (v: number) => void;
 }
 
+interface WebGPUInteractionLike {
+  setEnabled?: (v: boolean) => void;
+  setAction: (v: "click" | "right_click") => void;
+  setMode: (v: "attract" | "repel") => void;
+  setStrength: (v: number) => void;
+  setRadius: (v: number) => void;
+}
+
 export function WebGPUForceControls({
   environment,
   boundary,
@@ -75,6 +84,7 @@ export function WebGPUForceControls({
   behavior,
   sensors,
   trails,
+  interaction,
 }: {
   environment: WebGPUEnvironmentLike | null;
   boundary: WebGPUBoundaryLike | null;
@@ -83,6 +93,7 @@ export function WebGPUForceControls({
   behavior?: WebGPUBehaviorLike | null;
   sensors?: WebGPUSensorsLike | null;
   trails?: WebGPUTrailsLike | null;
+  interaction?: WebGPUInteractionLike | null;
 }) {
   const [environmentEnabled, setEnvironmentEnabled] = useState(true);
   const [boundaryEnabled, setBoundaryEnabled] = useState(true);
@@ -91,6 +102,7 @@ export function WebGPUForceControls({
   const [behaviorEnabled, setBehaviorEnabled] = useState(true);
   const [sensorsEnabled, setSensorsEnabled] = useState(false);
   const [trailsEnabled, setTrailsEnabled] = useState(false);
+  const [interactionEnabled, setInteractionEnabled] = useState(false);
 
   const createEnabledHeader = (
     enabled: boolean,
@@ -216,6 +228,23 @@ export function WebGPUForceControls({
             sensors={sensors}
             hideEnabled
             enabled={sensorsEnabled}
+          />
+        </CollapsibleSection>
+      )}
+
+      {interaction && (
+        <CollapsibleSection title="Interaction">
+          <div style={{ marginBottom: "12px" }}>
+            {createEnabledHeader(
+              interactionEnabled,
+              setInteractionEnabled,
+              interaction
+            )}
+          </div>
+          <WebGPUInteractionControls
+            interaction={interaction}
+            hideEnabled
+            enabled={interactionEnabled}
           />
         </CollapsibleSection>
       )}

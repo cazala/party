@@ -12,6 +12,7 @@ import { Fluid } from "@cazala/party/modules/webgpu/shaders/modules/fluid";
 import { Behavior as WebGPUBehavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior";
 import { Sensors } from "@cazala/party/modules/webgpu/shaders/modules/sensors";
 import { Trails } from "@cazala/party/modules/webgpu/shaders/modules/trails";
+import { Interaction } from "@cazala/party/modules/webgpu/shaders/modules/interaction";
 import { ToolMode } from "./useToolMode";
 
 export function useWebGPUPlayground(
@@ -28,6 +29,7 @@ export function useWebGPUPlayground(
   const behaviorRef = useRef<WebGPUBehavior | null>(null);
   const sensorsRef = useRef<Sensors | null>(null);
   const trailsRef = useRef<Trails | null>(null);
+  const interactionRef = useRef<Interaction | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -257,6 +259,7 @@ export function useWebGPUPlayground(
           const behavior = new WebGPUBehavior({ enabled: true });
           const trails = new Trails({ enabled: false });
           const sensors = new Sensors({ enabled: false });
+          const interaction = new Interaction({ enabled: false });
           // Initialize simulation parameters
           const modules = [
             simulationModule,
@@ -267,6 +270,7 @@ export function useWebGPUPlayground(
             fluid,
             trails,
             sensors,
+            interaction,
           ];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();
@@ -278,6 +282,7 @@ export function useWebGPUPlayground(
           behaviorRef.current = behavior;
           sensorsRef.current = sensors;
           trailsRef.current = trails;
+          interactionRef.current = interaction;
         } catch (sysErr) {
           console.error(
             "Failed to create/attach WebGPU particle system:",
@@ -329,6 +334,70 @@ export function useWebGPUPlayground(
       }
     };
   }, []); // Run once on mount, cleanup on unmount
+
+  // Wire mouse input to WebGPU Interaction module
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const renderer = rendererRef.current;
+    const interaction = interactionRef.current;
+    if (!canvas || !renderer || !interaction) return;
+
+    const screenToWorld = (sx: number, sy: number) => {
+      const size = renderer.getSize
+        ? renderer.getSize()
+        : { width: 800, height: 600 };
+      const cam = renderer.getCamera ? renderer.getCamera() : { x: 0, y: 0 };
+      const zoom = renderer.getZoom ? renderer.getZoom() : 1;
+      const dx = sx - size.width / 2;
+      const dy = sy - size.height / 2;
+      const wx = cam.x + dx / Math.max(zoom, 1e-6);
+      const wy = cam.y + dy / Math.max(zoom, 1e-6);
+      return { x: wx, y: wy };
+    };
+
+    const updateMousePos = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const { x, y } = screenToWorld(sx, sy);
+      interaction.setMousePosition(x, y);
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      updateMousePos(e);
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      updateMousePos(e);
+      if (e.button === 0) {
+        interaction.setInputButton(0);
+      } else if (e.button === 2) {
+        interaction.setInputButton(1);
+      }
+    };
+
+    const onMouseUp = () => {
+      interaction.setInputButton(2); // none
+    };
+
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+
+    canvas.addEventListener("mousemove", onMouseMove);
+    canvas.addEventListener("mousedown", onMouseDown);
+    canvas.addEventListener("mouseup", onMouseUp);
+    canvas.addEventListener("mouseleave", onMouseUp);
+    canvas.addEventListener("contextmenu", onContextMenu);
+
+    return () => {
+      canvas.removeEventListener("mousemove", onMouseMove);
+      canvas.removeEventListener("mousedown", onMouseDown);
+      canvas.removeEventListener("mouseup", onMouseUp);
+      canvas.removeEventListener("mouseleave", onMouseUp);
+      canvas.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [canvasRef.current, rendererRef.current, interactionRef.current]);
 
   const spawnParticles = useCallback(
     (
@@ -510,6 +579,7 @@ export function useWebGPUPlayground(
     behavior: behaviorRef.current,
     sensors: sensorsRef.current,
     trails: trailsRef.current,
+    interaction: interactionRef.current,
     isInitialized,
     error,
     spawnParticles,
@@ -522,7 +592,6 @@ export function useWebGPUPlayground(
     getFPS,
     setConstrainIterations,
     // Dummy values for compatibility
-    interaction: null,
     joints: null,
     spatialGrid: null,
     zoomStateRef, // Expose zoom state for session loading
