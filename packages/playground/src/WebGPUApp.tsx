@@ -43,7 +43,7 @@ function WebGPUApp() {
     play,
     pause,
     clear,
-    resetParticles,
+    // resetParticles,
     handleZoom,
     setZoomSensitivity,
   } = useWebGPUPlayground(canvasRef, toolMode);
@@ -134,6 +134,26 @@ function WebGPUApp() {
     );
   }
 
+  const handleRestart = () => {
+    // Re-spawn particles using current INIT panel config
+    const cfg = initControlsRef.current?.getState();
+    if (!cfg) return;
+    spawnParticles(
+      cfg.numParticles,
+      cfg.spawnShape,
+      cfg.spacing,
+      cfg.particleSize,
+      cfg.radius,
+      cfg.colors,
+      cfg.velocityConfig,
+      cfg.innerRadius,
+      cfg.squareSize,
+      cfg.cornerRadius,
+      cfg.particleMass
+    );
+    play();
+  };
+
   return (
     <div className="app">
       <TopBar
@@ -141,7 +161,7 @@ function WebGPUApp() {
         onPlay={play}
         onPause={pause}
         onClear={clear}
-        onReset={resetParticles}
+        onReset={handleRestart}
         onShowHotkeys={() => {}}
         onSave={() => {}}
         onLoad={() => {}}

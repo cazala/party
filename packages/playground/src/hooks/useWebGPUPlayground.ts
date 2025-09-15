@@ -546,12 +546,17 @@ export function useWebGPUPlayground(
   const clear = useCallback(() => {
     if (rendererRef.current) {
       rendererRef.current.clearParticles();
+      // Ensure the loop continues so the cleared scene is presented
+      rendererRef.current.play();
     }
   }, [isInitialized]);
 
   const resetParticles = useCallback(() => {
+    // Deprecated in favor of restarting via spawn from UI state.
+    // Keep as a no-op that clears and resumes.
     if (rendererRef.current) {
-      rendererRef.current.reset();
+      rendererRef.current.clearParticles();
+      rendererRef.current.play();
     }
   }, [isInitialized]);
 

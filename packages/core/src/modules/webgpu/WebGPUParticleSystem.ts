@@ -1455,7 +1455,35 @@ export class WebGPUParticleSystem {
   }
 
   clear(): void {
+    // Remove all particles
     this.particleCount = 0;
+
+    // Clear scene/trail textures so sensors and the next frame don't see stale data
+    try {
+      this.clearTrails();
+    } catch (_) {
+      // no-op if textures not ready
+    }
+
+    // Proactively clear the canvas once so last frame isn't left onscreen
+    try {
+      const commandEncoder = this.device.createCommandEncoder();
+      const canvasView = this.context.getCurrentTexture().createView();
+      const pass = commandEncoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: canvasView,
+            clearValue: DEFAULTS.clearColor,
+            loadOp: "clear",
+            storeOp: "store",
+          },
+        ],
+      });
+      pass.end();
+      this.device.queue.submit([commandEncoder.finish()]);
+    } catch (_) {
+      // ignore if context not available yet
+    }
   }
 
   destroy(): void {
