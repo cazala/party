@@ -61,7 +61,7 @@ export function WebGPUBehaviorControls({
           <input
             type="range"
             min="0"
-            max="1"
+            max="10"
             step="0.1"
             value={wander}
             disabled={!enabled}

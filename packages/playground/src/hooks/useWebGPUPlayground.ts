@@ -256,7 +256,7 @@ export function useWebGPUPlayground(
           });
           const collisions = new Collisions({ restitution: 0.8 });
           const fluid = new Fluid({ enabled: false });
-          const behavior = new WebGPUBehavior({ enabled: true });
+          const behavior = new WebGPUBehavior({ enabled: false });
           const trails = new Trails({ enabled: false });
           const sensors = new Sensors({ enabled: false });
           const interaction = new Interaction({

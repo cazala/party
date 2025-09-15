@@ -99,7 +99,7 @@ export function WebGPUForceControls({
   const [boundaryEnabled, setBoundaryEnabled] = useState(true);
   const [collisionsEnabled, setCollisionsEnabled] = useState(true);
   const [fluidEnabled, setFluidEnabled] = useState(false);
-  const [behaviorEnabled, setBehaviorEnabled] = useState(true);
+  const [behaviorEnabled, setBehaviorEnabled] = useState(false);
   const [sensorsEnabled, setSensorsEnabled] = useState(false);
   const [trailsEnabled, setTrailsEnabled] = useState(false);
   const [interactionEnabled, setInteractionEnabled] = useState(false);
