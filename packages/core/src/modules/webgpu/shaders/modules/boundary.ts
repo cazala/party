@@ -1,6 +1,11 @@
 import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
-type BoundaryBindingKeys = "restitution" | "friction" | "mode";
+type BoundaryBindingKeys =
+  | "restitution"
+  | "friction"
+  | "mode"
+  | "repelDistance"
+  | "repelStrength";
 
 export type BoundaryMode = "bounce" | "warp" | "kill";
 
@@ -8,16 +13,22 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
   private restitution: number;
   private friction: number;
   private mode: BoundaryMode;
+  private repelDistance: number;
+  private repelStrength: number;
 
   constructor(opts?: {
     restitution?: number;
     friction?: number;
     mode?: BoundaryMode;
+    repelDistance?: number;
+    repelStrength?: number;
   }) {
     super();
     this.restitution = opts?.restitution ?? 0.9;
     this.friction = opts?.friction ?? 0.1;
     this.mode = opts?.mode ?? "bounce";
+    this.repelDistance = opts?.repelDistance ?? 0.0;
+    this.repelStrength = opts?.repelStrength ?? 0.0;
   }
 
   setRestitution(value: number): void {
@@ -33,6 +44,16 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
   setMode(mode: BoundaryMode): void {
     this.mode = mode;
     this.write({ mode: this.modeToUniform(mode) });
+  }
+
+  setRepelDistance(value: number): void {
+    this.repelDistance = value;
+    this.write({ repelDistance: value });
+  }
+
+  setRepelStrength(value: number): void {
+    this.repelStrength = value;
+    this.write({ repelStrength: value });
   }
 
   private modeToUniform(mode: BoundaryMode): number {
@@ -56,6 +77,8 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
       restitution: this.restitution,
       friction: this.friction,
       mode: this.modeToUniform(this.mode),
+      repelDistance: this.repelDistance,
+      repelStrength: this.repelStrength,
     });
   }
 
@@ -63,7 +86,13 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
     return {
       name: "boundary",
       role: "force",
-      bindings: ["restitution", "friction", "mode"] as const,
+      bindings: [
+        "restitution",
+        "friction",
+        "mode",
+        "repelDistance",
+        "repelStrength",
+      ] as const,
       apply: ({ particleVar, getUniform }) => `{
   // Bounce using global grid extents
   let halfSize = ${particleVar}.size;
@@ -74,6 +103,43 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
   let bounce = ${getUniform("restitution")};
   let friction = ${getUniform("friction")};
   let mode = ${getUniform("mode")};
+  let repelDist = ${getUniform("repelDistance")};
+  let repelStrength = ${getUniform("repelStrength")};
+
+  // Repel force applied for all modes
+  if (repelStrength > 0.0) {
+    let distLeft = (${particleVar}.position.x - halfSize) - minX;
+    let distRight = maxX - (${particleVar}.position.x + halfSize);
+    let distTop = (${particleVar}.position.y - halfSize) - minY;
+    let distBottom = maxY - (${particleVar}.position.y + halfSize);
+
+    var fx = 0.0;
+    var fy = 0.0;
+    if (repelDist <= 0.0) {
+      if (distLeft < 0.0) { fx += repelStrength; }
+      if (distRight < 0.0) { fx -= repelStrength; }
+      if (distTop < 0.0) { fy += repelStrength; }
+      if (distBottom < 0.0) { fy -= repelStrength; }
+    } else {
+      if (distLeft < repelDist && distLeft > 0.0) {
+        let ratio = (repelDist - distLeft) / repelDist;
+        fx += ratio * repelStrength;
+      }
+      if (distRight < repelDist && distRight > 0.0) {
+        let ratio = (repelDist - distRight) / repelDist;
+        fx -= ratio * repelStrength;
+      }
+      if (distTop < repelDist && distTop > 0.0) {
+        let ratio = (repelDist - distTop) / repelDist;
+        fy += ratio * repelStrength;
+      }
+      if (distBottom < repelDist && distBottom > 0.0) {
+        let ratio = (repelDist - distBottom) / repelDist;
+        fy -= ratio * repelStrength;
+      }
+    }
+    ${particleVar}.acceleration += vec2<f32>(fx, fy);
+  }
 
   if (mode == 0.0) {
     // bounce

@@ -5,6 +5,8 @@ interface WebGPUBoundaryLike {
   setFriction?: (value: number) => void;
   setMode?: (mode: "bounce" | "warp" | "kill") => void;
   setEnabled?: (value: boolean) => void;
+  setRepelDistance?: (v: number) => void;
+  setRepelStrength?: (v: number) => void;
 }
 
 export function WebGPUBoundaryControls({
@@ -20,6 +22,8 @@ export function WebGPUBoundaryControls({
   const [friction, setFriction] = useState(0.1);
   const [mode, setMode] = useState<"bounce" | "warp" | "kill">("bounce");
   const [internalEnabled, setInternalEnabled] = useState(true);
+  const [repelDistance, setRepelDistance] = useState(0);
+  const [repelStrength, setRepelStrength] = useState(0);
 
   useEffect(() => {
     // no-op: could hydrate from module if it exposed getters
@@ -62,19 +66,63 @@ export function WebGPUBoundaryControls({
         </label>
       </div>
 
+      {mode === "bounce" && (
+        <div className="control-group">
+          <label>
+            Restitution: {restitution.toFixed(2)}
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={restitution}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setRestitution(v);
+                boundary?.setRestitution(v);
+              }}
+              disabled={!enabled}
+              className={`slider ${!enabled ? "disabled" : ""}`}
+            />
+          </label>
+        </div>
+      )}
+
+      {mode === "bounce" && (
+        <div className="control-group">
+          <label>
+            Friction: {friction.toFixed(2)}
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={friction}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setFriction(v);
+                boundary?.setFriction?.(v);
+              }}
+              disabled={!enabled}
+              className={`slider ${!enabled ? "disabled" : ""}`}
+            />
+          </label>
+        </div>
+      )}
+      {/* Repel controls - visible in all modes */}
       <div className="control-group">
         <label>
-          Restitution: {restitution.toFixed(2)}
+          Repel Distance: {repelDistance}
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.01"
-            value={restitution}
+            max="200"
+            step="1"
+            value={repelDistance}
             onChange={(e) => {
               const v = parseFloat(e.target.value);
-              setRestitution(v);
-              boundary?.setRestitution(v);
+              setRepelDistance(v);
+              boundary?.setRepelDistance?.(v);
             }}
             disabled={!enabled}
             className={`slider ${!enabled ? "disabled" : ""}`}
@@ -84,17 +132,17 @@ export function WebGPUBoundaryControls({
 
       <div className="control-group">
         <label>
-          Friction: {friction.toFixed(2)}
+          Repel Strength: {repelStrength}
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.01"
-            value={friction}
+            max="500"
+            step="1"
+            value={repelStrength}
             onChange={(e) => {
               const v = parseFloat(e.target.value);
-              setFriction(v);
-              boundary?.setFriction?.(v);
+              setRepelStrength(v);
+              boundary?.setRepelStrength?.(v);
             }}
             disabled={!enabled}
             className={`slider ${!enabled ? "disabled" : ""}`}
