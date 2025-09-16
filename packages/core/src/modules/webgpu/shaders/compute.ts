@@ -177,6 +177,7 @@ export interface ModuleUniformLayout {
 export interface ComputeProgramBuild {
   code: string;
   layouts: ModuleUniformLayout[];
+  simStateStride: number;
   extraBindings: {
     grid?: { countsBinding: number; indicesBinding: number };
     simState?: { stateBinding: number };
@@ -209,7 +210,7 @@ struct Particle {
 
   const storageDecl = `@group(0) @binding(0) var<storage, read_write> particles: array<Particle>;`;
 
-  const sim = descriptors.find((m) => m.role === "simulation");
+  const sim = descriptors.find((m) => m.name === "simulation");
   if (!sim) {
     throw new Error("No simulation module provided");
   }
@@ -491,12 +492,8 @@ fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
 
   // Grid passes are now contributed by system modules
 
-  const stateHelpers = `
-const SIM_STATE_STRIDE: u32 = ${SIM_STATE_STRIDE_VAL}u; // auto-generated stride
-fn sim_state_index(pid: u32, slot: u32) -> u32 { return pid * SIM_STATE_STRIDE + slot; }
-fn sim_state_read(pid: u32, slot: u32) -> f32 { return SIM_STATE[sim_state_index(pid, slot)]; }
-fn sim_state_write(pid: u32, slot: u32, value: f32) { SIM_STATE[sim_state_index(pid, slot)] = value; }
-`;
+  // Simulation module will expose SIM_STATE helpers via global(); no builder injection needed
+  const stateHelpers = ``;
 
   const statePass = `
 @compute @workgroup_size(64)
@@ -620,6 +617,7 @@ fn main(@builtin(global_invocation_id) _gid: vec3<u32>) {
   return {
     code,
     layouts,
+    simStateStride: SIM_STATE_STRIDE_VAL,
     extraBindings: {
       grid: {
         countsBinding: gridCountsBinding,

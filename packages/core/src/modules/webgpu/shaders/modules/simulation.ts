@@ -1,6 +1,6 @@
 import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
 
-type SimKeys = "dt" | "count";
+type SimKeys = "dt" | "count" | "simStride";
 
 export class Simulation extends ComputeModule<"simulation", SimKeys> {
   constructor() {
@@ -10,8 +10,16 @@ export class Simulation extends ComputeModule<"simulation", SimKeys> {
   descriptor(): ComputeModuleDescriptor<"simulation", SimKeys> {
     return {
       name: "simulation",
-      role: "simulation",
-      bindings: ["dt", "count"],
+      role: "system",
+      bindings: ["dt", "count", "simStride"],
+      // Provide SIM_STATE helpers via global() so other modules can use them
+      global: () => `
+// Simulation state helpers (stride from simulation uniforms)
+fn SIM_STATE_STRIDE() -> u32 { return u32(simulation_uniforms.v0.z); }
+fn sim_state_index(pid: u32, slot: u32) -> u32 { return pid * SIM_STATE_STRIDE() + slot; }
+fn sim_state_read(pid: u32, slot: u32) -> f32 { return SIM_STATE[sim_state_index(pid, slot)]; }
+fn sim_state_write(pid: u32, slot: u32, value: f32) { SIM_STATE[sim_state_index(pid, slot)] = value; }
+`,
     };
   }
 }

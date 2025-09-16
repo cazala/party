@@ -192,6 +192,18 @@ export class WebGPUParticleSystem {
       return state;
     });
 
+    // Seed simulation stride uniform for SIM_STATE helpers
+    const simLayoutIdx = this.computeBuild.layouts.findIndex(
+      (l) => l.moduleName === "simulation"
+    );
+    if (simLayoutIdx !== -1) {
+      const simLayout = this.computeBuild.layouts[simLayoutIdx];
+      if (simLayout.mapping["simStride"]) {
+        this.moduleUniformState[simLayoutIdx]["simStride"] =
+          this.computeBuild.simStateStride;
+      }
+    }
+
     // Create render uniform buffer (canvas_size, camera_position, zoom, padding)
     this.renderUniformBuffer = this.device.createBuffer({
       size: 24, // 6 floats * 4 bytes
