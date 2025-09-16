@@ -13,9 +13,10 @@ export class Simulation extends ComputeModule<"simulation", SimKeys> {
       role: "system",
       bindings: ["dt", "count", "simStride"],
       // Provide SIM_STATE helpers via global() so other modules can use them
-      global: () => `
+      global: ({ getUniform }: any) => `
 // Simulation state helpers (stride from simulation uniforms)
-fn SIM_STATE_STRIDE() -> u32 { return u32(simulation_uniforms.v0.z); }
+fn SIM_STATE_STRIDE() -> u32 { return u32(${getUniform("simStride")}); }
+fn SIM_COUNT() -> u32 { return u32(${getUniform("count")}); }
 fn sim_state_index(pid: u32, slot: u32) -> u32 { return pid * SIM_STATE_STRIDE() + slot; }
 fn sim_state_read(pid: u32, slot: u32) -> f32 { return SIM_STATE[sim_state_index(pid, slot)]; }
 fn sim_state_write(pid: u32, slot: u32, value: f32) { SIM_STATE[sim_state_index(pid, slot)] = value; }

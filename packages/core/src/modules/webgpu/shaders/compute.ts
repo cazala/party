@@ -14,7 +14,7 @@ export interface ComputeModuleDescriptor<
   role: ComputeModuleRole;
   bindings?: readonly BindingKeys[];
   states?: readonly StateKeys[];
-  global?: () => string;
+  global?: (args?: { getUniform: (id: BindingKeys) => string }) => string;
   // Optional system-only hook for emitting WGSL entrypoints like grid_clear/grid_build
   entrypoints?: () => string;
   state?: (args: {
@@ -312,7 +312,9 @@ struct Particle {
   const globalFunctions: string[] = [];
   const pushGlobal = (mod: (typeof descriptors)[number]) => {
     if (!mod.global) return;
-    const globalCode = mod.global();
+    const layout = layouts.find((l) => l.moduleName === mod.name)!;
+    const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const globalCode = mod.global({ getUniform } as any);
     if (globalCode && globalCode.trim().length > 0) {
       globalFunctions.push(`// Global functions for ${mod.name} module`);
       globalFunctions.push(globalCode.trim());
