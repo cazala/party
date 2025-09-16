@@ -9,7 +9,7 @@ import { Environment } from "@cazala/party/modules/webgpu/shaders/modules/enviro
 import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary";
 import { Collisions } from "@cazala/party/modules/webgpu/shaders/modules/collisions";
 import { Fluid } from "@cazala/party/modules/webgpu/shaders/modules/fluid";
-import { Behavior as WebGPUBehavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior";
+import { Behavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior";
 import { Sensors } from "@cazala/party/modules/webgpu/shaders/modules/sensors";
 import { Trails } from "@cazala/party/modules/webgpu/shaders/modules/trails";
 import { Interaction } from "@cazala/party/modules/webgpu/shaders/modules/interaction";
@@ -26,7 +26,7 @@ export function useWebGPUPlayground(
   const boundaryRef = useRef<Boundary | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
   const fluidRef = useRef<Fluid | null>(null);
-  const behaviorRef = useRef<WebGPUBehavior | null>(null);
+  const behaviorRef = useRef<Behavior | null>(null);
   const sensorsRef = useRef<Sensors | null>(null);
   const trailsRef = useRef<Trails | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
@@ -256,7 +256,7 @@ export function useWebGPUPlayground(
           });
           const collisions = new Collisions({ restitution: 0.8 });
           const fluid = new Fluid({ enabled: false });
-          const behavior = new WebGPUBehavior({ enabled: false });
+          const behavior = new Behavior({ enabled: false });
           const trails = new Trails({ enabled: false });
           const sensors = new Sensors({ enabled: false });
           const interaction = new Interaction({

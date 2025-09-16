@@ -1,4 +1,9 @@
-export type ComputeModuleRole = "simulation" | "force" | "grid";
+export type ComputeModuleRole =
+  | "simulation"
+  | "force"
+  | "grid"
+  | "system"
+  | "render";
 
 export interface ComputeModuleDescriptor<
   Name extends string,
@@ -31,6 +36,82 @@ export interface ComputeModuleDescriptor<
     getState: (name: StateKeys, pidVar?: string) => string;
     setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
   }) => string;
+}
+
+// ---------------------------------------------------------------------------
+// Role-based descriptor types (forward-compatible, optional for existing modules)
+// ---------------------------------------------------------------------------
+
+export interface BaseModuleDescriptor<Name extends string = string> {
+  name: Name;
+  role: ComputeModuleRole;
+  bindings?: readonly string[];
+}
+
+export interface SystemModuleDescriptor<
+  Name extends string = string,
+  Keys extends string = string
+> extends BaseModuleDescriptor<Name> {
+  role: "system" | "simulation"; // keep legacy alias "simulation"
+  global?: () => string;
+  apply?: (args: {
+    particleVar: string;
+    dtVar: string;
+    getUniform: (id: Keys) => string;
+  }) => string;
+}
+
+export interface ForceModuleDescriptor<
+  Name extends string = string,
+  Keys extends string = string,
+  StateKeys extends string = string
+> extends BaseModuleDescriptor<Name> {
+  role: "force";
+  states?: readonly StateKeys[];
+  global?: () => string;
+  state?: (args: {
+    particleVar: string;
+    dtVar: string;
+    getUniform: (id: Keys) => string;
+    getState: (name: StateKeys, pidVar?: string) => string;
+    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
+  }) => string;
+  apply?: (args: {
+    particleVar: string;
+    dtVar: string;
+    getUniform: (id: Keys) => string;
+    getState: (name: StateKeys, pidVar?: string) => string;
+    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
+  }) => string;
+  constrain?: (args: {
+    particleVar: string;
+    dtVar: string;
+    getUniform: (id: Keys) => string;
+    getState: (name: StateKeys, pidVar?: string) => string;
+    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
+  }) => string;
+  correct?: (args: {
+    particleVar: string;
+    dtVar: string;
+    getUniform: (id: Keys) => string;
+  }) => string;
+}
+
+export interface RenderModuleDescriptor<
+  Name extends string = string,
+  Keys extends string = string
+> extends BaseModuleDescriptor<Name> {
+  role: "render";
+  passes: Array<{
+    kind: "fullscreen" | "compute";
+    code: string;
+    vsEntry?: string;
+    fsEntry?: string;
+    csEntry?: string;
+    bindings: readonly Keys[];
+    readsScene?: boolean;
+    writesScene?: boolean;
+  }>;
 }
 
 type BindingKeysBase = "enabled" | string;
