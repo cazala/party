@@ -13,6 +13,7 @@ import { Behavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior"
 import { Sensors } from "@cazala/party/modules/webgpu/shaders/modules/sensors";
 import { Trails } from "@cazala/party/modules/webgpu/shaders/modules/trails";
 import { Interaction } from "@cazala/party/modules/webgpu/shaders/modules/interaction";
+import { gridModule } from "@cazala/party/modules/webgpu/shaders/modules/grid";
 import { ToolMode } from "./useToolMode";
 
 export function useWebGPUPlayground(
@@ -267,6 +268,7 @@ export function useWebGPUPlayground(
           // Initialize simulation parameters
           const modules = [
             simulationModule,
+            gridModule,
             environment,
             boundary,
             collisions,

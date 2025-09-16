@@ -7,6 +7,7 @@ import { Behavior } from "./behavior";
 import { Sensors } from "./sensors";
 import { Trails } from "./trails";
 import { Interaction } from "./interaction";
+import { Grid, gridModule } from "./grid";
 
 export {
   simulationModule,
@@ -18,10 +19,12 @@ export {
   Sensors,
   Trails,
   Interaction,
+  Grid,
 };
 
 export const defaultComputeModules = [
   simulationModule,
+  gridModule,
   new Environment(),
   new Boundary(),
   new Collisions(),
