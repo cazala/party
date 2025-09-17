@@ -127,28 +127,99 @@ export class WebGPUParticleSystem {
       for (let p = 0; p < passes.length; p++) {
         const pass = passes[p];
         if (pass.kind === "fullscreen") {
-          // Create pipeline for this pass
+          // Build WGSL from DSL hooks (fragment required, vertex optional)
+          const defaultVertex = `
+struct Particle {
+  position: vec2<f32>,
+  velocity: vec2<f32>,
+  acceleration: vec2<f32>,
+  size: f32,
+  mass: f32,
+  color: vec4<f32>,
+}
+struct RenderUniforms {
+  canvas_size: vec2<f32>,
+  camera_position: vec2<f32>,
+  zoom: f32,
+  _pad: f32,
+}
+struct VertexOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+  @location(1) color: vec4<f32>,
+}
+@group(0) @binding(0) var<storage, read> particles: array<Particle>;
+@group(0) @binding(1) var<uniform> render_uniforms: RenderUniforms;
+@group(0) @binding(2) var scene_texture: texture_2d<f32>;
+@group(0) @binding(3) var scene_sampler: sampler;
+@vertex
+fn vs_main(
+  @builtin(vertex_index) vertex_index: u32,
+  @builtin(instance_index) instance_index: u32
+) -> VertexOutput {
+  var out: VertexOutput;
+  let quad_positions = array<vec2<f32>, 4>(
+    vec2<f32>(-1.0, -1.0),
+    vec2<f32>( 1.0, -1.0),
+    vec2<f32>(-1.0,  1.0),
+    vec2<f32>( 1.0,  1.0)
+  );
+  let quad_uvs = array<vec2<f32>, 4>(
+    vec2<f32>(0.0, 0.0),
+    vec2<f32>(1.0, 0.0),
+    vec2<f32>(0.0, 1.0),
+    vec2<f32>(1.0, 1.0)
+  );
+  let particle = particles[instance_index];
+  if (particle.mass == 0.0) {
+    out.position = vec4<f32>(2.0, 2.0, 1.0, 1.0);
+    out.uv = vec2<f32>(0.0, 0.0);
+    out.color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    return out;
+  }
+  let local_index = vertex_index & 3u;
+  let quad_pos = quad_positions[local_index];
+  let world_pos = (particle.position - render_uniforms.camera_position) * render_uniforms.zoom;
+  let ndc_pos = vec2<f32>(
+    world_pos.x * 2.0 / render_uniforms.canvas_size.x,
+    -world_pos.y * 2.0 / render_uniforms.canvas_size.y
+  );
+  let scaled_quad = vec2<f32>(
+    quad_pos.x * particle.size * render_uniforms.zoom * 2.0 / render_uniforms.canvas_size.x,
+    -quad_pos.y * particle.size * render_uniforms.zoom * 2.0 / render_uniforms.canvas_size.y
+  );
+  out.position = vec4<f32>(ndc_pos + scaled_quad, 0.0, 1.0);
+  out.uv = quad_uvs[local_index];
+  out.color = particle.color;
+  return out;
+}`;
           const layouts = this.computeBuild!.layouts;
           const layoutForMod = layouts.find((l) => l.moduleName === desc.name)!;
           const getUniformForMod = (id: string) =>
             layoutForMod.mapping[id]?.expr ?? "0.0";
-          const codeFS =
-            typeof pass.code === "function"
-              ? pass.code({
-                  getUniform: (id: string) =>
-                    id === "canvasWidth"
-                      ? "render_uniforms.canvas_size.x"
-                      : id === "canvasHeight"
-                      ? "render_uniforms.canvas_size.y"
-                      : id === "clearColorR"
-                      ? String(DEFAULTS.clearColor.r)
-                      : id === "clearColorG"
-                      ? String(DEFAULTS.clearColor.g)
-                      : id === "clearColorB"
-                      ? String(DEFAULTS.clearColor.b)
-                      : getUniformForMod(id),
-                })
-              : (pass.code as string);
+          const fragmentBody = pass.fragment({
+            getUniform: (id: string) =>
+              id === "canvasWidth"
+                ? "render_uniforms.canvas_size.x"
+                : id === "canvasHeight"
+                ? "render_uniforms.canvas_size.y"
+                : id === "clearColorR"
+                ? String(DEFAULTS.clearColor.r)
+                : id === "clearColorG"
+                ? String(DEFAULTS.clearColor.g)
+                : id === "clearColorB"
+                ? String(DEFAULTS.clearColor.b)
+                : getUniformForMod(id),
+            sampleScene: (uvExpr: string) =>
+              `textureSampleLevel(scene_texture, scene_sampler, ${uvExpr}, 0.0)`,
+          });
+          const codeFS = `${defaultVertex}
+@fragment
+fn fs_main(
+  @location(0) uv: vec2<f32>,
+  @location(1) color: vec4<f32>,
+  @builtin(position) frag_coord: vec4<f32>
+) -> @location(0) vec4<f32> ${fragmentBody}`;
           const shaderModule = this.device.createShaderModule({ code: codeFS });
           const pipeline = this.device.createRenderPipeline({
             layout: this.device.createPipelineLayout({
@@ -156,11 +227,11 @@ export class WebGPUParticleSystem {
             }),
             vertex: {
               module: shaderModule,
-              entryPoint: pass.vsEntry || "vs_main",
+              entryPoint: "vs_main",
             },
             fragment: {
               module: shaderModule,
-              entryPoint: pass.fsEntry || "fs_main",
+              entryPoint: "fs_main",
               targets: [
                 {
                   format: "rgba8unorm",
@@ -229,28 +300,51 @@ export class WebGPUParticleSystem {
             anyWrites = true;
           }
         } else if (pass.kind === "compute") {
-          // Compute image op: assumes bindings [sceneTexture(read), renderUniforms, sceneTextureOut, uniforms]
+          // Compute image op (DSL): read current, write other, bind module uniforms
           const layouts = this.computeBuild!.layouts;
           const layoutForMod = layouts.find((l) => l.moduleName === desc.name)!;
-          const getUniformForMod = (id: string) =>
+          const vec4Count = layoutForMod.vec4Count;
+          const structFields = Array.from(
+            { length: vec4Count },
+            (_, k) => `  v${k}: vec4<f32>,`
+          ).join("\n");
+          const structWGSL = `struct Uniforms_${desc.name} {\n${structFields}\n}`;
+          const getUniformExpr = (id: string) =>
             layoutForMod.mapping[id]?.expr ?? "0.0";
-          const codeCS =
-            typeof pass.code === "function"
-              ? pass.code({
-                  getUniform: (id: string) =>
-                    id === "canvasWidth"
-                      ? "render_uniforms.canvas_size.x"
-                      : id === "canvasHeight"
-                      ? "render_uniforms.canvas_size.y"
-                      : id === "clearColorR"
-                      ? String(DEFAULTS.clearColor.r)
-                      : id === "clearColorG"
-                      ? String(DEFAULTS.clearColor.g)
-                      : id === "clearColorB"
-                      ? String(DEFAULTS.clearColor.b)
-                      : getUniformForMod(id),
-                })
-              : (pass.code as string);
+          const getUniform = (id: string) =>
+            id === "canvasWidth"
+              ? "f32(textureDimensions(input_texture).x)"
+              : id === "canvasHeight"
+              ? "f32(textureDimensions(input_texture).y)"
+              : id === "clearColorR"
+              ? String(DEFAULTS.clearColor.r)
+              : id === "clearColorG"
+              ? String(DEFAULTS.clearColor.g)
+              : id === "clearColorB"
+              ? String(DEFAULTS.clearColor.b)
+              : getUniformExpr(id).replace(
+                  `${desc.name}_uniforms`,
+                  `module_uniforms`
+                );
+          const kernelBody = pass.kernel({
+            getUniform,
+            readScene: (coordsExpr: string) =>
+              `textureLoad(input_texture, ${coordsExpr}, 0)`,
+            writeScene: (coordsExpr: string, colorExpr: string) =>
+              `textureStore(output_texture, ${coordsExpr}, ${colorExpr})`,
+          });
+          const wg = pass.workgroupSize || [8, 8, 1];
+          const codeCS = `${structWGSL}
+@group(0) @binding(0) var input_texture: texture_2d<f32>;
+@group(0) @binding(1) var output_texture: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(2) var<uniform> module_uniforms: Uniforms_${desc.name};
+@compute @workgroup_size(${wg[0]}, ${wg[1]}, ${wg[2]})
+fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let coords = vec2<i32>(i32(gid.x), i32(gid.y));
+  let dims = textureDimensions(input_texture);
+  if (coords.x >= i32(dims.x) || coords.y >= i32(dims.y)) { return; }
+  ${kernelBody}
+}`;
           const shaderModule = this.device.createShaderModule({ code: codeCS });
           const bindGroupLayout = this.device.createBindGroupLayout({
             entries: [
@@ -278,39 +372,9 @@ export class WebGPUParticleSystem {
             layout: pipelineLayout,
             compute: {
               module: shaderModule,
-              entryPoint: pass.csEntry || "cs_main",
+              entryPoint: "cs_main",
             },
           });
-
-          // Build module/pass-specific uniform buffer if provided
-          let passUniformBuffer: GPUBuffer;
-          {
-            const state = (mod as any).read?.() ?? {};
-            const sizeCtx = this.renderer.getSize();
-            const uniformData: Float32Array | null =
-              typeof pass.buildUniformData === "function"
-                ? pass.buildUniformData(state, {
-                    width: sizeCtx.width,
-                    height: sizeCtx.height,
-                    clearColor: DEFAULTS.clearColor,
-                  })
-                : null;
-            const byteLength = uniformData ? uniformData.byteLength : 16;
-            const alignedSize = Math.ceil(byteLength / 16) * 16;
-            passUniformBuffer = this.device.createBuffer({
-              size: alignedSize,
-              usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-            });
-            if (uniformData) {
-              this.device.queue.writeBuffer(
-                passUniformBuffer,
-                0,
-                uniformData.buffer,
-                uniformData.byteOffset,
-                uniformData.byteLength
-              );
-            }
-          }
 
           // Bind scene read/write: read from current, write to the other
           const readSceneView = this.getCurrentSceneTextureView();
@@ -319,12 +383,20 @@ export class WebGPUParticleSystem {
               ? this.sceneTextureViewB!
               : this.sceneTextureViewA!;
 
+          // Bind the module's uniform buffer (same one used for compute program)
+          const modIndex = (
+            this.modules as readonly Module<string, string, any>[]
+          ).findIndex(
+            (m) => WebGPUParticleSystem.toDescriptor(m).name === desc.name
+          );
+          const moduleUniformBuf = this.moduleUniformBuffers[modIndex]!;
+
           const bindGroup = this.device.createBindGroup({
             layout: bindGroupLayout,
             entries: [
               { binding: 0, resource: readSceneView },
               { binding: 1, resource: writeSceneView },
-              { binding: 2, resource: { buffer: passUniformBuffer } },
+              { binding: 2, resource: { buffer: moduleUniformBuf } },
             ],
           });
 

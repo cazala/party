@@ -63,41 +63,52 @@ export interface RenderModuleDescriptor<
   Keys extends string = string
 > extends BaseModuleDescriptor<Name> {
   role: "render";
-  passes: Array<{
-    kind: "fullscreen" | "compute";
-    code: (args: {
-      getUniform: (
-        id:
-          | Keys
-          | "canvasWidth"
-          | "canvasHeight"
-          | "clearColorR"
-          | "clearColorG"
-          | "clearColorB"
-      ) => string;
-    }) => string;
-    vsEntry?: string;
-    fsEntry?: string;
-    csEntry?: string;
-    bindings: readonly Keys[];
-    readsScene?: boolean;
-    writesScene?: boolean;
-    reservedUniforms?: readonly (
-      | "canvasWidth"
-      | "canvasHeight"
-      | "clearColorR"
-      | "clearColorG"
-      | "clearColorB"
-    )[];
-    buildUniformData?: (
-      state: Record<string, number>,
-      ctx: {
-        width: number;
-        height: number;
-        clearColor: { r: number; g: number; b: number; a: number };
+  passes: Array<
+    | {
+        kind: "fullscreen";
+        vertex?: (args: {
+          getUniform: (id: Keys | "canvasWidth" | "canvasHeight") => string;
+        }) => string;
+        globals?: (args: { getUniform: (id: Keys) => string }) => string;
+        fragment: (args: {
+          getUniform: (
+            id:
+              | Keys
+              | "canvasWidth"
+              | "canvasHeight"
+              | "clearColorR"
+              | "clearColorG"
+              | "clearColorB"
+          ) => string;
+          sampleScene: (uvExpr: string) => string;
+        }) => string;
+        bindings: readonly Keys[];
+        readsScene?: boolean;
+        writesScene?: true;
+        instanced?: boolean;
       }
-    ) => Float32Array;
-  }>;
+    | {
+        kind: "compute";
+        kernel: (args: {
+          getUniform: (
+            id:
+              | Keys
+              | "canvasWidth"
+              | "canvasHeight"
+              | "clearColorR"
+              | "clearColorG"
+              | "clearColorB"
+          ) => string;
+          readScene: (coordsExpr: string) => string;
+          writeScene: (coordsExpr: string, colorExpr: string) => string;
+        }) => string;
+        bindings: readonly Keys[];
+        readsScene?: boolean;
+        writesScene?: true;
+        workgroupSize?: [number, number, number];
+        globals?: (args: { getUniform: (id: Keys) => string }) => string;
+      }
+  >;
 }
 
 export type ModuleDescriptor<
