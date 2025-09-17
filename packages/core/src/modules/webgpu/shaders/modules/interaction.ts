@@ -1,4 +1,4 @@
-import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
 
 type InteractionBindingKeys =
   | "action"
@@ -17,10 +17,7 @@ export const DEFAULT_INTERACTION_RADIUS = 500;
 // action: 0 -> click (left), 1 -> right_click
 // mode: 0 -> attract, 1 -> repel
 
-export class Interaction extends ComputeModule<
-  "interaction",
-  InteractionBindingKeys
-> {
+export class Interaction extends Module<"interaction", InteractionBindingKeys> {
   private action: number; // 0 click, 1 right_click
   private mode: number; // 0 attract, 1 repel
   private strength: number;
@@ -91,7 +88,7 @@ export class Interaction extends ComputeModule<
     this.write({ inputButton: button });
   }
 
-  descriptor(): ComputeModuleDescriptor<"interaction", InteractionBindingKeys> {
+  descriptor(): ModuleDescriptor<"interaction", InteractionBindingKeys> {
     return {
       name: "interaction",
       role: "force",

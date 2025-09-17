@@ -1,4 +1,4 @@
-import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
 
 type FluidBindingKeys =
   | "influenceRadius"
@@ -21,11 +21,7 @@ export const DEFAULT_FLUID_MAX_ACCELERATION = 80;
 
 type FluidStateKeys = "density" | "nearDensity";
 
-export class Fluid extends ComputeModule<
-  "fluid",
-  FluidBindingKeys,
-  FluidStateKeys
-> {
+export class Fluid extends Module<"fluid", FluidBindingKeys, FluidStateKeys> {
   private influenceRadius: number;
   private targetDensity: number;
   private pressureMultiplier: number;
@@ -115,11 +111,7 @@ export class Fluid extends ComputeModule<
     this.write({ maxAcceleration: v });
   }
 
-  descriptor(): ComputeModuleDescriptor<
-    "fluid",
-    FluidBindingKeys,
-    FluidStateKeys
-  > {
+  descriptor(): ModuleDescriptor<"fluid", FluidBindingKeys, FluidStateKeys> {
     return {
       name: "fluid",
       role: "force",

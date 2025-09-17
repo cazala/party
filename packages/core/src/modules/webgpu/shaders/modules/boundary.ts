@@ -1,4 +1,4 @@
-import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
 
 type BoundaryBindingKeys =
   | "restitution"
@@ -15,7 +15,7 @@ export const DEFAULT_BOUNDARY_MODE: BoundaryMode = "bounce";
 export const DEFAULT_BOUNDARY_REPEL_DISTANCE = 0.0;
 export const DEFAULT_BOUNDARY_REPEL_STRENGTH = 0.0;
 
-export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
+export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
   private restitution: number;
   private friction: number;
   private mode: BoundaryMode;
@@ -90,7 +90,7 @@ export class Boundary extends ComputeModule<"boundary", BoundaryBindingKeys> {
     });
   }
 
-  descriptor(): ComputeModuleDescriptor<"boundary", BoundaryBindingKeys> {
+  descriptor(): ModuleDescriptor<"boundary", BoundaryBindingKeys> {
     return {
       name: "boundary",
       role: "force",

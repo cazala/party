@@ -81,7 +81,6 @@ export {
   WebGPUEnvironment,
   WebGPUBoundary,
   WebGPUCollisions,
-  defaultComputeModules,
 } from "./modules/webgpu";
 export {
   WebGPUSpawner,

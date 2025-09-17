@@ -1,4 +1,4 @@
-import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
 
 export const DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH = 0;
 export const DEFAULT_ENVIRONMENT_GRAVITY_DIRECTION: GravityDirection = "down";
@@ -25,7 +25,7 @@ export type GravityDirection =
   | "outwards"
   | "custom";
 
-export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
+export class Environment extends Module<"environment", EnvBindingKeys> {
   private gravityStrength: number;
   private dirX: number;
   private dirY: number;
@@ -160,7 +160,7 @@ export class Environment extends ComputeModule<"environment", EnvBindingKeys> {
     this.write({ damping: value });
   }
 
-  descriptor(): ComputeModuleDescriptor<"environment", EnvBindingKeys> {
+  descriptor(): ModuleDescriptor<"environment", EnvBindingKeys> {
     return {
       name: "environment",
       role: "force",

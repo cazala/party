@@ -1,4 +1,20 @@
-export const renderShaderWGSL = `
+import { Module, type ModuleDescriptor } from "../compute";
+
+type ParticleRendererKeys = "particleBuffer" | "renderUniforms";
+
+export class ParticleRenderer extends Module<
+  "particles",
+  ParticleRendererKeys
+> {
+  descriptor(): ModuleDescriptor<"particles", ParticleRendererKeys> {
+    return {
+      name: "particles" as const,
+      role: "render" as const,
+      // Single fullscreen pass that draws particles into the scene texture
+      passes: [
+        {
+          kind: "fullscreen" as const,
+          code: () => `
 struct Particle {
   position: vec2<f32>,
   velocity: vec2<f32>,
@@ -12,7 +28,7 @@ struct RenderUniforms {
   canvas_size: vec2<f32>,
   camera_position: vec2<f32>,
   zoom: f32,
-  enable_trails: f32,
+  _pad: f32,
 }
 
 struct VertexOutput {
@@ -90,4 +106,12 @@ fn fs_main(
   
   // Use per-particle color, modulated by radial alpha
   return vec4<f32>(color.rgb, color.a * alpha);
-}`;
+}`,
+          bindings: ["particleBuffer", "renderUniforms"] as const,
+          readsScene: false,
+          writesScene: true,
+        },
+      ],
+    };
+  }
+}

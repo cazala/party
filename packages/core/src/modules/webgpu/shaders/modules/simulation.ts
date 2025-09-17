@@ -1,13 +1,13 @@
-import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
 
 type SimKeys = "dt" | "count" | "simStride";
 
-export class Simulation extends ComputeModule<"simulation", SimKeys> {
+export class Simulation extends Module<"simulation", SimKeys> {
   constructor() {
     super();
   }
 
-  descriptor(): ComputeModuleDescriptor<"simulation", SimKeys> {
+  descriptor(): ModuleDescriptor<"simulation", SimKeys> {
     return {
       name: "simulation",
       role: "system",

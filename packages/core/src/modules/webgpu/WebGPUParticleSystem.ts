@@ -1,12 +1,10 @@
 import type { WebGPURenderer } from "./WebGPURenderer";
-import { renderShaderWGSL } from "./shaders/render";
 import {
   buildComputeProgram,
   type ComputeProgramBuild,
-  ComputeModule,
-  type ComputeModuleDescriptor,
+  Module,
+  type ModuleDescriptor,
 } from "./shaders/compute";
-import { trailDecayShaderWGSL, trailBlurShaderWGSL } from "./shaders/trails";
 import { copyShaderWGSL } from "./shaders/copy";
 import { DEFAULTS } from "./config";
 
@@ -24,7 +22,6 @@ export interface RenderUniforms {
   canvasSize: [number, number];
   cameraPosition: [number, number];
   zoom: number;
-  enableTrails: number;
 }
 
 export class WebGPUParticleSystem {
@@ -36,14 +33,10 @@ export class WebGPUParticleSystem {
   private moduleUniformState: Record<string, number>[] = [];
   private renderUniformBuffer: GPUBuffer | null = null;
 
-  private renderBindGroup: GPUBindGroup | null = null;
-  private computeBindGroup: GPUBindGroup | null = null;
-
-  private renderPipeline: GPURenderPipeline | null = null;
-  private trailRenderPipeline: GPURenderPipeline | null = null;
-  private copyPipeline: GPURenderPipeline | null = null;
-  private copyBindGroup: GPUBindGroup | null = null;
   private renderBindGroupLayout: GPUBindGroupLayout | null = null;
+  private computeBindGroup: GPUBindGroup | null = null;
+  private bindGroupLayout: GPUBindGroupLayout | null = null;
+
   private computePipeline: GPUComputePipeline | null = null;
   private gridClearPipeline: GPUComputePipeline | null = null;
   private gridBuildPipeline: GPUComputePipeline | null = null;
@@ -52,7 +45,9 @@ export class WebGPUParticleSystem {
   private integratePipeline: GPUComputePipeline | null = null;
   private correctPipeline: GPUComputePipeline | null = null;
   private constrainPipeline: GPUComputePipeline | null = null;
-  private bindGroupLayout: GPUBindGroupLayout | null = null;
+
+  private copyPipeline: GPURenderPipeline | null = null;
+  private copyBindGroup: GPUBindGroup | null = null;
   private pipelineLayout: GPUPipelineLayout | null = null;
 
   private particleCount: number = 0;
@@ -78,25 +73,292 @@ export class WebGPUParticleSystem {
   // Constraint solver iterations per frame
   private constrainIterations: number = 50;
 
-  // Trail system
-  private trailTextureA: GPUTexture | null = null;
-  private trailTextureB: GPUTexture | null = null;
-  private trailTextureViewA: GPUTextureView | null = null;
-  private trailTextureViewB: GPUTextureView | null = null;
-  private currentTrailTexture: "A" | "B" = "A";
-  private trailSampler: GPUSampler | null = null;
-  private trailDecayPipeline: GPUComputePipeline | null = null;
-  private trailBlurPipeline: GPUComputePipeline | null = null;
-  private trailDecayBindGroupA: GPUBindGroup | null = null;
-  private trailDecayBindGroupB: GPUBindGroup | null = null;
-  private trailBlurBindGroupA: GPUBindGroup | null = null;
-  private trailBlurBindGroupB: GPUBindGroup | null = null;
-  private trailDecayUniformBuffer: GPUBuffer | null = null;
-  private trailBlurUniformBuffer: GPUBuffer | null = null;
+  // Scene textures (ping-pong)
+  private sceneTextureA: GPUTexture | null = null;
+  private sceneTextureB: GPUTexture | null = null;
+  private sceneTextureViewA: GPUTextureView | null = null;
+  private sceneTextureViewB: GPUTextureView | null = null;
+  private currentSceneTexture: "A" | "B" = "A";
+  private sceneSampler: GPUSampler | null = null;
+
+  // Scene helpers
+  private getCurrentSceneTextureView(): GPUTextureView {
+    return this.currentSceneTexture === "A"
+      ? this.sceneTextureViewA!
+      : this.sceneTextureViewB!;
+  }
+  private swapSceneTextures(): void {
+    this.currentSceneTexture = this.currentSceneTexture === "A" ? "B" : "A";
+  }
+
+  // Cache for render graph
+  // Reserve for future caching (unused until render modules are implemented)
+  // private renderComputePipelines: Map<string, GPUComputePipeline> = new Map();
+  // private renderGraphicsPipelines: Map<string, GPURenderPipeline> = new Map();
+  private sceneTexSize: { width: number; height: number } | null = null;
+
+  private ensureSceneTexturesSized(): void {
+    const size = this.renderer.getSize();
+    const needInit = !this.sceneTextureA || !this.sceneTextureB;
+    const changed =
+      !this.sceneTexSize ||
+      this.sceneTexSize.width !== size.width ||
+      this.sceneTexSize.height !== size.height;
+    if (needInit || changed) {
+      // Recreate scene textures
+      this.createTrailTextures();
+      this.sceneTexSize = { width: size.width, height: size.height };
+    }
+  }
+
+  private runRenderGraph(commandEncoder: GPUCommandEncoder): void {
+    // Render graph runner: ensure scene textures sized, then execute render-role modules
+    // Resize scene textures if needed
+    this.ensureSceneTexturesSized();
+
+    // Execute render modules in registration order, pass order
+    let lastWrittenView: GPUTextureView | null = null;
+    let anyWrites = false;
+    for (let i = 0; i < this.modules.length; i++) {
+      const mod = this.modules[i] as Module<string, string, any>;
+      const desc = WebGPUParticleSystem.toDescriptor(mod) as any;
+      if (desc.role !== "render" || !(mod as any).isEnabled?.()) continue;
+      const passes = (desc.passes || []) as Array<any>;
+      for (let p = 0; p < passes.length; p++) {
+        const pass = passes[p];
+        if (pass.kind === "fullscreen") {
+          // Create pipeline for this pass
+          const layouts = this.computeBuild!.layouts;
+          const layoutForMod = layouts.find((l) => l.moduleName === desc.name)!;
+          const getUniformForMod = (id: string) =>
+            layoutForMod.mapping[id]?.expr ?? "0.0";
+          const codeFS =
+            typeof pass.code === "function"
+              ? pass.code({
+                  getUniform: (id: string) =>
+                    id === "canvasWidth"
+                      ? "render_uniforms.canvas_size.x"
+                      : id === "canvasHeight"
+                      ? "render_uniforms.canvas_size.y"
+                      : id === "clearColorR"
+                      ? String(DEFAULTS.clearColor.r)
+                      : id === "clearColorG"
+                      ? String(DEFAULTS.clearColor.g)
+                      : id === "clearColorB"
+                      ? String(DEFAULTS.clearColor.b)
+                      : getUniformForMod(id),
+                })
+              : (pass.code as string);
+          const shaderModule = this.device.createShaderModule({ code: codeFS });
+          const pipeline = this.device.createRenderPipeline({
+            layout: this.device.createPipelineLayout({
+              bindGroupLayouts: [this.renderBindGroupLayout!],
+            }),
+            vertex: {
+              module: shaderModule,
+              entryPoint: pass.vsEntry || "vs_main",
+            },
+            fragment: {
+              module: shaderModule,
+              entryPoint: pass.fsEntry || "fs_main",
+              targets: [
+                {
+                  format: "rgba8unorm",
+                  blend: {
+                    color: {
+                      srcFactor: "src-alpha",
+                      dstFactor: "one-minus-src-alpha",
+                    },
+                    alpha: {
+                      srcFactor: "one",
+                      dstFactor: "one-minus-src-alpha",
+                    },
+                  },
+                },
+              ],
+            },
+            primitive: { topology: "triangle-strip" },
+          });
+
+          // Build bind group for expected bindings
+          const readSceneView =
+            this.currentSceneTexture === "A"
+              ? this.sceneTextureViewB!
+              : this.sceneTextureViewA!;
+          const entries: GPUBindGroupEntry[] = [];
+          // Binding 0: particle buffer
+          entries.push({
+            binding: 0,
+            resource: { buffer: this.particleBuffer! },
+          });
+          // Binding 1: render uniforms
+          entries.push({
+            binding: 1,
+            resource: { buffer: this.renderUniformBuffer! },
+          });
+          // Binding 2: scene texture sample (if pass readsScene)
+          entries.push({ binding: 2, resource: readSceneView });
+          // Binding 3: scene sampler
+          entries.push({ binding: 3, resource: this.sceneSampler! });
+          const bindGroup = this.device.createBindGroup({
+            layout: this.renderBindGroupLayout!,
+            entries,
+          });
+
+          // Target: scene texture out
+          const targetView = this.getCurrentSceneTextureView();
+          const rp = commandEncoder.beginRenderPass({
+            colorAttachments: [
+              {
+                view: targetView,
+                clearValue: DEFAULTS.clearColor,
+                loadOp: anyWrites ? "load" : "clear",
+                storeOp: "store",
+              },
+            ],
+          });
+          rp.setPipeline(pipeline);
+          rp.setBindGroup(0, bindGroup);
+          // Draw instanced quads: 4 verts per instance
+          rp.draw(4, this.particleCount);
+          rp.end();
+
+          // Do not swap after fullscreen writes; keep current pointing to latest
+          if (pass.writesScene) {
+            lastWrittenView = targetView;
+            anyWrites = true;
+          }
+        } else if (pass.kind === "compute") {
+          // Compute image op: assumes bindings [sceneTexture(read), renderUniforms, sceneTextureOut, uniforms]
+          const layouts = this.computeBuild!.layouts;
+          const layoutForMod = layouts.find((l) => l.moduleName === desc.name)!;
+          const getUniformForMod = (id: string) =>
+            layoutForMod.mapping[id]?.expr ?? "0.0";
+          const codeCS =
+            typeof pass.code === "function"
+              ? pass.code({
+                  getUniform: (id: string) =>
+                    id === "canvasWidth"
+                      ? "render_uniforms.canvas_size.x"
+                      : id === "canvasHeight"
+                      ? "render_uniforms.canvas_size.y"
+                      : id === "clearColorR"
+                      ? String(DEFAULTS.clearColor.r)
+                      : id === "clearColorG"
+                      ? String(DEFAULTS.clearColor.g)
+                      : id === "clearColorB"
+                      ? String(DEFAULTS.clearColor.b)
+                      : getUniformForMod(id),
+                })
+              : (pass.code as string);
+          const shaderModule = this.device.createShaderModule({ code: codeCS });
+          const bindGroupLayout = this.device.createBindGroupLayout({
+            entries: [
+              {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                texture: { sampleType: "float" },
+              },
+              {
+                binding: 1,
+                visibility: GPUShaderStage.COMPUTE,
+                storageTexture: { format: "rgba8unorm", access: "write-only" },
+              },
+              {
+                binding: 2,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "uniform" },
+              },
+            ],
+          });
+          const pipelineLayout = this.device.createPipelineLayout({
+            bindGroupLayouts: [bindGroupLayout],
+          });
+          const pipeline = this.device.createComputePipeline({
+            layout: pipelineLayout,
+            compute: {
+              module: shaderModule,
+              entryPoint: pass.csEntry || "cs_main",
+            },
+          });
+
+          // Build module/pass-specific uniform buffer if provided
+          let passUniformBuffer: GPUBuffer;
+          {
+            const state = (mod as any).read?.() ?? {};
+            const sizeCtx = this.renderer.getSize();
+            const uniformData: Float32Array | null =
+              typeof pass.buildUniformData === "function"
+                ? pass.buildUniformData(state, {
+                    width: sizeCtx.width,
+                    height: sizeCtx.height,
+                    clearColor: DEFAULTS.clearColor,
+                  })
+                : null;
+            const byteLength = uniformData ? uniformData.byteLength : 16;
+            const alignedSize = Math.ceil(byteLength / 16) * 16;
+            passUniformBuffer = this.device.createBuffer({
+              size: alignedSize,
+              usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+            if (uniformData) {
+              this.device.queue.writeBuffer(
+                passUniformBuffer,
+                0,
+                uniformData.buffer,
+                uniformData.byteOffset,
+                uniformData.byteLength
+              );
+            }
+          }
+
+          // Bind scene read/write: read from current, write to the other
+          const readSceneView = this.getCurrentSceneTextureView();
+          const writeSceneView =
+            this.currentSceneTexture === "A"
+              ? this.sceneTextureViewB!
+              : this.sceneTextureViewA!;
+
+          const bindGroup = this.device.createBindGroup({
+            layout: bindGroupLayout,
+            entries: [
+              { binding: 0, resource: readSceneView },
+              { binding: 1, resource: writeSceneView },
+              { binding: 2, resource: { buffer: passUniformBuffer } },
+            ],
+          });
+
+          // Dispatch
+          const canvasSize = this.renderer.getSize();
+          const workgroupsX = Math.ceil(canvasSize.width / 8);
+          const workgroupsY = Math.ceil(canvasSize.height / 8);
+          const cp = commandEncoder.beginComputePass();
+          cp.setPipeline(pipeline);
+          cp.setBindGroup(0, bindGroup);
+          cp.dispatchWorkgroups(workgroupsX, workgroupsY);
+          cp.end();
+
+          if (pass.writesScene) {
+            lastWrittenView = writeSceneView;
+            anyWrites = true;
+            // After writing to the other, swap so current points to latest
+            this.swapSceneTextures();
+          }
+        }
+      }
+    }
+
+    // Copy final scene to canvas (use the last texture we wrote if any, otherwise current)
+    const canvasView = this.context.getCurrentTexture().createView();
+    const sourceView = anyWrites
+      ? lastWrittenView!
+      : this.getCurrentSceneTextureView();
+    this.copyTrailToCanvas(commandEncoder, canvasView, sourceView);
+  }
 
   constructor(
     private renderer: WebGPURenderer,
-    private modules: readonly ComputeModule<string, string, any>[]
+    private modules: readonly Module<string, string, any>[]
   ) {
     const webgpuDevice = renderer.getWebGPUDevice();
     if (!webgpuDevice.device || !webgpuDevice.context) {
@@ -107,20 +369,20 @@ export class WebGPUParticleSystem {
   }
 
   private static toDescriptor(
-    m: ComputeModule<string, string, any>
-  ): ComputeModuleDescriptor<string, string, any> {
+    m: Module<string, string, any>
+  ): ModuleDescriptor<string, string, any> {
     return m.descriptor();
   }
 
   getModule<Name extends string>(
     name: Name
-  ): ComputeModule<string, string, any> | undefined {
-    const found = (
-      this.modules as readonly ComputeModule<string, string, any>[]
-    ).find((m) => {
-      const d = WebGPUParticleSystem.toDescriptor(m);
-      return d.name === name;
-    });
+  ): Module<string, string, any> | undefined {
+    const found = (this.modules as readonly Module<string, string, any>[]).find(
+      (m) => {
+        const d = WebGPUParticleSystem.toDescriptor(m);
+        return d.name === name;
+      }
+    );
     return found;
   }
 
@@ -136,26 +398,24 @@ export class WebGPUParticleSystem {
     this.renderer.attachSystem(this);
 
     // Attach per-module uniform writers to modules
-    (this.modules as readonly ComputeModule<string, string>[]).forEach(
-      (mod) => {
-        const name = WebGPUParticleSystem.toDescriptor(mod).name;
-        const writer = (values: Partial<Record<string, number>>) => {
-          this.writeUniform(name, values);
-        };
-        mod.attachUniformWriter(writer);
+    (this.modules as readonly Module<string, string>[]).forEach((mod) => {
+      const name = WebGPUParticleSystem.toDescriptor(mod).name;
+      const writer = (values: Partial<Record<string, number>>) => {
+        this.writeUniform(name, values);
+      };
+      mod.attachUniformWriter(writer);
 
-        // Attach a reader so modules can implement getters
-        const reader = () => {
-          const idx = this.getModuleIndex(name);
-          if (idx === -1) return {} as Partial<Record<string, number>>;
-          return { ...this.moduleUniformState[idx] } as Partial<
-            Record<string, number>
-          >;
-        };
-        // attach typed reader without using any
-        mod.attachUniformReader(reader);
-      }
-    );
+      // Attach a reader so modules can implement getters
+      const reader = () => {
+        const idx = this.getModuleIndex(name);
+        if (idx === -1) return {} as Partial<Record<string, number>>;
+        return { ...this.moduleUniformState[idx] } as Partial<
+          Record<string, number>
+        >;
+      };
+      // attach typed reader without using any
+      mod.attachUniformReader(reader);
+    });
   }
 
   private async createBuffers(): Promise<void> {
@@ -252,14 +512,14 @@ export class WebGPUParticleSystem {
         GPUTextureUsage.RENDER_ATTACHMENT,
     };
 
-    this.trailTextureA = this.device.createTexture(textureDescriptor);
-    this.trailTextureB = this.device.createTexture(textureDescriptor);
+    this.sceneTextureA = this.device.createTexture(textureDescriptor);
+    this.sceneTextureB = this.device.createTexture(textureDescriptor);
 
-    this.trailTextureViewA = this.trailTextureA.createView();
-    this.trailTextureViewB = this.trailTextureB.createView();
+    this.sceneTextureViewA = this.sceneTextureA.createView();
+    this.sceneTextureViewB = this.sceneTextureB.createView();
 
     // Create sampler for texture reads
-    this.trailSampler = this.device.createSampler({
+    this.sceneSampler = this.device.createSampler({
       magFilter: "linear",
       minFilter: "linear",
       addressModeU: "clamp-to-edge",
@@ -273,7 +533,7 @@ export class WebGPUParticleSystem {
     const passA = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
-          view: this.trailTextureViewA!,
+          view: this.sceneTextureViewA!,
           clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
           loadOp: "clear",
           storeOp: "store",
@@ -286,7 +546,7 @@ export class WebGPUParticleSystem {
     const passB = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
-          view: this.trailTextureViewB!,
+          view: this.sceneTextureViewB!,
           clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
           loadOp: "clear",
           storeOp: "store",
@@ -296,17 +556,6 @@ export class WebGPUParticleSystem {
     passB.end();
 
     this.device.queue.submit([commandEncoder.finish()]);
-
-    // Create uniform buffers for trail operations
-    this.trailDecayUniformBuffer = this.device.createBuffer({
-      size: 32, // TrailUniforms: vec2 + f32 + vec3 + f32 = 8 floats = 32 bytes
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-
-    this.trailBlurUniformBuffer = this.device.createBuffer({
-      size: 16, // BlurUniforms: vec2 + f32 + f32 = 4 floats = 16 bytes
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
   }
 
   private configureGrid(width: number, height: number): void {
@@ -395,13 +644,7 @@ export class WebGPUParticleSystem {
 
   private async createPipelines(): Promise<void> {
     // Load shader code (render + compute)
-    const renderShaderCode = renderShaderWGSL;
     const computeShaderCode = this.computeBuild?.code || "";
-
-    // Create render shader module
-    const renderShaderModule = this.device.createShaderModule({
-      code: renderShaderCode,
-    });
 
     // Create compute shader module
     const computeShaderModule = this.device.createShaderModule({
@@ -434,73 +677,7 @@ export class WebGPUParticleSystem {
       ],
     });
 
-    const renderPipelineLayout = this.device.createPipelineLayout({
-      bindGroupLayouts: [this.renderBindGroupLayout],
-    });
-
-    // Create render pipeline for canvas (BGRA8Unorm format)
-    this.renderPipeline = this.device.createRenderPipeline({
-      layout: renderPipelineLayout,
-      vertex: {
-        module: renderShaderModule,
-        entryPoint: "vs_main",
-      },
-      fragment: {
-        module: renderShaderModule,
-        entryPoint: "fs_main",
-        targets: [
-          {
-            format: this.renderer.getWebGPUDevice().format, // BGRA8Unorm
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-              },
-              alpha: {
-                srcFactor: "one",
-                dstFactor: "one-minus-src-alpha",
-              },
-            },
-          },
-        ],
-      },
-      primitive: {
-        topology: "triangle-strip",
-        stripIndexFormat: undefined,
-      },
-    });
-
-    // Create render pipeline for trail textures (RGBA8Unorm format)
-    this.trailRenderPipeline = this.device.createRenderPipeline({
-      layout: renderPipelineLayout,
-      vertex: {
-        module: renderShaderModule,
-        entryPoint: "vs_main",
-      },
-      fragment: {
-        module: renderShaderModule,
-        entryPoint: "fs_main",
-        targets: [
-          {
-            format: "rgba8unorm", // Trail texture format
-            blend: {
-              color: {
-                srcFactor: "src-alpha", // Proper alpha blending for particles
-                dstFactor: "one-minus-src-alpha",
-              },
-              alpha: {
-                srcFactor: "one",
-                dstFactor: "one-minus-src-alpha",
-              },
-            },
-          },
-        ],
-      },
-      primitive: {
-        topology: "triangle-strip",
-        stripIndexFormat: undefined,
-      },
-    });
+    // (No static particle canvas pipeline; render modules handle scene writes)
 
     // Create copy bind group layout (simpler - just texture and sampler)
     const copyBindGroupLayout = this.device.createBindGroupLayout({
@@ -564,11 +741,11 @@ export class WebGPUParticleSystem {
       entries: [
         {
           binding: 0,
-          resource: this.getCurrentTrailTextureView(),
+          resource: this.getCurrentSceneTextureView(),
         },
         {
           binding: 1,
-          resource: this.trailSampler!,
+          resource: this.sceneSampler!,
         },
       ],
     });
@@ -659,179 +836,16 @@ export class WebGPUParticleSystem {
     } catch (_e) {
       // Fallback to monolithic main if split entries not present
     }
-
-    // Create trail compute pipelines
-    await this.createTrailPipelines();
-  }
-
-  private async createTrailPipelines(): Promise<void> {
-    // Create trail pipelines
-
-    // Create trail decay shader module
-    let trailDecayModule;
-    try {
-      trailDecayModule = this.device.createShaderModule({
-        code: trailDecayShaderWGSL,
-      });
-    } catch (error) {
-      console.error("Trail decay shader compilation failed:", error);
-      throw error;
-    }
-
-    // Create trail blur shader module
-    const trailBlurModule = this.device.createShaderModule({
-      code: trailBlurShaderWGSL,
-    });
-
-    // Create bind group layouts for trail operations
-    const trailDecayBindGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.COMPUTE,
-          texture: { sampleType: "float" },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.COMPUTE,
-          storageTexture: { format: "rgba8unorm", access: "write-only" },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "uniform" },
-        },
-      ],
-    });
-
-    const trailBlurBindGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.COMPUTE,
-          texture: { sampleType: "float" },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.COMPUTE,
-          storageTexture: { format: "rgba8unorm", access: "write-only" },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "uniform" },
-        },
-      ],
-    });
-
-    // Create pipeline layouts
-    const trailDecayPipelineLayout = this.device.createPipelineLayout({
-      bindGroupLayouts: [trailDecayBindGroupLayout],
-    });
-
-    const trailBlurPipelineLayout = this.device.createPipelineLayout({
-      bindGroupLayouts: [trailBlurBindGroupLayout],
-    });
-
-    // Create compute pipelines
-    try {
-      this.trailDecayPipeline = this.device.createComputePipeline({
-        layout: trailDecayPipelineLayout,
-        compute: { module: trailDecayModule, entryPoint: "trail_decay" },
-      });
-    } catch (error) {
-      console.error("Trail decay pipeline creation failed:", error);
-      throw error;
-    }
-
-    this.trailBlurPipeline = this.device.createComputePipeline({
-      layout: trailBlurPipelineLayout,
-      compute: { module: trailBlurModule, entryPoint: "trail_blur" },
-    });
-
-    // Create trail bind groups for ping-pong rendering
-    await this.createTrailBindGroups(
-      trailDecayBindGroupLayout,
-      trailBlurBindGroupLayout
-    );
-  }
-
-  private async createTrailBindGroups(
-    decayLayout: GPUBindGroupLayout,
-    blurLayout: GPUBindGroupLayout
-  ): Promise<void> {
-    // Trail decay bind groups (A->B and B->A)
-    this.trailDecayBindGroupA = this.device.createBindGroup({
-      layout: decayLayout,
-      entries: [
-        { binding: 0, resource: this.trailTextureViewA! },
-        { binding: 1, resource: this.trailTextureViewB! },
-        { binding: 2, resource: { buffer: this.trailDecayUniformBuffer! } },
-      ],
-    });
-
-    this.trailDecayBindGroupB = this.device.createBindGroup({
-      layout: decayLayout,
-      entries: [
-        { binding: 0, resource: this.trailTextureViewB! },
-        { binding: 1, resource: this.trailTextureViewA! },
-        { binding: 2, resource: { buffer: this.trailDecayUniformBuffer! } },
-      ],
-    });
-
-    // Trail blur bind groups (A->B and B->A)
-    this.trailBlurBindGroupA = this.device.createBindGroup({
-      layout: blurLayout,
-      entries: [
-        { binding: 0, resource: this.trailTextureViewA! },
-        { binding: 1, resource: this.trailTextureViewB! },
-        { binding: 2, resource: { buffer: this.trailBlurUniformBuffer! } },
-      ],
-    });
-
-    this.trailBlurBindGroupB = this.device.createBindGroup({
-      layout: blurLayout,
-      entries: [
-        { binding: 0, resource: this.trailTextureViewB! },
-        { binding: 1, resource: this.trailTextureViewA! },
-        { binding: 2, resource: { buffer: this.trailBlurUniformBuffer! } },
-      ],
-    });
   }
 
   private createBindGroups(): void {
     if (
-      !this.renderPipeline ||
       !this.particleBuffer ||
       this.moduleUniformBuffers.some((b) => !b) ||
       !this.renderUniformBuffer
     ) {
       throw new Error("Pipeline or buffers not created");
     }
-
-    // Create render bind group: particles storage (read) + render uniforms + trail texture
-    // Both render pipelines use the same explicit bind group layout
-    this.renderBindGroup = this.device.createBindGroup({
-      layout: this.renderBindGroupLayout!,
-      entries: [
-        {
-          binding: 0,
-          resource: { buffer: this.particleBuffer },
-        },
-        {
-          binding: 1,
-          resource: { buffer: this.renderUniformBuffer },
-        },
-        {
-          binding: 2,
-          resource: this.getCurrentTrailTextureView(),
-        },
-        {
-          binding: 3,
-          resource: this.trailSampler!,
-        },
-      ],
-    });
 
     // Create compute bind group: particles storage + module uniforms
     if (!this.bindGroupLayout) {
@@ -870,7 +884,7 @@ export class WebGPUParticleSystem {
     if (this.computeBuild?.extraBindings.sceneTexture) {
       entries.push({
         binding: this.computeBuild.extraBindings.sceneTexture.textureBinding,
-        resource: this.getCurrentTrailTextureView(),
+        resource: this.getCurrentSceneTextureView(),
       });
     }
     this.computeBindGroup = this.device.createBindGroup({
@@ -940,27 +954,20 @@ export class WebGPUParticleSystem {
   }
 
   private getModuleIndex(name: string): number {
-    return (
-      this.modules as readonly ComputeModule<string, string, any>[]
-    ).findIndex((m) => {
-      const d = WebGPUParticleSystem.toDescriptor(m);
-      return d.name === name;
-    });
+    return (this.modules as readonly Module<string, string, any>[]).findIndex(
+      (m) => {
+        const d = WebGPUParticleSystem.toDescriptor(m);
+        return d.name === name;
+      }
+    );
   }
 
-  private getCurrentTrailTextureView(): GPUTextureView {
-    return this.currentTrailTexture === "A"
-      ? this.trailTextureViewA!
-      : this.trailTextureViewB!;
-  }
-
-  private swapTrailTextures(): void {
-    this.currentTrailTexture = this.currentTrailTexture === "A" ? "B" : "A";
-  }
+  // removed old trail helpers
 
   private copyTrailToCanvas(
     commandEncoder: GPUCommandEncoder,
-    canvasView: GPUTextureView
+    canvasView: GPUTextureView,
+    sourceView?: GPUTextureView
   ): void {
     if (!this.copyPipeline || !this.copyBindGroup) return;
 
@@ -970,11 +977,11 @@ export class WebGPUParticleSystem {
       entries: [
         {
           binding: 0,
-          resource: this.getCurrentTrailTextureView(),
+          resource: sourceView ?? this.getCurrentSceneTextureView(),
         },
         {
           binding: 1,
-          resource: this.trailSampler!,
+          resource: this.sceneSampler!,
         },
       ],
     });
@@ -1001,132 +1008,7 @@ export class WebGPUParticleSystem {
     copyPass.end();
   }
 
-  public clearTrails(): void {
-    if (!this.trailTextureViewA || !this.trailTextureViewB) return;
-    const encoder = this.device.createCommandEncoder();
-
-    const passA = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: this.trailTextureViewA,
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
-          loadOp: "clear",
-          storeOp: "store",
-        },
-      ],
-    });
-    passA.end();
-
-    const passB = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: this.trailTextureViewB,
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
-          loadOp: "clear",
-          storeOp: "store",
-        },
-      ],
-    });
-    passB.end();
-
-    this.device.queue.submit([encoder.finish()]);
-  }
-
-  private updateTrailUniforms(): void {
-    if (!this.trailDecayUniformBuffer || !this.trailBlurUniformBuffer) return;
-
-    const trailsModule = this.getModule("trails");
-    const trailsUniforms = trailsModule ? (trailsModule as any).read?.() : {};
-
-    const size = this.renderer.getSize();
-
-    // Update trail decay uniforms
-    const decayRate = trailsUniforms.trailDecay || 0.1;
-    const decayData = new Float32Array([
-      size.width, // canvas_size.x
-      size.height, // canvas_size.y
-      decayRate, // decay_rate
-      0.0, // _padding (for background_color alignment)
-      DEFAULTS.clearColor.r, // background_color.r
-      DEFAULTS.clearColor.g, // background_color.g
-      DEFAULTS.clearColor.b, // background_color.b
-      0.0, // _padding
-    ]);
-
-    // (no debug logging)
-
-    this.device.queue.writeBuffer(this.trailDecayUniformBuffer, 0, decayData);
-
-    // Update trail blur uniforms
-    const blurData = new Float32Array([
-      size.width, // canvas_size.x
-      size.height, // canvas_size.y
-      trailsUniforms.trailDiffuse || 0.0, // blur_radius
-      0.0, // _padding
-    ]);
-    this.device.queue.writeBuffer(this.trailBlurUniformBuffer, 0, blurData);
-  }
-
-  private processTrails(commandEncoder: GPUCommandEncoder): void {
-    if (
-      !this.trailDecayPipeline ||
-      !this.trailDecayBindGroupA ||
-      !this.trailDecayBindGroupB
-    ) {
-      // Missing trail pipelines or bind groups
-      return;
-    }
-
-    this.updateTrailUniforms();
-
-    const size = this.renderer.getSize();
-    const workgroupsX = Math.ceil(size.width / 8);
-    const workgroupsY = Math.ceil(size.height / 8);
-
-    // Note: currentTrailTexture was already swapped after particle rendering
-    // Apply trail decay (ping-pong from current texture to other texture)
-    const decayPass = commandEncoder.beginComputePass();
-    decayPass.setPipeline(this.trailDecayPipeline);
-
-    // Use appropriate bind group based on current texture
-    // After particle rendering, currentTrailTexture was swapped, so we need to read from the "other" texture
-    const decayBindGroup =
-      this.currentTrailTexture === "A"
-        ? this.trailDecayBindGroupB // Read from B, write to A
-        : this.trailDecayBindGroupA; // Read from A, write to B
-
-    decayPass.setBindGroup(0, decayBindGroup);
-    decayPass.dispatchWorkgroups(workgroupsX, workgroupsY);
-    decayPass.end();
-
-    // Apply blur if diffuse > 0 (blur from current texture back to other texture)
-    const trailsModule = this.getModule("trails");
-    const trailDiffuse = trailsModule
-      ? (trailsModule as any).read?.().trailDiffuse || 0
-      : 0;
-
-    if (
-      trailDiffuse > 0 &&
-      this.trailBlurPipeline &&
-      this.trailBlurBindGroupA &&
-      this.trailBlurBindGroupB
-    ) {
-      const blurPass = commandEncoder.beginComputePass();
-      blurPass.setPipeline(this.trailBlurPipeline);
-
-      // Use appropriate bind group based on current texture (after decay swap)
-      const blurBindGroup =
-        this.currentTrailTexture === "A"
-          ? this.trailBlurBindGroupA // Read from A, write to B
-          : this.trailBlurBindGroupB; // Read from B, write to A
-      blurPass.setBindGroup(0, blurBindGroup);
-      blurPass.dispatchWorkgroups(workgroupsX, workgroupsY);
-      blurPass.end();
-
-      // Swap textures after blur
-      this.swapTrailTextures();
-    }
-  }
+  // removed scene clear helper; render modules own scene lifecycle
 
   private writeSimulationUniforms(
     deltaTime: number,
@@ -1180,7 +1062,7 @@ export class WebGPUParticleSystem {
       uniforms.cameraPosition[0],
       uniforms.cameraPosition[1],
       uniforms.zoom,
-      uniforms.enableTrails,
+      0, // padding
     ]);
 
     this.device.queue.writeBuffer(this.renderUniformBuffer, 0, data);
@@ -1195,29 +1077,12 @@ export class WebGPUParticleSystem {
     cameraPosition: [number, number],
     zoom: number
   ): void {
-    if (
-      !this.renderPipeline ||
-      !this.renderBindGroup ||
-      this.particleCount === 0
-    )
-      return;
+    // Proceed even with 0 particles to ensure canvas clears and scene stays in sync
 
-    // Check if trails module is enabled
-    const trailsModule = this.getModule("trails");
-    const enableTrails =
-      trailsModule && (trailsModule as any).isEnabled?.() ? 1.0 : 0.0;
-
-    this.updateRender({
-      canvasSize,
-      cameraPosition,
-      zoom,
-      enableTrails,
-    });
+    this.updateRender({ canvasSize, cameraPosition, zoom });
 
     // Create command encoder for rendering
     const commandEncoder = this.device.createCommandEncoder();
-
-    const textureView = this.context.getCurrentTexture().createView();
 
     // Recreate compute bind group to update trail texture binding for sensors
     if (this.bindGroupLayout) {
@@ -1258,7 +1123,7 @@ export class WebGPUParticleSystem {
         this.correctPipeline
       ) {
         const descs = (
-          this.modules as readonly ComputeModule<string, string, any>[]
+          this.modules as readonly Module<string, string, any>[]
         ).map((m) => WebGPUParticleSystem.toDescriptor(m));
         const stateEnabled = descs.some(
           (d, idx) =>
@@ -1347,134 +1212,8 @@ export class WebGPUParticleSystem {
       }
     }
 
-    // Render particles first - use appropriate pipeline for target format
-    if (enableTrails > 0.0 && this.trailRenderPipeline) {
-      // Create a bind group that samples from the "other" trail texture (not the current render target)
-      const trailReadTexture =
-        this.currentTrailTexture === "A"
-          ? this.trailTextureViewB!
-          : this.trailTextureViewA!;
-      const trailRenderBindGroup = this.device.createBindGroup({
-        layout: this.renderBindGroupLayout!,
-        entries: [
-          {
-            binding: 0,
-            resource: { buffer: this.particleBuffer! },
-          },
-          {
-            binding: 1,
-            resource: { buffer: this.renderUniformBuffer! },
-          },
-          {
-            binding: 2,
-            resource: trailReadTexture, // Read from other texture
-          },
-          {
-            binding: 3,
-            resource: this.trailSampler!,
-          },
-        ],
-      });
-
-      // Render to current trail texture with additive blending
-      const trailRenderPass = commandEncoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: this.getCurrentTrailTextureView(), // Write to current texture
-            clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
-            loadOp: "load", // Keep existing trail content for persistence
-            storeOp: "store",
-          },
-        ],
-      });
-
-      trailRenderPass.setPipeline(this.trailRenderPipeline);
-      trailRenderPass.setBindGroup(0, trailRenderBindGroup);
-      trailRenderPass.draw(4, this.particleCount);
-      trailRenderPass.end();
-
-      // Swap textures after particle rendering
-      this.swapTrailTextures();
-    } else {
-      // Trails disabled: draw current particles into the trail texture (no persistence)
-      // so sensors can still sample from scene_texture, then render particles to canvas.
-
-      // Create a bind group similar to trails-enabled path (texture sample not used in shader)
-      const trailReadTexture =
-        this.currentTrailTexture === "A"
-          ? this.trailTextureViewB!
-          : this.trailTextureViewA!;
-      const trailRenderBindGroup = this.device.createBindGroup({
-        layout: this.renderBindGroupLayout!,
-        entries: [
-          { binding: 0, resource: { buffer: this.particleBuffer! } },
-          { binding: 1, resource: { buffer: this.renderUniformBuffer! } },
-          { binding: 2, resource: trailReadTexture },
-          { binding: 3, resource: this.trailSampler! },
-        ],
-      });
-
-      // Clear the current trail texture and render particles (single frame, no accumulation)
-      const trailRenderPass = commandEncoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: this.getCurrentTrailTextureView(),
-            clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
-            loadOp: "clear",
-            storeOp: "store",
-          },
-        ],
-      });
-      trailRenderPass.setPipeline(this.trailRenderPipeline!);
-      trailRenderPass.setBindGroup(0, trailRenderBindGroup);
-      trailRenderPass.draw(4, this.particleCount);
-      trailRenderPass.end();
-
-      // Swap textures for consistency with sensors sampling order
-      this.swapTrailTextures();
-
-      // Render particles directly to canvas
-      const canvasRenderPass = commandEncoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: textureView,
-            clearValue: DEFAULTS.clearColor,
-            loadOp: "clear",
-            storeOp: "store",
-          },
-        ],
-      });
-      canvasRenderPass.setPipeline(this.renderPipeline);
-      canvasRenderPass.setBindGroup(0, this.renderBindGroup);
-      canvasRenderPass.draw(4, this.particleCount);
-      canvasRenderPass.end();
-    }
-
-    // Process trails if enabled (after particle rendering)
-    if (enableTrails > 0.0) {
-      this.processTrails(commandEncoder);
-    }
-
-    // If trails are enabled, copy final trail texture to canvas, then render particles on top
-    if (enableTrails > 0.0) {
-      // 1) Copy decayed trail texture to canvas (clears first)
-      this.copyTrailToCanvas(commandEncoder, textureView);
-
-      // 2) Render particles on top at full brightness (unaffected by decay)
-      const canvasRenderPass = commandEncoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: textureView,
-            loadOp: "load", // keep copied trails
-            storeOp: "store",
-          },
-        ],
-      });
-      canvasRenderPass.setPipeline(this.renderPipeline);
-      canvasRenderPass.setBindGroup(0, this.renderBindGroup!);
-      canvasRenderPass.draw(4, this.particleCount);
-      canvasRenderPass.end();
-    }
+    // Always run the render graph; render modules draw into scene textures and we copy to canvas
+    this.runRenderGraph(commandEncoder);
 
     // Submit render commands
     this.device.queue.submit([commandEncoder.finish()]);
@@ -1488,9 +1227,32 @@ export class WebGPUParticleSystem {
     // Remove all particles
     this.particleCount = 0;
 
-    // Clear scene/trail textures so sensors and the next frame don't see stale data
+    // Clear scene textures so sensors and the next frame don't see stale data
     try {
-      this.clearTrails();
+      const encoder = this.device.createCommandEncoder();
+      const passA = encoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: this.sceneTextureViewA!,
+            clearValue: { r: 0, g: 0, b: 0, a: 0 },
+            loadOp: "clear",
+            storeOp: "store",
+          },
+        ],
+      });
+      passA.end();
+      const passB = encoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: this.sceneTextureViewB!,
+            clearValue: { r: 0, g: 0, b: 0, a: 0 },
+            loadOp: "clear",
+            storeOp: "store",
+          },
+        ],
+      });
+      passB.end();
+      this.device.queue.submit([encoder.finish()]);
     } catch (_) {
       // no-op if textures not ready
     }
@@ -1524,7 +1286,7 @@ export class WebGPUParticleSystem {
     this.particleBuffer = null;
     this.moduleUniformBuffers = [];
     this.renderUniformBuffer = null;
-    this.renderBindGroup = null;
-    this.renderPipeline = null;
+    this.renderBindGroupLayout = null;
+    this.pipelineLayout = null;
   }
 }

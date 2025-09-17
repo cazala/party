@@ -1,4 +1,4 @@
-import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
 
 type BehaviorBindingKeys =
   | "wanderWeight"
@@ -21,7 +21,7 @@ export const DEFAULT_BEHAVIOR_SEPARATION_RANGE = 30;
 export const DEFAULT_BEHAVIOR_VIEW_RADIUS = 100;
 export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 2 * Math.PI;
 
-export class Behavior extends ComputeModule<"behavior", BehaviorBindingKeys> {
+export class Behavior extends Module<"behavior", BehaviorBindingKeys> {
   private wanderWeight: number;
   private cohesionWeight: number;
   private alignmentWeight: number;
@@ -115,7 +115,7 @@ export class Behavior extends ComputeModule<"behavior", BehaviorBindingKeys> {
     this.write({ viewAngle: v });
   }
 
-  descriptor(): ComputeModuleDescriptor<"behavior", BehaviorBindingKeys> {
+  descriptor(): ModuleDescriptor<"behavior", BehaviorBindingKeys> {
     return {
       name: "behavior",
       role: "force",

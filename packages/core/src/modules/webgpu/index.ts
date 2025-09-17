@@ -19,5 +19,4 @@ export {
   Collisions as WebGPUCollisions,
   Fluid as WebGPUFluid,
   Trails as WebGPUTrails,
-  defaultComputeModules,
 } from "./shaders/modules";

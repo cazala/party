@@ -13,6 +13,7 @@ import { Behavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior"
 import { Sensors } from "@cazala/party/modules/webgpu/shaders/modules/sensors";
 import { Trails } from "@cazala/party/modules/webgpu/shaders/modules/trails";
 import { Interaction } from "@cazala/party/modules/webgpu/shaders/modules/interaction";
+import { ParticleRenderer } from "@cazala/party/modules/webgpu/shaders/modules/particle-renderer";
 import { gridModule } from "@cazala/party/modules/webgpu/shaders/modules/grid";
 import { ToolMode } from "./useToolMode";
 
@@ -274,9 +275,12 @@ export function useWebGPUPlayground(
             collisions,
             behavior,
             fluid,
-            trails,
             sensors,
             interaction,
+            // Render modules
+            trails,
+            // Render modules (put ParticleRenderer last so particles draw after effects)
+            new ParticleRenderer(),
           ];
           const system = new WebGPUParticleSystem(renderer, modules);
           await system.initialize();

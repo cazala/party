@@ -5,41 +5,6 @@ export type ComputeModuleRole =
   | "system"
   | "render";
 
-export interface ComputeModuleDescriptor<
-  Name extends string,
-  BindingKeys extends string | "enabled",
-  StateKeys extends string = never
-> {
-  name: Name;
-  role: ComputeModuleRole;
-  bindings?: readonly BindingKeys[];
-  states?: readonly StateKeys[];
-  global?: (args?: { getUniform: (id: BindingKeys) => string }) => string;
-  // Optional system-only hook for emitting WGSL entrypoints like grid_clear/grid_build
-  entrypoints?: () => string;
-  state?: (args: {
-    particleVar: string;
-    dtVar: string;
-    getUniform: (id: BindingKeys) => string;
-    getState: (name: StateKeys, pidVar?: string) => string;
-    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
-  }) => string;
-  apply?: (args: {
-    particleVar: string;
-    dtVar: string;
-    getUniform: (id: BindingKeys) => string;
-    getState: (name: StateKeys, pidVar?: string) => string;
-    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
-  }) => string;
-  constrain?: (args: {
-    particleVar: string;
-    dtVar: string;
-    getUniform: (id: BindingKeys) => string;
-    getState: (name: StateKeys, pidVar?: string) => string;
-    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
-  }) => string;
-}
-
 // ---------------------------------------------------------------------------
 // Role-based descriptor types (forward-compatible, optional for existing modules)
 // ---------------------------------------------------------------------------
@@ -53,7 +18,7 @@ export interface BaseModuleDescriptor<Name extends string = string> {
 export interface SystemModuleDescriptor<Name extends string = string>
   extends BaseModuleDescriptor<Name> {
   role: "system" | "simulation"; // keep legacy alias "simulation"
-  global?: () => string;
+  global?: (args: { getUniform: (id: string) => string }) => string;
   entrypoints?: () => string;
 }
 
@@ -64,7 +29,7 @@ export interface ForceModuleDescriptor<
 > extends BaseModuleDescriptor<Name> {
   role: "force";
   states?: readonly StateKeys[];
-  global?: () => string;
+  global?: (args: { getUniform: (id: Keys) => string }) => string;
   state?: (args: {
     particleVar: string;
     dtVar: string;
@@ -100,19 +65,53 @@ export interface RenderModuleDescriptor<
   role: "render";
   passes: Array<{
     kind: "fullscreen" | "compute";
-    code: string;
+    code: (args: {
+      getUniform: (
+        id:
+          | Keys
+          | "canvasWidth"
+          | "canvasHeight"
+          | "clearColorR"
+          | "clearColorG"
+          | "clearColorB"
+      ) => string;
+    }) => string;
     vsEntry?: string;
     fsEntry?: string;
     csEntry?: string;
     bindings: readonly Keys[];
     readsScene?: boolean;
     writesScene?: boolean;
+    reservedUniforms?: readonly (
+      | "canvasWidth"
+      | "canvasHeight"
+      | "clearColorR"
+      | "clearColorG"
+      | "clearColorB"
+    )[];
+    buildUniformData?: (
+      state: Record<string, number>,
+      ctx: {
+        width: number;
+        height: number;
+        clearColor: { r: number; g: number; b: number; a: number };
+      }
+    ) => Float32Array;
   }>;
 }
 
+export type ModuleDescriptor<
+  Name extends string = string,
+  Keys extends string = string,
+  StateKeys extends string = never
+> =
+  | SystemModuleDescriptor<Name>
+  | ForceModuleDescriptor<Name, Keys, StateKeys>
+  | RenderModuleDescriptor<Name, Keys>;
+
 type BindingKeysBase = "enabled" | string;
 
-export abstract class ComputeModule<
+export abstract class Module<
   Name extends string,
   BindingKeys extends BindingKeysBase,
   StateKeys extends string = never
@@ -157,7 +156,7 @@ export abstract class ComputeModule<
     }
   }
 
-  abstract descriptor(): ComputeModuleDescriptor<Name, BindingKeys, StateKeys>;
+  abstract descriptor(): ModuleDescriptor<Name, BindingKeys, StateKeys>;
 }
 
 // Deprecated: previously supported mixing descriptors and modules
@@ -193,7 +192,7 @@ function capitalize(text: string): string {
 // Note: all modules are instances of ComputeModule now
 
 export function buildComputeProgram(
-  modules: readonly ComputeModule<string, string, any>[]
+  modules: readonly Module<string, string, any>[]
 ): ComputeProgramBuild {
   // Normalize to descriptors (all are modules now)
   const descriptors = modules.map((m) => m.descriptor());
@@ -276,13 +275,17 @@ struct Particle {
   const moduleLocalSlot: Record<string, Record<string, number>> = {};
   descriptors.forEach((mod) => {
     moduleLocalSlot[mod.name] = {};
-    (mod.states || []).forEach((field) => {
-      const globalKey = `${mod.name}.${field}`;
-      if (stateSlots[globalKey] === undefined) {
-        stateSlots[globalKey] = nextStateSlot++;
-      }
-      moduleLocalSlot[mod.name][field] = stateSlots[globalKey];
-    });
+    if (mod.role === "force" && (mod as ForceModuleDescriptor).states) {
+      ((mod as ForceModuleDescriptor).states as readonly string[]).forEach(
+        (field: string) => {
+          const globalKey = `${mod.name}.${field}`;
+          if (stateSlots[globalKey] === undefined) {
+            stateSlots[globalKey] = nextStateSlot++;
+          }
+          moduleLocalSlot[mod.name][field] = stateSlots[globalKey];
+        }
+      );
+    }
   });
   const SIM_STATE_STRIDE_VAL = nextStateSlot;
 
@@ -310,20 +313,28 @@ struct Particle {
 
   // Collect global functions from modules (system first to allow helpers like GRID_MINX to be used by others)
   const globalFunctions: string[] = [];
-  const pushGlobal = (mod: (typeof descriptors)[number]) => {
-    if (!mod.global) return;
+  const pushGlobal = (mod: ModuleDescriptor) => {
+    if (mod.role === "render") return;
+    const maybeGlobal = (mod as any).global as
+      | ((args: { getUniform: (id: string) => string }) => string)
+      | undefined;
+    if (!maybeGlobal) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
-    const globalCode = mod.global({ getUniform } as any);
+    const globalCode = maybeGlobal({ getUniform });
     if (globalCode && globalCode.trim().length > 0) {
       globalFunctions.push(`// Global functions for ${mod.name} module`);
       globalFunctions.push(globalCode.trim());
     }
   };
   // System module globals first
-  descriptors.filter((m) => m.role === "system").forEach(pushGlobal);
-  // Then the rest
-  descriptors.filter((m) => m.role !== "system").forEach(pushGlobal);
+  descriptors
+    .filter((m) => m.role === "system")
+    .forEach((m) => pushGlobal(m as any));
+  // Then the rest (skip render)
+  descriptors
+    .filter((m) => m.role !== "system" && m.role !== "render")
+    .forEach((m) => pushGlobal(m as any));
 
   // Collect system entrypoints from system modules via entrypoints()
   const systemEntrypoints: string[] = [];

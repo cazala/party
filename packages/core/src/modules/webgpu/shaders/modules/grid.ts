@@ -1,4 +1,4 @@
-import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
 
 type GridKeys =
   | "minX"
@@ -10,8 +10,8 @@ type GridKeys =
   | "cellSize"
   | "maxPerCell";
 
-export class Grid extends ComputeModule<"grid", GridKeys> {
-  descriptor(): ComputeModuleDescriptor<"grid", GridKeys> {
+export class Grid extends Module<"grid", GridKeys> {
+  descriptor(): ModuleDescriptor<"grid", GridKeys> {
     return {
       name: "grid",
       role: "system",

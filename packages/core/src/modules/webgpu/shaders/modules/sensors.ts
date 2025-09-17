@@ -1,4 +1,4 @@
-import { ComputeModule, type ComputeModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
 
 export type SensorBehavior = "any" | "same" | "different" | "none";
 
@@ -24,7 +24,7 @@ export const DEFAULT_SENSORS_FOLLOW_BEHAVIOR: SensorBehavior = "any";
 export const DEFAULT_SENSORS_FLEE_BEHAVIOR: SensorBehavior = "none";
 export const DEFAULT_SENSORS_FLEE_ANGLE = Math.PI / 2;
 
-export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
+export class Sensors extends Module<"sensors", SensorBindingKeys> {
   private sensorDistance: number;
   private sensorAngle: number;
   private sensorRadius: number;
@@ -148,7 +148,7 @@ export class Sensors extends ComputeModule<"sensors", SensorBindingKeys> {
     this.write({ fleeAngle: value });
   }
 
-  descriptor(): ComputeModuleDescriptor<"sensors", SensorBindingKeys> {
+  descriptor(): ModuleDescriptor<"sensors", SensorBindingKeys> {
     return {
       name: "sensors",
       role: "force",
