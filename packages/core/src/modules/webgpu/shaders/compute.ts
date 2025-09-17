@@ -1,9 +1,8 @@
-export type ComputeModuleRole =
-  | "simulation"
-  | "force"
-  | "grid"
-  | "system"
-  | "render";
+export enum ModuleRole {
+  Force = "force",
+  System = "system",
+  Render = "render",
+}
 
 // ---------------------------------------------------------------------------
 // Role-based descriptor types (forward-compatible, optional for existing modules)
@@ -11,13 +10,13 @@ export type ComputeModuleRole =
 
 export interface BaseModuleDescriptor<Name extends string = string> {
   name: Name;
-  role: ComputeModuleRole;
+  role: ModuleRole;
   bindings?: readonly string[];
 }
 
 export interface SystemModuleDescriptor<Name extends string = string>
   extends BaseModuleDescriptor<Name> {
-  role: "system" | "simulation"; // keep legacy alias "simulation"
+  role: ModuleRole.System; // support alias
   global?: (args: { getUniform: (id: string) => string }) => string;
   entrypoints?: () => string;
 }
@@ -27,7 +26,7 @@ export interface ForceModuleDescriptor<
   Keys extends string = string,
   StateKeys extends string = string
 > extends BaseModuleDescriptor<Name> {
-  role: "force";
+  role: ModuleRole.Force;
   states?: readonly StateKeys[];
   global?: (args: { getUniform: (id: Keys) => string }) => string;
   state?: (args: {
@@ -58,57 +57,67 @@ export interface ForceModuleDescriptor<
   }) => string;
 }
 
+export enum RenderPassKind {
+  Fullscreen = "fullscreen",
+  Compute = "compute",
+}
+
+export type FullscreenRenderPass<Keys extends string = string> = {
+  kind: RenderPassKind.Fullscreen;
+  vertex?: (args: {
+    getUniform: (id: Keys | "canvasWidth" | "canvasHeight") => string;
+  }) => string;
+  globals?: (args: { getUniform: (id: Keys) => string }) => string;
+  fragment: (args: {
+    getUniform: (
+      id:
+        | Keys
+        | "canvasWidth"
+        | "canvasHeight"
+        | "clearColorR"
+        | "clearColorG"
+        | "clearColorB"
+    ) => string;
+    sampleScene: (uvExpr: string) => string;
+  }) => string;
+  bindings: readonly Keys[];
+  readsScene?: boolean;
+  writesScene?: true;
+  instanced?: boolean;
+};
+
+export type ComputeRenderPass<Keys extends string = string> = {
+  kind: RenderPassKind.Compute;
+  kernel: (args: {
+    getUniform: (
+      id:
+        | Keys
+        | "canvasWidth"
+        | "canvasHeight"
+        | "clearColorR"
+        | "clearColorG"
+        | "clearColorB"
+    ) => string;
+    readScene: (coordsExpr: string) => string;
+    writeScene: (coordsExpr: string, colorExpr: string) => string;
+  }) => string;
+  bindings: readonly Keys[];
+  readsScene?: boolean;
+  writesScene?: true;
+  workgroupSize?: [number, number, number];
+  globals?: (args: { getUniform: (id: Keys) => string }) => string;
+};
+
+export type RenderPass<Keys extends string = string> =
+  | FullscreenRenderPass<Keys>
+  | ComputeRenderPass<Keys>;
+
 export interface RenderModuleDescriptor<
   Name extends string = string,
   Keys extends string = string
 > extends BaseModuleDescriptor<Name> {
-  role: "render";
-  passes: Array<
-    | {
-        kind: "fullscreen";
-        vertex?: (args: {
-          getUniform: (id: Keys | "canvasWidth" | "canvasHeight") => string;
-        }) => string;
-        globals?: (args: { getUniform: (id: Keys) => string }) => string;
-        fragment: (args: {
-          getUniform: (
-            id:
-              | Keys
-              | "canvasWidth"
-              | "canvasHeight"
-              | "clearColorR"
-              | "clearColorG"
-              | "clearColorB"
-          ) => string;
-          sampleScene: (uvExpr: string) => string;
-        }) => string;
-        bindings: readonly Keys[];
-        readsScene?: boolean;
-        writesScene?: true;
-        instanced?: boolean;
-      }
-    | {
-        kind: "compute";
-        kernel: (args: {
-          getUniform: (
-            id:
-              | Keys
-              | "canvasWidth"
-              | "canvasHeight"
-              | "clearColorR"
-              | "clearColorG"
-              | "clearColorB"
-          ) => string;
-          readScene: (coordsExpr: string) => string;
-          writeScene: (coordsExpr: string, colorExpr: string) => string;
-        }) => string;
-        bindings: readonly Keys[];
-        readsScene?: boolean;
-        writesScene?: true;
-        workgroupSize?: [number, number, number];
-        globals?: (args: { getUniform: (id: Keys) => string }) => string;
-      }
-  >;
+  role: ModuleRole.Render;
+  passes: Array<RenderPass<Keys>>;
 }
 
 export type ModuleDescriptor<
@@ -175,7 +184,7 @@ export abstract class Module<
 
 export interface ModuleUniformLayout {
   moduleName: string;
-  moduleRole: ComputeModuleRole;
+  moduleRole: ModuleRole;
   bindingIndex: number;
   uniformsVar: string;
   structName: string;
@@ -286,7 +295,10 @@ struct Particle {
   const moduleLocalSlot: Record<string, Record<string, number>> = {};
   descriptors.forEach((mod) => {
     moduleLocalSlot[mod.name] = {};
-    if (mod.role === "force" && (mod as ForceModuleDescriptor).states) {
+    if (
+      mod.role === ModuleRole.Force &&
+      (mod as ForceModuleDescriptor).states
+    ) {
       ((mod as ForceModuleDescriptor).states as readonly string[]).forEach(
         (field: string) => {
           const globalKey = `${mod.name}.${field}`;
@@ -325,7 +337,7 @@ struct Particle {
   // Collect global functions from modules (system first to allow helpers like GRID_MINX to be used by others)
   const globalFunctions: string[] = [];
   const pushGlobal = (mod: ModuleDescriptor) => {
-    if (mod.role === "render") return;
+    if (mod.role === ModuleRole.Render) return;
     const maybeGlobal = (mod as any).global as
       | ((args: { getUniform: (id: string) => string }) => string)
       | undefined;
@@ -340,17 +352,17 @@ struct Particle {
   };
   // System module globals first
   descriptors
-    .filter((m) => m.role === "system")
+    .filter((m) => m.role === ModuleRole.System)
     .forEach((m) => pushGlobal(m as any));
   // Then the rest (skip render)
   descriptors
-    .filter((m) => m.role !== "system" && m.role !== "render")
+    .filter((m) => m.role !== ModuleRole.System && m.role !== ModuleRole.Render)
     .forEach((m) => pushGlobal(m as any));
 
   // Collect system entrypoints from system modules via entrypoints()
   const systemEntrypoints: string[] = [];
   descriptors.forEach((mod) => {
-    if (mod.role !== "system") return;
+    if (mod.role !== ModuleRole.System) return;
     const entryFn = (mod as any).entrypoints;
     const snippet = typeof entryFn === "function" ? entryFn() : "";
     if (snippet && snippet.trim().length) {
@@ -371,7 +383,7 @@ struct Particle {
     `${passType}_${moduleName}`;
 
   descriptors.forEach((mod) => {
-    if (mod.role !== "force" || !mod.state) return;
+    if (mod.role !== ModuleRole.Force || !mod.state) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
     const getState = (name: string, pidVar: string = "index") => {
@@ -419,7 +431,7 @@ fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
   });
 
   descriptors.forEach((mod) => {
-    if (mod.role !== "force" || !mod.apply) return;
+    if (mod.role !== ModuleRole.Force || !mod.apply) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
     const getState = (name: string, pidVar: string = "index") => {
@@ -467,7 +479,7 @@ fn ${functionName}(particle: ptr<function, Particle>, index: u32) {
   });
 
   descriptors.forEach((mod) => {
-    if (mod.role !== "force" || !mod.constrain) return;
+    if (mod.role !== ModuleRole.Force || !mod.constrain) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
     const getState = (name: string, pidVar: string = "index") => {

@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
 
 type InteractionBindingKeys =
   | "action"
@@ -91,7 +91,7 @@ export class Interaction extends Module<"interaction", InteractionBindingKeys> {
   descriptor(): ModuleDescriptor<"interaction", InteractionBindingKeys> {
     return {
       name: "interaction",
-      role: "force",
+      role: ModuleRole.Force,
       bindings: [
         "action",
         "mode",

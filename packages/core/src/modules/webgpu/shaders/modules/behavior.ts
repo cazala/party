@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
 
 type BehaviorBindingKeys =
   | "wanderWeight"
@@ -118,7 +118,7 @@ export class Behavior extends Module<"behavior", BehaviorBindingKeys> {
   descriptor(): ModuleDescriptor<"behavior", BehaviorBindingKeys> {
     return {
       name: "behavior",
-      role: "force",
+      role: ModuleRole.Force,
       bindings: [
         "wanderWeight",
         "cohesionWeight",

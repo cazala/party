@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
 
 type BoundaryBindingKeys =
   | "restitution"
@@ -93,7 +93,7 @@ export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
   descriptor(): ModuleDescriptor<"boundary", BoundaryBindingKeys> {
     return {
       name: "boundary",
-      role: "force",
+      role: ModuleRole.Force,
       bindings: [
         "restitution",
         "friction",

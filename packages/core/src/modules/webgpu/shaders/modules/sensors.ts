@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
 
 export type SensorBehavior = "any" | "same" | "different" | "none";
 
@@ -151,7 +151,7 @@ export class Sensors extends Module<"sensors", SensorBindingKeys> {
   descriptor(): ModuleDescriptor<"sensors", SensorBindingKeys> {
     return {
       name: "sensors",
-      role: "force",
+      role: ModuleRole.Force,
       bindings: [
         "sensorDistance",
         "sensorAngle",

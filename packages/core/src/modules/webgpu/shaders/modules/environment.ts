@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
 
 export const DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH = 0;
 export const DEFAULT_ENVIRONMENT_GRAVITY_DIRECTION: GravityDirection = "down";
@@ -163,7 +163,7 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
   descriptor(): ModuleDescriptor<"environment", EnvBindingKeys> {
     return {
       name: "environment",
-      role: "force",
+      role: ModuleRole.Force,
       bindings: [
         "gravityStrength",
         "dirX",

@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
 
 type FluidBindingKeys =
   | "influenceRadius"
@@ -114,7 +114,7 @@ export class Fluid extends Module<"fluid", FluidBindingKeys, FluidStateKeys> {
   descriptor(): ModuleDescriptor<"fluid", FluidBindingKeys, FluidStateKeys> {
     return {
       name: "fluid",
-      role: "force",
+      role: ModuleRole.Force,
       states: ["density", "nearDensity"],
       bindings: [
         "influenceRadius",

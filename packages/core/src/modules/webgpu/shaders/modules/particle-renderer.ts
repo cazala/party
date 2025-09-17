@@ -1,4 +1,9 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import {
+  Module,
+  type ModuleDescriptor,
+  ModuleRole,
+  RenderPassKind,
+} from "../compute";
 
 type ParticleRendererKeys = "particleBuffer" | "renderUniforms";
 
@@ -9,11 +14,11 @@ export class ParticleRenderer extends Module<
   descriptor(): ModuleDescriptor<"particles", ParticleRendererKeys> {
     return {
       name: "particles" as const,
-      role: "render" as const,
+      role: ModuleRole.Render,
       // Single fullscreen pass that draws particles into the scene texture
       passes: [
         {
-          kind: "fullscreen" as const,
+          kind: RenderPassKind.Fullscreen,
           fragment: () => `{
   let center = vec2<f32>(0.5, 0.5);
   let dist = distance(uv, center);

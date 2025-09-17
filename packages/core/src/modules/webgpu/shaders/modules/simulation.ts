@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
 
 type SimKeys = "dt" | "count" | "simStride";
 
@@ -10,7 +10,7 @@ export class Simulation extends Module<"simulation", SimKeys> {
   descriptor(): ModuleDescriptor<"simulation", SimKeys> {
     return {
       name: "simulation",
-      role: "system",
+      role: ModuleRole.System,
       bindings: ["dt", "count", "simStride"],
       // Provide SIM_STATE helpers via global() so other modules can use them
       global: ({ getUniform }: any) => `

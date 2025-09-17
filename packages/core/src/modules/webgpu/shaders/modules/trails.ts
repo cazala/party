@@ -1,4 +1,9 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import {
+  Module,
+  type ModuleDescriptor,
+  ModuleRole,
+  RenderPassKind,
+} from "../compute";
 
 type TrailBindingKeys = "trailDecay" | "trailDiffuse";
 
@@ -46,12 +51,12 @@ export class Trails extends Module<"trails", TrailBindingKeys> {
   descriptor(): ModuleDescriptor<"trails", TrailBindingKeys> {
     return {
       name: "trails" as const,
-      role: "render" as const,
+      role: ModuleRole.Render,
       // keep uniforms so UI can write values
       bindings: ["trailDecay", "trailDiffuse"] as const,
       passes: [
         {
-          kind: "compute" as const,
+          kind: RenderPassKind.Compute,
           kernel: ({ getUniform, readScene, writeScene }) => `{
   let coords = vec2<i32>(i32(gid.x), i32(gid.y));
   let current = ${readScene("coords")};
@@ -74,7 +79,7 @@ export class Trails extends Module<"trails", TrailBindingKeys> {
           writesScene: true,
         },
         {
-          kind: "compute" as const,
+          kind: RenderPassKind.Compute,
           kernel: ({ getUniform, readScene, writeScene }) => `{
   let coords = vec2<i32>(i32(gid.x), i32(gid.y));
   let dims = textureDimensions(input_texture);

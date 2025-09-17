@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
 
 type CollisionBindingKeys = "restitution";
 
@@ -28,7 +28,7 @@ export class Collisions extends Module<"collisions", CollisionBindingKeys> {
   descriptor(): ModuleDescriptor<"collisions", CollisionBindingKeys> {
     return {
       name: "collisions",
-      role: "force",
+      role: ModuleRole.Force,
       bindings: ["restitution"] as const,
       apply: ({ particleVar, getUniform }) => `
         // Grid neighbors iterator API using vec2 math, only updating the current particle

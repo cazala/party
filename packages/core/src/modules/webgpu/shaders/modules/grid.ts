@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
 
 type GridKeys =
   | "minX"
@@ -14,7 +14,7 @@ export class Grid extends Module<"grid", GridKeys> {
   descriptor(): ModuleDescriptor<"grid", GridKeys> {
     return {
       name: "grid",
-      role: "system",
+      role: ModuleRole.System,
       bindings: [
         "minX",
         "minY",
