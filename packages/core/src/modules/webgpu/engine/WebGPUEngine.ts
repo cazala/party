@@ -42,6 +42,10 @@ export class WebGPUEngine {
     if (this.computeBuild.extraBindings.simState) {
       this.resources.createSimStateBuffer(this.maxParticles, 4);
     }
+    // Build compute bind group layout once
+    this.resources.buildComputeLayouts(this.computeBuild);
+    // Build simulation pipelines once
+    this.resources.buildComputePipelines(this.computeBuild.code);
     this.resources.ensureSceneTextures(canvasWidth, canvasHeight);
   }
 

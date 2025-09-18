@@ -6,17 +6,34 @@ export interface SceneTextures {
   sampler: GPUSampler;
 }
 
+import { copyShaderWGSL } from "../shaders/copy";
+import type { ComputeProgramBuild } from "../shaders/builder/compute-builder";
+import type { SimulationPipelines } from "./simulation-runner";
+
 export class GPUResources {
   private particleBuffer: GPUBuffer | null = null;
   private moduleUniformBuffers: (GPUBuffer | null)[] = [];
   private renderUniformBuffer: GPUBuffer | null = null;
   private renderBindGroupLayout: GPUBindGroupLayout | null = null;
+  private computeBindGroupLayout: GPUBindGroupLayout | null = null;
+  private computePipelineLayout: GPUPipelineLayout | null = null;
+  private simPipelines: SimulationPipelines = {};
   private gridCountsBuffer: GPUBuffer | null = null;
   private gridIndicesBuffer: GPUBuffer | null = null;
   private simStateBuffer: GPUBuffer | null = null;
   private scene: SceneTextures | null = null;
   private currentScene: "A" | "B" = "A";
   private sceneSize: { width: number; height: number } | null = null;
+  private copyPipelines: Map<string, GPURenderPipeline> = new Map();
+  private fullscreenPipelines: Map<string, GPURenderPipeline> = new Map();
+  private imageComputePipelines: Map<string, GPUComputePipeline> = new Map();
+  private hashWGSL(code: string): string {
+    // djb2
+    let h = 5381;
+    for (let i = 0; i < code.length; i++)
+      h = ((h << 5) + h) ^ code.charCodeAt(i);
+    return (h >>> 0).toString(36);
+  }
 
   constructor(private readonly device: GPUDevice) {}
 
@@ -230,5 +247,236 @@ export class GPUResources {
       ],
     });
     return this.renderBindGroupLayout;
+  }
+
+  buildComputeLayouts(compute: ComputeProgramBuild): void {
+    const entries: GPUBindGroupLayoutEntry[] = [];
+    entries.push({
+      binding: 0,
+      visibility: GPUShaderStage.COMPUTE,
+      buffer: { type: "storage" },
+    });
+    for (const layout of compute.layouts) {
+      entries.push({
+        binding: layout.bindingIndex,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: "uniform" },
+      });
+    }
+    if (compute.extraBindings.grid) {
+      entries.push({
+        binding: compute.extraBindings.grid.countsBinding,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: "storage" },
+      });
+      entries.push({
+        binding: compute.extraBindings.grid.indicesBinding,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: "storage" },
+      });
+    }
+    if (compute.extraBindings.simState) {
+      entries.push({
+        binding: compute.extraBindings.simState.stateBinding,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: "storage" },
+      });
+    }
+    if (compute.extraBindings.sceneTexture) {
+      entries.push({
+        binding: compute.extraBindings.sceneTexture.textureBinding,
+        visibility: GPUShaderStage.COMPUTE,
+        texture: { sampleType: "float" },
+      });
+    }
+    this.computeBindGroupLayout = this.device.createBindGroupLayout({
+      entries,
+    });
+    this.computePipelineLayout = this.device.createPipelineLayout({
+      bindGroupLayouts: [this.computeBindGroupLayout],
+    });
+  }
+
+  getComputeBindGroupLayout(): GPUBindGroupLayout {
+    if (!this.computeBindGroupLayout)
+      throw new Error("Compute bind group layout not built");
+    return this.computeBindGroupLayout;
+  }
+
+  buildComputePipelines(code: string): void {
+    if (!this.computeBindGroupLayout || !this.computePipelineLayout) return;
+    const module = this.device.createShaderModule({ code });
+    const createComputePipelineForEntry = (
+      entryPoint: string
+    ): GPUComputePipeline =>
+      this.device.createComputePipeline({
+        layout: this.computePipelineLayout!,
+        compute: { module, entryPoint },
+      });
+    const safeCreateComputePipelineForEntry = (
+      entryPoint: string
+    ): GPUComputePipeline | undefined => {
+      try {
+        return createComputePipelineForEntry(entryPoint);
+      } catch {
+        return undefined;
+      }
+    };
+    this.simPipelines = {
+      monolithic: safeCreateComputePipelineForEntry("main"),
+      gridClear: safeCreateComputePipelineForEntry("grid_clear"),
+      gridBuild: safeCreateComputePipelineForEntry("grid_build"),
+      state: safeCreateComputePipelineForEntry("state_pass"),
+      apply: safeCreateComputePipelineForEntry("apply_pass"),
+      integrate: safeCreateComputePipelineForEntry("integrate_pass"),
+      constrain: safeCreateComputePipelineForEntry("constrain_pass"),
+      correct: safeCreateComputePipelineForEntry("correct_pass"),
+    };
+  }
+
+  getSimulationPipelines(): SimulationPipelines {
+    return this.simPipelines;
+  }
+
+  getCopyPipeline(format: GPUTextureFormat): GPURenderPipeline {
+    const key = `copy:${format}`;
+    const existing = this.copyPipelines.get(key);
+    if (existing) return existing;
+    const copyBindGroupLayout = this.device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: { sampleType: "float" },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {},
+        },
+      ],
+    });
+    const layout = this.device.createPipelineLayout({
+      bindGroupLayouts: [copyBindGroupLayout],
+    });
+    const shaderModule = this.device.createShaderModule({
+      code: copyShaderWGSL,
+    });
+    const pipeline = this.device.createRenderPipeline({
+      layout,
+      vertex: { module: shaderModule, entryPoint: "vs_main" },
+      fragment: {
+        module: shaderModule,
+        entryPoint: "fs_main",
+        targets: [
+          {
+            format,
+            blend: {
+              color: {
+                srcFactor: "src-alpha",
+                dstFactor: "one-minus-src-alpha",
+              },
+              alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
+            },
+          },
+        ],
+      },
+      primitive: { topology: "triangle-strip" },
+    });
+    this.copyPipelines.set(key, pipeline);
+    return pipeline;
+  }
+
+  getOrCreateFullscreenRenderPipeline(shaderCode: string): GPURenderPipeline {
+    const key = `fs:${this.hashWGSL(shaderCode)}`;
+    const cached = this.fullscreenPipelines.get(key);
+    if (cached) return cached;
+    const shaderModule = this.device.createShaderModule({ code: shaderCode });
+    const pipeline = this.device.createRenderPipeline({
+      layout: this.device.createPipelineLayout({
+        bindGroupLayouts: [this.getRenderBindGroupLayout()],
+      }),
+      vertex: { module: shaderModule, entryPoint: "vs_main" },
+      fragment: {
+        module: shaderModule,
+        entryPoint: "fs_main",
+        targets: [
+          {
+            format: "rgba8unorm",
+            blend: {
+              color: {
+                srcFactor: "src-alpha",
+                dstFactor: "one-minus-src-alpha",
+              },
+              alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
+            },
+          },
+        ],
+      },
+      primitive: { topology: "triangle-strip" },
+    });
+    this.fullscreenPipelines.set(key, pipeline);
+    return pipeline;
+  }
+
+  getOrCreateImageComputePipeline(shaderCode: string): GPUComputePipeline {
+    const key = `imgc:${this.hashWGSL(shaderCode)}`;
+    const cached = this.imageComputePipelines.get(key);
+    if (cached) return cached;
+    const shaderModule = this.device.createShaderModule({ code: shaderCode });
+    const pipeline = this.device.createComputePipeline({
+      layout: "auto" as any,
+      compute: { module: shaderModule, entryPoint: "cs_main" },
+    });
+    this.imageComputePipelines.set(key, pipeline);
+    return pipeline;
+  }
+
+  createComputeBindGroup(compute: ComputeProgramBuild): GPUBindGroup {
+    if (!this.computeBindGroupLayout) {
+      throw new Error("Compute bind group layout not built");
+    }
+    if (!this.particleBuffer || this.moduleUniformBuffers.some((b) => !b)) {
+      throw new Error("Buffers not ready");
+    }
+    const entries: GPUBindGroupEntry[] = [
+      { binding: 0, resource: { buffer: this.particleBuffer } },
+      ...this.moduleUniformBuffers.map((buf, i) => ({
+        binding: i + 1,
+        resource: { buffer: buf as GPUBuffer },
+      })),
+    ];
+    if (
+      compute.extraBindings.grid &&
+      this.gridCountsBuffer &&
+      this.gridIndicesBuffer
+    ) {
+      entries.push(
+        {
+          binding: compute.extraBindings.grid.countsBinding,
+          resource: { buffer: this.gridCountsBuffer },
+        },
+        {
+          binding: compute.extraBindings.grid.indicesBinding,
+          resource: { buffer: this.gridIndicesBuffer },
+        }
+      );
+    }
+    if (compute.extraBindings.simState && this.simStateBuffer) {
+      entries.push({
+        binding: compute.extraBindings.simState.stateBinding,
+        resource: { buffer: this.simStateBuffer },
+      });
+    }
+    if (compute.extraBindings.sceneTexture) {
+      entries.push({
+        binding: compute.extraBindings.sceneTexture.textureBinding,
+        resource: this.getCurrentSceneTextureView(),
+      });
+    }
+    return this.device.createBindGroup({
+      layout: this.computeBindGroupLayout,
+      entries,
+    });
   }
 }

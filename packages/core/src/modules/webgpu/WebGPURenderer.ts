@@ -126,6 +126,7 @@ export class WebGPURenderer {
     this.options.canvas.width = width;
     this.options.canvas.height = height;
     if (this.system) {
+      (this.system as any).resize?.(width, height);
       this.system.updateGridForSize(width, height);
     }
   }

@@ -3,14 +3,12 @@ import { Module, type ModuleDescriptor } from "./shaders/compute";
 import { type ComputeProgramBuild } from "./shaders/builder/compute-builder";
 import { DEFAULTS } from "./config";
 import { GPUResources } from "./runtime/gpu-resources";
-import { copyShaderWGSL } from "./shaders/copy";
 import {
   runRenderGraphWithExecutor,
   type RenderExecutor,
 } from "./runtime/render-graph-runner";
 import { runSimulationPasses } from "./runtime/simulation-runner";
 import { WebGPUEngine } from "./engine/WebGPUEngine";
-import { PipelineCache } from "./runtime/pipeline-cache";
 import {
   buildFullscreenPassWGSL,
   buildComputeImagePassWGSL,
@@ -55,20 +53,13 @@ export class WebGPUParticleSystem {
   private correctPipeline: GPUComputePipeline | null = null;
   private constrainPipeline: GPUComputePipeline | null = null;
 
-  private copyPipeline: GPURenderPipeline | null = null;
-  private copyBindGroup: GPUBindGroup | null = null;
-  private pipelineLayout: GPUPipelineLayout | null = null;
-  private pipelineCache: PipelineCache = new PipelineCache();
-
   private particleCount: number = 0;
   private maxParticles: number = DEFAULTS.maxParticles;
 
   private computeBuild: ComputeProgramBuild | null = null;
 
   // Grid buffers
-  private gridCountsBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
-  private gridIndicesBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
-  private simStateBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
+  // Grid and sim state buffers are managed by GPUResources
   private gridCells: number = 0;
   private gridMaxPerCell: number = 0;
   // Track last view to detect changes and avoid unnecessary uniform/buffer updates
@@ -135,37 +126,8 @@ export class WebGPUParticleSystem {
         const codeFS = `${structWGSL}\n@group(0) @binding(4) var<uniform> module_uniforms: Uniforms_${
           moduleDesc.name
         };\n${buildFullscreenPassWGSL(pass as any, moduleDesc.name, lookup)}`;
-        const shaderModule = this.device.createShaderModule({ code: codeFS });
-        const pipeline = this.pipelineCache.getOrCreateRender(
-          `fullscreen:${moduleDesc.name}:${codeFS.length}`,
-          () =>
-            this.device.createRenderPipeline({
-              layout: this.device.createPipelineLayout({
-                bindGroupLayouts: [this.resources.getRenderBindGroupLayout()],
-              }),
-              vertex: { module: shaderModule, entryPoint: "vs_main" },
-              fragment: {
-                module: shaderModule,
-                entryPoint: "fs_main",
-                targets: [
-                  {
-                    format: "rgba8unorm",
-                    blend: {
-                      color: {
-                        srcFactor: "src-alpha",
-                        dstFactor: "one-minus-src-alpha",
-                      },
-                      alpha: {
-                        srcFactor: "one",
-                        dstFactor: "one-minus-src-alpha",
-                      },
-                    },
-                  },
-                ],
-              },
-              primitive: { topology: "triangle-strip" },
-            })
-        );
+        const pipeline =
+          this.resources.getOrCreateFullscreenRenderPipeline(codeFS);
         const bindGroup = this.device.createBindGroup({
           layout: this.resources.getRenderBindGroupLayout(),
           entries: [
@@ -233,15 +195,7 @@ export class WebGPUParticleSystem {
           lookup,
           (pass as any).workgroupSize || [8, 8, 1]
         )}`;
-        const shaderModule = this.device.createShaderModule({ code: codeCS });
-        const pipeline = this.pipelineCache.getOrCreateCompute(
-          `computeimg:${moduleDesc.name}:${codeCS.length}`,
-          () =>
-            this.device.createComputePipeline({
-              layout: "auto" as any,
-              compute: { module: shaderModule, entryPoint: "cs_main" },
-            })
-        );
+        const pipeline = this.resources.getOrCreateImageComputePipeline(codeCS);
         const modIndex = (
           this.modules as readonly Module<string, string, any>[]
         ).findIndex(
@@ -343,7 +297,6 @@ export class WebGPUParticleSystem {
     this.particleBuffer = engineResources.getParticleBuffer();
     this.moduleUniformBuffers = engineResources.getModuleUniformBuffers();
     this.renderUniformBuffer = engineResources.getRenderUniformBuffer();
-    this.simStateBuffer = engineResources.getSimStateBuffer();
 
     // Initialize CPU-side uniform state maps from compute layouts
     if (this.computeBuild) {
@@ -422,8 +375,7 @@ export class WebGPUParticleSystem {
 
     // Recreate grid storage buffers sized to the new grid
     this.resources.createGridStorage(this.gridCells, this.gridMaxPerCell);
-    this.gridCountsBuffer = this.resources.getGridCountsBuffer();
-    this.gridIndicesBuffer = this.resources.getGridIndicesBuffer();
+    // grid storage buffers remain managed in GPUResources
 
     // Seed grid uniforms directly (grid is not a module)
     const gridIdx = this.computeBuild!.layouts.findIndex(
@@ -475,176 +427,42 @@ export class WebGPUParticleSystem {
     this.updateGridForSize(size.width, size.height);
   }
 
-  private async createPipelines(): Promise<void> {
-    // Load shader code (render + compute)
-    const computeShaderCode = this.computeBuild?.code || "";
+  resize(width: number, height: number): void {
+    // Resize scene textures early via engine/resources, and update grid
+    try {
+      this.engine.resize(width, height);
+    } catch (_) {}
+    this.resources.ensureSceneTextures(width, height);
+    this.updateGridForSize(width, height);
+  }
 
-    // Create compute shader module
-    const computeShaderModule = this.device.createShaderModule({
-      code: computeShaderCode,
-    });
+  private async createPipelines(): Promise<void> {
+    // Compute pipelines and layouts are built in resources via engine
 
     // Render bind group layout provided by resources now
 
     // (No static particle canvas pipeline; render modules handle scene writes)
 
     // Create copy bind group layout (simpler - just texture and sampler)
-    const copyBindGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: { sampleType: "float" },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-      ],
-    });
+    // Copy pipeline construction is handled in GPUResources
 
-    const copyPipelineLayout = this.device.createPipelineLayout({
-      bindGroupLayouts: [copyBindGroupLayout],
-    });
-
-    // Create copy pipeline for trail-to-canvas copying
-    const copyShaderModule = this.device.createShaderModule({
-      code: copyShaderWGSL,
-    });
-
-    this.copyPipeline = this.device.createRenderPipeline({
-      layout: copyPipelineLayout,
-      vertex: {
-        module: copyShaderModule,
-        entryPoint: "vs_main",
-      },
-      fragment: {
-        module: copyShaderModule,
-        entryPoint: "fs_main",
-        targets: [
-          {
-            format: this.renderer.getWebGPUDevice().format, // Canvas format
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-              },
-              alpha: {
-                srcFactor: "one",
-                dstFactor: "one-minus-src-alpha",
-              },
-            },
-          },
-        ],
-      },
-      primitive: {
-        topology: "triangle-strip",
-        stripIndexFormat: undefined,
-      },
-    });
-
-    // Create copy bind group (for copy pipeline)
-    this.copyBindGroup = this.device.createBindGroup({
-      layout: copyBindGroupLayout,
-      entries: [
-        {
-          binding: 0,
-          resource: this.getCurrentSceneTextureView(),
-        },
-        {
-          binding: 1,
-          resource: this.getSceneSampler(),
-        },
-      ],
-    });
+    // Copy pipeline/bind group managed per-frame using resources.getCopyPipeline
 
     // Create an explicit bind group layout and pipeline layout shared by all compute entry points
     if (!this.computeBuild) throw new Error("Compute program not built");
-    const bglEntries: GPUBindGroupLayoutEntry[] = [];
-    bglEntries.push({
-      binding: 0,
-      visibility: GPUShaderStage.COMPUTE,
-      buffer: { type: "storage" },
-    });
-    for (const layout of this.computeBuild.layouts) {
-      bglEntries.push({
-        binding: layout.bindingIndex,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: "uniform" },
-      });
-    }
-    if (this.computeBuild.extraBindings.grid) {
-      bglEntries.push({
-        binding: this.computeBuild.extraBindings.grid.countsBinding,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: "storage" },
-      });
-      bglEntries.push({
-        binding: this.computeBuild.extraBindings.grid.indicesBinding,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: "storage" },
-      });
-    }
-    if (this.computeBuild.extraBindings.simState) {
-      bglEntries.push({
-        binding: this.computeBuild.extraBindings.simState.stateBinding,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: "storage" },
-      });
-    }
-    if (this.computeBuild.extraBindings.sceneTexture) {
-      bglEntries.push({
-        binding: this.computeBuild.extraBindings.sceneTexture.textureBinding,
-        visibility: GPUShaderStage.COMPUTE,
-        texture: { sampleType: "float" },
-      });
-    }
-    this.bindGroupLayout = this.device.createBindGroupLayout({
-      entries: bglEntries,
-    });
-    this.pipelineLayout = this.device.createPipelineLayout({
-      bindGroupLayouts: [this.bindGroupLayout],
-    });
+    this.bindGroupLayout = this.resources.getComputeBindGroupLayout();
+    // Pipeline layout for compute pipelines is managed in resources
 
-    // Create compute pipelines with the explicit layout
-    this.computePipeline = this.device.createComputePipeline({
-      layout: this.pipelineLayout,
-      compute: { module: computeShaderModule, entryPoint: "main" },
-    });
-    this.gridClearPipeline = this.device.createComputePipeline({
-      layout: this.pipelineLayout,
-      compute: { module: computeShaderModule, entryPoint: "grid_clear" },
-    });
-    this.gridBuildPipeline = this.device.createComputePipeline({
-      layout: this.pipelineLayout,
-      compute: { module: computeShaderModule, entryPoint: "grid_build" },
-    });
-    // Optional split passes if available
-    try {
-      this.statePipeline = this.device.createComputePipeline({
-        layout: this.pipelineLayout,
-        compute: { module: computeShaderModule, entryPoint: "state_pass" },
-      });
-      this.applyPipeline = this.device.createComputePipeline({
-        layout: this.pipelineLayout,
-        compute: { module: computeShaderModule, entryPoint: "apply_pass" },
-      });
-      this.integratePipeline = this.device.createComputePipeline({
-        layout: this.pipelineLayout,
-        compute: { module: computeShaderModule, entryPoint: "integrate_pass" },
-      });
-      this.constrainPipeline = this.device.createComputePipeline({
-        layout: this.pipelineLayout,
-        compute: { module: computeShaderModule, entryPoint: "constrain_pass" },
-      });
-      this.correctPipeline = this.device.createComputePipeline({
-        layout: this.pipelineLayout,
-        compute: { module: computeShaderModule, entryPoint: "correct_pass" },
-      });
-    } catch (_e) {
-      // Fallback to monolithic main if split entries not present
-    }
+    // Compute pipelines are now built in resources/engine; fetch references
+    const sim = this.resources.getSimulationPipelines();
+    this.computePipeline = sim.monolithic || null;
+    this.gridClearPipeline = sim.gridClear || null;
+    this.gridBuildPipeline = sim.gridBuild || null;
+    this.statePipeline = sim.state || null;
+    this.applyPipeline = sim.apply || null;
+    this.integratePipeline = sim.integrate || null;
+    this.constrainPipeline = sim.constrain || null;
+    this.correctPipeline = sim.correct || null;
   }
 
   private createBindGroups(): void {
@@ -660,46 +478,10 @@ export class WebGPUParticleSystem {
     if (!this.bindGroupLayout) {
       throw new Error("Bind group layout not created");
     }
-    const entries: GPUBindGroupEntry[] = [
-      { binding: 0, resource: { buffer: this.particleBuffer } },
-      ...this.moduleUniformBuffers.map((buf, i) => ({
-        binding: i + 1,
-        resource: { buffer: buf as GPUBuffer },
-      })),
-    ];
-    if (
-      this.computeBuild?.extraBindings.grid &&
-      this.gridCountsBuffer &&
-      this.gridIndicesBuffer
-    ) {
-      entries.push(
-        {
-          binding: this.computeBuild.extraBindings.grid.countsBinding,
-          resource: { buffer: this.gridCountsBuffer },
-        },
-        {
-          binding: this.computeBuild.extraBindings.grid.indicesBinding,
-          resource: { buffer: this.gridIndicesBuffer },
-        }
-      );
-    }
-    if (this.computeBuild?.extraBindings.simState && this.simStateBuffer) {
-      entries.push({
-        binding: this.computeBuild.extraBindings.simState.stateBinding,
-        resource: { buffer: this.simStateBuffer },
-      });
-    }
-    // Bind current trail texture as sampled texture for sensors
-    if (this.computeBuild?.extraBindings.sceneTexture) {
-      entries.push({
-        binding: this.computeBuild.extraBindings.sceneTexture.textureBinding,
-        resource: this.getCurrentSceneTextureView(),
-      });
-    }
-    this.computeBindGroup = this.device.createBindGroup({
-      layout: this.bindGroupLayout,
-      entries,
-    });
+    if (!this.computeBuild) throw new Error("Compute program not built");
+    this.computeBindGroup = this.resources.createComputeBindGroup(
+      this.computeBuild
+    );
   }
 
   setParticles(particles: WebGPUParticle[]): void {
@@ -778,26 +560,20 @@ export class WebGPUParticleSystem {
     canvasView: GPUTextureView,
     sourceView?: GPUTextureView
   ): void {
-    if (!this.copyPipeline || !this.copyBindGroup) return;
-
-    // Update copy bind group with current trail texture
-    const updatedCopyBindGroup = this.device.createBindGroup({
-      layout: this.copyPipeline.getBindGroupLayout(0),
+    const pipeline = this.resources.getCopyPipeline(
+      this.renderer.getWebGPUDevice().format
+    );
+    const bindGroup = this.device.createBindGroup({
+      layout: pipeline.getBindGroupLayout(0),
       entries: [
         {
           binding: 0,
           resource: sourceView ?? this.getCurrentSceneTextureView(),
         },
-        {
-          binding: 1,
-          resource: this.getSceneSampler(),
-        },
+        { binding: 1, resource: this.getSceneSampler() },
       ],
     });
-
-    // Create a fullscreen quad pass to copy trail texture to canvas
-    // This handles format conversion from RGBA8Unorm to BGRA8Unorm
-    const copyPass = commandEncoder.beginRenderPass({
+    const pass = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
           view: canvasView,
@@ -807,14 +583,10 @@ export class WebGPUParticleSystem {
         },
       ],
     });
-
-    // Use dedicated copy pipeline
-    copyPass.setPipeline(this.copyPipeline);
-    copyPass.setBindGroup(0, updatedCopyBindGroup);
-
-    // Draw fullscreen quad (4 vertices, triangle strip)
-    copyPass.draw(4, 1);
-    copyPass.end();
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.draw(4, 1);
+    pass.end();
   }
 
   // removed scene clear helper; render modules own scene lifecycle
@@ -998,6 +770,6 @@ export class WebGPUParticleSystem {
     this.moduleUniformBuffers = [];
     this.renderUniformBuffer = null;
     // render bind group layout managed by resources; nothing to clear here
-    this.pipelineLayout = null;
+    // compute pipeline layout handled by resources; nothing to clear here
   }
 }
