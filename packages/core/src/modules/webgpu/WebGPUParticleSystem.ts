@@ -1,11 +1,20 @@
 import type { WebGPURenderer } from "./WebGPURenderer";
-import {
-  buildComputeProgram,
-  type ComputeProgramBuild,
-  Module,
-  type ModuleDescriptor,
-} from "./shaders/compute";
+import { Module, type ModuleDescriptor } from "./shaders/compute";
+import { type ComputeProgramBuild } from "./shaders/builder/compute-builder";
 import { DEFAULTS } from "./config";
+import { GPUResources } from "./runtime/gpu-resources";
+import { copyShaderWGSL } from "./shaders/copy";
+import {
+  runRenderGraphWithExecutor,
+  type RenderExecutor,
+} from "./runtime/render-graph-runner";
+import { runSimulationPasses } from "./runtime/simulation-runner";
+import { WebGPUEngine } from "./engine/WebGPUEngine";
+import { PipelineCache } from "./runtime/pipeline-cache";
+import {
+  buildFullscreenPassWGSL,
+  buildComputeImagePassWGSL,
+} from "./shaders/builder/render-dsl-builder";
 
 export interface WebGPUParticle {
   position: [number, number];
@@ -26,13 +35,14 @@ export interface RenderUniforms {
 export class WebGPUParticleSystem {
   private device: GPUDevice;
   private context: GPUCanvasContext;
+  private resources: GPUResources;
+  private engine: WebGPUEngine;
 
-  private particleBuffer: GPUBuffer | null = null;
-  private moduleUniformBuffers: (GPUBuffer | null)[] = [];
+  private particleBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
+  private moduleUniformBuffers: (GPUBuffer | null)[] = []; // TODO: migrate to GPUResources
   private moduleUniformState: Record<string, number>[] = [];
-  private renderUniformBuffer: GPUBuffer | null = null;
+  private renderUniformBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
 
-  private renderBindGroupLayout: GPUBindGroupLayout | null = null;
   private computeBindGroup: GPUBindGroup | null = null;
   private bindGroupLayout: GPUBindGroupLayout | null = null;
 
@@ -48,6 +58,7 @@ export class WebGPUParticleSystem {
   private copyPipeline: GPURenderPipeline | null = null;
   private copyBindGroup: GPUBindGroup | null = null;
   private pipelineLayout: GPUPipelineLayout | null = null;
+  private pipelineCache: PipelineCache = new PipelineCache();
 
   private particleCount: number = 0;
   private maxParticles: number = DEFAULTS.maxParticles;
@@ -55,9 +66,9 @@ export class WebGPUParticleSystem {
   private computeBuild: ComputeProgramBuild | null = null;
 
   // Grid buffers
-  private gridCountsBuffer: GPUBuffer | null = null;
-  private gridIndicesBuffer: GPUBuffer | null = null;
-  private simStateBuffer: GPUBuffer | null = null;
+  private gridCountsBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
+  private gridIndicesBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
+  private simStateBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
   private gridCells: number = 0;
   private gridMaxPerCell: number = 0;
   // Track last view to detect changes and avoid unnecessary uniform/buffer updates
@@ -72,42 +83,28 @@ export class WebGPUParticleSystem {
   // Constraint solver iterations per frame
   private constrainIterations: number = 50;
 
-  // Scene textures (ping-pong)
-  private sceneTextureA: GPUTexture | null = null;
-  private sceneTextureB: GPUTexture | null = null;
-  private sceneTextureViewA: GPUTextureView | null = null;
-  private sceneTextureViewB: GPUTextureView | null = null;
-  private currentSceneTexture: "A" | "B" = "A";
-  private sceneSampler: GPUSampler | null = null;
-
-  // Scene helpers
+  // Scene helpers now delegated to GPUResources
   private getCurrentSceneTextureView(): GPUTextureView {
-    return this.currentSceneTexture === "A"
-      ? this.sceneTextureViewA!
-      : this.sceneTextureViewB!;
+    return this.resources.getCurrentSceneTextureView();
   }
-  private swapSceneTextures(): void {
-    this.currentSceneTexture = this.currentSceneTexture === "A" ? "B" : "A";
+  private getOtherSceneTextureView(): GPUTextureView {
+    return this.resources.getOtherSceneTextureView();
   }
+  private getSceneSampler(): GPUSampler {
+    return this.resources.getSceneSampler();
+  }
+  // swapSceneTextures no longer needed; render-graph runner swaps views
 
   // Cache for render graph
   // Reserve for future caching (unused until render modules are implemented)
   // private renderComputePipelines: Map<string, GPUComputePipeline> = new Map();
   // private renderGraphicsPipelines: Map<string, GPURenderPipeline> = new Map();
-  private sceneTexSize: { width: number; height: number } | null = null;
+  // Deprecated: sizing tracked by GPUResources.ensureSceneTextures
+  // private sceneTexSize: { width: number; height: number } | null = null;
 
   private ensureSceneTexturesSized(): void {
     const size = this.renderer.getSize();
-    const needInit = !this.sceneTextureA || !this.sceneTextureB;
-    const changed =
-      !this.sceneTexSize ||
-      this.sceneTexSize.width !== size.width ||
-      this.sceneTexSize.height !== size.height;
-    if (needInit || changed) {
-      // Recreate scene textures
-      this.createTrailTextures();
-      this.sceneTexSize = { width: size.width, height: size.height };
-    }
+    this.resources.ensureSceneTextures(size.width, size.height);
   }
 
   private runRenderGraph(commandEncoder: GPUCommandEncoder): void {
@@ -115,316 +112,182 @@ export class WebGPUParticleSystem {
     // Resize scene textures if needed
     this.ensureSceneTexturesSized();
 
-    // Execute render modules in registration order, pass order
-    let lastWrittenView: GPUTextureView | null = null;
-    let anyWrites = false;
-    for (let i = 0; i < this.modules.length; i++) {
-      const mod = this.modules[i] as Module<string, string, any>;
-      const desc = WebGPUParticleSystem.toDescriptor(mod) as any;
-      if (desc.role !== "render" || !(mod as any).isEnabled?.()) continue;
-      const passes = (desc.passes || []) as Array<any>;
-      for (let p = 0; p < passes.length; p++) {
-        const pass = passes[p];
-        if (pass.kind === "fullscreen") {
-          // Build WGSL from DSL hooks (fragment required, vertex optional)
-          const defaultVertex = `
-struct Particle {
-  position: vec2<f32>,
-  velocity: vec2<f32>,
-  acceleration: vec2<f32>,
-  size: f32,
-  mass: f32,
-  color: vec4<f32>,
-}
-struct RenderUniforms {
-  canvas_size: vec2<f32>,
-  camera_position: vec2<f32>,
-  zoom: f32,
-  _pad: f32,
-}
-struct VertexOutput {
-  @builtin(position) position: vec4<f32>,
-  @location(0) uv: vec2<f32>,
-  @location(1) color: vec4<f32>,
-}
-@group(0) @binding(0) var<storage, read> particles: array<Particle>;
-@group(0) @binding(1) var<uniform> render_uniforms: RenderUniforms;
-@group(0) @binding(2) var scene_texture: texture_2d<f32>;
-@group(0) @binding(3) var scene_sampler: sampler;
-@vertex
-fn vs_main(
-  @builtin(vertex_index) vertex_index: u32,
-  @builtin(instance_index) instance_index: u32
-) -> VertexOutput {
-  var out: VertexOutput;
-  let quad_positions = array<vec2<f32>, 4>(
-    vec2<f32>(-1.0, -1.0),
-    vec2<f32>( 1.0, -1.0),
-    vec2<f32>(-1.0,  1.0),
-    vec2<f32>( 1.0,  1.0)
-  );
-  let quad_uvs = array<vec2<f32>, 4>(
-    vec2<f32>(0.0, 0.0),
-    vec2<f32>(1.0, 0.0),
-    vec2<f32>(0.0, 1.0),
-    vec2<f32>(1.0, 1.0)
-  );
-  let particle = particles[instance_index];
-  if (particle.mass == 0.0) {
-    out.position = vec4<f32>(2.0, 2.0, 1.0, 1.0);
-    out.uv = vec2<f32>(0.0, 0.0);
-    out.color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
-    return out;
-  }
-  let local_index = vertex_index & 3u;
-  let quad_pos = quad_positions[local_index];
-  let world_pos = (particle.position - render_uniforms.camera_position) * render_uniforms.zoom;
-  let ndc_pos = vec2<f32>(
-    world_pos.x * 2.0 / render_uniforms.canvas_size.x,
-    -world_pos.y * 2.0 / render_uniforms.canvas_size.y
-  );
-  let scaled_quad = vec2<f32>(
-    quad_pos.x * particle.size * render_uniforms.zoom * 2.0 / render_uniforms.canvas_size.x,
-    -quad_pos.y * particle.size * render_uniforms.zoom * 2.0 / render_uniforms.canvas_size.y
-  );
-  out.position = vec4<f32>(ndc_pos + scaled_quad, 0.0, 1.0);
-  out.uv = quad_uvs[local_index];
-  out.color = particle.color;
-  return out;
-}`;
-          const layouts = this.computeBuild!.layouts;
-          const layoutForMod = layouts.find((l) => l.moduleName === desc.name)!;
-          const getUniformForMod = (id: string) =>
-            layoutForMod.mapping[id]?.expr ?? "0.0";
-          const fragmentBody = pass.fragment({
-            getUniform: (id: string) =>
-              id === "canvasWidth"
-                ? "render_uniforms.canvas_size.x"
-                : id === "canvasHeight"
-                ? "render_uniforms.canvas_size.y"
-                : id === "clearColorR"
-                ? String(DEFAULTS.clearColor.r)
-                : id === "clearColorG"
-                ? String(DEFAULTS.clearColor.g)
-                : id === "clearColorB"
-                ? String(DEFAULTS.clearColor.b)
-                : getUniformForMod(id),
-            sampleScene: (uvExpr: string) =>
-              `textureSampleLevel(scene_texture, scene_sampler, ${uvExpr}, 0.0)`,
-          });
-          const codeFS = `${defaultVertex}
-@fragment
-fn fs_main(
-  @location(0) uv: vec2<f32>,
-  @location(1) color: vec4<f32>,
-  @builtin(position) frag_coord: vec4<f32>
-) -> @location(0) vec4<f32> ${fragmentBody}`;
-          const shaderModule = this.device.createShaderModule({ code: codeFS });
-          const pipeline = this.device.createRenderPipeline({
-            layout: this.device.createPipelineLayout({
-              bindGroupLayouts: [this.renderBindGroupLayout!],
-            }),
-            vertex: {
-              module: shaderModule,
-              entryPoint: "vs_main",
-            },
-            fragment: {
-              module: shaderModule,
-              entryPoint: "fs_main",
-              targets: [
-                {
-                  format: "rgba8unorm",
-                  blend: {
-                    color: {
-                      srcFactor: "src-alpha",
-                      dstFactor: "one-minus-src-alpha",
-                    },
-                    alpha: {
-                      srcFactor: "one",
-                      dstFactor: "one-minus-src-alpha",
+    // NEW: Execute via executor-based render graph runner
+    const executor: RenderExecutor = (moduleDesc, pass, views, encoder) => {
+      if (pass.kind === "fullscreen") {
+        const layouts = this.computeBuild!.layouts;
+        const layoutForMod = layouts.find(
+          (l) => l.moduleName === moduleDesc.name
+        )!;
+        const vec4Count = layoutForMod.vec4Count;
+        const structFields = Array.from(
+          { length: vec4Count },
+          (_, k) => `  v${k}: vec4<f32>,`
+        ).join("\n");
+        const structWGSL = `struct Uniforms_${moduleDesc.name} {\n${structFields}\n}`;
+        const lookup = {
+          getUniformExpr: (id: string) =>
+            (layoutForMod.mapping[id]?.expr ?? "0.0").replace(
+              `${moduleDesc.name}_uniforms`,
+              `module_uniforms`
+            ),
+        };
+        const codeFS = `${structWGSL}\n@group(0) @binding(4) var<uniform> module_uniforms: Uniforms_${
+          moduleDesc.name
+        };\n${buildFullscreenPassWGSL(pass as any, moduleDesc.name, lookup)}`;
+        const shaderModule = this.device.createShaderModule({ code: codeFS });
+        const pipeline = this.pipelineCache.getOrCreateRender(
+          `fullscreen:${moduleDesc.name}:${codeFS.length}`,
+          () =>
+            this.device.createRenderPipeline({
+              layout: this.device.createPipelineLayout({
+                bindGroupLayouts: [this.resources.getRenderBindGroupLayout()],
+              }),
+              vertex: { module: shaderModule, entryPoint: "vs_main" },
+              fragment: {
+                module: shaderModule,
+                entryPoint: "fs_main",
+                targets: [
+                  {
+                    format: "rgba8unorm",
+                    blend: {
+                      color: {
+                        srcFactor: "src-alpha",
+                        dstFactor: "one-minus-src-alpha",
+                      },
+                      alpha: {
+                        srcFactor: "one",
+                        dstFactor: "one-minus-src-alpha",
+                      },
                     },
                   },
-                },
-              ],
+                ],
+              },
+              primitive: { topology: "triangle-strip" },
+            })
+        );
+        const bindGroup = this.device.createBindGroup({
+          layout: this.resources.getRenderBindGroupLayout(),
+          entries: [
+            { binding: 0, resource: { buffer: this.particleBuffer! } },
+            { binding: 1, resource: { buffer: this.renderUniformBuffer! } },
+            { binding: 2, resource: views.otherView },
+            { binding: 3, resource: this.getSceneSampler() },
+            {
+              binding: 4,
+              resource: {
+                buffer:
+                  this.moduleUniformBuffers[
+                    (
+                      this.modules as readonly Module<string, string, any>[]
+                    ).findIndex(
+                      (m) =>
+                        WebGPUParticleSystem.toDescriptor(m).name ===
+                        moduleDesc.name
+                    )
+                  ]!,
+              },
             },
-            primitive: { topology: "triangle-strip" },
-          });
-
-          // Build bind group for expected bindings
-          const readSceneView =
-            this.currentSceneTexture === "A"
-              ? this.sceneTextureViewB!
-              : this.sceneTextureViewA!;
-          const entries: GPUBindGroupEntry[] = [];
-          // Binding 0: particle buffer
-          entries.push({
-            binding: 0,
-            resource: { buffer: this.particleBuffer! },
-          });
-          // Binding 1: render uniforms
-          entries.push({
-            binding: 1,
-            resource: { buffer: this.renderUniformBuffer! },
-          });
-          // Binding 2: scene texture sample (if pass readsScene)
-          entries.push({ binding: 2, resource: readSceneView });
-          // Binding 3: scene sampler
-          entries.push({ binding: 3, resource: this.sceneSampler! });
-          const bindGroup = this.device.createBindGroup({
-            layout: this.renderBindGroupLayout!,
-            entries,
-          });
-
-          // Target: scene texture out
-          const targetView = this.getCurrentSceneTextureView();
-          const rp = commandEncoder.beginRenderPass({
-            colorAttachments: [
-              {
-                view: targetView,
-                clearValue: DEFAULTS.clearColor,
-                loadOp: anyWrites ? "load" : "clear",
-                storeOp: "store",
-              },
-            ],
-          });
-          rp.setPipeline(pipeline);
-          rp.setBindGroup(0, bindGroup);
-          // Draw instanced quads: 4 verts per instance
-          rp.draw(4, this.particleCount);
-          rp.end();
-
-          // Do not swap after fullscreen writes; keep current pointing to latest
-          if (pass.writesScene) {
-            lastWrittenView = targetView;
-            anyWrites = true;
-          }
-        } else if (pass.kind === "compute") {
-          // Compute image op (DSL): read current, write other, bind module uniforms
-          const layouts = this.computeBuild!.layouts;
-          const layoutForMod = layouts.find((l) => l.moduleName === desc.name)!;
-          const vec4Count = layoutForMod.vec4Count;
-          const structFields = Array.from(
-            { length: vec4Count },
-            (_, k) => `  v${k}: vec4<f32>,`
-          ).join("\n");
-          const structWGSL = `struct Uniforms_${desc.name} {\n${structFields}\n}`;
-          const getUniformExpr = (id: string) =>
-            layoutForMod.mapping[id]?.expr ?? "0.0";
-          const getUniform = (id: string) =>
-            id === "canvasWidth"
-              ? "f32(textureDimensions(input_texture).x)"
-              : id === "canvasHeight"
-              ? "f32(textureDimensions(input_texture).y)"
-              : id === "clearColorR"
-              ? String(DEFAULTS.clearColor.r)
-              : id === "clearColorG"
-              ? String(DEFAULTS.clearColor.g)
-              : id === "clearColorB"
-              ? String(DEFAULTS.clearColor.b)
-              : getUniformExpr(id).replace(
-                  `${desc.name}_uniforms`,
-                  `module_uniforms`
-                );
-          const kernelBody = pass.kernel({
-            getUniform,
-            readScene: (coordsExpr: string) =>
-              `textureLoad(input_texture, ${coordsExpr}, 0)`,
-            writeScene: (coordsExpr: string, colorExpr: string) =>
-              `textureStore(output_texture, ${coordsExpr}, ${colorExpr})`,
-          });
-          const wg = pass.workgroupSize || [8, 8, 1];
-          const codeCS = `${structWGSL}
-@group(0) @binding(0) var input_texture: texture_2d<f32>;
-@group(0) @binding(1) var output_texture: texture_storage_2d<rgba8unorm, write>;
-@group(0) @binding(2) var<uniform> module_uniforms: Uniforms_${desc.name};
-@compute @workgroup_size(${wg[0]}, ${wg[1]}, ${wg[2]})
-fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
-  let coords = vec2<i32>(i32(gid.x), i32(gid.y));
-  let dims = textureDimensions(input_texture);
-  if (coords.x >= i32(dims.x) || coords.y >= i32(dims.y)) { return; }
-  ${kernelBody}
-}`;
-          const shaderModule = this.device.createShaderModule({ code: codeCS });
-          const bindGroupLayout = this.device.createBindGroupLayout({
-            entries: [
-              {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                texture: { sampleType: "float" },
-              },
-              {
-                binding: 1,
-                visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba8unorm", access: "write-only" },
-              },
-              {
-                binding: 2,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "uniform" },
-              },
-            ],
-          });
-          const pipelineLayout = this.device.createPipelineLayout({
-            bindGroupLayouts: [bindGroupLayout],
-          });
-          const pipeline = this.device.createComputePipeline({
-            layout: pipelineLayout,
-            compute: {
-              module: shaderModule,
-              entryPoint: "cs_main",
+          ],
+        });
+        const rp = encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: views.currentView,
+              clearValue: DEFAULTS.clearColor,
+              loadOp: views.anyWrites ? "load" : "clear",
+              storeOp: "store",
             },
-          });
-
-          // Bind scene read/write: read from current, write to the other
-          const readSceneView = this.getCurrentSceneTextureView();
-          const writeSceneView =
-            this.currentSceneTexture === "A"
-              ? this.sceneTextureViewB!
-              : this.sceneTextureViewA!;
-
-          // Bind the module's uniform buffer (same one used for compute program)
-          const modIndex = (
-            this.modules as readonly Module<string, string, any>[]
-          ).findIndex(
-            (m) => WebGPUParticleSystem.toDescriptor(m).name === desc.name
-          );
-          const moduleUniformBuf = this.moduleUniformBuffers[modIndex]!;
-
-          const bindGroup = this.device.createBindGroup({
-            layout: bindGroupLayout,
-            entries: [
-              { binding: 0, resource: readSceneView },
-              { binding: 1, resource: writeSceneView },
-              { binding: 2, resource: { buffer: moduleUniformBuf } },
-            ],
-          });
-
-          // Dispatch
-          const canvasSize = this.renderer.getSize();
-          const workgroupsX = Math.ceil(canvasSize.width / 8);
-          const workgroupsY = Math.ceil(canvasSize.height / 8);
-          const cp = commandEncoder.beginComputePass();
-          cp.setPipeline(pipeline);
-          cp.setBindGroup(0, bindGroup);
-          cp.dispatchWorkgroups(workgroupsX, workgroupsY);
-          cp.end();
-
-          if (pass.writesScene) {
-            lastWrittenView = writeSceneView;
-            anyWrites = true;
-            // After writing to the other, swap so current points to latest
-            this.swapSceneTextures();
-          }
-        }
+          ],
+        });
+        rp.setPipeline(pipeline);
+        rp.setBindGroup(0, bindGroup);
+        rp.draw(4, this.particleCount);
+        rp.end();
+        return (pass as any).writesScene === false ? null : "current";
       }
-    }
+      if (pass.kind === "compute") {
+        const layouts = this.computeBuild!.layouts;
+        const layoutForMod = layouts.find(
+          (l) => l.moduleName === moduleDesc.name
+        )!;
+        const vec4Count = layoutForMod.vec4Count;
+        const structFields = Array.from(
+          { length: vec4Count },
+          (_, k) => `  v${k}: vec4<f32>,`
+        ).join("\n");
+        const structWGSL = `struct Uniforms_${moduleDesc.name} {\n${structFields}\n}`;
 
-    // Copy final scene to canvas (use the last texture we wrote if any, otherwise current)
-    const canvasView = this.context.getCurrentTexture().createView();
-    const sourceView = anyWrites
-      ? lastWrittenView!
-      : this.getCurrentSceneTextureView();
-    this.copyTrailToCanvas(commandEncoder, canvasView, sourceView);
+        const lookup = {
+          getUniformExpr: (id: string) =>
+            (layoutForMod.mapping[id]?.expr ?? "0.0").replace(
+              `${moduleDesc.name}_uniforms`,
+              `module_uniforms`
+            ),
+        };
+        const codeCS = `${structWGSL}\n@group(0) @binding(2) var<uniform> module_uniforms: Uniforms_${
+          moduleDesc.name
+        };\n${buildComputeImagePassWGSL(
+          pass as any,
+          moduleDesc.name,
+          lookup,
+          (pass as any).workgroupSize || [8, 8, 1]
+        )}`;
+        const shaderModule = this.device.createShaderModule({ code: codeCS });
+        const pipeline = this.pipelineCache.getOrCreateCompute(
+          `computeimg:${moduleDesc.name}:${codeCS.length}`,
+          () =>
+            this.device.createComputePipeline({
+              layout: "auto" as any,
+              compute: { module: shaderModule, entryPoint: "cs_main" },
+            })
+        );
+        const modIndex = (
+          this.modules as readonly Module<string, string, any>[]
+        ).findIndex(
+          (m) => WebGPUParticleSystem.toDescriptor(m).name === moduleDesc.name
+        );
+        const moduleUniformBuf = this.moduleUniformBuffers[modIndex]!;
+        const bindGroup = this.device.createBindGroup({
+          layout: pipeline.getBindGroupLayout(0),
+          entries: [
+            { binding: 0, resource: views.currentView },
+            { binding: 1, resource: views.otherView },
+            { binding: 2, resource: { buffer: moduleUniformBuf } },
+          ],
+        });
+        const canvasSize = this.renderer.getSize();
+        const workgroupsX = Math.ceil(canvasSize.width / 8);
+        const workgroupsY = Math.ceil(canvasSize.height / 8);
+        const cp = encoder.beginComputePass();
+        cp.setPipeline(pipeline);
+        cp.setBindGroup(0, bindGroup);
+        cp.dispatchWorkgroups(workgroupsX, workgroupsY);
+        cp.end();
+        return (pass as any).writesScene === false ? null : "other";
+      }
+      return null;
+    };
+
+    const modules = (this.modules as readonly Module<string, string, any>[])
+      .map((m) => WebGPUParticleSystem.toDescriptor(m) as any)
+      .filter(
+        (d: any, idx: number) =>
+          d.role === "render" && (this.modules[idx] as any).isEnabled?.()
+      );
+
+    const lastView = runRenderGraphWithExecutor(
+      commandEncoder,
+      modules as any,
+      this.getCurrentSceneTextureView(),
+      this.getOtherSceneTextureView(),
+      executor
+    );
+
+    // Copy to canvas and return
+    const canvasViewNew = this.context.getCurrentTexture().createView();
+    this.copyTrailToCanvas(commandEncoder, canvasViewNew, lastView);
+    return;
   }
 
   constructor(
@@ -437,6 +300,10 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     this.device = webgpuDevice.device;
     this.context = webgpuDevice.context;
+    this.resources = new GPUResources(this.device);
+    this.engine = new WebGPUEngine(this.device, this.modules, {
+      maxParticles: DEFAULTS.maxParticles,
+    });
   }
 
   private static toDescriptor(
@@ -462,7 +329,49 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
   }
 
   async initialize(): Promise<void> {
-    await this.createBuffers();
+    // Engine initializes core resources and compute build
+    const size = this.renderer.getSize();
+    this.engine.initialize(size.width, size.height);
+
+    // Hydrate local references from engine/resources
+    const engineResources = this.engine.getResources();
+    this.resources = engineResources;
+    const computeBuild = this.engine.getComputeBuild();
+    if (computeBuild) {
+      this.computeBuild = computeBuild;
+    }
+    this.particleBuffer = engineResources.getParticleBuffer();
+    this.moduleUniformBuffers = engineResources.getModuleUniformBuffers();
+    this.renderUniformBuffer = engineResources.getRenderUniformBuffer();
+    this.simStateBuffer = engineResources.getSimStateBuffer();
+
+    // Initialize CPU-side uniform state maps from compute layouts
+    if (this.computeBuild) {
+      this.moduleUniformState = this.computeBuild.layouts.map((layout) => {
+        const state: Record<string, number> = {};
+        for (const key of Object.keys(layout.mapping)) state[key] = 0;
+        if (layout.moduleName !== "simulation" && "enabled" in layout.mapping) {
+          state["enabled"] = 1;
+        }
+        return state;
+      });
+      // Seed simStride if present
+      const simIdx = this.computeBuild.layouts.findIndex(
+        (l) => l.moduleName === "simulation"
+      );
+      if (
+        simIdx !== -1 &&
+        this.computeBuild.layouts[simIdx].mapping["simStride"]
+      ) {
+        this.moduleUniformState[simIdx]["simStride"] =
+          this.computeBuild.simStateStride;
+      }
+    }
+
+    // Configure grid storage and uniforms using current renderer view
+    this.updateGridFromRenderer();
+
+    // Pipelines and bind groups remain created here for now
     await this.createPipelines();
     this.createBindGroups();
     // Attach to renderer automatically
@@ -479,7 +388,6 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
       // Attach a reader so modules can implement getters
       const reader = () => {
         const idx = this.getModuleIndex(name);
-        if (idx === -1) return {} as Partial<Record<string, number>>;
         return { ...this.moduleUniformState[idx] } as Partial<
           Record<string, number>
         >;
@@ -489,145 +397,9 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     });
   }
 
-  private async createBuffers(): Promise<void> {
-    // Create storage buffer for particle data (pos2, vel2, accel2, size, mass, color4)
-    const particleDataSize = this.maxParticles * 12 * 4; // 12 floats per particle * 4 bytes per float
-    this.particleBuffer = this.device.createBuffer({
-      size: particleDataSize,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
+  // createBuffers removed after engine/resources migration
 
-    // Build program to derive layouts and code
-    this.computeBuild = buildComputeProgram(this.modules);
-
-    // Debug logging removed - issue resolved
-
-    // Create module uniform buffers dynamically (one per module) using computed sizes
-    this.moduleUniformBuffers = this.computeBuild.layouts.map((layout) =>
-      this.device.createBuffer({
-        size: layout.sizeBytes,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      })
-    );
-
-    // Initialize per-module CPU-side uniform state for merging partial writes
-    this.moduleUniformState = this.computeBuild.layouts.map((layout) => {
-      const state: Record<string, number> = {};
-      for (const key of Object.keys(layout.mapping)) {
-        state[key] = 0;
-      }
-      // Default-enable non-simulation modules that have 'enabled'
-      if (layout.moduleName !== "simulation" && "enabled" in layout.mapping) {
-        state["enabled"] = 1;
-      }
-      return state;
-    });
-
-    // Seed simulation stride uniform for SIM_STATE helpers
-    const simLayoutIdx = this.computeBuild.layouts.findIndex(
-      (l) => l.moduleName === "simulation"
-    );
-    if (simLayoutIdx !== -1) {
-      const simLayout = this.computeBuild.layouts[simLayoutIdx];
-      if (simLayout.mapping["simStride"]) {
-        this.moduleUniformState[simLayoutIdx]["simStride"] =
-          this.computeBuild.simStateStride;
-      }
-    }
-
-    // Create render uniform buffer (canvas_size, camera_position, zoom, padding)
-    this.renderUniformBuffer = this.device.createBuffer({
-      size: 24, // 6 floats * 4 bytes
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-
-    // Grid buffers (always enabled in compute builder)
-    const gridLayout = this.computeBuild.layouts.find(
-      (l) => l.moduleName === "grid"
-    );
-    if (gridLayout) {
-      // Derive grid dimensions from current render size and default cell size; can be updated later via writeUniform
-      const size = this.renderer.getSize
-        ? this.renderer.getSize()
-        : { width: 800, height: 600 };
-      this.configureGrid(size.width, size.height);
-    }
-
-    // Create SIM_STATE buffer (prevX, prevY, posIntX, posIntY per particle)
-    if (this.computeBuild.extraBindings.simState) {
-      const stride = 4 * 4; // 4 floats * 4 bytes
-      const size = this.maxParticles * stride;
-      this.simStateBuffer = this.device.createBuffer({
-        size,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-      });
-    }
-
-    // Create trail textures for sensors system
-    await this.createTrailTextures();
-  }
-
-  private async createTrailTextures(): Promise<void> {
-    const size = this.renderer.getSize();
-    const width = size.width;
-    const height = size.height;
-
-    // Create dual trail textures for ping-pong rendering
-    const textureDescriptor: GPUTextureDescriptor = {
-      size: { width, height, depthOrArrayLayers: 1 },
-      format: "rgba8unorm",
-      usage:
-        GPUTextureUsage.STORAGE_BINDING |
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    };
-
-    this.sceneTextureA = this.device.createTexture(textureDescriptor);
-    this.sceneTextureB = this.device.createTexture(textureDescriptor);
-
-    this.sceneTextureViewA = this.sceneTextureA.createView();
-    this.sceneTextureViewB = this.sceneTextureB.createView();
-
-    // Create sampler for texture reads
-    this.sceneSampler = this.device.createSampler({
-      magFilter: "linear",
-      minFilter: "linear",
-      addressModeU: "clamp-to-edge",
-      addressModeV: "clamp-to-edge",
-    });
-
-    // Initialize textures with transparent black
-    const commandEncoder = this.device.createCommandEncoder();
-
-    // Clear texture A
-    const passA = commandEncoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: this.sceneTextureViewA!,
-          clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
-          loadOp: "clear",
-          storeOp: "store",
-        },
-      ],
-    });
-    passA.end();
-
-    // Clear texture B
-    const passB = commandEncoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: this.sceneTextureViewB!,
-          clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
-          loadOp: "clear",
-          storeOp: "store",
-        },
-      ],
-    });
-    passB.end();
-
-    this.device.queue.submit([commandEncoder.finish()]);
-  }
+  // createTrailTextures removed - handled by GPUResources.ensureSceneTextures
 
   private configureGrid(width: number, height: number): void {
     const cam = this.renderer.getCamera
@@ -649,25 +421,15 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     this.gridMaxPerCell = maxPerCell;
 
     // Recreate grid storage buffers sized to the new grid
-    this.gridCountsBuffer?.destroy();
-    this.gridIndicesBuffer?.destroy();
-    const countsSize = this.gridCells * 4;
-    const indicesSize = this.gridCells * this.gridMaxPerCell * 4;
-    this.gridCountsBuffer = this.device.createBuffer({
-      size: countsSize,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-    this.gridIndicesBuffer = this.device.createBuffer({
-      size: indicesSize,
-      usage: GPUBufferUsage.STORAGE,
-    });
+    this.resources.createGridStorage(this.gridCells, this.gridMaxPerCell);
+    this.gridCountsBuffer = this.resources.getGridCountsBuffer();
+    this.gridIndicesBuffer = this.resources.getGridIndicesBuffer();
 
     // Seed grid uniforms directly (grid is not a module)
     const gridIdx = this.computeBuild!.layouts.findIndex(
       (l) => l.moduleName === "grid"
     );
     if (gridIdx !== -1) {
-      const gridBuf = this.moduleUniformBuffers[gridIdx];
       const layout = this.computeBuild!.layouts[gridIdx];
       const values = new Float32Array(layout.vec4Count * 4);
       const mapping = layout.mapping as Record<string, { flatIndex: number }>;
@@ -679,7 +441,7 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
       values[mapping.rows.flatIndex] = rows;
       values[mapping.cellSize.flatIndex] = cellSize;
       values[mapping.maxPerCell.flatIndex] = maxPerCell;
-      this.device.queue.writeBuffer(gridBuf as GPUBuffer, 0, values);
+      this.resources.writeModuleUniform(gridIdx, values);
     }
 
     // Recreate compute bind group to include new storage buffers
@@ -722,31 +484,7 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
       code: computeShaderCode,
     });
 
-    // Create explicit bind group layout for render shaders
-    this.renderBindGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: "read-only-storage" },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-          buffer: { type: "uniform" },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: { sampleType: "float" },
-        },
-        {
-          binding: 3,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-      ],
-    });
+    // Render bind group layout provided by resources now
 
     // (No static particle canvas pipeline; render modules handle scene writes)
 
@@ -772,47 +510,7 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     // Create copy pipeline for trail-to-canvas copying
     const copyShaderModule = this.device.createShaderModule({
-      code: `
-struct VertexOutput {
-  @builtin(position) position: vec4<f32>,
-  @location(0) uv: vec2<f32>,
-}
-
-@group(0) @binding(0) var source_texture: texture_2d<f32>;
-@group(0) @binding(1) var source_sampler: sampler;
-
-@vertex
-fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
-  var out: VertexOutput;
-  
-  // Fullscreen quad vertices
-  let positions = array<vec2<f32>, 4>(
-    vec2<f32>(-1.0, -1.0),
-    vec2<f32>( 1.0, -1.0),
-    vec2<f32>(-1.0,  1.0),
-    vec2<f32>( 1.0,  1.0)
-  );
-  
-  // UV coordinates flipped to match render coordinate system
-  let uvs = array<vec2<f32>, 4>(
-    vec2<f32>(0.0, 1.0),  // bottom-left -> top-left in UV space
-    vec2<f32>(1.0, 1.0),  // bottom-right -> top-right in UV space  
-    vec2<f32>(0.0, 0.0),  // top-left -> bottom-left in UV space
-    vec2<f32>(1.0, 0.0)   // top-right -> bottom-right in UV space
-  );
-  
-  let index = vertex_index % 4u;
-  out.position = vec4<f32>(positions[index], 0.0, 1.0);
-  out.uv = uvs[index];
-  
-  return out;
-}
-
-@fragment
-fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
-  return textureSample(source_texture, source_sampler, uv);
-}
-`,
+      code: copyShaderWGSL,
     });
 
     this.copyPipeline = this.device.createRenderPipeline({
@@ -856,7 +554,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
         },
         {
           binding: 1,
-          resource: this.sceneSampler!,
+          resource: this.getSceneSampler(),
         },
       ],
     });
@@ -1032,7 +730,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     data[11] = c[3];
 
     // Write only the slice for the new particle
-    this.device.queue.writeBuffer(this.particleBuffer, offsetFloats * 4, data);
+    this.resources.writeParticleSlice(offsetFloats, data);
     this.particleCount = this.particleCount + 1;
   }
 
@@ -1061,7 +759,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     }
 
     // Write to storage buffer
-    this.device.queue.writeBuffer(this.particleBuffer, 0, data);
+    this.resources.writeParticleBuffer(data);
   }
 
   private getModuleIndex(name: string): number {
@@ -1092,7 +790,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
         },
         {
           binding: 1,
-          resource: this.sceneSampler!,
+          resource: this.getSceneSampler(),
         },
       ],
     });
@@ -1139,7 +837,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
       values[(map as unknown as { flatIndex: number }).flatIndex] =
         this.moduleUniformState[idx][key] ?? 0;
     }
-    this.device.queue.writeBuffer(buf, 0, values);
+    this.resources.writeModuleUniform(idx, values);
   }
 
   writeUniform(
@@ -1161,7 +859,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
       data[(map as { flatIndex: number }).flatIndex] = state[key] ?? 0;
     }
 
-    this.device.queue.writeBuffer(buf, 0, data);
+    this.resources.writeModuleUniform(idx, data);
   }
 
   updateRender(uniforms: RenderUniforms): void {
@@ -1176,7 +874,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
       0, // padding
     ]);
 
-    this.device.queue.writeBuffer(this.renderUniformBuffer, 0, data);
+    this.resources.writeRenderUniforms(data);
   }
 
   update(deltaTime: number): void {
@@ -1200,127 +898,29 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
       this.createBindGroups();
     }
 
-    // Run compute passes to build grid and integrate physics
+    // Run compute passes to build grid and integrate physics (via runner)
     if (this.computeBindGroup) {
       const workgroupSize = DEFAULTS.workgroupSize;
-
-      // Grid clear pass
-      if (this.gridClearPipeline && this.gridCells > 0) {
-        const pass = commandEncoder.beginComputePass();
-        pass.setBindGroup(0, this.computeBindGroup);
-        pass.setPipeline(this.gridClearPipeline);
-        const clearGroups = Math.ceil(this.gridCells / workgroupSize);
-        if (clearGroups > 0) pass.dispatchWorkgroups(clearGroups);
-        pass.end();
-      }
-
-      // Grid build pass
-      if (this.gridBuildPipeline && this.particleCount > 0) {
-        const pass = commandEncoder.beginComputePass();
-        pass.setBindGroup(0, this.computeBindGroup);
-        pass.setPipeline(this.gridBuildPipeline);
-        const buildGroups = Math.ceil(this.particleCount / workgroupSize);
-        if (buildGroups > 0) pass.dispatchWorkgroups(buildGroups);
-        pass.end();
-      }
-
-      const groups = Math.ceil(this.particleCount / workgroupSize);
-      // Split passes if available; otherwise fall back to main
-      if (
-        this.statePipeline &&
-        this.applyPipeline &&
-        this.integratePipeline &&
-        this.constrainPipeline &&
-        this.correctPipeline
-      ) {
-        const descs = (
-          this.modules as readonly Module<string, string, any>[]
-        ).map((m) => WebGPUParticleSystem.toDescriptor(m));
-        const stateEnabled = descs.some(
-          (d, idx) =>
-            d.role === "force" &&
-            (this.modules[idx] as any).isEnabled?.() &&
-            !!d.state
-        );
-        const applyEnabled = descs.some(
-          (d, idx) =>
-            d.role === "force" &&
-            (this.modules[idx] as any).isEnabled?.() &&
-            !!d.apply
-        );
-        const constrainEnabled = descs.some(
-          (d, idx) =>
-            d.role === "force" &&
-            (this.modules[idx] as any).isEnabled?.() &&
-            !!d.constrain
-        );
-        // state
-        if (stateEnabled) {
-          const p1 = commandEncoder.beginComputePass();
-          p1.setBindGroup(0, this.computeBindGroup);
-          p1.setPipeline(this.statePipeline);
-          if (groups > 0) p1.dispatchWorkgroups(groups);
-          p1.end();
+      runSimulationPasses(
+        commandEncoder,
+        this.computeBindGroup,
+        {
+          gridClear: this.gridClearPipeline || undefined,
+          gridBuild: this.gridBuildPipeline || undefined,
+          state: this.statePipeline || undefined,
+          apply: this.applyPipeline || undefined,
+          integrate: this.integratePipeline || undefined,
+          constrain: this.constrainPipeline || undefined,
+          correct: this.correctPipeline || undefined,
+          monolithic: this.computePipeline || undefined,
+        },
+        {
+          particleCount: this.particleCount,
+          gridCellCount: this.gridCells,
+          workgroupSize,
+          constrainIterations: this.constrainIterations,
         }
-
-        // apply
-        if (applyEnabled) {
-          const p2 = commandEncoder.beginComputePass();
-          p2.setBindGroup(0, this.computeBindGroup);
-          p2.setPipeline(this.applyPipeline);
-          if (groups > 0) p2.dispatchWorkgroups(groups);
-          p2.end();
-        }
-
-        // integrate
-        const p3 = commandEncoder.beginComputePass();
-        p3.setBindGroup(0, this.computeBindGroup);
-        p3.setPipeline(this.integratePipeline);
-        if (groups > 0) p3.dispatchWorkgroups(groups);
-        p3.end();
-
-        // Rebuild grid for updated positions
-        if (this.gridClearPipeline && this.gridCells > 0) {
-          const pass = commandEncoder.beginComputePass();
-          pass.setBindGroup(0, this.computeBindGroup);
-          pass.setPipeline(this.gridClearPipeline);
-          const clearGroups2 = Math.ceil(this.gridCells / workgroupSize);
-          if (clearGroups2 > 0) pass.dispatchWorkgroups(clearGroups2);
-          pass.end();
-        }
-        if (this.gridBuildPipeline && this.particleCount > 0) {
-          const pass = commandEncoder.beginComputePass();
-          pass.setBindGroup(0, this.computeBindGroup);
-          pass.setPipeline(this.gridBuildPipeline);
-          if (groups > 0) pass.dispatchWorkgroups(groups);
-          pass.end();
-        }
-
-        // constrain — iterate to improve convergence
-        if (constrainEnabled) {
-          for (let iter = 0; iter < this.constrainIterations; iter++) {
-            const pc = commandEncoder.beginComputePass();
-            pc.setBindGroup(0, this.computeBindGroup);
-            pc.setPipeline(this.constrainPipeline);
-            if (groups > 0) pc.dispatchWorkgroups(groups);
-            pc.end();
-          }
-        }
-
-        // correct
-        const p5 = commandEncoder.beginComputePass();
-        p5.setBindGroup(0, this.computeBindGroup);
-        p5.setPipeline(this.correctPipeline);
-        if (groups > 0) p5.dispatchWorkgroups(groups);
-        p5.end();
-      } else if (this.computePipeline) {
-        // Fallback monolithic
-        const simPass = commandEncoder.beginComputePass();
-        simPass.setBindGroup(0, this.computeBindGroup);
-        simPass.setPipeline(this.computePipeline);
-        if (groups > 0) simPass.dispatchWorkgroups(groups);
-        simPass.end();
-      }
+      );
     }
 
     // Always run the render graph; render modules draw into scene textures and we copy to canvas
@@ -1344,7 +944,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
       const passA = encoder.beginRenderPass({
         colorAttachments: [
           {
-            view: this.sceneTextureViewA!,
+            view: this.getCurrentSceneTextureView(),
             clearValue: { r: 0, g: 0, b: 0, a: 0 },
             loadOp: "clear",
             storeOp: "store",
@@ -1355,7 +955,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
       const passB = encoder.beginRenderPass({
         colorAttachments: [
           {
-            view: this.sceneTextureViewB!,
+            view: this.getOtherSceneTextureView(),
             clearValue: { r: 0, g: 0, b: 0, a: 0 },
             loadOp: "clear",
             storeOp: "store",
@@ -1397,7 +997,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     this.particleBuffer = null;
     this.moduleUniformBuffers = [];
     this.renderUniformBuffer = null;
-    this.renderBindGroupLayout = null;
+    // render bind group layout managed by resources; nothing to clear here
     this.pipelineLayout = null;
   }
 }

@@ -1,9 +1,5 @@
-import {
-  Module,
-  type ModuleDescriptor,
-  ModuleRole,
-  RenderPassKind,
-} from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole, RenderPassKind } from "../descriptors";
 
 type TrailBindingKeys = "trailDecay" | "trailDiffuse";
 

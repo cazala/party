@@ -1,4 +1,5 @@
-import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole } from "../descriptors";
 
 export const DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH = 0;
 export const DEFAULT_ENVIRONMENT_GRAVITY_DIRECTION: GravityDirection = "down";

@@ -1,4 +1,5 @@
-import { ModuleRole, Module, type ModuleDescriptor } from "../compute";
+import { Module, type ModuleDescriptor } from "../compute";
+import { ModuleRole } from "../descriptors";
 
 export type SensorBehavior = "any" | "same" | "different" | "none";
 
