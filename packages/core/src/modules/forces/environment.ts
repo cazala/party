@@ -1,4 +1,4 @@
-import { Vector2D } from "../vector";
+import { Vector } from "../webgpu/vector";
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
@@ -52,7 +52,7 @@ export class Environment implements Force {
   private zoom: number = 1;
 
   // Store positions before physics integration for inertia and momentum preservation
-  private previousPositions: Map<number, Vector2D> = new Map();
+  private previousPositions: Map<number, Vector> = new Map();
 
   constructor(options: EnvironmentOptions = {}) {
     this.gravity = {
@@ -72,8 +72,8 @@ export class Environment implements Force {
     return this.gravity.strength;
   }
 
-  get direction(): Vector2D {
-    return this.calculateGravityDirection(new Vector2D(0, 0)); // Default particle position for compatibility
+  get direction(): Vector {
+    return this.calculateGravityDirection(new Vector(0, 0)); // Default particle position for compatibility
   }
 
   setStrength(strength: number): void {
@@ -114,23 +114,23 @@ export class Environment implements Force {
   /**
    * Calculate gravity direction vector based on direction type and particle position
    */
-  private calculateGravityDirection(particlePosition: Vector2D): Vector2D {
+  private calculateGravityDirection(particlePosition: Vector): Vector {
     switch (this.gravity.direction) {
       case "up":
-        return new Vector2D(0, -1);
+        return new Vector(0, -1);
       case "down":
-        return new Vector2D(0, 1);
+        return new Vector(0, 1);
       case "left":
-        return new Vector2D(-1, 0);
+        return new Vector(-1, 0);
       case "right":
-        return new Vector2D(1, 0);
+        return new Vector(1, 0);
       case "in": {
         // Gravity toward visible world center (accounting for camera position and zoom)
         const visibleCenterX =
           (-this.cameraX + this.worldWidth / 2) / this.zoom;
         const visibleCenterY =
           (-this.cameraY + this.worldHeight / 2) / this.zoom;
-        const direction = new Vector2D(
+        const direction = new Vector(
           visibleCenterX - particlePosition.x,
           visibleCenterY - particlePosition.y
         );
@@ -138,9 +138,9 @@ export class Environment implements Force {
           direction.x * direction.x + direction.y * direction.y
         );
         if (length > 0) {
-          return new Vector2D(direction.x / length, direction.y / length);
+          return new Vector(direction.x / length, direction.y / length);
         }
-        return new Vector2D(0, 0);
+        return new Vector(0, 0);
       }
       case "out": {
         // Gravity away from visible world center (accounting for camera position and zoom)
@@ -148,7 +148,7 @@ export class Environment implements Force {
           (-this.cameraX + this.worldWidth / 2) / this.zoom;
         const visibleCenterY =
           (-this.cameraY + this.worldHeight / 2) / this.zoom;
-        const direction = new Vector2D(
+        const direction = new Vector(
           particlePosition.x - visibleCenterX,
           particlePosition.y - visibleCenterY
         );
@@ -156,14 +156,14 @@ export class Environment implements Force {
           direction.x * direction.x + direction.y * direction.y
         );
         if (length > 0) {
-          return new Vector2D(direction.x / length, direction.y / length);
+          return new Vector(direction.x / length, direction.y / length);
         }
-        return new Vector2D(0, 0);
+        return new Vector(0, 0);
       }
       case "custom":
-        return Vector2D.fromAngle(this.gravity.angle ?? DEFAULT_GRAVITY_ANGLE);
+        return Vector.fromAngle(this.gravity.angle ?? DEFAULT_GRAVITY_ANGLE);
       default:
-        return new Vector2D(0, 1); // Default to down
+        return new Vector(0, 1); // Default to down
     }
   }
 

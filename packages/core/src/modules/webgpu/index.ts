@@ -1,4 +1,3 @@
-export { WebGPUDevice } from "./WebGPUDevice";
 export {
   WebGPUParticleSystem,
   type WebGPUParticle,
@@ -9,7 +8,6 @@ export {
   type WebGPUSpawnOptions,
   type WebGPUVelocityConfig,
   type WebGPUVelocityDirection,
-  type WebGPUSpawnedParticle,
 } from "./WebGPUSpawner";
 export {
   simulationModule,

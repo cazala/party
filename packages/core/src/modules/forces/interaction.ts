@@ -1,23 +1,23 @@
-import { Vector2D } from "../vector";
+import { Vector } from "../webgpu/vector";
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
 
 export interface InteractionOptions {
-  position?: Vector2D;
+  position?: Vector;
   radius?: number;
   strength?: number;
 }
 
 export class Interaction implements Force {
-  public position: Vector2D;
+  public position: Vector;
   public radius: number;
   public strength: number;
   public isActive: boolean = false;
   private mode: "attract" | "repel" = "attract";
 
   constructor(options: InteractionOptions = {}) {
-    this.position = options.position || new Vector2D(0, 0);
+    this.position = options.position || new Vector(0, 0);
     this.radius = options.radius || 200;
     this.strength = options.strength || 5000;
   }
@@ -60,7 +60,7 @@ export class Interaction implements Force {
     if (distance > this.radius || distance === 0) return;
 
     // Calculate force direction (normalized)
-    const forceDirection = new Vector2D(dx / distance, dy / distance);
+    const forceDirection = new Vector(dx / distance, dy / distance);
 
     // Calculate force magnitude with falloff based on distance
     // Closer particles experience stronger force

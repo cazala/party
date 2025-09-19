@@ -1,6 +1,6 @@
 import { Particle } from "../particle";
 import { Force } from "../system";
-import { Vector2D } from "../vector";
+import { Vector } from "../webgpu/vector";
 import { SpatialGrid } from "../spatial-grid";
 import mitt, { Emitter } from "mitt";
 import { Joints, Joint } from "./joints";
@@ -224,12 +224,12 @@ export class Collisions implements Force, RigidBody {
         // Both particles are pinned - don't perturb either position
         // Skip perturbation to prevent erratic movement
       } else if (particle1.pinned) {
-        particle2.position.add(new Vector2D(perturbX, perturbY));
+        particle2.position.add(new Vector(perturbX, perturbY));
       } else if (particle2.pinned) {
-        particle1.position.add(new Vector2D(-perturbX, -perturbY));
+        particle1.position.add(new Vector(-perturbX, -perturbY));
       } else {
-        particle1.position.add(new Vector2D(perturbX, perturbY));
-        particle2.position.add(new Vector2D(-perturbX, -perturbY));
+        particle1.position.add(new Vector(perturbX, perturbY));
+        particle2.position.add(new Vector(-perturbX, -perturbY));
       }
     }
 
@@ -509,7 +509,7 @@ export class Collisions implements Force, RigidBody {
    */
   private handleGrabbedParticleJointCollision(
     grabbedParticle: Particle,
-    closestPoint: Vector2D,
+    closestPoint: Vector,
     joint: Joint
   ): void {
     // Calculate how much the grabbed particle overlaps with the joint
@@ -579,7 +579,7 @@ export class Collisions implements Force, RigidBody {
    */
   private handleStaticParticleJointCollision(
     staticParticle: Particle,
-    closestPoint: Vector2D,
+    closestPoint: Vector,
     joint: Joint
   ): void {
     // Calculate how much the joint overlaps with the static particle
@@ -649,7 +649,7 @@ export class Collisions implements Force, RigidBody {
    */
   private handleParticleJointCollision(
     particle: Particle,
-    closestPoint: Vector2D,
+    closestPoint: Vector,
     joint: Joint
   ): void {
     // Skip collision if both joint particles are static or grabbed (immovable joints shouldn't transfer force)
@@ -762,7 +762,7 @@ export class Collisions implements Force, RigidBody {
    */
   private handleStaticJointCollision(
     particle: Particle,
-    closestPoint: Vector2D,
+    closestPoint: Vector,
     joint: Joint
   ): void {
     // Calculate collision normal (from joint line to particle center)
@@ -812,7 +812,7 @@ export class Collisions implements Force, RigidBody {
    * Calculate impact weights based on where along the joint the collision occurred
    */
   private calculateImpactWeights(
-    impactPoint: Vector2D,
+    impactPoint: Vector,
     joint: Joint
   ): { weightA: number; weightB: number } {
     const jointVector = joint.particleB.position
@@ -870,7 +870,7 @@ export class Collisions implements Force, RigidBody {
   private transferForceToJoint(
     joint: Joint,
     weights: { weightA: number; weightB: number },
-    collisionNormal: Vector2D,
+    collisionNormal: Vector,
     totalImpulse: number
   ): void {
     // Transfer force to particleA (force opposite to collision normal)
@@ -911,7 +911,7 @@ export class Collisions implements Force, RigidBody {
     particle: Particle,
     joint: Joint,
     weights: { weightA: number; weightB: number },
-    collisionNormal: Vector2D,
+    collisionNormal: Vector,
     overlap: number
   ): void {
     // Calculate effective mass of the joint system at impact point
@@ -970,7 +970,7 @@ export class Collisions implements Force, RigidBody {
    */
   private validatePostCollisionVelocity(
     particle: Particle,
-    collisionNormal: Vector2D
+    collisionNormal: Vector
   ): void {
     const velocityTowardJoint = -particle.velocity.dot(collisionNormal);
 
@@ -995,7 +995,7 @@ export class Collisions implements Force, RigidBody {
    */
   private applyJointFriction(
     particle: Particle,
-    collisionNormal: Vector2D,
+    collisionNormal: Vector,
     friction: number
   ): void {
     // Get the tangential component of velocity (perpendicular to collision normal)

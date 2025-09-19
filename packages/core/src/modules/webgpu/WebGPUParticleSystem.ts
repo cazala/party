@@ -5,16 +5,22 @@ import { runRenderPasses } from "./runtime/render-runner";
 import { runSimulationPasses } from "./runtime/simulation-runner";
 import { ModuleRole, RenderModuleDescriptor } from "./module";
 import { buildProgram, type Program } from "./builder/module-builder";
+import { Vector } from "./vector";
 
-export interface WebGPUParticle {
-  position: [number, number];
-  velocity: [number, number];
+export type Color = {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+};
+
+export type WebGPUParticle = {
+  position: Vector;
+  velocity: Vector;
   size: number;
   mass: number;
-  color: [number, number, number, number];
-}
-
-// Module-specific uniform interfaces are kept internal; uniforms are written dynamically.
+  color: Color;
+};
 
 export interface RenderUniforms {
   canvasSize: [number, number];
@@ -23,24 +29,29 @@ export interface RenderUniforms {
 }
 
 export class WebGPUParticleSystem {
+  // Render
+  public canvas: HTMLCanvasElement;
+
+  // Simulation
+  private size: { width: number; height: number };
+  private modules: readonly Module<string, string, any>[];
   private camera = { x: 0, y: 0 };
   private zoom = 1;
   private animationId: number | null = null;
   private isPlaying = false;
   private lastTime = 0;
-
-  private moduleUniformState: Record<string, number>[] = [];
-
   private particleCount: number = 0;
   private maxParticles: number = DEFAULTS.maxParticles;
+  private constrainIterations: number = 50;
 
+  // Simulation + Render
   private program: Program | null = null;
+  private moduleUniformState: Record<string, number>[] = [];
+  private resources: GPUResources;
 
-  // Grid buffers
-  // Grid and sim state buffers are managed by GPUResources
+  // Grid
   private gridCells: number = 0;
   private gridMaxPerCell: number = 0;
-  // Track last view to detect changes and avoid unnecessary uniform/buffer updates
   private lastView: {
     width: number;
     height: number;
@@ -49,52 +60,20 @@ export class WebGPUParticleSystem {
     zoom: number;
   } | null = null;
 
-  // Constraint solver iterations per frame
-  private constrainIterations: number = 50;
-
   constructor(
-    public resources: GPUResources,
-    private size: { width: number; height: number },
-    private modules: readonly Module<string, string, any>[]
-  ) {}
-
-  private runRenderPasses(commandEncoder: GPUCommandEncoder): void {
-    // Ensure textures sized, then execute via resources-backed render graph
-    this.resources.ensureSceneTextures(this.size.width, this.size.height);
-
-    // Filter render modules
-    const modules = this.modules
-      .map((m) => m.descriptor())
-      .filter(
-        (
-          descriptor: ModuleDescriptor<string, string, any>,
-          idx: number
-        ): descriptor is RenderModuleDescriptor<string, string> =>
-          descriptor.role === ModuleRole.Render && this.modules[idx].isEnabled()
-      );
-
-    // Execute render passes
-    const lastView = runRenderPasses(
-      commandEncoder,
-      modules,
-      this.resources.getCurrentSceneTextureView(),
-      this.resources.getOtherSceneTextureView(),
-      this.program!,
-      this.resources,
-      this.size,
-      this.particleCount
-    );
-
-    // Copy to canvas and return
-    const canvasViewNew = this.resources
-      .getContext()
-      .getCurrentTexture()
-      .createView();
-    this.copySceneTextureToCanvas(commandEncoder, canvasViewNew, lastView);
-    return;
+    canvas: HTMLCanvasElement,
+    size: { width: number; height: number },
+    modules: readonly Module<string, string, any>[]
+  ) {
+    this.resources = new GPUResources({ canvas });
+    this.canvas = canvas;
+    this.size = size;
+    this.modules = modules;
   }
 
+  // Simulation + Render
   async initialize(): Promise<void> {
+    // initialize resources
     await this.resources.initialize();
 
     // Build compute program and allocate core resources
@@ -152,10 +131,7 @@ export class WebGPUParticleSystem {
     });
   }
 
-  setConstrainIterations(iters: number): void {
-    this.constrainIterations = Math.max(1, Math.floor(iters));
-  }
-
+  // Grid
   private configureGrid(width: number, height: number): void {
     const zoom = this.zoom;
     const halfW = width / (2 * Math.max(zoom, 0.0001));
@@ -202,7 +178,8 @@ export class WebGPUParticleSystem {
     }
   }
 
-  resizeGrid(width: number, height: number): void {
+  // Grid
+  private resizeGrid(width: number, height: number): void {
     if (
       this.lastView &&
       this.lastView.width === width &&
@@ -216,6 +193,12 @@ export class WebGPUParticleSystem {
     this.configureGrid(width, height);
   }
 
+  // Simulation
+  setConstrainIterations(iters: number): void {
+    this.constrainIterations = Math.max(1, Math.floor(iters));
+  }
+
+  // Simulation + Render
   setSize(width: number, height: number): void {
     this.size = { width, height };
     this.resources.canvas.width = width;
@@ -224,71 +207,74 @@ export class WebGPUParticleSystem {
     this.resizeGrid(width, height);
   }
 
+  // Simulation
   setParticles(particles: WebGPUParticle[]): void {
     const clampedParticles = particles.slice(0, this.maxParticles);
     this.particleCount = clampedParticles.length;
     this.updateParticleBuffer(clampedParticles);
   }
 
+  // Simulation
   addParticle(particle: WebGPUParticle): void {
     if (this.particleCount >= this.maxParticles) return;
 
     const STRIDE = 12; // pos2, vel2, accel2, size, mass, color4
     const offsetFloats = this.particleCount * STRIDE;
     const data = new Float32Array(STRIDE);
-    data[0] = particle.position[0];
-    data[1] = particle.position[1];
-    data[2] = particle.velocity?.[0] ?? 0;
-    data[3] = particle.velocity?.[1] ?? 0;
+    data[0] = particle.position.x;
+    data[1] = particle.position.y;
+    data[2] = particle.velocity.x;
+    data[3] = particle.velocity.y;
     data[4] = 0; // ax
     data[5] = 0; // ay
     data[6] = particle.size ?? 5;
     data[7] = particle.mass ?? 1;
-    const c = particle.color ?? [1, 1, 1, 1];
-    data[8] = c[0];
-    data[9] = c[1];
-    data[10] = c[2];
-    data[11] = c[3];
+    const c = particle.color ?? { r: 1, g: 1, b: 1, a: 1 };
+    data[8] = c.r;
+    data[9] = c.g;
+    data[10] = c.b;
+    data[11] = c.a;
 
     // Write only the slice for the new particle
     this.resources.writeParticleSlice(offsetFloats, data);
     this.particleCount = this.particleCount + 1;
   }
 
+  // Simulation
   private updateParticleBuffer(particles: WebGPUParticle[]): void {
     const STRIDE = 12; // pos2, vel2, accel2, size, mass, color4
     const data = new Float32Array(particles.length * STRIDE);
     for (let i = 0; i < particles.length; i++) {
       const particle = particles[i];
       const offset = i * STRIDE;
-      data[offset] = particle.position[0];
-      data[offset + 1] = particle.position[1];
-      data[offset + 2] = particle.velocity[0];
-      data[offset + 3] = particle.velocity[1];
+      data[offset] = particle.position.x;
+      data[offset + 1] = particle.position.y;
+      data[offset + 2] = particle.velocity.x;
+      data[offset + 3] = particle.velocity.y;
       // acceleration starts at zero
       data[offset + 4] = 0;
       data[offset + 5] = 0;
       data[offset + 6] = particle.size;
       data[offset + 7] = particle.mass;
-      const c = particle.color ?? [1, 1, 1, 1];
-      data[offset + 8] = c[0];
-      data[offset + 9] = c[1];
-      data[offset + 10] = c[2];
-      data[offset + 11] = c[3];
+      const c = particle.color ?? { r: 1, g: 1, b: 1, a: 1 };
+      data[offset + 8] = c.r;
+      data[offset + 9] = c.g;
+      data[offset + 10] = c.b;
+      data[offset + 11] = c.a;
     }
 
     // Write to storage buffer
     this.resources.writeParticleBuffer(data);
   }
 
+  // Simulation + Render
   private getModuleIndex(name: string): number {
     return (this.modules as readonly Module<string, string, any>[]).findIndex(
       (module) => module.descriptor().name === name
     );
   }
 
-  // removed old trail helpers
-
+  // Render
   private copySceneTextureToCanvas(
     commandEncoder: GPUCommandEncoder,
     canvasView: GPUTextureView,
@@ -321,7 +307,8 @@ export class WebGPUParticleSystem {
     pass.end();
   }
 
-  writeModuleUniform(
+  // Simulation + Render
+  private writeModuleUniform(
     moduleName: string,
     values: Partial<Record<string, number>>
   ): void {
@@ -341,7 +328,8 @@ export class WebGPUParticleSystem {
     this.resources.writeModuleUniform(idx, data);
   }
 
-  writeRenderUniform(uniforms: RenderUniforms): void {
+  // Render
+  private writeRenderUniform(uniforms: RenderUniforms): void {
     const data = new Float32Array([
       uniforms.canvasSize[0],
       uniforms.canvasSize[1],
@@ -354,14 +342,16 @@ export class WebGPUParticleSystem {
     this.resources.writeRenderUniforms(data);
   }
 
-  update(deltaTime: number): void {
+  // Simulation
+  private update(deltaTime: number): void {
     this.writeModuleUniform("simulation", {
       dt: deltaTime,
       count: this.particleCount,
     });
   }
 
-  render(
+  // Simulation + Render
+  private render(
     canvasSize: [number, number],
     cameraPosition: [number, number],
     zoom: number
@@ -399,16 +389,50 @@ export class WebGPUParticleSystem {
     );
 
     // Run render passes
-    this.runRenderPasses(commandEncoder);
+    // Ensure textures sized, then execute via resources-backed render graph
+    this.resources.ensureSceneTextures(this.size.width, this.size.height);
+
+    // Filter render modules
+    const modules = this.modules
+      .map((m) => m.descriptor())
+      .filter(
+        (
+          descriptor: ModuleDescriptor<string, string, any>,
+          idx: number
+        ): descriptor is RenderModuleDescriptor<string, string> =>
+          descriptor.role === ModuleRole.Render && this.modules[idx].isEnabled()
+      );
+
+    // Execute render passes
+    const lastView = runRenderPasses(
+      commandEncoder,
+      modules,
+      this.resources.getCurrentSceneTextureView(),
+      this.resources.getOtherSceneTextureView(),
+      this.program!,
+      this.resources,
+      this.size,
+      this.particleCount
+    );
+
+    // Copy to canvas and return
+    const canvasViewNew = this.resources
+      .getContext()
+      .getCurrentTexture()
+      .createView();
+
+    this.copySceneTextureToCanvas(commandEncoder, canvasViewNew, lastView);
 
     // Submit render commands
     this.resources.getDevice().queue.submit([commandEncoder.finish()]);
   }
 
+  // Simulation
   getParticleCount(): number {
     return this.particleCount;
   }
 
+  // Simulation
   clear(): void {
     // Remove all particles
     this.particleCount = 0;
@@ -467,20 +491,24 @@ export class WebGPUParticleSystem {
     }
   }
 
+  // Simulation
   getSize(): { width: number; height: number } {
     return this.size;
   }
 
+  // Simulation
   setCamera(x: number, y: number): void {
     this.camera.x = x;
     this.camera.y = y;
     this.resizeGrid(this.size.width, this.size.height);
   }
 
+  // Simulation
   getCamera(): { x: number; y: number } {
     return { ...this.camera };
   }
 
+  // Simulation
   setZoom(zoom: number): void {
     // Clamp zoom to avoid excessive grid sizes that overflow storage buffer limits
     const size = this.getSize();
@@ -492,32 +520,12 @@ export class WebGPUParticleSystem {
     this.resizeGrid(this.size.width, this.size.height);
   }
 
+  // Simulation
   getZoom(): number {
     return this.zoom;
   }
 
-  spawnParticles(
-    particles: Array<{
-      x: number;
-      y: number;
-      vx?: number;
-      vy?: number;
-      size?: number;
-      mass?: number;
-      color?: [number, number, number, number];
-    }>
-  ): void {
-    const webgpuParticles: WebGPUParticle[] = particles.map((p) => ({
-      position: [p.x, p.y],
-      velocity: [p.vx || 0, p.vy || 0],
-      size: p.size || 5,
-      mass: p.mass || 1,
-      color: p.color || [1, 1, 1, 1],
-    }));
-
-    this.setParticles(webgpuParticles);
-  }
-
+  // Simulation
   play(): void {
     if (this.isPlaying) return;
     this.isPlaying = true;
@@ -525,6 +533,7 @@ export class WebGPUParticleSystem {
     this.animate();
   }
 
+  // Simulation
   pause(): void {
     this.isPlaying = false;
     if (this.animationId) {
@@ -533,6 +542,7 @@ export class WebGPUParticleSystem {
     }
   }
 
+  // Simulation
   private animate = (): void => {
     if (!this.isPlaying) return;
 
@@ -556,10 +566,12 @@ export class WebGPUParticleSystem {
     this.animationId = requestAnimationFrame(this.animate);
   };
 
+  // Simulation
   getFPS(): number {
     return 60; // WebGPU runs at display refresh rate
   }
 
+  // Simulation
   toggle(): void {
     if (this.isPlaying) {
       this.pause();
@@ -568,6 +580,7 @@ export class WebGPUParticleSystem {
     }
   }
 
+  // Simulation
   reset(): void {
     this.pause();
     this.clear();
@@ -575,6 +588,7 @@ export class WebGPUParticleSystem {
     this.zoom = 1;
   }
 
+  // Simulation + Render
   destroy(): void {
     this.pause();
     this.resources.dispose();

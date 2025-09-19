@@ -1,10 +1,10 @@
 import { Emitter, SerializedEmitter } from "./emitter";
 import { System } from "./system";
-import { Vector2D } from "./vector";
+import { Vector } from "./webgpu/vector";
 
 /**
  * Emitters manager that handles multiple emitter instances
- * 
+ *
  * This class manages a collection of emitters, updating them each frame
  * and providing methods to add, remove, and query emitters. It integrates
  * with the particle system without being a Force.
@@ -22,7 +22,7 @@ export class Emitters {
 
   /**
    * Updates all emitters, potentially spawning new particles
-   * 
+   *
    * @param deltaTime Time elapsed since last update in seconds
    * @param system The particle system to spawn particles into
    */
@@ -42,7 +42,7 @@ export class Emitters {
 
   /**
    * Adds an emitter to the collection
-   * 
+   *
    * @param emitter The emitter to add
    * @returns The ID of the added emitter
    */
@@ -53,7 +53,7 @@ export class Emitters {
 
   /**
    * Removes an emitter from the collection
-   * 
+   *
    * @param id The ID of the emitter to remove
    * @returns The removed emitter, or null if not found
    */
@@ -68,7 +68,7 @@ export class Emitters {
 
   /**
    * Gets an emitter by ID
-   * 
+   *
    * @param id The ID of the emitter to retrieve
    * @returns The emitter, or null if not found
    */
@@ -78,7 +78,7 @@ export class Emitters {
 
   /**
    * Gets all emitters
-   * 
+   *
    * @returns Array of all emitters
    */
   getAllEmitters(): Emitter[] {
@@ -87,19 +87,19 @@ export class Emitters {
 
   /**
    * Finds the closest emitter to a given position within a specified radius
-   * 
+   *
    * @param position The position to search from
    * @param radius The search radius
    * @returns The closest emitter within radius, or null if none found
    */
-  findEmitterAt(position: Vector2D, radius: number = 20): Emitter | null {
+  findEmitterAt(position: Vector, radius: number = 20): Emitter | null {
     let closestEmitter: Emitter | null = null;
     let closestDistance = radius;
 
     for (const emitter of this.emitters.values()) {
       const distance = Math.sqrt(
         Math.pow(emitter.position.x - position.x, 2) +
-        Math.pow(emitter.position.y - position.y, 2)
+          Math.pow(emitter.position.y - position.y, 2)
       );
 
       if (distance < closestDistance) {
@@ -113,7 +113,7 @@ export class Emitters {
 
   /**
    * Gets the number of emitters
-   * 
+   *
    * @returns The count of emitters
    */
   getCount(): number {
@@ -122,7 +122,7 @@ export class Emitters {
 
   /**
    * Enables or disables all emitters
-   * 
+   *
    * @param enabled Whether emitters should be enabled
    */
   setEnabled(enabled: boolean): void {
@@ -131,7 +131,7 @@ export class Emitters {
 
   /**
    * Gets the enabled state of the emitters system
-   * 
+   *
    * @returns Whether emitters are enabled
    */
   getEnabled(): boolean {
@@ -147,16 +147,18 @@ export class Emitters {
 
   /**
    * Serializes all emitters for session saving
-   * 
+   *
    * @returns Array of serialized emitter data
    */
   serialize(): SerializedEmitter[] {
-    return Array.from(this.emitters.values()).map(emitter => emitter.serialize());
+    return Array.from(this.emitters.values()).map((emitter) =>
+      emitter.serialize()
+    );
   }
 
   /**
    * Deserializes and adds emitters from saved data
-   * 
+   *
    * @param emittersData Array of serialized emitter data
    */
   deserialize(emittersData: SerializedEmitter[]): void {
@@ -172,16 +174,16 @@ export class Emitters {
 
   /**
    * Creates a clone of all emitters (useful for undo/redo operations)
-   * 
+   *
    * @returns Array of cloned emitters
    */
   cloneAll(): Emitter[] {
-    return Array.from(this.emitters.values()).map(emitter => emitter.clone());
+    return Array.from(this.emitters.values()).map((emitter) => emitter.clone());
   }
 
   /**
    * Enables or disables a specific emitter
-   * 
+   *
    * @param id The ID of the emitter to modify
    * @param enabled Whether the emitter should be enabled
    * @returns True if the emitter was found and modified, false otherwise
@@ -197,7 +199,7 @@ export class Emitters {
 
   /**
    * Updates the position of a specific emitter
-   * 
+   *
    * @param id The ID of the emitter to modify
    * @param x The new x position
    * @param y The new y position
@@ -214,7 +216,7 @@ export class Emitters {
 
   /**
    * Updates mouse position for all emitters that follow the mouse
-   * 
+   *
    * @param worldX Mouse world X coordinate
    * @param worldY Mouse world Y coordinate
    */

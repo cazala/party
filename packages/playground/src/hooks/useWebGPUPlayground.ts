@@ -246,10 +246,8 @@ export function useWebGPUPlayground(
             // Render modules (put ParticleRenderer last so particles draw after effects)
             new ParticleRenderer(),
           ];
-          const resources = new GPUResources({ canvas: canvasRef.current });
-          await resources.initialize();
           const system = new WebGPUParticleSystem(
-            resources,
+            canvasRef.current,
             { width, height },
             modules
           );
@@ -401,13 +399,12 @@ export function useWebGPUPlayground(
       spacing: number,
       particleSize: number,
       radius?: number,
-      _colors?: string[],
+      colors?: string[],
       velocityConfig?: any,
-      _innerRadius?: number,
-      _squareSize?: number,
-      _cornerRadius?: number,
-      particleMass?: number,
-      _enableJoints?: boolean
+      innerRadius?: number,
+      squareSize?: number,
+      cornerRadius?: number,
+      particleMass?: number
     ) => {
       const system = systemRef.current;
       console.log(
@@ -440,22 +437,23 @@ export function useWebGPUPlayground(
       // Generate particles using WebGPUSpawner (camera-centered)
       const spawner = new WebGPUSpawner();
 
-      const cam = system?.getCamera() || { x: 0, y: 0 };
+      const cam = system.getCamera();
       // Compute world-space bounds matching the current viewport (fill screen)
-      const size = system?.getSize() || { width: 800, height: 600 };
-      const zoom = system?.getZoom() || 1;
+      const size = system.getSize();
+      const zoom = system.getZoom();
       const worldWidth = size.width / Math.max(zoom, 0.0001);
       const worldHeight = size.height / Math.max(zoom, 0.0001);
 
-      const spawn = spawner.initParticles({
+      const particles = spawner.initParticles({
         count: numParticles,
+        colors,
         shape,
         center: cam,
         spacing,
         radius: radius || 100,
-        innerRadius: _innerRadius || 50,
-        squareSize: _squareSize || 200,
-        cornerRadius: _cornerRadius || 0,
+        innerRadius: innerRadius || 50,
+        squareSize: squareSize || 200,
+        cornerRadius: cornerRadius || 0,
         size: particleSize || 5,
         mass: particleMass || 1,
         bounds: { width: worldWidth, height: worldHeight },
@@ -490,17 +488,7 @@ export function useWebGPUPlayground(
         return [1, 1, 1, 1];
       };
 
-      const palette = _colors && _colors.length > 0 ? _colors : null;
-      const withColors = palette
-        ? spawn.map((p) => {
-            const c = palette[(Math.random() * palette.length) | 0];
-            return { ...p, color: hexToRgba01(c) } as typeof p & {
-              color: [number, number, number, number];
-            };
-          })
-        : spawn;
-
-      system.spawnParticles(withColors as any);
+      system.setParticles(particles);
     },
     [isInitialized]
   );

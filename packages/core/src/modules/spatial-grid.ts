@@ -1,5 +1,5 @@
 import { Particle } from "./particle";
-import { Vector2D } from "./vector";
+import { Vector } from "./webgpu/vector";
 
 // Generic joint interface for spatial grid operations
 interface SpatialJoint {
@@ -40,26 +40,27 @@ export class SpatialGrid {
   private cameraX: number = 0;
   private cameraY: number = 0;
   private zoom: number = 1;
-  
+
   // Object pooling for grid cell arrays
   private arrayPool: Particle[][] = [];
   private jointArrayPool: SpatialJoint[][] = [];
   private maxPoolSize: number = 1000; // Limit pool size to prevent excessive memory usage
-  
+
   // Pool statistics for hit rate monitoring
   private poolStats = {
     totalRequests: 0,
     poolHits: 0,
   };
-  
+
   // Track particles for incremental updates
-  private particlePositions: Map<number, { col: number; row: number }> = new Map();
+  private particlePositions: Map<number, { col: number; row: number }> =
+    new Map();
 
   constructor(options: SpatialGridOptions) {
     this.width = options.width;
     this.height = options.height;
     this.cellSize = options.cellSize;
-    
+
     // Initialize with default camera view (canvas coordinates)
     this.updateBounds(0, 0, 1);
   }
@@ -68,24 +69,24 @@ export class SpatialGrid {
     this.cameraX = cameraX;
     this.cameraY = cameraY;
     this.zoom = zoom;
-    
+
     // Calculate visible world bounds
     const worldLeft = -cameraX / zoom;
     const worldTop = -cameraY / zoom;
     const worldRight = (this.width - cameraX) / zoom;
     const worldBottom = (this.height - cameraY) / zoom;
-    
+
     // Add padding around visible area to catch particles just outside view
-    const padding = Math.max(this.width, this.height) / zoom * 0.5; // 50% padding
+    const padding = (Math.max(this.width, this.height) / zoom) * 0.5; // 50% padding
     this.minX = worldLeft - padding;
     this.minY = worldTop - padding;
     this.maxX = worldRight + padding;
     this.maxY = worldBottom + padding;
-    
+
     // Recalculate grid dimensions
     this.cols = Math.ceil((this.maxX - this.minX) / this.cellSize);
     this.rows = Math.ceil((this.maxY - this.minY) / this.cellSize);
-    
+
     this.initializeGrid();
   }
 
@@ -93,10 +94,12 @@ export class SpatialGrid {
     // Only update if camera changed significantly to avoid constant grid rebuilding
     const threshold = this.cellSize * 0.5; // Half a cell
     const zoomThreshold = 0.1;
-    
-    if (Math.abs(this.cameraX - cameraX) > threshold ||
-        Math.abs(this.cameraY - cameraY) > threshold ||
-        Math.abs(this.zoom - zoom) > zoomThreshold) {
+
+    if (
+      Math.abs(this.cameraX - cameraX) > threshold ||
+      Math.abs(this.cameraY - cameraY) > threshold ||
+      Math.abs(this.zoom - zoom) > zoomThreshold
+    ) {
       this.updateBounds(cameraX, cameraY, zoom);
     }
   }
@@ -168,7 +171,7 @@ export class SpatialGrid {
         this.jointGrid[row][col] = this.getPooledJointArray();
       }
     }
-    
+
     // Clear particle position tracking
     this.particlePositions.clear();
   }
@@ -180,16 +183,16 @@ export class SpatialGrid {
   clearIncremental(_particles: Particle[]): void {
     // Only clear cells that actually contained particles
     const cellsToClean = new Set<string>();
-    
+
     // Collect cells that need clearing from previous particle positions
     for (const [, position] of this.particlePositions) {
       const key = `${position.row}-${position.col}`;
       cellsToClean.add(key);
     }
-    
+
     // Clear only those cells
     for (const key of cellsToClean) {
-      const [row, col] = key.split('-').map(Number);
+      const [row, col] = key.split("-").map(Number);
       if (row >= 0 && row < this.rows && col >= 0 && col < this.cols) {
         this.returnArrayToPool(this.grid[row][col]);
         this.returnJointArrayToPool(this.jointGrid[row][col]);
@@ -197,7 +200,7 @@ export class SpatialGrid {
         this.jointGrid[row][col] = this.getPooledJointArray();
       }
     }
-    
+
     // Clear particle position tracking
     this.particlePositions.clear();
   }
@@ -213,12 +216,15 @@ export class SpatialGrid {
 
     // Insert particle into grid
     this.grid[clampedRow][clampedCol].push(particle);
-    
+
     // Track particle position for incremental updates
-    this.particlePositions.set(particle.id, { col: clampedCol, row: clampedRow });
+    this.particlePositions.set(particle.id, {
+      col: clampedCol,
+      row: clampedRow,
+    });
   }
 
-  getParticles(point: Vector2D, radius: number): Particle[] {
+  getParticles(point: Vector, radius: number): Particle[] {
     const neighbors: Particle[] = [];
     // Convert world coordinates to grid coordinates with offset
     const centerCol = Math.floor((point.x - this.minX) / this.cellSize);
@@ -286,7 +292,7 @@ export class SpatialGrid {
   setSize(width: number, height: number): void {
     this.width = width;
     this.height = height;
-    
+
     // Update bounds with current camera settings
     this.updateBounds(this.cameraX, this.cameraY, this.zoom);
   }
@@ -313,11 +319,23 @@ export class SpatialGrid {
    * Calculate the bounding box of a joint (line segment)
    */
   private getJointBoundingBox(joint: SpatialJoint): BoundingBox {
-    const minX = Math.min(joint.particleA.position.x, joint.particleB.position.x);
-    const maxX = Math.max(joint.particleA.position.x, joint.particleB.position.x);
-    const minY = Math.min(joint.particleA.position.y, joint.particleB.position.y);
-    const maxY = Math.max(joint.particleA.position.y, joint.particleB.position.y);
-    
+    const minX = Math.min(
+      joint.particleA.position.x,
+      joint.particleB.position.x
+    );
+    const maxX = Math.max(
+      joint.particleA.position.x,
+      joint.particleB.position.x
+    );
+    const minY = Math.min(
+      joint.particleA.position.y,
+      joint.particleB.position.y
+    );
+    const maxY = Math.max(
+      joint.particleA.position.y,
+      joint.particleB.position.y
+    );
+
     return { minX, minY, maxX, maxY };
   }
 
@@ -328,12 +346,24 @@ export class SpatialGrid {
     if (!joint.isValid) return;
 
     const boundingBox = this.getJointBoundingBox(joint);
-    
+
     // Convert world coordinates to grid coordinates
-    const minCol = Math.max(0, Math.floor((boundingBox.minX - this.minX) / this.cellSize));
-    const maxCol = Math.min(this.cols - 1, Math.floor((boundingBox.maxX - this.minX) / this.cellSize));
-    const minRow = Math.max(0, Math.floor((boundingBox.minY - this.minY) / this.cellSize));
-    const maxRow = Math.min(this.rows - 1, Math.floor((boundingBox.maxY - this.minY) / this.cellSize));
+    const minCol = Math.max(
+      0,
+      Math.floor((boundingBox.minX - this.minX) / this.cellSize)
+    );
+    const maxCol = Math.min(
+      this.cols - 1,
+      Math.floor((boundingBox.maxX - this.minX) / this.cellSize)
+    );
+    const minRow = Math.max(
+      0,
+      Math.floor((boundingBox.minY - this.minY) / this.cellSize)
+    );
+    const maxRow = Math.min(
+      this.rows - 1,
+      Math.floor((boundingBox.maxY - this.minY) / this.cellSize)
+    );
 
     // Insert joint into all cells it overlaps
     for (let row = minRow; row <= maxRow; row++) {
@@ -352,12 +382,24 @@ export class SpatialGrid {
 
     const nearbyJoints = new Set<SpatialJoint>();
     const boundingBox = this.getJointBoundingBox(joint);
-    
+
     // Convert world coordinates to grid coordinates
-    const minCol = Math.max(0, Math.floor((boundingBox.minX - this.minX) / this.cellSize));
-    const maxCol = Math.min(this.cols - 1, Math.floor((boundingBox.maxX - this.minX) / this.cellSize));
-    const minRow = Math.max(0, Math.floor((boundingBox.minY - this.minY) / this.cellSize));
-    const maxRow = Math.min(this.rows - 1, Math.floor((boundingBox.maxY - this.minY) / this.cellSize));
+    const minCol = Math.max(
+      0,
+      Math.floor((boundingBox.minX - this.minX) / this.cellSize)
+    );
+    const maxCol = Math.min(
+      this.cols - 1,
+      Math.floor((boundingBox.maxX - this.minX) / this.cellSize)
+    );
+    const minRow = Math.max(
+      0,
+      Math.floor((boundingBox.minY - this.minY) / this.cellSize)
+    );
+    const maxRow = Math.min(
+      this.rows - 1,
+      Math.floor((boundingBox.maxY - this.minY) / this.cellSize)
+    );
 
     // Collect joints from all overlapping cells
     for (let row = minRow; row <= maxRow; row++) {
@@ -379,12 +421,24 @@ export class SpatialGrid {
    */
   getJointsInRegion(bounds: BoundingBox): SpatialJoint[] {
     const jointsInRegion = new Set<SpatialJoint>();
-    
+
     // Convert world coordinates to grid coordinates
-    const minCol = Math.max(0, Math.floor((bounds.minX - this.minX) / this.cellSize));
-    const maxCol = Math.min(this.cols - 1, Math.floor((bounds.maxX - this.minX) / this.cellSize));
-    const minRow = Math.max(0, Math.floor((bounds.minY - this.minY) / this.cellSize));
-    const maxRow = Math.min(this.rows - 1, Math.floor((bounds.maxY - this.minY) / this.cellSize));
+    const minCol = Math.max(
+      0,
+      Math.floor((bounds.minX - this.minX) / this.cellSize)
+    );
+    const maxCol = Math.min(
+      this.cols - 1,
+      Math.floor((bounds.maxX - this.minX) / this.cellSize)
+    );
+    const minRow = Math.max(
+      0,
+      Math.floor((bounds.minY - this.minY) / this.cellSize)
+    );
+    const maxRow = Math.min(
+      this.rows - 1,
+      Math.floor((bounds.maxY - this.minY) / this.cellSize)
+    );
 
     // Collect joints from all cells in the region
     for (let row = minRow; row <= maxRow; row++) {
@@ -418,23 +472,25 @@ export class SpatialGrid {
    */
   getVisibleParticles(particles: Particle[], padding: number = 50): Particle[] {
     const visibleParticles: Particle[] = [];
-    
+
     // Calculate visible bounds with padding
     const leftBound = this.minX - padding;
     const rightBound = this.maxX + padding;
     const topBound = this.minY - padding;
     const bottomBound = this.maxY + padding;
-    
+
     for (const particle of particles) {
       // Check if particle is within visible bounds (including its size)
-      if (particle.position.x + particle.size >= leftBound &&
-          particle.position.x - particle.size <= rightBound &&
-          particle.position.y + particle.size >= topBound &&
-          particle.position.y - particle.size <= bottomBound) {
+      if (
+        particle.position.x + particle.size >= leftBound &&
+        particle.position.x - particle.size <= rightBound &&
+        particle.position.y + particle.size >= topBound &&
+        particle.position.y - particle.size <= bottomBound
+      ) {
         visibleParticles.push(particle);
       }
     }
-    
+
     return visibleParticles;
   }
 
@@ -446,11 +502,13 @@ export class SpatialGrid {
     const rightBound = this.maxX + padding;
     const topBound = this.minY - padding;
     const bottomBound = this.maxY + padding;
-    
-    return (particle.position.x + particle.size >= leftBound &&
-            particle.position.x - particle.size <= rightBound &&
-            particle.position.y + particle.size >= topBound &&
-            particle.position.y - particle.size <= bottomBound);
+
+    return (
+      particle.position.x + particle.size >= leftBound &&
+      particle.position.x - particle.size <= rightBound &&
+      particle.position.y + particle.size >= topBound &&
+      particle.position.y - particle.size <= bottomBound
+    );
   }
 
   /**
@@ -459,7 +517,7 @@ export class SpatialGrid {
    */
   setMaxPoolSize(maxSize: number): void {
     this.maxPoolSize = Math.max(0, maxSize);
-    
+
     // Trim pools if they exceed new max size
     if (this.arrayPool.length > this.maxPoolSize) {
       this.arrayPool.length = this.maxPoolSize;
@@ -481,16 +539,22 @@ export class SpatialGrid {
    * Get current pool statistics for debugging/monitoring
    * @returns Object with pool usage statistics
    */
-  getPoolStats(): { arrayPool: number; jointArrayPool: number; maxPoolSize: number; hitRate: number } {
-    const hitRate = this.poolStats.totalRequests > 0 
-      ? (this.poolStats.poolHits / this.poolStats.totalRequests) * 100 
-      : 0;
-      
+  getPoolStats(): {
+    arrayPool: number;
+    jointArrayPool: number;
+    maxPoolSize: number;
+    hitRate: number;
+  } {
+    const hitRate =
+      this.poolStats.totalRequests > 0
+        ? (this.poolStats.poolHits / this.poolStats.totalRequests) * 100
+        : 0;
+
     return {
       arrayPool: this.arrayPool.length,
       jointArrayPool: this.jointArrayPool.length,
       maxPoolSize: this.maxPoolSize,
-      hitRate: Math.round(hitRate * 10) / 10 // Round to 1 decimal place
+      hitRate: Math.round(hitRate * 10) / 10, // Round to 1 decimal place
     };
   }
 
@@ -498,8 +562,12 @@ export class SpatialGrid {
    * Check if two bounding boxes overlap (for pre-filtering intersection tests)
    */
   private boundingBoxesOverlap(box1: BoundingBox, box2: BoundingBox): boolean {
-    return !(box1.maxX < box2.minX || box2.maxX < box1.minX || 
-             box1.maxY < box2.minY || box2.maxY < box1.minY);
+    return !(
+      box1.maxX < box2.minX ||
+      box2.maxX < box1.minX ||
+      box1.maxY < box2.minY ||
+      box2.maxY < box1.minY
+    );
   }
 
   /**
@@ -508,8 +576,8 @@ export class SpatialGrid {
   getNearbyJointsWithBoundingBoxFilter(joint: SpatialJoint): SpatialJoint[] {
     const nearbyJoints = this.getNearbyJoints(joint);
     const jointBoundingBox = this.getJointBoundingBox(joint);
-    
-    return nearbyJoints.filter(candidateJoint => {
+
+    return nearbyJoints.filter((candidateJoint) => {
       const candidateBoundingBox = this.getJointBoundingBox(candidateJoint);
       return this.boundingBoxesOverlap(jointBoundingBox, candidateBoundingBox);
     });

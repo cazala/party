@@ -1,7 +1,7 @@
 import { Particle } from "./particle";
 import { System } from "./system";
 import { SpatialGrid } from "./spatial-grid";
-import { Vector2D } from "./vector";
+import { Vector } from "./webgpu/vector";
 import { calculateDensity, Fluid } from "./forces/fluid";
 import { Sensors } from "./forces/sensors";
 import { Joint, Joints } from "./forces/joints";
@@ -187,7 +187,7 @@ export abstract class Renderer {
   public showDensity: boolean;
   public showVelocity: boolean;
   public densityFieldColor: string;
-  public cursorPosition: Vector2D | null;
+  public cursorPosition: Vector | null;
   protected sensors: Sensors | null;
   public hueSpeed: number;
   protected hueStartTime: number;
@@ -396,7 +396,7 @@ export abstract class Renderer {
     this.densityFieldColor = color;
   }
 
-  setCursorPosition(position: Vector2D | null): void {
+  setCursorPosition(position: Vector | null): void {
     this.cursorPosition = position;
   }
 
@@ -614,14 +614,14 @@ export abstract class Renderer {
 // Joint preview interface
 interface JointPreview {
   particleA: Particle;
-  targetPosition: Vector2D;
+  targetPosition: Vector;
 }
 
 export class Canvas2DRenderer extends Renderer {
   private previewParticle: Particle | null = null;
   private isDragMode: boolean = false;
-  private previewVelocity: Vector2D | null = null;
-  private removalPreview: { position: Vector2D; radius: number } | null = null;
+  private previewVelocity: Vector | null = null;
+  private removalPreview: { position: Vector; radius: number } | null = null;
   private jointPreview: JointPreview | null = null;
   private selectedParticles: Set<number> = new Set(); // Particle IDs
   private highlightedParticle: Particle | null = null;
@@ -642,12 +642,12 @@ export class Canvas2DRenderer extends Renderer {
     this.isDragMode = isDragMode;
   }
 
-  setPreviewVelocity(velocity: Vector2D | null): void {
+  setPreviewVelocity(velocity: Vector | null): void {
     this.previewVelocity = velocity;
   }
 
   setRemovalPreview(
-    preview: { position: Vector2D; radius: number } | null
+    preview: { position: Vector; radius: number } | null
   ): void {
     this.removalPreview = preview;
   }
@@ -672,7 +672,7 @@ export class Canvas2DRenderer extends Renderer {
     this.showDensity = show;
   }
 
-  setCursorPosition(position: Vector2D | null): void {
+  setCursorPosition(position: Vector | null): void {
     this.cursorPosition = position;
   }
 
@@ -868,10 +868,7 @@ export class Canvas2DRenderer extends Renderer {
     }
   }
 
-  private getVelocityArrowColor(
-    particle: Particle,
-    velocity?: Vector2D
-  ): string {
+  private getVelocityArrowColor(particle: Particle, velocity?: Vector): string {
     switch (this.colorMode) {
       case "custom":
         return this.customColor;
@@ -1011,7 +1008,7 @@ export class Canvas2DRenderer extends Renderer {
     this.ctx.restore();
   }
 
-  private renderPreviewVelocity(particle: Particle, velocity: Vector2D): void {
+  private renderPreviewVelocity(particle: Particle, velocity: Vector): void {
     this.ctx.save();
 
     // Don't render if velocity is zero or very small
@@ -1245,7 +1242,7 @@ export class Canvas2DRenderer extends Renderer {
     const force =
       density > 0
         ? vector.clone().normalize().multiply(worldRadius)
-        : Vector2D.zero();
+        : Vector.zero();
     // not devided by density
 
     // Use same color palette as spatial grid
@@ -1359,7 +1356,7 @@ export class Canvas2DRenderer extends Renderer {
   }
 
   private renderRemovalPreview(preview: {
-    position: Vector2D;
+    position: Vector;
     radius: number;
   }): void {
     // The removal preview is rendered within the world coordinate system
@@ -1439,7 +1436,7 @@ export class Canvas2DRenderer extends Renderer {
         screenY += sampleResolution
       ) {
         const worldPos = this.screenToWorld(screenX, screenY);
-        const worldPoint = new Vector2D(worldPos.x, worldPos.y);
+        const worldPoint = new Vector(worldPos.x, worldPos.y);
 
         // Get nearby particles using spatial grid
         const nearbyParticles = system.spatialGrid.getParticles(

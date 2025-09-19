@@ -1,4 +1,8 @@
-export { Vector2D, degToRad, radToDeg } from "./modules/vector";
+export {
+  Vector as Vector2D,
+  degToRad,
+  radToDeg,
+} from "./modules/webgpu/vector";
 export {
   Particle,
   type ParticleOptions,
@@ -72,7 +76,6 @@ export {
 } from "./modules/emitter";
 export { Emitters } from "./modules/emitters";
 export {
-  WebGPUDevice,
   WebGPUParticleSystem,
   type WebGPUParticle,
   type RenderUniforms,
@@ -86,5 +89,4 @@ export {
   type WebGPUSpawnOptions,
   type WebGPUVelocityConfig,
   type WebGPUVelocityDirection,
-  type WebGPUSpawnedParticle,
 } from "./modules/webgpu";

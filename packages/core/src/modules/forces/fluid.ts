@@ -1,7 +1,7 @@
 import { Particle } from "../particle";
 import { SpatialGrid } from "../spatial-grid";
 import { Force } from "../system";
-import { Vector2D } from "../vector";
+import { Vector } from "../webgpu/vector";
 
 // Default parameters for fluid simulation
 export const DEFAULT_FLUID_ENABLED = true;
@@ -371,7 +371,7 @@ export function calculateViscositySmoothingKernelDerivative(
  * @returns The calculated density value
  */
 export function calculateDensity(
-  point: Vector2D,
+  point: Vector,
   radius: number,
   particles: Particle[]
 ) {
@@ -392,7 +392,7 @@ export function calculateDensity(
  * @returns The calculated near density value
  */
 export function calculateNearDensity(
-  point: Vector2D,
+  point: Vector,
   radius: number,
   particles: Particle[]
 ) {
@@ -534,11 +534,11 @@ export class Fluid implements Force {
 
       if (needsRecalculation) {
         // Use pooled vector for predicted position calculation
-        const velocityDelta = Vector2D.getPooled(
+        const velocityDelta = Vector.getPooled(
           particle.velocity.x / 60,
           particle.velocity.y / 60
         );
-        const predictedPosition = Vector2D.getPooled(
+        const predictedPosition = Vector.getPooled(
           particle.position.x + velocityDelta.x,
           particle.position.y + velocityDelta.y
         );
@@ -624,8 +624,8 @@ export class Fluid implements Force {
    * @param particles - Array of nearby particles contributing to pressure
    * @returns The accumulated pressure force vector
    */
-  calculatePressureForce(point: Vector2D, particles: Particle[]) {
-    const pressureForce = Vector2D.zero();
+  calculatePressureForce(point: Vector, particles: Particle[]) {
+    const pressureForce = Vector.zero();
 
     for (const particle of particles) {
       const distance = point.distance(particle.position);
@@ -634,7 +634,7 @@ export class Fluid implements Force {
       }
 
       // Use pooled vector for temporary direction calculation
-      const direction = Vector2D.getPooled(
+      const direction = Vector.getPooled(
         particle.position.x - point.x,
         particle.position.y - point.y
       ).divide(distance);
@@ -660,7 +660,7 @@ export class Fluid implements Force {
 
       if (density > 0) {
         // Use pooled vector for gradient calculation
-        const gradient = Vector2D.getPooled(
+        const gradient = Vector.getPooled(
           (direction.x * effectivePressure * slope) / density,
           (direction.y * effectivePressure * slope) / density
         );
@@ -675,16 +675,16 @@ export class Fluid implements Force {
   }
 
   calculateViscosityForce(
-    point: Vector2D,
-    velocity: Vector2D,
+    point: Vector,
+    velocity: Vector,
     particles: Particle[]
   ) {
     // Early exit if viscosity is 0 to avoid unnecessary computations
     if (this.viscosity === 0) {
-      return Vector2D.zero();
+      return Vector.zero();
     }
 
-    const viscosityForce = Vector2D.zero();
+    const viscosityForce = Vector.zero();
 
     for (const particle of particles) {
       const distance = point.distance(particle.position);
@@ -698,7 +698,7 @@ export class Fluid implements Force {
       );
 
       // Use pooled vector for velocity difference calculation
-      const velocityDiff = Vector2D.getPooled(
+      const velocityDiff = Vector.getPooled(
         particle.velocity.x - velocity.x,
         particle.velocity.y - velocity.y
       ).multiply(influence);

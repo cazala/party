@@ -1,7 +1,7 @@
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
-import { Vector2D } from "../vector";
+import { Vector } from "../webgpu/vector";
 
 // Default constants for Boundary behavior
 export const DEFAULT_BOUNDARY_BOUNCE = 0.4;
@@ -158,7 +158,7 @@ export class Boundary implements Force {
 
     // Apply the combined repel force using particle.applyForce()
     if (forceX !== 0 || forceY !== 0) {
-      const repelForce = new Vector2D(forceX, forceY);
+      const repelForce = new Vector(forceX, forceY);
       particle.applyForce(repelForce);
     }
   }

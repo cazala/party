@@ -1,6 +1,6 @@
 import { Particle } from "../particle";
 import { Force } from "../system";
-import { Vector2D } from "../vector";
+import { Vector } from "../webgpu/vector";
 import { SpatialGrid } from "../spatial-grid";
 
 // Default constants for Behavior
@@ -26,16 +26,19 @@ export class Behavior implements Force {
   separationRange: number;
   viewRadius: number;
   viewAngle: number; // Field of view angle in radians
-  wanderMap: Record<number, Vector2D> = {};
-  
+  wanderMap: Record<number, Vector> = {};
+
   // Enhanced wander state tracking
-  private wanderStates: Record<number, {
-    targetDirection: Vector2D;
-    directionChangeTimer: number;
-    speedMultiplier: number;
-    noiseOffset: number;
-    lastUpdateTime: number;
-  }> = {};
+  private wanderStates: Record<
+    number,
+    {
+      targetDirection: Vector;
+      directionChangeTimer: number;
+      speedMultiplier: number;
+      noiseOffset: number;
+      lastUpdateTime: number;
+    }
+  > = {};
 
   /**
    * Simple 1D noise function for smooth random values
@@ -88,8 +91,8 @@ export class Behavior implements Force {
     this.viewAngle = options.viewAngle ?? DEFAULT_BEHAVIOR_VIEW_ANGLE;
   }
 
-  separate(particle: Particle, neighbors: Particle[], range: number): Vector2D {
-    const sum = new Vector2D(0, 0);
+  separate(particle: Particle, neighbors: Particle[], range: number): Vector {
+    const sum = new Vector(0, 0);
 
     if (neighbors.length) {
       for (const neighbor of neighbors) {
@@ -112,8 +115,8 @@ export class Behavior implements Force {
     return sum;
   }
 
-  align(particle: Particle, neighbors: Particle[]): Vector2D {
-    const sum = new Vector2D(0, 0);
+  align(particle: Particle, neighbors: Particle[]): Vector {
+    const sum = new Vector(0, 0);
 
     if (neighbors.length) {
       for (const neighbor of neighbors) {
@@ -129,8 +132,8 @@ export class Behavior implements Force {
     return sum;
   }
 
-  cohesion(particle: Particle, neighbors: Particle[]): Vector2D {
-    const sum = new Vector2D(0, 0);
+  cohesion(particle: Particle, neighbors: Particle[]): Vector {
+    const sum = new Vector(0, 0);
 
     if (neighbors.length) {
       for (const neighbor of neighbors) {
@@ -143,7 +146,7 @@ export class Behavior implements Force {
     return sum;
   }
 
-  seek(particle: Particle, target: Vector2D): Vector2D {
+  seek(particle: Particle, target: Vector): Vector {
     const seek = target.clone().subtract(particle.position);
     seek.normalize();
     seek.multiply(1000);
@@ -152,8 +155,8 @@ export class Behavior implements Force {
     return seek;
   }
 
-  chase(particle: Particle, neighbors: Particle[]): Vector2D {
-    const chaseForce = new Vector2D(0, 0);
+  chase(particle: Particle, neighbors: Particle[]): Vector {
+    const chaseForce = new Vector(0, 0);
 
     for (const neighbor of neighbors) {
       // Only chase particles with smaller mass
@@ -170,8 +173,8 @@ export class Behavior implements Force {
     return chaseForce;
   }
 
-  avoid(particle: Particle, neighbors: Particle[]): Vector2D {
-    const avoidForce = new Vector2D(0, 0);
+  avoid(particle: Particle, neighbors: Particle[]): Vector {
+    const avoidForce = new Vector(0, 0);
 
     for (const neighbor of neighbors) {
       // Only avoid particles with larger mass
@@ -242,84 +245,94 @@ export class Behavior implements Force {
     });
   }
 
-  wander(particle: Particle): Vector2D {
+  wander(particle: Particle): Vector {
     const currentTime = Date.now() * 0.001; // Convert to seconds
-    
+
     // Initialize or get wander state for this particle
     let state = this.wanderStates[particle.id];
     if (!state) {
       state = this.wanderStates[particle.id] = {
-        targetDirection: Vector2D.random().normalize(),
+        targetDirection: Vector.random().normalize(),
         directionChangeTimer: 0,
         speedMultiplier: 1,
         noiseOffset: Math.random() * 1000, // Random starting point for noise
-        lastUpdateTime: currentTime
+        lastUpdateTime: currentTime,
       };
     }
 
     const actualDeltaTime = Math.min(currentTime - state.lastUpdateTime, 0.1); // Cap delta time
     state.lastUpdateTime = currentTime;
-    
+
     // Scale behavior based on wander weight intensity
     const intensity = Math.min(this.wanderWeight, 2.0); // Cap at 2.0 for extreme behavior
-    
+
     // Direction change frequency: calm (every 2-4s) to frantic (every 0.2-0.5s)
     const directionChangeFrequency = Math.max(0.2, 4.0 - intensity * 3.8);
-    
+
     // Update direction change timer
     state.directionChangeTimer -= actualDeltaTime;
-    
+
     // Time to change direction or pick new target
     if (state.directionChangeTimer <= 0) {
       // For high intensity: more random, sharp changes
       // For low intensity: gentle, flowing changes
       const randomness = Math.min(intensity * 0.7, 1.0);
       const smoothness = 1.0 - randomness;
-      
+
       // Combine smooth noise with random changes
       const noiseInfluence = this.smoothNoise(state.noiseOffset) * smoothness;
       const randomInfluence = (Math.random() * 2 - 1) * randomness;
-      
+
       // Create new target direction
-      const angle = Math.atan2(state.targetDirection.y, state.targetDirection.x) + 
-                   (noiseInfluence + randomInfluence) * Math.PI * 0.5; // Max 90° turn
-      
+      const angle =
+        Math.atan2(state.targetDirection.y, state.targetDirection.x) +
+        (noiseInfluence + randomInfluence) * Math.PI * 0.5; // Max 90° turn
+
       state.targetDirection.set(Math.cos(angle), Math.sin(angle));
-      
+
       // Reset timer with some variation
       const variation = 1 + (Math.random() * 2 - 1) * 0.5; // ±50% variation
       state.directionChangeTimer = directionChangeFrequency * variation;
-      
+
       // Advance noise offset for next change
       state.noiseOffset += 0.1 + intensity * 0.1;
     }
-    
+
     // Calculate speed variation using sine waves for natural rhythm
     const speedNoiseTime = currentTime * (0.5 + intensity * 1.5); // Faster oscillation for higher intensity
-    const speedVariation = Math.sin(speedNoiseTime) * Math.sin(speedNoiseTime * 1.7) * 0.5 + 0.5;
-    
+    const speedVariation =
+      Math.sin(speedNoiseTime) * Math.sin(speedNoiseTime * 1.7) * 0.5 + 0.5;
+
     // Speed multiplier: calm (0.3-1.0) to frantic (0.1-2.5)
     const minSpeed = Math.max(0.1, 0.5 - intensity * 0.4);
     const maxSpeed = 0.5 + intensity * 2.0;
     state.speedMultiplier = minSpeed + speedVariation * (maxSpeed - minSpeed);
-    
+
     // Create steering force towards target direction
-    
+
     // Calculate steering force (how much to turn towards target)
     const steerStrength = 0.3 + intensity * 0.7; // Gentle to aggressive steering
-    const desiredVelocity = state.targetDirection.clone()
+    const desiredVelocity = state.targetDirection
+      .clone()
       .multiply(1000 * particle.mass * state.speedMultiplier);
-    
-    const steer = desiredVelocity.clone().subtract(particle.velocity).multiply(steerStrength);
-    
+
+    const steer = desiredVelocity
+      .clone()
+      .subtract(particle.velocity)
+      .multiply(steerStrength);
+
     // Add some perpendicular noise for more organic movement
-    const perpendicular = new Vector2D(-state.targetDirection.y, state.targetDirection.x);
-    const perpendicularNoise = this.smoothNoise(state.noiseOffset + currentTime) * intensity * 200;
+    const perpendicular = new Vector(
+      -state.targetDirection.y,
+      state.targetDirection.x
+    );
+    const perpendicularNoise =
+      this.smoothNoise(state.noiseOffset + currentTime) * intensity * 200;
     steer.add(perpendicular.multiply(perpendicularNoise));
-    
+
     // Apply intensity scaling to final force
     steer.multiply(intensity);
-    
+
     return steer;
   }
 

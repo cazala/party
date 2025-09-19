@@ -1,7 +1,7 @@
 import { Force } from "../system";
 import { Particle } from "../particle";
 import { SpatialGrid } from "../spatial-grid";
-import { Vector2D } from "../vector";
+import { Vector } from "../webgpu/vector";
 
 // Default constants for Trail
 export const DEFAULT_TRAIL_ENABLED = false;
@@ -190,13 +190,13 @@ export class Sensors implements Force {
     // Calculate the direction the particle is moving
     const velocityDirection =
       velocityMagnitude < 0.01
-        ? Vector2D.random().normalize()
+        ? Vector.random().normalize()
         : particle.velocity.clone().normalize();
 
     // Calculate positions of the 2 sensors
 
     // Left sensor: rotated by -sensorAngle (sensorAngle is already in radians)
-    const leftDirection = new Vector2D(
+    const leftDirection = new Vector(
       velocityDirection.x * Math.cos(-this.sensorAngle) -
         velocityDirection.y * Math.sin(-this.sensorAngle),
       velocityDirection.x * Math.sin(-this.sensorAngle) +
@@ -207,7 +207,7 @@ export class Sensors implements Force {
       .add(leftDirection.multiply(this.sensorDistance));
 
     // Right sensor: rotated by +sensorAngle (sensorAngle is already in radians)
-    const rightDirection = new Vector2D(
+    const rightDirection = new Vector(
       velocityDirection.x * Math.cos(this.sensorAngle) -
         velocityDirection.y * Math.sin(this.sensorAngle),
       velocityDirection.x * Math.sin(this.sensorAngle) +
@@ -218,7 +218,7 @@ export class Sensors implements Force {
       .add(rightDirection.multiply(this.sensorDistance));
 
     // Process follow behavior
-    let followForce: Vector2D | null = null;
+    let followForce: Vector | null = null;
     if (this.followBehavior !== "none") {
       followForce = this.calculateBehaviorForce(
         particle,
@@ -232,7 +232,7 @@ export class Sensors implements Force {
     }
 
     // Process flee behavior
-    let fleeForce: Vector2D | null = null;
+    let fleeForce: Vector | null = null;
     if (this.fleeBehavior !== "none") {
       fleeForce = this.calculateBehaviorForce(
         particle,
@@ -246,7 +246,7 @@ export class Sensors implements Force {
     }
 
     // Combine forces if both are present
-    let finalForce: Vector2D | null = null;
+    let finalForce: Vector | null = null;
     if (followForce && fleeForce) {
       finalForce = followForce.add(fleeForce);
     } else if (followForce) {
@@ -265,13 +265,13 @@ export class Sensors implements Force {
 
   private calculateBehaviorForce(
     particle: Particle,
-    leftSensorPos: Vector2D,
-    rightSensorPos: Vector2D,
-    leftDirection: Vector2D,
-    rightDirection: Vector2D,
+    leftSensorPos: Vector,
+    rightSensorPos: Vector,
+    leftDirection: Vector,
+    rightDirection: Vector,
     behavior: SensorBehavior,
     isFleeMode: boolean
-  ): Vector2D | null {
+  ): Vector | null {
     // Get sensor readings
     const leftData = this.getSensorData(leftSensorPos.x, leftSensorPos.y);
     const rightData = this.getSensorData(rightSensorPos.x, rightSensorPos.y);
@@ -285,7 +285,7 @@ export class Sensors implements Force {
     );
 
     // Find the winning sensor (highest intensity among activated sensors)
-    let winningDirection: Vector2D | null = null;
+    let winningDirection: Vector | null = null;
     let isLeftSensor = false;
 
     if (leftActivated && rightActivated) {
@@ -313,7 +313,7 @@ export class Sensors implements Force {
         const sin = Math.sin(angleToApply);
         const x = winningDirection.x * cos - winningDirection.y * sin;
         const y = winningDirection.x * sin + winningDirection.y * cos;
-        winningDirection = new Vector2D(x, y);
+        winningDirection = new Vector(x, y);
       }
       return winningDirection;
     }

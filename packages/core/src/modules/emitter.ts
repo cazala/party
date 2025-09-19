@@ -1,4 +1,4 @@
-import { Vector2D } from "./vector";
+import { Vector } from "./webgpu/vector";
 import { Particle } from "./particle";
 import { System } from "./system";
 
@@ -33,7 +33,7 @@ export interface SerializedEmitter {
  */
 export interface EmitterOptions {
   id?: string;
-  position?: Vector2D;
+  position?: Vector;
   rate?: number;
   direction?: number;
   speed?: number;
@@ -83,7 +83,7 @@ export const DEFAULT_EMITTER_END_SPEED_MULTIPLIER = 1; // no speed change
  */
 export class Emitter {
   public readonly id: string;
-  public position: Vector2D;
+  public position: Vector;
   public rate: number;
   public direction: number;
   public speed: number;
@@ -113,7 +113,7 @@ export class Emitter {
    */
   constructor(options: EmitterOptions = {}) {
     this.id = options.id || `emitter_${Emitter.nextId++}`;
-    this.position = options.position || new Vector2D(0, 0);
+    this.position = options.position || new Vector(0, 0);
     this.rate = options.rate ?? DEFAULT_EMITTER_RATE;
     this.direction = options.direction ?? DEFAULT_EMITTER_DIRECTION;
     this.speed = options.speed ?? DEFAULT_EMITTER_SPEED;
@@ -173,7 +173,7 @@ export class Emitter {
     }
 
     // Calculate velocity vector
-    const velocity = new Vector2D(
+    const velocity = new Vector(
       Math.cos(particleDirection) * this.speed,
       Math.sin(particleDirection) * this.speed
     );
@@ -200,9 +200,9 @@ export class Emitter {
 
     // Create new particle with lifetime properties
     const particle = new Particle({
-      position: new Vector2D(this.position.x, this.position.y),
+      position: new Vector(this.position.x, this.position.y),
       velocity: velocity,
-      acceleration: new Vector2D(0, 0),
+      acceleration: new Vector(0, 0),
       mass: this.particleMass,
       size: this.particleSize,
       color: color,
@@ -309,7 +309,7 @@ export class Emitter {
   static deserialize(data: SerializedEmitter): Emitter {
     return new Emitter({
       id: data.id,
-      position: new Vector2D(data.position.x, data.position.y),
+      position: new Vector(data.position.x, data.position.y),
       rate: data.rate,
       direction: data.direction,
       speed: data.speed,

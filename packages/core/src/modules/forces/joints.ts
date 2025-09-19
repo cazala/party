@@ -1,4 +1,4 @@
-import { Vector2D } from "../vector";
+import { Vector } from "../webgpu/vector";
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
@@ -374,10 +374,10 @@ export class Joints implements Force, RigidBody {
   private globalTolerance: number = DEFAULT_JOINT_TOLERANCE;
 
   // Track grabbed particles and their previous positions for velocity calculation
-  private grabbedParticlePositions: Map<number, Vector2D> = new Map();
-  
+  private grabbedParticlePositions: Map<number, Vector> = new Map();
+
   // Store positions for momentum preservation (before physics integration)
-  private prePhysicsPositions: Map<number, Vector2D> = new Map();
+  private prePhysicsPositions: Map<number, Vector> = new Map();
 
   // Rigid body group caching for performance optimization
   private rigidBodyGroupCache: Map<number, Set<Particle>> = new Map();
@@ -881,7 +881,11 @@ export class Joints implements Force, RigidBody {
   /**
    * Force interface: apply momentum preservation after physics integration
    */
-  after(particles: Particle[], deltaTime: number, _spatialGrid: SpatialGrid): void {
+  after(
+    particles: Particle[],
+    deltaTime: number,
+    _spatialGrid: SpatialGrid
+  ): void {
     if (!this.enabled || deltaTime <= 0) return;
     this.applyMomentumPreservation(particles, deltaTime);
   }
@@ -1009,11 +1013,11 @@ export class Joints implements Force, RigidBody {
    */
   private resolveJointJointCollision(joint1: Joint, joint2: Joint): void {
     // Calculate midpoints of both joints
-    const midpoint1 = new Vector2D(
+    const midpoint1 = new Vector(
       (joint1.particleA.position.x + joint1.particleB.position.x) / 2,
       (joint1.particleA.position.y + joint1.particleB.position.y) / 2
     );
-    const midpoint2 = new Vector2D(
+    const midpoint2 = new Vector(
       (joint2.particleA.position.x + joint2.particleB.position.x) / 2,
       (joint2.particleA.position.y + joint2.particleB.position.y) / 2
     );
@@ -1024,7 +1028,7 @@ export class Joints implements Force, RigidBody {
     if (collisionNormal.magnitude() < 0.001) {
       // If midpoints are too close, use random separation direction
       const angle = Math.random() * Math.PI * 2;
-      collisionNormal = new Vector2D(Math.cos(angle), Math.sin(angle));
+      collisionNormal = new Vector(Math.cos(angle), Math.sin(angle));
     } else {
       collisionNormal.normalize();
     }
@@ -1092,10 +1096,10 @@ export class Joints implements Force, RigidBody {
   /**
    * Calculate average velocity of a rigid body group
    */
-  private calculateGroupVelocity(group: Set<Particle>): Vector2D {
-    if (group.size === 0) return new Vector2D(0, 0);
+  private calculateGroupVelocity(group: Set<Particle>): Vector {
+    if (group.size === 0) return new Vector(0, 0);
 
-    let totalVelocity = new Vector2D(0, 0);
+    let totalVelocity = new Vector(0, 0);
     let totalMass = 0;
 
     for (const particle of group) {
@@ -1104,7 +1108,7 @@ export class Joints implements Force, RigidBody {
       totalMass += mass;
     }
 
-    return totalMass > 0 ? totalVelocity.divide(totalMass) : new Vector2D(0, 0);
+    return totalMass > 0 ? totalVelocity.divide(totalMass) : new Vector(0, 0);
   }
 
   /**
@@ -1112,7 +1116,7 @@ export class Joints implements Force, RigidBody {
    */
   private applyVelocityToGroup(
     group: Set<Particle>,
-    velocityChange: Vector2D
+    velocityChange: Vector
   ): void {
     for (const particle of group) {
       if (!particle.pinned && !particle.grabbed) {
@@ -1124,10 +1128,7 @@ export class Joints implements Force, RigidBody {
   /**
    * Move an entire rigid body group by a displacement vector with clamped maximum change
    */
-  private moveRigidBodyGroup(
-    group: Set<Particle>,
-    displacement: Vector2D
-  ): void {
+  private moveRigidBodyGroup(group: Set<Particle>, displacement: Vector): void {
     // Clamp displacement magnitude to prevent violent movements (emergency only)
     const displacementMagnitude = displacement.magnitude();
     if (displacementMagnitude > MAX_POSITION_CHANGE_PER_FRAME) {
@@ -1181,7 +1182,7 @@ export class Joints implements Force, RigidBody {
     if (separationVector.magnitude() < 0.001) {
       // If centroids are too close, use random direction
       const angle = Math.random() * Math.PI * 2;
-      separationVector = new Vector2D(Math.cos(angle), Math.sin(angle));
+      separationVector = new Vector(Math.cos(angle), Math.sin(angle));
     } else {
       separationVector.normalize();
     }
@@ -1206,7 +1207,7 @@ export class Joints implements Force, RigidBody {
   /**
    * Calculate the centroid (center of mass) of a rigid body group
    */
-  private calculateGroupCentroid(group: Set<Particle>): Vector2D {
+  private calculateGroupCentroid(group: Set<Particle>): Vector {
     return calculateCentroid(group);
   }
 

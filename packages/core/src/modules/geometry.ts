@@ -1,4 +1,4 @@
-import { Vector2D } from "./vector";
+import { Vector } from "./webgpu/vector";
 import { Particle } from "./particle";
 
 /**
@@ -9,18 +9,18 @@ import { Particle } from "./particle";
  * Check if two line segments intersect (geometric intersection test)
  */
 export function lineSegmentsIntersect(
-  p1: Vector2D,
-  q1: Vector2D,
-  p2: Vector2D,
-  q2: Vector2D
+  p1: Vector,
+  q1: Vector,
+  p2: Vector,
+  q2: Vector
 ): boolean {
-  const orientation = (p: Vector2D, q: Vector2D, r: Vector2D): number => {
+  const orientation = (p: Vector, q: Vector, r: Vector): number => {
     const val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
     if (Math.abs(val) < 1e-10) return 0; // Collinear
     return val > 0 ? 1 : 2; // Clockwise or Counterclockwise
   };
 
-  const onSegment = (p: Vector2D, q: Vector2D, r: Vector2D): boolean => {
+  const onSegment = (p: Vector, q: Vector, r: Vector): boolean => {
     return (
       q.x <= Math.max(p.x, r.x) &&
       q.x >= Math.min(p.x, r.x) &&
@@ -52,10 +52,10 @@ export function lineSegmentsIntersect(
  * Find the closest point on a line segment to a given point
  */
 export function getClosestPointOnLineSegment(
-  point: Vector2D,
-  lineStart: Vector2D,
-  lineEnd: Vector2D
-): Vector2D {
+  point: Vector,
+  lineStart: Vector,
+  lineEnd: Vector
+): Vector {
   // Vector from line start to line end
   const lineVector = lineEnd.clone().subtract(lineStart);
 
@@ -83,19 +83,27 @@ export function getClosestPointOnLineSegment(
  * Calculate minimum distance between two line segments
  */
 export function getDistanceBetweenLineSegments(
-  line1Start: Vector2D,
-  line1End: Vector2D,
-  line2Start: Vector2D,
-  line2End: Vector2D
+  line1Start: Vector,
+  line1End: Vector,
+  line2Start: Vector,
+  line2End: Vector
 ): number {
   // Check all possible cases: segment to segment, point to segment
   const distances = [
     // Distance from line1 endpoints to line2 segment
-    line1Start.distance(getClosestPointOnLineSegment(line1Start, line2Start, line2End)),
-    line1End.distance(getClosestPointOnLineSegment(line1End, line2Start, line2End)),
+    line1Start.distance(
+      getClosestPointOnLineSegment(line1Start, line2Start, line2End)
+    ),
+    line1End.distance(
+      getClosestPointOnLineSegment(line1End, line2Start, line2End)
+    ),
     // Distance from line2 endpoints to line1 segment
-    line2Start.distance(getClosestPointOnLineSegment(line2Start, line1Start, line1End)),
-    line2End.distance(getClosestPointOnLineSegment(line2End, line1Start, line1End))
+    line2Start.distance(
+      getClosestPointOnLineSegment(line2Start, line1Start, line1End)
+    ),
+    line2End.distance(
+      getClosestPointOnLineSegment(line2End, line1Start, line1End)
+    ),
   ];
 
   return Math.min(...distances);
@@ -105,10 +113,10 @@ export function getDistanceBetweenLineSegments(
  * Check if a moving particle (represented by a line segment) intersects with a joint segment
  */
 export function checkLineSegmentIntersection(
-  particleStart: Vector2D,
-  particleEnd: Vector2D,
-  jointStart: Vector2D,
-  jointEnd: Vector2D,
+  particleStart: Vector,
+  particleEnd: Vector,
+  jointStart: Vector,
+  jointEnd: Vector,
   particleRadius: number
 ): boolean {
   // Calculate the distance between the particle path and joint segment
@@ -125,11 +133,9 @@ export function checkLineSegmentIntersection(
 /**
  * Calculate the centroid (center of mass) of a collection of particles
  */
-export function calculateCentroid(
-  particles: Iterable<Particle>
-): Vector2D {
+export function calculateCentroid(particles: Iterable<Particle>): Vector {
   let totalMass = 0;
-  let weightedPosition = new Vector2D(0, 0);
+  let weightedPosition = new Vector(0, 0);
 
   for (const particle of particles) {
     weightedPosition.add(particle.position.clone().multiply(particle.mass));
@@ -146,9 +152,7 @@ export function calculateCentroid(
 /**
  * Calculate total mass of a collection of particles
  */
-export function calculateTotalMass(
-  particles: Iterable<Particle>
-): number {
+export function calculateTotalMass(particles: Iterable<Particle>): number {
   let totalMass = 0;
   for (const particle of particles) {
     totalMass += particle.mass;
