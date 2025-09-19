@@ -1,6 +1,5 @@
-import { copyShaderWGSL } from "../shaders/copy";
-import type { Program, ModuleUniformLayout } from "../builder/module-builder";
-import type { SimulationPipelines } from "./simulation-runner";
+import { copyShaderWGSL } from "./shaders/copy";
+import type { Program, ModuleUniformLayout } from "./builder/module-builder";
 
 export interface SceneTextures {
   a: GPUTexture;
@@ -14,6 +13,17 @@ export type ModuleUniformBuffer = {
   buffer: GPUBuffer;
   layout: ModuleUniformLayout;
 };
+
+export interface SimulationPipelines {
+  gridClear?: GPUComputePipeline;
+  gridBuild?: GPUComputePipeline;
+  state?: GPUComputePipeline;
+  apply?: GPUComputePipeline;
+  integrate?: GPUComputePipeline;
+  constrain?: GPUComputePipeline;
+  correct?: GPUComputePipeline;
+  main?: GPUComputePipeline; // fallback main
+}
 
 export class GPUResources {
   private particleBuffer: GPUBuffer | null = null;

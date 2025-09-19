@@ -1,6 +1,6 @@
 import { Emitter, SerializedEmitter } from "./emitter";
 import { System } from "./system";
-import { Vector } from "./webgpu/vector";
+import { Vector } from "./vector";
 
 /**
  * Emitters manager that handles multiple emitter instances

@@ -1,6 +1,6 @@
 import { Particle } from "../particle";
 import { Force } from "../system";
-import { Vector } from "../webgpu/vector";
+import { Vector } from "../vector";
 import { SpatialGrid } from "../spatial-grid";
 import mitt, { Emitter } from "mitt";
 import { Joints, Joint } from "./joints";

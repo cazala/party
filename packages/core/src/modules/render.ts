@@ -1,7 +1,7 @@
 import { Particle } from "./particle";
 import { System } from "./system";
 import { SpatialGrid } from "./spatial-grid";
-import { Vector } from "./webgpu/vector";
+import { Vector } from "./vector";
 import { calculateDensity, Fluid } from "./forces/fluid";
 import { Sensors } from "./forces/sensors";
 import { Joint, Joints } from "./forces/joints";

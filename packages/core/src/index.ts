@@ -1,8 +1,4 @@
-export {
-  Vector as Vector2D,
-  degToRad,
-  radToDeg,
-} from "./modules/webgpu/vector";
+export { Vector as Vector2D, degToRad, radToDeg } from "./modules/vector";
 export {
   Particle,
   type ParticleOptions,
@@ -76,14 +72,13 @@ export {
 } from "./modules/emitter";
 export { Emitters } from "./modules/emitters";
 export {
-  WebGPUParticleSystem,
   type WebGPUParticle,
-  type RenderUniforms,
   simulationModule,
   WebGPUEnvironment,
   WebGPUBoundary,
   WebGPUCollisions,
 } from "./modules/webgpu";
+export { Engine } from "./modules/webgpu";
 export {
   WebGPUSpawner,
   type WebGPUSpawnOptions,

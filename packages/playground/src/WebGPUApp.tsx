@@ -10,7 +10,6 @@ import {
 } from "./components/control-sections/InitControls";
 import { WebGPUForceControls } from "./components/WebGPUForceControls";
 import { CollapsibleSection } from "./components/CollapsibleSection";
-import { SimulationControls } from "./components/control-sections/SimulationControls";
 import { WebGPUToolBar } from "./components/WebGPUToolBar";
 
 import "./styles/index.css";
@@ -44,9 +43,7 @@ function WebGPUApp() {
     play,
     pause,
     clear,
-    // resetParticles,
     handleZoom,
-    setZoomSensitivity,
   } = useWebGPUPlayground(canvasRef, toolMode);
 
   const { isFullscreen, toggleFullscreen } = useFullscreen({
@@ -210,13 +207,6 @@ function WebGPUApp() {
                 squareSize: 200,
                 cornerRadius: 0,
               })}
-            />
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Simulation">
-            <SimulationControls
-              setConstrainIterations={(v) => system?.setConstrainIterations(v)}
-              setZoomSensitivity={setZoomSensitivity}
             />
           </CollapsibleSection>
         </div>

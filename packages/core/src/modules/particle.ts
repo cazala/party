@@ -1,4 +1,4 @@
-import { Vector } from "./webgpu/vector";
+import { Vector } from "./vector";
 
 /**
  * Configuration options for creating a particle.

@@ -1,5 +1,4 @@
-import { Vector } from "./vector";
-import { Color, WebGPUParticle } from "./WebGPUParticleSystem";
+import { WebGPUParticle } from "./particle-store";
 
 export type WebGPUVelocityDirection =
   | "random"
@@ -99,7 +98,9 @@ export class WebGPUSpawner {
 
     if (count <= 0) return particles;
 
-    const toColor = (hex: string): Color => {
+    const toColor = (
+      hex: string
+    ): { r: number; g: number; b: number; a: number } => {
       let h = hex.trim();
       if (h.startsWith("#")) h = h.slice(1);
       if (h.length === 3) {
@@ -137,8 +138,8 @@ export class WebGPUSpawner {
         const y = startY + row * spacing;
         const { vx, vy } = calculateVelocity({ x, y }, center, velocity);
         particles.push({
-          position: new Vector(x, y),
-          velocity: new Vector(vx, vy),
+          position: { x, y },
+          velocity: { x: vx, y: vy },
           size,
           mass,
           color: getColor(),
@@ -157,8 +158,8 @@ export class WebGPUSpawner {
         const y = top + Math.random() * h;
         const { vx, vy } = calculateVelocity({ x, y }, center, velocity);
         particles.push({
-          position: new Vector(x, y),
-          velocity: new Vector(vx, vy),
+          position: { x, y },
+          velocity: { x: vx, y: vy },
           size,
           mass,
           color: getColor(),
@@ -174,8 +175,8 @@ export class WebGPUSpawner {
         const y = center.y + Math.sin(angle) * radius;
         const { vx, vy } = calculateVelocity({ x, y }, center, velocity);
         particles.push({
-          position: new Vector(x, y),
-          velocity: new Vector(vx, vy),
+          position: { x, y },
+          velocity: { x: vx, y: vy },
           size,
           mass,
           color: getColor(),
@@ -192,8 +193,8 @@ export class WebGPUSpawner {
         const y = center.y + Math.sin(angle) * ringR;
         const { vx, vy } = calculateVelocity({ x, y }, center, velocity);
         particles.push({
-          position: new Vector(x, y),
-          velocity: new Vector(vx, vy),
+          position: { x, y },
+          velocity: { x: vx, y: vy },
           size,
           mass,
           color: getColor(),
@@ -274,8 +275,8 @@ export class WebGPUSpawner {
           const p = posOnSide("top", t);
           const { vx, vy } = calculateVelocity(p, center, velocity);
           particles.push({
-            position: new Vector(p.x, p.y),
-            velocity: new Vector(vx, vy),
+            position: { x: p.x, y: p.y },
+            velocity: { x: vx, y: vy },
             size,
             mass,
             color: getColor(),
@@ -290,8 +291,8 @@ export class WebGPUSpawner {
           const p = posOnCorner("top-right", t);
           const { vx, vy } = calculateVelocity(p, center, velocity);
           particles.push({
-            position: new Vector(p.x, p.y),
-            velocity: new Vector(vx, vy),
+            position: { x: p.x, y: p.y },
+            velocity: { x: vx, y: vy },
             size,
             mass,
             color: getColor(),
@@ -306,8 +307,8 @@ export class WebGPUSpawner {
           const p = posOnSide("right", t);
           const { vx, vy } = calculateVelocity(p, center, velocity);
           particles.push({
-            position: new Vector(p.x, p.y),
-            velocity: new Vector(vx, vy),
+            position: { x: p.x, y: p.y },
+            velocity: { x: vx, y: vy },
             size,
             mass,
             color: getColor(),
@@ -322,8 +323,8 @@ export class WebGPUSpawner {
           const p = posOnCorner("bottom-right", t);
           const { vx, vy } = calculateVelocity(p, center, velocity);
           particles.push({
-            position: new Vector(p.x, p.y),
-            velocity: new Vector(vx, vy),
+            position: { x: p.x, y: p.y },
+            velocity: { x: vx, y: vy },
             size,
             mass,
             color: getColor(),
@@ -338,8 +339,8 @@ export class WebGPUSpawner {
           const p = posOnSide("bottom", t);
           const { vx, vy } = calculateVelocity(p, center, velocity);
           particles.push({
-            position: new Vector(p.x, p.y),
-            velocity: new Vector(vx, vy),
+            position: { x: p.x, y: p.y },
+            velocity: { x: vx, y: vy },
             size,
             mass,
             color: getColor(),
@@ -354,8 +355,8 @@ export class WebGPUSpawner {
           const p = posOnCorner("bottom-left", t);
           const { vx, vy } = calculateVelocity(p, center, velocity);
           particles.push({
-            position: new Vector(p.x, p.y),
-            velocity: new Vector(vx, vy),
+            position: { x: p.x, y: p.y },
+            velocity: { x: vx, y: vy },
             size,
             mass,
             color: getColor(),
@@ -370,8 +371,8 @@ export class WebGPUSpawner {
           const p = posOnSide("left", t);
           const { vx, vy } = calculateVelocity(p, center, velocity);
           particles.push({
-            position: new Vector(p.x, p.y),
-            velocity: new Vector(vx, vy),
+            position: { x: p.x, y: p.y },
+            velocity: { x: vx, y: vy },
             size,
             mass,
             color: getColor(),
@@ -388,8 +389,8 @@ export class WebGPUSpawner {
             : { x: center.x - half, y: center.y - half };
         const { vx, vy } = calculateVelocity(p, center, velocity);
         particles.push({
-          position: new Vector(p.x, p.y),
-          velocity: new Vector(vx, vy),
+          position: { x: p.x, y: p.y },
+          velocity: { x: vx, y: vy },
           size,
           mass,
           color: getColor(),

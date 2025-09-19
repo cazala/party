@@ -1,14 +1,16 @@
-export {
-  WebGPUParticleSystem,
-  type WebGPUParticle,
-  type RenderUniforms,
-} from "./WebGPUParticleSystem";
+export { ViewController, type ViewSnapshot } from "./view-controller";
+export { ParticleStore, type WebGPUParticle } from "./particle-store";
+export { ModuleRegistry } from "./module-registry";
+export { GridSystem } from "./grid-system";
+export { SimulationPipeline } from "./simulation-pipeline";
+export { RenderPipeline } from "./render-pipeline";
+export { Engine } from "./engine";
 export {
   WebGPUSpawner,
   type WebGPUSpawnOptions,
   type WebGPUVelocityConfig,
   type WebGPUVelocityDirection,
-} from "./WebGPUSpawner";
+} from "./spawn";
 export {
   simulationModule,
   Environment as WebGPUEnvironment,

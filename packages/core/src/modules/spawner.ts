@@ -1,5 +1,5 @@
 import { Particle, ParticleOptions } from "./particle";
-import { Vector } from "./webgpu/vector";
+import { Vector } from "./vector";
 
 export interface VelocityConfig {
   speed: number;

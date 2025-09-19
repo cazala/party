@@ -1,7 +1,7 @@
 import { Particle } from "../particle";
 import { SpatialGrid } from "../spatial-grid";
 import { Force } from "../system";
-import { Vector } from "../webgpu/vector";
+import { Vector } from "../vector";
 
 // Default parameters for fluid simulation
 export const DEFAULT_FLUID_ENABLED = true;

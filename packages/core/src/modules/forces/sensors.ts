@@ -1,7 +1,7 @@
 import { Force } from "../system";
 import { Particle } from "../particle";
 import { SpatialGrid } from "../spatial-grid";
-import { Vector } from "../webgpu/vector";
+import { Vector } from "../vector";
 
 // Default constants for Trail
 export const DEFAULT_TRAIL_ENABLED = false;

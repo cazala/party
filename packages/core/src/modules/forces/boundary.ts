@@ -1,7 +1,7 @@
 import { Particle } from "../particle";
 import { Force } from "../system";
 import { SpatialGrid } from "../spatial-grid";
-import { Vector } from "../webgpu/vector";
+import { Vector } from "../vector";
 
 // Default constants for Boundary behavior
 export const DEFAULT_BOUNDARY_BOUNCE = 0.4;

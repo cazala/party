@@ -1,9 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import {
-  WebGPUParticleSystem,
-  simulationModule,
-  WebGPUSpawner,
-} from "@cazala/party";
+import { Engine, simulationModule, WebGPUSpawner } from "@cazala/party";
 import { Environment } from "@cazala/party/modules/webgpu/modules/environment";
 import { Boundary } from "@cazala/party/modules/webgpu/modules/boundary";
 import { Collisions } from "@cazala/party/modules/webgpu/modules/collisions";
@@ -15,14 +11,16 @@ import { Interaction } from "@cazala/party/modules/webgpu/modules/interaction";
 import { ParticleRenderer } from "@cazala/party/modules/webgpu/modules/particle-renderer";
 import { gridModule } from "@cazala/party/modules/webgpu/modules/grid";
 import { ToolMode } from "./useToolMode";
-import { GPUResources } from "@cazala/party/modules/webgpu/runtime/gpu-resources";
+// import { GPUResources } from "@cazala/party/modules/webgpu/runtime/gpu-resources";
+
+const zoomSensitivity = 0.01;
 
 export function useWebGPUPlayground(
   canvasRef: React.RefObject<HTMLCanvasElement>,
   _toolMode: ToolMode = "spawn"
 ) {
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
-  const systemRef = useRef<WebGPUParticleSystem | null>(null);
+  const systemRef = useRef<Engine | null>(null);
   const environmentRef = useRef<Environment | null>(null);
   const boundaryRef = useRef<Boundary | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
@@ -91,12 +89,6 @@ export function useWebGPUPlayground(
     zoomState.animationId = requestAnimationFrame(animateZoom);
   }, []);
 
-  const zoomSensitivityRef = useRef(0.01); // Default zoom sensitivity
-
-  const setZoomSensitivity = useCallback((sensitivity: number) => {
-    zoomSensitivityRef.current = Math.max(0.001, Math.min(0.1, sensitivity));
-  }, []);
-
   const handleZoom = useCallback(
     (deltaY: number, centerX: number, centerY: number) => {
       const system = systemRef.current;
@@ -104,7 +96,6 @@ export function useWebGPUPlayground(
       if (!system) return;
 
       // Use configurable zoom sensitivity
-      const zoomSensitivity = zoomSensitivityRef.current;
       const zoomDirection = deltaY > 0 ? -zoomSensitivity : zoomSensitivity;
 
       const currentTargetZoom = zoomState.isAnimating
@@ -188,7 +179,7 @@ export function useWebGPUPlayground(
 
       try {
         // Create WebGPU renderer directly (diagnostics already validated WebGPU support)
-        console.log("Creating WebGPU renderer...");
+        console.log("Creating WebGPU engine...");
         // Use actual canvas dimensions from clientWidth/clientHeight for proper sizing
         const width =
           canvasRef.current.clientWidth || canvasRef.current.width || 800;
@@ -197,9 +188,9 @@ export function useWebGPUPlayground(
 
         console.log("Canvas dimensions for WebGPU:", width, "x", height);
 
-        console.log("WebGPU renderer created successfully");
+        console.log("WebGPU engine created successfully");
 
-        console.log("Initializing WebGPU renderer...");
+        console.log("Initializing WebGPU engine...");
 
         console.log("=== WEBGPU PLAYGROUND INIT SUCCESS ===");
         setError(null);
@@ -246,12 +237,9 @@ export function useWebGPUPlayground(
             // Render modules (put ParticleRenderer last so particles draw after effects)
             new ParticleRenderer(),
           ];
-          const system = new WebGPUParticleSystem(
-            canvasRef.current,
-            { width, height },
-            modules
-          );
+          const system = new Engine(canvasRef.current, modules);
           await system.initialize();
+          system.setSize(width, height);
           systemRef.current = system;
           environmentRef.current = environment;
           boundaryRef.current = boundary;
@@ -470,23 +458,7 @@ export function useWebGPUPlayground(
       });
 
       // Apply UI-selected colors randomly to spawned particles if provided
-      const hexToRgba01 = (hex: string): [number, number, number, number] => {
-        let h = hex.trim();
-        if (h.startsWith("#")) h = h.slice(1);
-        if (h.length === 3) {
-          const r = parseInt(h[0] + h[0], 16);
-          const g = parseInt(h[1] + h[1], 16);
-          const b = parseInt(h[2] + h[2], 16);
-          return [r / 255, g / 255, b / 255, 1];
-        }
-        if (h.length >= 6) {
-          const r = parseInt(h.slice(0, 2), 16);
-          const g = parseInt(h.slice(2, 4), 16);
-          const b = parseInt(h.slice(4, 6), 16);
-          return [r / 255, g / 255, b / 255, 1];
-        }
-        return [1, 1, 1, 1];
-      };
+      // kept for reference if needed in future color utils
 
       system.setParticles(particles);
     },
@@ -523,19 +495,12 @@ export function useWebGPUPlayground(
   }, [isInitialized]);
 
   const getParticleCount = useCallback(() => {
-    return systemRef.current?.getParticleCount() || 0;
+    return systemRef.current?.getCount() || 0;
   }, [isInitialized]);
 
   const getFPS = useCallback(() => {
     return systemRef.current?.getFPS() || 0;
   }, [isInitialized]);
-
-  // Constrain iterations control
-  const constrainIterationsRef = useRef<number>(50);
-  const setConstrainIterations = useCallback((v: number) => {
-    constrainIterationsRef.current = Math.max(1, Math.floor(v));
-    systemRef.current?.setConstrainIterations(constrainIterationsRef.current);
-  }, []);
 
   return {
     system: systemRef.current,
@@ -556,19 +521,6 @@ export function useWebGPUPlayground(
     resetParticles,
     getParticleCount,
     getFPS,
-    setConstrainIterations,
-    // Dummy values for compatibility
-    joints: null,
-    spatialGrid: null,
-    zoomStateRef, // Expose zoom state for session loading
-    undoRedo: null,
-    setSpawnConfig: () => {},
-    setEmitterConfig: () => {},
-    currentlyGrabbedParticle: null,
-    handleGrabToJoint: () => {},
-    isCreatingJoint: false,
-    handleJointToSpawn: () => {},
-    handleZoom, // Expose zoom handler for wheel events
-    setZoomSensitivity, // Expose zoom sensitivity configuration
+    handleZoom,
   };
 }

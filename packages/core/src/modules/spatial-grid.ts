@@ -1,5 +1,5 @@
 import { Particle } from "./particle";
-import { Vector } from "./webgpu/vector";
+import { Vector } from "./vector";
 
 // Generic joint interface for spatial grid operations
 interface SpatialJoint {
