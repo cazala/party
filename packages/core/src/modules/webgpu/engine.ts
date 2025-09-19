@@ -21,7 +21,7 @@ export class Engine {
 
   private isPlaying: boolean = false;
   private lastTime: number = 0;
-  private constrainIterations: number = 50;
+  private constrainIterations: number = DEFAULTS.constrainIterations;
   private maxParticles: number = DEFAULTS.maxParticles;
   private simWriter:
     | ((values: Partial<Record<string, number>>) => void)
