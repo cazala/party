@@ -1,3 +1,10 @@
+import { copyShaderWGSL } from "../shaders/copy";
+import type {
+  ComputeProgramBuild,
+  ModuleUniformLayout,
+} from "../shaders/builder/compute-builder";
+import type { SimulationPipelines } from "./simulation-runner";
+
 export interface SceneTextures {
   a: GPUTexture;
   b: GPUTexture;
@@ -6,13 +13,14 @@ export interface SceneTextures {
   sampler: GPUSampler;
 }
 
-import { copyShaderWGSL } from "../shaders/copy";
-import type { ComputeProgramBuild } from "../shaders/builder/compute-builder";
-import type { SimulationPipelines } from "./simulation-runner";
+export type ModuleUniformBuffer = {
+  buffer: GPUBuffer;
+  layout: ModuleUniformLayout;
+};
 
 export class GPUResources {
   private particleBuffer: GPUBuffer | null = null;
-  private moduleUniformBuffers: (GPUBuffer | null)[] = [];
+  private moduleUniformBuffers: ModuleUniformBuffer[] = [];
   private renderUniformBuffer: GPUBuffer | null = null;
   private renderBindGroupLayout: GPUBindGroupLayout | null = null;
   private computeBindGroupLayout: GPUBindGroupLayout | null = null;
@@ -41,7 +49,7 @@ export class GPUResources {
     return this.particleBuffer;
   }
 
-  getModuleUniformBuffers(): (GPUBuffer | null)[] {
+  getModuleUniformBuffers(): ModuleUniformBuffer[] {
     return this.moduleUniformBuffers;
   }
 
@@ -92,15 +100,16 @@ export class GPUResources {
     );
   }
 
-  createModuleUniformBuffers(layouts: Array<{ sizeBytes: number }>): void {
+  createModuleUniformBuffers(layouts: ModuleUniformLayout[]): void {
     // Destroy old
-    this.moduleUniformBuffers.forEach((b) => b?.destroy());
-    this.moduleUniformBuffers = layouts.map((l) =>
-      this.device.createBuffer({
-        size: l.sizeBytes,
+    this.moduleUniformBuffers.forEach(({ buffer }) => buffer.destroy());
+    this.moduleUniformBuffers = layouts.map((layout) => ({
+      buffer: this.device.createBuffer({
+        size: layout.sizeBytes,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      })
-    );
+      }),
+      layout: layout,
+    }));
   }
 
   createRenderUniformBuffer(byteSize: number): void {
@@ -123,10 +132,10 @@ export class GPUResources {
   }
 
   writeModuleUniform(index: number, data: ArrayBufferView, offset = 0): void {
-    const buf = this.moduleUniformBuffers[index];
-    if (!buf) return;
+    const muf = this.moduleUniformBuffers[index];
+    if (!muf) return;
     this.device.queue.writeBuffer(
-      buf,
+      muf.buffer,
       offset,
       data.buffer,
       data.byteOffset,
@@ -432,6 +441,25 @@ export class GPUResources {
     return pipeline;
   }
 
+  createFullscreenBindGroup(
+    particleBuffer: GPUBuffer,
+    renderUniformBuffer: GPUBuffer,
+    readSceneView: GPUTextureView,
+    sceneSampler: GPUSampler,
+    moduleUniformBuffer: GPUBuffer
+  ): GPUBindGroup {
+    return this.device.createBindGroup({
+      layout: this.getRenderBindGroupLayout(),
+      entries: [
+        { binding: 0, resource: { buffer: particleBuffer } },
+        { binding: 1, resource: { buffer: renderUniformBuffer } },
+        { binding: 2, resource: readSceneView },
+        { binding: 3, resource: sceneSampler },
+        { binding: 4, resource: { buffer: moduleUniformBuffer } },
+      ],
+    });
+  }
+
   createComputeBindGroup(compute: ComputeProgramBuild): GPUBindGroup {
     if (!this.computeBindGroupLayout) {
       throw new Error("Compute bind group layout not built");
@@ -441,9 +469,9 @@ export class GPUResources {
     }
     const entries: GPUBindGroupEntry[] = [
       { binding: 0, resource: { buffer: this.particleBuffer } },
-      ...this.moduleUniformBuffers.map((buf, i) => ({
+      ...this.moduleUniformBuffers.map((muf, i) => ({
         binding: i + 1,
-        resource: { buffer: buf as GPUBuffer },
+        resource: { buffer: muf.buffer },
       })),
     ];
     if (
@@ -478,5 +506,49 @@ export class GPUResources {
       layout: this.computeBindGroupLayout,
       entries,
     });
+  }
+
+  createImageComputeBindGroup(
+    pipeline: GPUComputePipeline,
+    readView: GPUTextureView,
+    writeView: GPUTextureView,
+    moduleUniformBuffer: GPUBuffer
+  ): GPUBindGroup {
+    const layout = pipeline.getBindGroupLayout(0);
+    return this.device.createBindGroup({
+      layout,
+      entries: [
+        { binding: 0, resource: readView },
+        { binding: 1, resource: writeView },
+        { binding: 2, resource: { buffer: moduleUniformBuffer } },
+      ],
+    });
+  }
+
+  dispose(): void {
+    this.particleBuffer?.destroy();
+    this.moduleUniformBuffers.forEach((muf) => muf.buffer.destroy());
+    this.renderUniformBuffer?.destroy();
+    this.gridCountsBuffer?.destroy();
+    this.gridIndicesBuffer?.destroy();
+    this.simStateBuffer?.destroy();
+    this.particleBuffer = null;
+    this.moduleUniformBuffers = [];
+    this.renderUniformBuffer = null;
+    this.gridCountsBuffer = null;
+    this.gridIndicesBuffer = null;
+    this.simStateBuffer = null;
+    if (this.scene) {
+      this.scene.a.destroy();
+      this.scene.b.destroy();
+      this.scene = null;
+    }
+    this.sceneSize = null;
+    this.copyPipelines.clear();
+    this.fullscreenPipelines.clear();
+    this.imageComputePipelines.clear();
+    this.renderBindGroupLayout = null;
+    this.computeBindGroupLayout = null;
+    this.computePipelineLayout = null;
   }
 }

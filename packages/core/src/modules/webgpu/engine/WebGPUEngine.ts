@@ -52,4 +52,8 @@ export class WebGPUEngine {
   resize(canvasWidth: number, canvasHeight: number): void {
     this.resources.ensureSceneTextures(canvasWidth, canvasHeight);
   }
+
+  dispose(): void {
+    this.resources.dispose();
+  }
 }

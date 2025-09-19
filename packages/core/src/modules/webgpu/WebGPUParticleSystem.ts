@@ -2,17 +2,11 @@ import type { WebGPURenderer } from "./WebGPURenderer";
 import { Module, type ModuleDescriptor } from "./shaders/compute";
 import { type ComputeProgramBuild } from "./shaders/builder/compute-builder";
 import { DEFAULTS } from "./config";
-import { GPUResources } from "./runtime/gpu-resources";
-import {
-  runRenderGraphWithExecutor,
-  type RenderExecutor,
-} from "./runtime/render-graph-runner";
+import { GPUResources, ModuleUniformBuffer } from "./runtime/gpu-resources";
+import { runRenderPasses } from "./runtime/render-runner";
 import { runSimulationPasses } from "./runtime/simulation-runner";
 import { WebGPUEngine } from "./engine/WebGPUEngine";
-import {
-  buildFullscreenPassWGSL,
-  buildComputeImagePassWGSL,
-} from "./shaders/builder/render-dsl-builder";
+import { ModuleRole, RenderModuleDescriptor } from "./shaders/descriptors";
 
 export interface WebGPUParticle {
   position: [number, number];
@@ -37,7 +31,7 @@ export class WebGPUParticleSystem {
   private engine: WebGPUEngine;
 
   private particleBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
-  private moduleUniformBuffers: (GPUBuffer | null)[] = []; // TODO: migrate to GPUResources
+  private moduleUniformBuffers: ModuleUniformBuffer[] = []; // TODO: migrate to GPUResources
   private moduleUniformState: Record<string, number>[] = [];
   private renderUniformBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
 
@@ -99,143 +93,28 @@ export class WebGPUParticleSystem {
   }
 
   private runRenderGraph(commandEncoder: GPUCommandEncoder): void {
-    // Render graph runner: ensure scene textures sized, then execute render-role modules
-    // Resize scene textures if needed
+    // Ensure textures sized, then execute via resources-backed render graph
     this.ensureSceneTexturesSized();
 
-    // NEW: Execute via executor-based render graph runner
-    const executor: RenderExecutor = (moduleDesc, pass, views, encoder) => {
-      if (pass.kind === "fullscreen") {
-        const layouts = this.computeBuild!.layouts;
-        const layoutForMod = layouts.find(
-          (l) => l.moduleName === moduleDesc.name
-        )!;
-        const vec4Count = layoutForMod.vec4Count;
-        const structFields = Array.from(
-          { length: vec4Count },
-          (_, k) => `  v${k}: vec4<f32>,`
-        ).join("\n");
-        const structWGSL = `struct Uniforms_${moduleDesc.name} {\n${structFields}\n}`;
-        const lookup = {
-          getUniformExpr: (id: string) =>
-            (layoutForMod.mapping[id]?.expr ?? "0.0").replace(
-              `${moduleDesc.name}_uniforms`,
-              `module_uniforms`
-            ),
-        };
-        const codeFS = `${structWGSL}\n@group(0) @binding(4) var<uniform> module_uniforms: Uniforms_${
-          moduleDesc.name
-        };\n${buildFullscreenPassWGSL(pass as any, moduleDesc.name, lookup)}`;
-        const pipeline =
-          this.resources.getOrCreateFullscreenRenderPipeline(codeFS);
-        const bindGroup = this.device.createBindGroup({
-          layout: this.resources.getRenderBindGroupLayout(),
-          entries: [
-            { binding: 0, resource: { buffer: this.particleBuffer! } },
-            { binding: 1, resource: { buffer: this.renderUniformBuffer! } },
-            { binding: 2, resource: views.otherView },
-            { binding: 3, resource: this.getSceneSampler() },
-            {
-              binding: 4,
-              resource: {
-                buffer:
-                  this.moduleUniformBuffers[
-                    (
-                      this.modules as readonly Module<string, string, any>[]
-                    ).findIndex(
-                      (m) =>
-                        WebGPUParticleSystem.toDescriptor(m).name ===
-                        moduleDesc.name
-                    )
-                  ]!,
-              },
-            },
-          ],
-        });
-        const rp = encoder.beginRenderPass({
-          colorAttachments: [
-            {
-              view: views.currentView,
-              clearValue: DEFAULTS.clearColor,
-              loadOp: views.anyWrites ? "load" : "clear",
-              storeOp: "store",
-            },
-          ],
-        });
-        rp.setPipeline(pipeline);
-        rp.setBindGroup(0, bindGroup);
-        rp.draw(4, this.particleCount);
-        rp.end();
-        return (pass as any).writesScene === false ? null : "current";
-      }
-      if (pass.kind === "compute") {
-        const layouts = this.computeBuild!.layouts;
-        const layoutForMod = layouts.find(
-          (l) => l.moduleName === moduleDesc.name
-        )!;
-        const vec4Count = layoutForMod.vec4Count;
-        const structFields = Array.from(
-          { length: vec4Count },
-          (_, k) => `  v${k}: vec4<f32>,`
-        ).join("\n");
-        const structWGSL = `struct Uniforms_${moduleDesc.name} {\n${structFields}\n}`;
-
-        const lookup = {
-          getUniformExpr: (id: string) =>
-            (layoutForMod.mapping[id]?.expr ?? "0.0").replace(
-              `${moduleDesc.name}_uniforms`,
-              `module_uniforms`
-            ),
-        };
-        const codeCS = `${structWGSL}\n@group(0) @binding(2) var<uniform> module_uniforms: Uniforms_${
-          moduleDesc.name
-        };\n${buildComputeImagePassWGSL(
-          pass as any,
-          moduleDesc.name,
-          lookup,
-          (pass as any).workgroupSize || [8, 8, 1]
-        )}`;
-        const pipeline = this.resources.getOrCreateImageComputePipeline(codeCS);
-        const modIndex = (
-          this.modules as readonly Module<string, string, any>[]
-        ).findIndex(
-          (m) => WebGPUParticleSystem.toDescriptor(m).name === moduleDesc.name
-        );
-        const moduleUniformBuf = this.moduleUniformBuffers[modIndex]!;
-        const bindGroup = this.device.createBindGroup({
-          layout: pipeline.getBindGroupLayout(0),
-          entries: [
-            { binding: 0, resource: views.currentView },
-            { binding: 1, resource: views.otherView },
-            { binding: 2, resource: { buffer: moduleUniformBuf } },
-          ],
-        });
-        const canvasSize = this.renderer.getSize();
-        const workgroupsX = Math.ceil(canvasSize.width / 8);
-        const workgroupsY = Math.ceil(canvasSize.height / 8);
-        const cp = encoder.beginComputePass();
-        cp.setPipeline(pipeline);
-        cp.setBindGroup(0, bindGroup);
-        cp.dispatchWorkgroups(workgroupsX, workgroupsY);
-        cp.end();
-        return (pass as any).writesScene === false ? null : "other";
-      }
-      return null;
-    };
-
-    const modules = (this.modules as readonly Module<string, string, any>[])
-      .map((m) => WebGPUParticleSystem.toDescriptor(m) as any)
+    const modules = this.modules
+      .map((m) => m.descriptor())
       .filter(
-        (d: any, idx: number) =>
-          d.role === "render" && (this.modules[idx] as any).isEnabled?.()
+        (
+          descriptor: ModuleDescriptor<string, string, any>,
+          idx: number
+        ): descriptor is RenderModuleDescriptor<string, string> =>
+          descriptor.role === ModuleRole.Render && this.modules[idx].isEnabled()
       );
 
-    const lastView = runRenderGraphWithExecutor(
+    const lastView = runRenderPasses(
       commandEncoder,
-      modules as any,
+      modules,
       this.getCurrentSceneTextureView(),
       this.getOtherSceneTextureView(),
-      executor
+      this.computeBuild!,
+      this.resources,
+      this.renderer,
+      this.particleCount
     );
 
     // Copy to canvas and return
@@ -762,14 +641,6 @@ export class WebGPUParticleSystem {
   }
 
   destroy(): void {
-    this.particleBuffer?.destroy();
-    this.moduleUniformBuffers.forEach((b) => b?.destroy());
-    this.renderUniformBuffer?.destroy();
-
-    this.particleBuffer = null;
-    this.moduleUniformBuffers = [];
-    this.renderUniformBuffer = null;
-    // render bind group layout managed by resources; nothing to clear here
-    // compute pipeline layout handled by resources; nothing to clear here
+    this.engine.dispose();
   }
 }

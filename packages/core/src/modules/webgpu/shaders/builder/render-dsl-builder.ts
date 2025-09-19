@@ -1,16 +1,28 @@
 import type { FullscreenRenderPass, ComputeRenderPass } from "../descriptors";
-
-export interface ModuleUniformLookup {
-  getUniformExpr: (id: string) => string; // returns WGSL expression to read module uniform
-}
+import { ModuleUniformLayout } from "./compute-builder";
 
 export function buildFullscreenPassWGSL<Keys extends string = string>(
   pass: FullscreenRenderPass<Keys>,
   moduleName: string,
-  lookup: ModuleUniformLookup
+  layout: ModuleUniformLayout
 ): string {
+  // build WGSL
+  const vec4Count = layout.vec4Count;
+  const structFields = Array.from(
+    { length: vec4Count },
+    (_, k) => `  v${k}: vec4<f32>,`
+  ).join("\n");
+  const struct = `struct Uniforms_${moduleName} {\n${structFields}\n}`;
+  const lookup = {
+    getUniformExpr: (id: string) =>
+      (layout.mapping[id]?.expr ?? "0.0").replace(
+        `${moduleName}_uniforms`,
+        `module_uniforms`
+      ),
+  };
+
   const fragmentBody = pass.fragment({
-    getUniform: (id: any) =>
+    getUniform: (id: string) =>
       id === "canvasWidth"
         ? "render_uniforms.canvas_size.x"
         : id === "canvasHeight"
@@ -21,12 +33,12 @@ export function buildFullscreenPassWGSL<Keys extends string = string>(
         ? "0.0"
         : id === "clearColorB"
         ? "0.0"
-        : lookup.getUniformExpr(id as string),
+        : lookup.getUniformExpr(id),
     sampleScene: (uvExpr: string) =>
       `textureSampleLevel(scene_texture, scene_sampler, ${uvExpr}, 0.0)`,
-  } as any);
+  });
 
-  return `
+  const code = `
 struct Particle {
   position: vec2<f32>, velocity: vec2<f32>, acceleration: vec2<f32>,
   size: f32, mass: f32, color: vec4<f32>,
@@ -56,14 +68,32 @@ struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: v
   return out;
 }
 @fragment fn fs_main(@location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> ${fragmentBody}`;
+
+  return `${struct}\n@group(0) @binding(4) var<uniform> module_uniforms: Uniforms_${moduleName};\n${code}`;
 }
 
 export function buildComputeImagePassWGSL<Keys extends string = string>(
   pass: ComputeRenderPass<Keys>,
   moduleName: string,
-  lookup: ModuleUniformLookup,
+  layout: ModuleUniformLayout,
   workgroup: [number, number, number] = [8, 8, 1]
 ): string {
+  // struct
+  const vec4Count = layout.vec4Count;
+  const structFields = Array.from(
+    { length: vec4Count },
+    (_, k) => `  v${k}: vec4<f32>,`
+  ).join("\n");
+  const struct = `struct Uniforms_${moduleName} {\n${structFields}\n}`;
+  const lookup = {
+    getUniformExpr: (id: string) =>
+      (layout.mapping[id]?.expr ?? "0.0").replace(
+        `${moduleName}_uniforms`,
+        `module_uniforms`
+      ),
+  };
+
+  // kernel
   const kernelBody = pass.kernel({
     getUniform: (id: any) =>
       id === "canvasWidth"
@@ -76,14 +106,15 @@ export function buildComputeImagePassWGSL<Keys extends string = string>(
         ? "0.0"
         : id === "clearColorB"
         ? "0.0"
-        : lookup.getUniformExpr(id as string),
+        : lookup.getUniformExpr(id),
     readScene: (coordsExpr: string) =>
       `textureLoad(input_texture, ${coordsExpr}, 0)`,
     writeScene: (coordsExpr: string, colorExpr: string) =>
       `textureStore(output_texture, ${coordsExpr}, ${colorExpr})`,
   } as any);
 
-  return `
+  // code
+  const code = `
 @group(0) @binding(0) var input_texture: texture_2d<f32>;
 @group(0) @binding(1) var output_texture: texture_storage_2d<rgba8unorm, write>;
 @compute @workgroup_size(${workgroup[0]}, ${workgroup[1]}, ${workgroup[2]})
@@ -93,4 +124,6 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
   if (coords.x >= i32(dims.x) || coords.y >= i32(dims.y)) { return; }
   ${kernelBody}
 }`;
+
+  return `${struct}\n@group(0) @binding(2) var<uniform> module_uniforms: Uniforms_${moduleName};\n${code}`;
 }
