@@ -8,7 +8,7 @@ export interface WebGPURendererOptions {
 }
 
 export class WebGPURenderer {
-  private webgpuDevice: WebGPUDevice;
+  // private webgpuDevice: WebGPUDevice;
   private particleSystem: WebGPUParticleSystem | null = null;
   private camera = { x: 0, y: 0 };
   private zoom = 1;
@@ -19,28 +19,28 @@ export class WebGPURenderer {
   public system: WebGPUParticleSystem | null = null;
 
   constructor(private options: WebGPURendererOptions) {
-    this.webgpuDevice = new WebGPUDevice({ canvas: options.canvas });
+    // this.webgpuDevice = new WebGPUDevice({ canvas: options.canvas });
     // Particle system will be created after device initialization
   }
 
-  async initialize(): Promise<boolean> {
-    const success = await this.webgpuDevice.initialize();
+  // async initialize(): Promise<boolean> {
+  //   // const success = await this.webgpuDevice.initialize();
 
-    if (!success) return false;
+  //   // if (!success) return false;
 
-    try {
-      // Renderer no longer owns the particle system; user creates it and passes renderer.
-      // We still return true here just for device readiness.
-      return true;
-    } catch (error) {
-      console.error("Failed to initialize WebGPU particle system:", error);
-      return false;
-    }
-  }
+  //   try {
+  //     // Renderer no longer owns the particle system; user creates it and passes renderer.
+  //     // We still return true here just for device readiness.
+  //     return true;
+  //   } catch (error) {
+  //     console.error("Failed to initialize WebGPU particle system:", error);
+  //     return false;
+  //   }
+  // }
 
-  getWebGPUDevice(): WebGPUDevice {
-    return this.webgpuDevice;
-  }
+  // getWebGPUDevice(): WebGPUDevice {
+  //   return this.webgpuDevice;
+  // }
 
   getSize(): { width: number; height: number } {
     return { width: this.options.width, height: this.options.height };
@@ -83,8 +83,6 @@ export class WebGPURenderer {
   clearParticles(): void {
     if (!this.system) return;
     this.system.clear();
-    (this.system as any).clearTrials?.();
-    (this.system as any).clearTrails?.();
   }
 
   getParticleCount(): number {
@@ -174,7 +172,7 @@ export class WebGPURenderer {
     if (this.particleSystem) {
       this.particleSystem.destroy();
     }
-    this.webgpuDevice.destroy();
+    // this.webgpuDevice.destroy();
   }
 
   // Compatibility methods for existing interfaces
@@ -197,7 +195,7 @@ export class WebGPURenderer {
     this.zoom = 1;
   }
 
-  isInitialized(): boolean {
-    return this.webgpuDevice.isInitialized();
-  }
+  // isInitialized(): boolean {
+  //   // return this.webgpuDevice.isInitialized();
+  // }
 }

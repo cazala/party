@@ -16,6 +16,7 @@ import { Interaction } from "@cazala/party/modules/webgpu/shaders/modules/intera
 import { ParticleRenderer } from "@cazala/party/modules/webgpu/shaders/modules/particle-renderer";
 import { gridModule } from "@cazala/party/modules/webgpu/shaders/modules/grid";
 import { ToolMode } from "./useToolMode";
+import { GPUResources } from "@cazala/party/modules/webgpu/runtime/gpu-resources";
 
 export function useWebGPUPlayground(
   canvasRef: React.RefObject<HTMLCanvasElement>,
@@ -214,29 +215,6 @@ export function useWebGPUPlayground(
 
         console.log("Initializing WebGPU renderer...");
 
-        try {
-          // Add a timeout to the initialization
-          const initPromise = renderer.initialize();
-          const timeoutPromise = new Promise<boolean>((_, reject) =>
-            setTimeout(
-              () => reject(new Error("WebGPU renderer initialization timeout")),
-              10000
-            )
-          );
-
-          const success = await Promise.race([initPromise, timeoutPromise]);
-          console.log("WebGPU initialization result:", success);
-
-          if (!success) {
-            console.error("WebGPU renderer initialize() returned false");
-            setError("Failed to initialize WebGPU renderer.");
-            return;
-          }
-        } catch (initError) {
-          console.error("Error during renderer initialization:", initError);
-          throw initError; // Re-throw to be caught by outer catch
-        }
-
         console.log("=== WEBGPU PLAYGROUND INIT SUCCESS ===");
         setError(null);
 
@@ -282,7 +260,9 @@ export function useWebGPUPlayground(
             // Render modules (put ParticleRenderer last so particles draw after effects)
             new ParticleRenderer(),
           ];
-          const system = new WebGPUParticleSystem(renderer, modules);
+          const resources = new GPUResources({ canvas: canvasRef.current });
+          await resources.initialize();
+          const system = new WebGPUParticleSystem(resources, renderer, modules);
           await system.initialize();
           systemRef.current = system;
           environmentRef.current = environment;

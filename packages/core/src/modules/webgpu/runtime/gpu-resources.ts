@@ -43,7 +43,64 @@ export class GPUResources {
     return (h >>> 0).toString(36);
   }
 
-  constructor(private readonly device: GPUDevice) {}
+  public canvas: HTMLCanvasElement;
+  public requiredFeatures: GPUFeatureName[] = [];
+  public device: GPUDevice | null = null;
+  public context: GPUCanvasContext | null = null;
+  public adapter: GPUAdapter | null = null;
+  public format: GPUTextureFormat = "bgra8unorm";
+
+  constructor(options: {
+    canvas: HTMLCanvasElement;
+    requiredFeatures?: GPUFeatureName[];
+  }) {
+    this.canvas = options.canvas;
+    this.requiredFeatures = options.requiredFeatures || [];
+  }
+
+  async initialize(): Promise<void> {
+    if (this.isInitialized()) return;
+    if (!navigator.gpu) {
+      throw new Error("WebGPU not supported");
+    }
+
+    this.adapter = await navigator.gpu.requestAdapter();
+
+    if (!this.adapter) {
+      throw new Error("Failed to get WebGPU adapter");
+    }
+
+    this.device = await this.adapter.requestDevice({
+      requiredFeatures: this.requiredFeatures || [],
+    });
+
+    this.context = this.canvas.getContext("webgpu");
+    if (!this.context) {
+      console.error("Failed to get WebGPU context");
+      throw new Error("Failed to get WebGPU context");
+    }
+
+    this.format = navigator.gpu.getPreferredCanvasFormat();
+    this.context.configure({
+      device: this.device,
+      format: this.format,
+      alphaMode: "premultiplied",
+    });
+  }
+
+  isInitialized(): boolean {
+    return this.device !== null && this.context !== null;
+  }
+
+  getDevice(): GPUDevice {
+    if (!this.device) throw new Error("Device not initialized");
+    return this.device;
+  }
+
+  getContext(): GPUCanvasContext {
+    if (!this.context) throw new Error("Context not initialized");
+    return this.context;
+  }
 
   getParticleBuffer(): GPUBuffer | null {
     return this.particleBuffer;
@@ -72,7 +129,7 @@ export class GPUResources {
   createParticleBuffer(maxParticles: number, floatsPerParticle: number): void {
     const size = maxParticles * floatsPerParticle * 4;
     this.particleBuffer?.destroy();
-    this.particleBuffer = this.device.createBuffer({
+    this.particleBuffer = this.getDevice().createBuffer({
       size,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
@@ -80,7 +137,7 @@ export class GPUResources {
 
   writeParticleSlice(offsetFloats: number, data: Float32Array): void {
     if (!this.particleBuffer) return;
-    this.device.queue.writeBuffer(
+    this.getDevice().queue.writeBuffer(
       this.particleBuffer,
       offsetFloats * 4,
       data.buffer,
@@ -91,7 +148,7 @@ export class GPUResources {
 
   writeParticleBuffer(data: Float32Array): void {
     if (!this.particleBuffer) return;
-    this.device.queue.writeBuffer(
+    this.getDevice().queue.writeBuffer(
       this.particleBuffer,
       0,
       data.buffer,
@@ -104,7 +161,7 @@ export class GPUResources {
     // Destroy old
     this.moduleUniformBuffers.forEach(({ buffer }) => buffer.destroy());
     this.moduleUniformBuffers = layouts.map((layout) => ({
-      buffer: this.device.createBuffer({
+      buffer: this.getDevice().createBuffer({
         size: layout.sizeBytes,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       }),
@@ -114,7 +171,7 @@ export class GPUResources {
 
   createRenderUniformBuffer(byteSize: number): void {
     this.renderUniformBuffer?.destroy();
-    this.renderUniformBuffer = this.device.createBuffer({
+    this.renderUniformBuffer = this.getDevice().createBuffer({
       size: byteSize,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
@@ -122,7 +179,7 @@ export class GPUResources {
 
   writeRenderUniforms(data: ArrayBufferView, offset = 0): void {
     if (!this.renderUniformBuffer) return;
-    this.device.queue.writeBuffer(
+    this.getDevice().queue.writeBuffer(
       this.renderUniformBuffer,
       offset,
       data.buffer,
@@ -134,7 +191,7 @@ export class GPUResources {
   writeModuleUniform(index: number, data: ArrayBufferView, offset = 0): void {
     const muf = this.moduleUniformBuffers[index];
     if (!muf) return;
-    this.device.queue.writeBuffer(
+    this.getDevice().queue.writeBuffer(
       muf.buffer,
       offset,
       data.buffer,
@@ -166,11 +223,11 @@ export class GPUResources {
         GPUTextureUsage.COPY_DST |
         GPUTextureUsage.RENDER_ATTACHMENT,
     };
-    const a = this.device.createTexture(texDesc);
-    const b = this.device.createTexture(texDesc);
+    const a = this.getDevice().createTexture(texDesc);
+    const b = this.getDevice().createTexture(texDesc);
     const viewA = a.createView();
     const viewB = b.createView();
-    const sampler = this.device.createSampler({
+    const sampler = this.getDevice().createSampler({
       magFilter: "linear",
       minFilter: "linear",
       addressModeU: "clamp-to-edge",
@@ -186,11 +243,11 @@ export class GPUResources {
     const indicesSize = totalCells * maxPerCell * 4;
     this.gridCountsBuffer?.destroy();
     this.gridIndicesBuffer?.destroy();
-    this.gridCountsBuffer = this.device.createBuffer({
+    this.gridCountsBuffer = this.getDevice().createBuffer({
       size: countsSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    this.gridIndicesBuffer = this.device.createBuffer({
+    this.gridIndicesBuffer = this.getDevice().createBuffer({
       size: indicesSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
@@ -199,7 +256,7 @@ export class GPUResources {
   createSimStateBuffer(maxParticles: number, strideFloats: number): void {
     const size = maxParticles * strideFloats * 4;
     this.simStateBuffer?.destroy();
-    this.simStateBuffer = this.device.createBuffer({
+    this.simStateBuffer = this.getDevice().createBuffer({
       size,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
@@ -226,7 +283,7 @@ export class GPUResources {
 
   getRenderBindGroupLayout(): GPUBindGroupLayout {
     if (this.renderBindGroupLayout) return this.renderBindGroupLayout;
-    this.renderBindGroupLayout = this.device.createBindGroupLayout({
+    this.renderBindGroupLayout = this.getDevice().createBindGroupLayout({
       entries: [
         {
           binding: 0,
@@ -298,10 +355,10 @@ export class GPUResources {
         texture: { sampleType: "float" },
       });
     }
-    this.computeBindGroupLayout = this.device.createBindGroupLayout({
+    this.computeBindGroupLayout = this.getDevice().createBindGroupLayout({
       entries,
     });
-    this.computePipelineLayout = this.device.createPipelineLayout({
+    this.computePipelineLayout = this.getDevice().createPipelineLayout({
       bindGroupLayouts: [this.computeBindGroupLayout],
     });
   }
@@ -314,11 +371,11 @@ export class GPUResources {
 
   buildComputePipelines(code: string): void {
     if (!this.computeBindGroupLayout || !this.computePipelineLayout) return;
-    const module = this.device.createShaderModule({ code });
+    const module = this.getDevice().createShaderModule({ code });
     const createComputePipelineForEntry = (
       entryPoint: string
     ): GPUComputePipeline =>
-      this.device.createComputePipeline({
+      this.getDevice().createComputePipeline({
         layout: this.computePipelineLayout!,
         compute: { module, entryPoint },
       });
@@ -351,7 +408,7 @@ export class GPUResources {
     const key = `copy:${format}`;
     const existing = this.copyPipelines.get(key);
     if (existing) return existing;
-    const copyBindGroupLayout = this.device.createBindGroupLayout({
+    const copyBindGroupLayout = this.getDevice().createBindGroupLayout({
       entries: [
         {
           binding: 0,
@@ -365,13 +422,13 @@ export class GPUResources {
         },
       ],
     });
-    const layout = this.device.createPipelineLayout({
+    const layout = this.getDevice().createPipelineLayout({
       bindGroupLayouts: [copyBindGroupLayout],
     });
-    const shaderModule = this.device.createShaderModule({
+    const shaderModule = this.getDevice().createShaderModule({
       code: copyShaderWGSL,
     });
-    const pipeline = this.device.createRenderPipeline({
+    const pipeline = this.getDevice().createRenderPipeline({
       layout,
       vertex: { module: shaderModule, entryPoint: "vs_main" },
       fragment: {
@@ -400,9 +457,11 @@ export class GPUResources {
     const key = `fs:${this.hashWGSL(shaderCode)}`;
     const cached = this.fullscreenPipelines.get(key);
     if (cached) return cached;
-    const shaderModule = this.device.createShaderModule({ code: shaderCode });
-    const pipeline = this.device.createRenderPipeline({
-      layout: this.device.createPipelineLayout({
+    const shaderModule = this.getDevice().createShaderModule({
+      code: shaderCode,
+    });
+    const pipeline = this.getDevice().createRenderPipeline({
+      layout: this.getDevice().createPipelineLayout({
         bindGroupLayouts: [this.getRenderBindGroupLayout()],
       }),
       vertex: { module: shaderModule, entryPoint: "vs_main" },
@@ -432,8 +491,10 @@ export class GPUResources {
     const key = `imgc:${this.hashWGSL(shaderCode)}`;
     const cached = this.imageComputePipelines.get(key);
     if (cached) return cached;
-    const shaderModule = this.device.createShaderModule({ code: shaderCode });
-    const pipeline = this.device.createComputePipeline({
+    const shaderModule = this.getDevice().createShaderModule({
+      code: shaderCode,
+    });
+    const pipeline = this.getDevice().createComputePipeline({
       layout: "auto" as any,
       compute: { module: shaderModule, entryPoint: "cs_main" },
     });
@@ -448,7 +509,7 @@ export class GPUResources {
     sceneSampler: GPUSampler,
     moduleUniformBuffer: GPUBuffer
   ): GPUBindGroup {
-    return this.device.createBindGroup({
+    return this.getDevice().createBindGroup({
       layout: this.getRenderBindGroupLayout(),
       entries: [
         { binding: 0, resource: { buffer: particleBuffer } },
@@ -502,7 +563,7 @@ export class GPUResources {
         resource: this.getCurrentSceneTextureView(),
       });
     }
-    return this.device.createBindGroup({
+    return this.getDevice().createBindGroup({
       layout: this.computeBindGroupLayout,
       entries,
     });
@@ -515,7 +576,7 @@ export class GPUResources {
     moduleUniformBuffer: GPUBuffer
   ): GPUBindGroup {
     const layout = pipeline.getBindGroupLayout(0);
-    return this.device.createBindGroup({
+    return this.getDevice().createBindGroup({
       layout,
       entries: [
         { binding: 0, resource: readView },

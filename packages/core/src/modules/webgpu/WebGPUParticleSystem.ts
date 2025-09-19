@@ -25,9 +25,8 @@ export interface RenderUniforms {
 }
 
 export class WebGPUParticleSystem {
-  private device: GPUDevice;
-  private context: GPUCanvasContext;
-  private resources: GPUResources;
+  // private device: GPUDevice;
+  // private context: GPUCanvasContext;
 
   private moduleUniformState: Record<string, number>[] = [];
 
@@ -52,14 +51,23 @@ export class WebGPUParticleSystem {
   // Constraint solver iterations per frame
   private constrainIterations: number = 50;
 
-  private ensureSceneTexturesSized(): void {
-    const size = this.renderer.getSize();
-    this.resources.ensureSceneTextures(size.width, size.height);
+  constructor(
+    public resources: GPUResources,
+    private renderer: WebGPURenderer,
+    private modules: readonly Module<string, string, any>[]
+  ) {
+    // const webgpuDevice = renderer.getWebGPUDevice();
+    // if (!webgpuDevice.device || !webgpuDevice.context) {
+    //   throw new Error("WebGPU device not initialized");
+    // }
+    // this.device = webgpuDevice.device;
+    // this.context = webgpuDevice.context;
   }
 
   private runRenderPasses(commandEncoder: GPUCommandEncoder): void {
     // Ensure textures sized, then execute via resources-backed render graph
-    this.ensureSceneTexturesSized();
+    const size = this.renderer.getSize();
+    this.resources.ensureSceneTextures(size.width, size.height);
 
     // Filter render modules
     const modules = this.modules
@@ -85,37 +93,16 @@ export class WebGPUParticleSystem {
     );
 
     // Copy to canvas and return
-    const canvasViewNew = this.context.getCurrentTexture().createView();
+    const canvasViewNew = this.resources
+      .getContext()
+      .getCurrentTexture()
+      .createView();
     this.copySceneTextureToCanvas(commandEncoder, canvasViewNew, lastView);
     return;
   }
 
-  constructor(
-    private renderer: WebGPURenderer,
-    private modules: readonly Module<string, string, any>[]
-  ) {
-    const webgpuDevice = renderer.getWebGPUDevice();
-    if (!webgpuDevice.device || !webgpuDevice.context) {
-      throw new Error("WebGPU device not initialized");
-    }
-    this.device = webgpuDevice.device;
-    this.context = webgpuDevice.context;
-    this.resources = new GPUResources(this.device);
-  }
-
-  getModule<Name extends string>(
-    name: Name
-  ): Module<string, string, any> | undefined {
-    const idx = this.getModuleIndex(name);
-    if (idx === -1) return undefined;
-    return this.modules[idx];
-  }
-
-  setConstrainIterations(iters: number): void {
-    this.constrainIterations = Math.max(1, Math.floor(iters));
-  }
-
   async initialize(): Promise<void> {
+    await this.resources.initialize();
     // Engine initializes core resources and compute build
     const size = this.renderer.getSize();
     // Build compute program and allocate core resources
@@ -176,9 +163,9 @@ export class WebGPUParticleSystem {
     });
   }
 
-  // createBuffers removed after engine/resources migration
-
-  // createTrailTextures removed - handled by GPUResources.ensureSceneTextures
+  setConstrainIterations(iters: number): void {
+    this.constrainIterations = Math.max(1, Math.floor(iters));
+  }
 
   private configureGrid(width: number, height: number): void {
     const cam = this.renderer.getCamera
@@ -323,10 +310,8 @@ export class WebGPUParticleSystem {
     canvasView: GPUTextureView,
     sourceView?: GPUTextureView
   ): void {
-    const pipeline = this.resources.getCopyPipeline(
-      this.renderer.getWebGPUDevice().format
-    );
-    const bindGroup = this.device.createBindGroup({
+    const pipeline = this.resources.getCopyPipeline(this.resources.format);
+    const bindGroup = this.resources.getDevice().createBindGroup({
       layout: pipeline.getBindGroupLayout(0),
       entries: [
         {
@@ -404,7 +389,7 @@ export class WebGPUParticleSystem {
     this.writeRenderUniform({ canvasSize, cameraPosition, zoom });
 
     // Create command encoder for rendering
-    const commandEncoder = this.device.createCommandEncoder();
+    const commandEncoder = this.resources.getDevice().createCommandEncoder();
 
     // Run compute passes to build grid and integrate physics
     const workgroupSize = DEFAULTS.workgroupSize;
@@ -433,7 +418,7 @@ export class WebGPUParticleSystem {
     this.runRenderPasses(commandEncoder);
 
     // Submit render commands
-    this.device.queue.submit([commandEncoder.finish()]);
+    this.resources.getDevice().queue.submit([commandEncoder.finish()]);
   }
 
   getParticleCount(): number {
@@ -446,7 +431,7 @@ export class WebGPUParticleSystem {
 
     // Clear scene textures so sensors and the next frame don't see stale data
     try {
-      const encoder = this.device.createCommandEncoder();
+      const encoder = this.resources.getDevice().createCommandEncoder();
       const passA = encoder.beginRenderPass({
         colorAttachments: [
           {
@@ -469,15 +454,18 @@ export class WebGPUParticleSystem {
         ],
       });
       passB.end();
-      this.device.queue.submit([encoder.finish()]);
+      this.resources.getDevice().queue.submit([encoder.finish()]);
     } catch (_) {
       // no-op if textures not ready
     }
 
     // Proactively clear the canvas once so last frame isn't left onscreen
     try {
-      const commandEncoder = this.device.createCommandEncoder();
-      const canvasView = this.context.getCurrentTexture().createView();
+      const commandEncoder = this.resources.getDevice().createCommandEncoder();
+      const canvasView = this.resources
+        .getContext()
+        .getCurrentTexture()
+        .createView();
       const pass = commandEncoder.beginRenderPass({
         colorAttachments: [
           {
@@ -489,7 +477,7 @@ export class WebGPUParticleSystem {
         ],
       });
       pass.end();
-      this.device.queue.submit([commandEncoder.finish()]);
+      this.resources.getDevice().queue.submit([commandEncoder.finish()]);
     } catch (_) {
       // ignore if context not available yet
     }
