@@ -9,7 +9,6 @@ import {
   radToDeg,
   degToRad,
   DEFAULT_DAMPING,
-  WebGPURenderer,
 } from "@cazala/party";
 
 type GravityDirection =
@@ -23,7 +22,6 @@ type GravityDirection =
 
 interface EnvironmentControlsProps {
   environment: Environment | null;
-  renderer?: WebGPURenderer | null;
 }
 
 export function EnvironmentControls({ environment }: EnvironmentControlsProps) {

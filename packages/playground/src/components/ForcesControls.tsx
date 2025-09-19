@@ -103,7 +103,6 @@ export const ForcesControls = forwardRef<
       joints,
       undoRedo,
       sessionLoadTrigger = 0,
-      renderer,
     },
     ref
   ) => {
@@ -299,7 +298,6 @@ export const ForcesControls = forwardRef<
           <EnvironmentControls
             key={`environment-${refreshKey}`}
             environment={environment}
-            renderer={renderer ?? null}
           />
         </CollapsibleSection>
 

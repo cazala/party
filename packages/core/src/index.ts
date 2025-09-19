@@ -76,7 +76,6 @@ export {
   WebGPUParticleSystem,
   type WebGPUParticle,
   type RenderUniforms,
-  WebGPURenderer,
   simulationModule,
   WebGPUEnvironment,
   WebGPUBoundary,

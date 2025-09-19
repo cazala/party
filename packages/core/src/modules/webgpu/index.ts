@@ -4,7 +4,6 @@ export {
   type WebGPUParticle,
   type RenderUniforms,
 } from "./WebGPUParticleSystem";
-export { WebGPURenderer } from "./WebGPURenderer";
 export {
   WebGPUSpawner,
   type WebGPUSpawnOptions,

@@ -1,4 +1,3 @@
-import type { WebGPURenderer } from "./WebGPURenderer";
 import { Module, type ModuleDescriptor } from "./shaders/compute";
 import { type Program } from "./shaders/builder/compute-builder";
 import { DEFAULTS } from "./config";
@@ -25,8 +24,11 @@ export interface RenderUniforms {
 }
 
 export class WebGPUParticleSystem {
-  // private device: GPUDevice;
-  // private context: GPUCanvasContext;
+  private camera = { x: 0, y: 0 };
+  private zoom = 1;
+  private animationId: number | null = null;
+  private isPlaying = false;
+  private lastTime = 0;
 
   private moduleUniformState: Record<string, number>[] = [];
 
@@ -53,21 +55,13 @@ export class WebGPUParticleSystem {
 
   constructor(
     public resources: GPUResources,
-    private renderer: WebGPURenderer,
+    private size: { width: number; height: number },
     private modules: readonly Module<string, string, any>[]
-  ) {
-    // const webgpuDevice = renderer.getWebGPUDevice();
-    // if (!webgpuDevice.device || !webgpuDevice.context) {
-    //   throw new Error("WebGPU device not initialized");
-    // }
-    // this.device = webgpuDevice.device;
-    // this.context = webgpuDevice.context;
-  }
+  ) {}
 
   private runRenderPasses(commandEncoder: GPUCommandEncoder): void {
     // Ensure textures sized, then execute via resources-backed render graph
-    const size = this.renderer.getSize();
-    this.resources.ensureSceneTextures(size.width, size.height);
+    this.resources.ensureSceneTextures(this.size.width, this.size.height);
 
     // Filter render modules
     const modules = this.modules
@@ -88,7 +82,7 @@ export class WebGPUParticleSystem {
       this.resources.getOtherSceneTextureView(),
       this.program!,
       this.resources,
-      this.renderer,
+      this.size,
       this.particleCount
     );
 
@@ -103,8 +97,7 @@ export class WebGPUParticleSystem {
 
   async initialize(): Promise<void> {
     await this.resources.initialize();
-    // Engine initializes core resources and compute build
-    const size = this.renderer.getSize();
+
     // Build compute program and allocate core resources
     this.program = buildProgram(this.modules);
     this.resources.createParticleBuffer(this.maxParticles, 12);
@@ -119,7 +112,7 @@ export class WebGPUParticleSystem {
 
     // Build simulation pipelines once
     this.resources.buildComputePipelines(this.program.code);
-    this.resources.ensureSceneTextures(size.width, size.height);
+    this.resources.ensureSceneTextures(this.size.width, this.size.height);
 
     // Initialize CPU-side uniform state maps from compute layouts
     this.moduleUniformState = this.program.layouts.map((layout) => {
@@ -140,10 +133,7 @@ export class WebGPUParticleSystem {
     }
 
     // Configure grid storage and uniforms using current renderer view
-    this.updateGridFromRenderer();
-
-    // Attach to renderer automatically
-    this.renderer.attachSystem(this);
+    this.configureGrid(this.size.width, this.size.height);
 
     // Attach per-module uniform writers to modules
     this.modules.forEach((mod) => {
@@ -168,17 +158,20 @@ export class WebGPUParticleSystem {
   }
 
   private configureGrid(width: number, height: number): void {
-    const cam = this.renderer.getCamera
-      ? this.renderer.getCamera()
-      : { x: 0, y: 0 };
-    const zoom = this.renderer.getZoom ? this.renderer.getZoom() : 1;
+    const zoom = this.zoom;
     const halfW = width / (2 * Math.max(zoom, 0.0001));
     const halfH = height / (2 * Math.max(zoom, 0.0001));
-    const minX = cam.x - halfW;
-    const maxX = cam.x + halfW;
-    const minY = cam.y - halfH;
-    const maxY = cam.y + halfH;
-    this.lastView = { width, height, cx: cam.x, cy: cam.y, zoom };
+    const minX = this.camera.x - halfW;
+    const maxX = this.camera.x + halfW;
+    const minY = this.camera.y - halfH;
+    const maxY = this.camera.y + halfH;
+    this.lastView = {
+      width,
+      height,
+      cx: this.camera.x,
+      cy: this.camera.y,
+      zoom,
+    };
     const cellSize = 16;
     const cols = Math.max(1, Math.ceil((maxX - minX) / cellSize));
     const rows = Math.max(1, Math.ceil((maxY - minY) / cellSize));
@@ -210,34 +203,26 @@ export class WebGPUParticleSystem {
     }
   }
 
-  updateGridForSize(width: number, height: number): void {
-    const cam = this.renderer.getCamera
-      ? this.renderer.getCamera()
-      : { x: 0, y: 0 };
-    const zoom = this.renderer.getZoom ? this.renderer.getZoom() : 1;
+  resizeGrid(width: number, height: number): void {
     if (
       this.lastView &&
       this.lastView.width === width &&
       this.lastView.height === height &&
-      this.lastView.cx === cam.x &&
-      this.lastView.cy === cam.y &&
-      this.lastView.zoom === zoom
+      this.lastView.cx === this.camera.x &&
+      this.lastView.cy === this.camera.y &&
+      this.lastView.zoom === this.zoom
     ) {
       return;
     }
     this.configureGrid(width, height);
   }
 
-  updateGridFromRenderer(): void {
-    const size = this.renderer.getSize
-      ? this.renderer.getSize()
-      : { width: 800, height: 600 };
-    this.updateGridForSize(size.width, size.height);
-  }
-
-  resize(width: number, height: number): void {
+  setSize(width: number, height: number): void {
+    this.size = { width, height };
+    this.resources.canvas.width = width;
+    this.resources.canvas.height = height;
     this.resources.ensureSceneTextures(width, height);
-    this.updateGridForSize(width, height);
+    this.resizeGrid(width, height);
   }
 
   setParticles(particles: WebGPUParticle[]): void {
@@ -483,7 +468,116 @@ export class WebGPUParticleSystem {
     }
   }
 
+  getSize(): { width: number; height: number } {
+    return this.size;
+  }
+
+  setCamera(x: number, y: number): void {
+    this.camera.x = x;
+    this.camera.y = y;
+    this.resizeGrid(this.size.width, this.size.height);
+  }
+
+  getCamera(): { x: number; y: number } {
+    return { ...this.camera };
+  }
+
+  setZoom(zoom: number): void {
+    // Clamp zoom to avoid excessive grid sizes that overflow storage buffer limits
+    const size = this.getSize();
+    const maxBytes = 120 * 1024 * 1024; // safety threshold below typical 128MB default
+    const minZoomByGrid = Math.sqrt((4 * size.width * size.height) / maxBytes);
+    const minZoom = Math.max(0.01, minZoomByGrid);
+    const clamped = Math.max(minZoom, Math.min(zoom, 5));
+    this.zoom = clamped;
+    this.resizeGrid(this.size.width, this.size.height);
+  }
+
+  getZoom(): number {
+    return this.zoom;
+  }
+
+  spawnParticles(
+    particles: Array<{
+      x: number;
+      y: number;
+      vx?: number;
+      vy?: number;
+      size?: number;
+      mass?: number;
+      color?: [number, number, number, number];
+    }>
+  ): void {
+    const webgpuParticles: WebGPUParticle[] = particles.map((p) => ({
+      position: [p.x, p.y],
+      velocity: [p.vx || 0, p.vy || 0],
+      size: p.size || 5,
+      mass: p.mass || 1,
+      color: p.color || [1, 1, 1, 1],
+    }));
+
+    this.setParticles(webgpuParticles);
+  }
+
+  play(): void {
+    if (this.isPlaying) return;
+    this.isPlaying = true;
+    this.lastTime = performance.now();
+    this.animate();
+  }
+
+  pause(): void {
+    this.isPlaying = false;
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+  }
+
+  private animate = (): void => {
+    if (!this.isPlaying) return;
+
+    const currentTime = performance.now();
+    const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 1 / 30); // Cap at 30 FPS minimum
+    this.lastTime = currentTime;
+
+    // Keep grid/world extents in sync with current view
+    this.resizeGrid(this.size.width, this.size.height);
+
+    // Update physics via system
+    this.update(deltaTime);
+
+    // Render
+    this.render(
+      [this.size.width, this.size.height],
+      [this.camera.x, this.camera.y],
+      this.zoom
+    );
+
+    this.animationId = requestAnimationFrame(this.animate);
+  };
+
+  getFPS(): number {
+    return 60; // WebGPU runs at display refresh rate
+  }
+
+  toggle(): void {
+    if (this.isPlaying) {
+      this.pause();
+    } else {
+      this.play();
+    }
+  }
+
+  reset(): void {
+    this.pause();
+    this.clear();
+    this.camera = { x: 0, y: 0 };
+    this.zoom = 1;
+  }
+
   destroy(): void {
+    this.pause();
     this.resources.dispose();
   }
 }

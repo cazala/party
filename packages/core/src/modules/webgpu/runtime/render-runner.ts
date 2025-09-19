@@ -25,7 +25,6 @@ import {
   buildComputeImagePassWGSL,
 } from "../shaders/builder/render-builder";
 import { GPUResources } from "./gpu-resources";
-import { WebGPURenderer } from "../WebGPURenderer";
 import { DEFAULTS } from "../config";
 
 export interface RenderExecutorViews {
@@ -50,7 +49,7 @@ export function runRenderPasses(
   otherView: GPUTextureView,
   computeBuild: Program,
   resources: GPUResources,
-  renderer: WebGPURenderer,
+  size: { width: number; height: number },
   particleCount: number
 ): GPUTextureView {
   // Tracks which view last received writes and whether anything has been rendered yet
@@ -82,15 +81,7 @@ export function runRenderPasses(
       }
       if (pass.kind === RenderPassKind.Compute) {
         // Compute image pass. Writes into other view; if it writes the scene we ping-pong swap
-        runComputePass(
-          encoder,
-          module,
-          layout,
-          pass,
-          views,
-          resources,
-          renderer
-        );
+        runComputePass(encoder, module, layout, pass, views, resources, size);
         wrote = pass.writesScene ? "other" : null;
       }
 
@@ -174,7 +165,7 @@ function runComputePass(
   pass: ComputeRenderPass,
   views: RenderExecutorViews,
   resources: GPUResources,
-  renderer: WebGPURenderer
+  size: { width: number; height: number }
 ): void {
   // Generate WGSL for the compute pass
   const wgsl = buildComputeImagePassWGSL(pass, module.name, layout);
@@ -190,7 +181,7 @@ function runComputePass(
     views.otherView,
     muf.buffer
   );
-  const canvasSize = renderer.getSize();
+  const canvasSize = size;
   // Compute dispatch size (assuming 8x8 threadgroups)
   const workgroupsX = Math.ceil(canvasSize.width / 8);
   const workgroupsY = Math.ceil(canvasSize.height / 8);

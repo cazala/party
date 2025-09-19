@@ -29,7 +29,6 @@ function WebGPUApp() {
   const { toolMode } = useToolMode();
 
   const {
-    renderer,
     system,
     isInitialized,
     error,
@@ -61,23 +60,23 @@ function WebGPUApp() {
 
   // Update canvas size when window size changes
   useEffect(() => {
-    if (renderer && isInitialized) {
+    if (system && isInitialized) {
       const targetWidth = isFullscreen
         ? size.width
         : size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
       const targetHeight = isFullscreen
         ? size.height
         : size.height - TOPBAR_HEIGHT;
-      renderer.setSize(targetWidth, targetHeight);
+      system.setSize(targetWidth, targetHeight);
     }
-  }, [renderer, isInitialized, size, isFullscreen]);
+  }, [system, isInitialized, size, isFullscreen]);
 
   // Auto-play when initialized
   useEffect(() => {
-    if (isInitialized && renderer) {
+    if (isInitialized && system) {
       play();
     }
-  }, [isInitialized, renderer, play]);
+  }, [isInitialized, system, play]);
 
   // Add wheel event listener for zoom
   useEffect(() => {
