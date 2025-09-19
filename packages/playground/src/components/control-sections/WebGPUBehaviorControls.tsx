@@ -10,7 +10,7 @@ import {
   DEFAULT_BEHAVIOR_VIEW_RADIUS,
   DEFAULT_BEHAVIOR_VIEW_ANGLE,
   Behavior,
-} from "@cazala/party/modules/webgpu/shaders/modules/behavior";
+} from "@cazala/party/modules/webgpu/modules/behavior";
 
 export function WebGPUBehaviorControls({
   behavior,

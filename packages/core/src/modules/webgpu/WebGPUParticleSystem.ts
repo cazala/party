@@ -1,11 +1,10 @@
-import { Module, type ModuleDescriptor } from "./shaders/compute";
-import { type Program } from "./shaders/builder/compute-builder";
+import { Module, type ModuleDescriptor } from "./module";
 import { DEFAULTS } from "./config";
 import { GPUResources } from "./runtime/gpu-resources";
 import { runRenderPasses } from "./runtime/render-runner";
 import { runSimulationPasses } from "./runtime/simulation-runner";
-import { ModuleRole, RenderModuleDescriptor } from "./shaders/descriptors";
-import { buildProgram } from "./shaders/builder/compute-builder";
+import { ModuleRole, RenderModuleDescriptor } from "./module";
+import { buildProgram, type Program } from "./builder/module-builder";
 
 export interface WebGPUParticle {
   position: [number, number];

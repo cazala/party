@@ -1,8 +1,5 @@
 import { copyShaderWGSL } from "../shaders/copy";
-import type {
-  Program,
-  ModuleUniformLayout,
-} from "../shaders/builder/compute-builder";
+import type { Program, ModuleUniformLayout } from "../builder/module-builder";
 import type { SimulationPipelines } from "./simulation-runner";
 
 export interface SceneTextures {

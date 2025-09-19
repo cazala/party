@@ -15,15 +15,12 @@ import {
   type FullscreenRenderPass,
   RenderPassKind,
   ComputeRenderPass,
-} from "../shaders/descriptors";
-import type {
-  Program,
-  ModuleUniformLayout,
-} from "../shaders/builder/compute-builder";
+} from "../module";
+import type { Program, ModuleUniformLayout } from "../builder/module-builder";
 import {
   buildFullscreenPassWGSL,
   buildComputeImagePassWGSL,
-} from "../shaders/builder/render-builder";
+} from "../builder/render-pass-builder";
 import { GPUResources } from "./gpu-resources";
 import { DEFAULTS } from "../config";
 

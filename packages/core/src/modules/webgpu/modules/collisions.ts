@@ -1,5 +1,4 @@
-import { Module, type ModuleDescriptor } from "../compute";
-import { ModuleRole } from "../descriptors";
+import { Module, type ModuleDescriptor, ModuleRole } from "../module";
 
 type CollisionBindingKeys = "restitution";
 

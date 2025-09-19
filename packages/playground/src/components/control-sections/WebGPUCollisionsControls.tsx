@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   DEFAULT_COLLISIONS_RESTITUTION,
   Collisions,
-} from "@cazala/party/modules/webgpu/shaders/modules/collisions";
+} from "@cazala/party/modules/webgpu/modules/collisions";
 
 export function WebGPUCollisionsControls({
   collisions,

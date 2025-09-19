@@ -1,5 +1,9 @@
-import { Module, type ModuleDescriptor } from "../compute";
-import { ModuleRole, RenderPassKind } from "../descriptors";
+import {
+  Module,
+  type ModuleDescriptor,
+  ModuleRole,
+  RenderPassKind,
+} from "../module";
 
 type ParticleRendererKeys = "particleBuffer" | "renderUniforms";
 

@@ -1,6 +1,4 @@
-import { Module } from "../compute";
-import { ModuleRole } from "../descriptors";
-import type { ModuleDescriptor } from "../descriptors";
+import { Module, ModuleRole, type ModuleDescriptor } from "../module";
 
 export const PARTICLE_STRUCT = `
 struct Particle {

@@ -4,16 +4,16 @@ import {
   simulationModule,
   WebGPUSpawner,
 } from "@cazala/party";
-import { Environment } from "@cazala/party/modules/webgpu/shaders/modules/environment";
-import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary";
-import { Collisions } from "@cazala/party/modules/webgpu/shaders/modules/collisions";
-import { Fluid } from "@cazala/party/modules/webgpu/shaders/modules/fluid";
-import { Behavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior";
-import { Sensors } from "@cazala/party/modules/webgpu/shaders/modules/sensors";
-import { Trails } from "@cazala/party/modules/webgpu/shaders/modules/trails";
-import { Interaction } from "@cazala/party/modules/webgpu/shaders/modules/interaction";
-import { ParticleRenderer } from "@cazala/party/modules/webgpu/shaders/modules/particle-renderer";
-import { gridModule } from "@cazala/party/modules/webgpu/shaders/modules/grid";
+import { Environment } from "@cazala/party/modules/webgpu/modules/environment";
+import { Boundary } from "@cazala/party/modules/webgpu/modules/boundary";
+import { Collisions } from "@cazala/party/modules/webgpu/modules/collisions";
+import { Fluid } from "@cazala/party/modules/webgpu/modules/fluid";
+import { Behavior } from "@cazala/party/modules/webgpu/modules/behavior";
+import { Sensors } from "@cazala/party/modules/webgpu/modules/sensors";
+import { Trails } from "@cazala/party/modules/webgpu/modules/trails";
+import { Interaction } from "@cazala/party/modules/webgpu/modules/interaction";
+import { ParticleRenderer } from "@cazala/party/modules/webgpu/modules/particle-renderer";
+import { gridModule } from "@cazala/party/modules/webgpu/modules/grid";
 import { ToolMode } from "./useToolMode";
 import { GPUResources } from "@cazala/party/modules/webgpu/runtime/gpu-resources";
 

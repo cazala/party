@@ -18,4 +18,4 @@ export {
   Collisions as WebGPUCollisions,
   Fluid as WebGPUFluid,
   Trails as WebGPUTrails,
-} from "./shaders/modules";
+} from "./modules";

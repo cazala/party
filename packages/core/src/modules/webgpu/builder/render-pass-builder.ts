@@ -1,6 +1,6 @@
-import type { FullscreenRenderPass, ComputeRenderPass } from "../descriptors";
-import { ModuleUniformLayout } from "./compute-builder";
-import { DEFAULTS } from "../../config";
+import type { FullscreenRenderPass, ComputeRenderPass } from "../module";
+import { ModuleUniformLayout } from "./module-builder";
+import { DEFAULTS } from "../config";
 
 // --- Internal helpers to reduce duplication ---
 function buildModuleUniformStruct(
