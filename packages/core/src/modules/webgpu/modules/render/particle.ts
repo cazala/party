@@ -3,7 +3,7 @@ import {
   type ModuleDescriptor,
   ModuleRole,
   RenderPassKind,
-} from "../../module";
+} from "../../module-descriptors";
 
 type ParticleRendererKeys = "particleBuffer" | "renderUniforms";
 

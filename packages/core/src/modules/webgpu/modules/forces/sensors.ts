@@ -1,4 +1,8 @@
-import { Module, type ModuleDescriptor, ModuleRole } from "../../module";
+import {
+  Module,
+  type ModuleDescriptor,
+  ModuleRole,
+} from "../../module-descriptors";
 
 export type SensorBehavior = "any" | "same" | "different" | "none";
 

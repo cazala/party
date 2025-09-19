@@ -1,5 +1,5 @@
 import { DEFAULTS } from "./config";
-import type { Module } from "./module";
+import type { Module } from "./module-descriptors";
 import { GPUResources } from "./gpu-resources";
 import { ViewController } from "./view-controller";
 import { ParticleStore, type WebGPUParticle } from "./particle-store";
@@ -169,34 +169,7 @@ export class Engine {
   clear(): void {
     this.particles.clear();
     // Clear scene textures proactively
-    try {
-      const encoder = this.resources.getDevice().createCommandEncoder();
-      const passA = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: this.resources.getCurrentSceneTextureView(),
-            clearValue: { r: 0, g: 0, b: 0, a: 0 },
-            loadOp: "clear",
-            storeOp: "store",
-          },
-        ],
-      });
-      passA.end();
-      const passB = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: this.resources.getOtherSceneTextureView(),
-            clearValue: { r: 0, g: 0, b: 0, a: 0 },
-            loadOp: "clear",
-            storeOp: "store",
-          },
-        ],
-      });
-      passB.end();
-      this.resources.getDevice().queue.submit([encoder.finish()]);
-    } catch (_) {
-      // ignore if textures not ready
-    }
+    this.render.clearTargets(this.resources);
   }
 
   private animate = (): void => {

@@ -5,7 +5,7 @@ import {
   RenderPassKind,
   type FullscreenRenderPass,
   type RenderModuleDescriptor,
-} from "./module";
+} from "./module-descriptors";
 import {
   buildComputeImagePassWGSL,
   buildFullscreenPassWGSL,
@@ -29,6 +29,37 @@ import { DEFAULTS } from "./config";
 export class RenderPipeline {
   ensureTargets(resources: GPUResources, width: number, height: number): void {
     resources.ensureSceneTextures(width, height);
+  }
+
+  clearTargets(resources: GPUResources): void {
+    try {
+      const encoder = resources.getDevice().createCommandEncoder();
+      const passA = encoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: resources.getCurrentSceneTextureView(),
+            clearValue: { r: 0, g: 0, b: 0, a: 0 },
+            loadOp: "clear",
+            storeOp: "store",
+          },
+        ],
+      });
+      passA.end();
+      const passB = encoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: resources.getOtherSceneTextureView(),
+            clearValue: { r: 0, g: 0, b: 0, a: 0 },
+            loadOp: "clear",
+            storeOp: "store",
+          },
+        ],
+      });
+      passB.end();
+      resources.getDevice().queue.submit([encoder.finish()]);
+    } catch (_) {
+      // ignore if textures not ready
+    }
   }
 
   runPasses(

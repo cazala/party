@@ -1,4 +1,7 @@
-import type { FullscreenRenderPass, ComputeRenderPass } from "../module";
+import type {
+  FullscreenRenderPass,
+  ComputeRenderPass,
+} from "../module-descriptors";
 import { ModuleUniformLayout } from "./module-builder";
 import { DEFAULTS } from "../config";
 

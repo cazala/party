@@ -1,6 +1,10 @@
 import type { GPUResources } from "./gpu-resources";
 import { buildProgram, type Program } from "./builders/module-builder";
-import { Module, ModuleRole, type RenderModuleDescriptor } from "./module";
+import {
+  Module,
+  ModuleRole,
+  type RenderModuleDescriptor,
+} from "./module-descriptors";
 
 /**
  * Manages module enablement/state, builds the Program, and exposes uniform writers/readers.
