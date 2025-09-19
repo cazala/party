@@ -1,5 +1,5 @@
-import { copyShaderWGSL } from "./shaders/copy";
-import type { Program, ModuleUniformLayout } from "./builder/module-builder";
+import { copyShaderWGSL } from "./shaders";
+import type { Program, ModuleUniformLayout } from "./builders/module-builder";
 
 export interface SceneTextures {
   a: GPUTexture;

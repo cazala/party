@@ -3,14 +3,11 @@ import {
   type ModuleDescriptor,
   ModuleRole,
   RenderPassKind,
-} from "../module";
+} from "../../module";
 
 type ParticleRendererKeys = "particleBuffer" | "renderUniforms";
 
-export class ParticleRenderer extends Module<
-  "particles",
-  ParticleRendererKeys
-> {
+export class Particle extends Module<"particles", ParticleRendererKeys> {
   descriptor(): ModuleDescriptor<"particles", ParticleRendererKeys> {
     return {
       name: "particles" as const,

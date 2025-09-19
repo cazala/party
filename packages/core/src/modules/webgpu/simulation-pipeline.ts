@@ -1,4 +1,4 @@
-import type { Program } from "./builder/module-builder";
+import type { Program } from "./builders/module-builder";
 import type { GPUResources } from "./gpu-resources";
 
 export class SimulationPipeline {

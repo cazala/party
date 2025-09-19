@@ -1,17 +1,17 @@
-import { simulationModule } from "./simulation";
-import { Environment } from "./environment";
-import { Boundary } from "./boundary";
-import { Collisions } from "./collisions";
-import { Fluid } from "./fluid";
-import { Behavior } from "./behavior";
-import { Sensors } from "./sensors";
-import { Trails } from "./trails";
-import { Interaction } from "./interaction";
-import { Grid } from "./grid";
-import { ParticleRenderer } from "./particle-renderer";
+import { Simulation } from "./system/simulation";
+import { Grid } from "./system/grid";
+import { Environment } from "./forces/environment";
+import { Boundary } from "./forces/boundary";
+import { Collisions } from "./forces/collisions";
+import { Fluid } from "./forces/fluid";
+import { Behavior } from "./forces/behavior";
+import { Sensors } from "./forces/sensors";
+import { Interaction } from "./forces/interaction";
+import { Trails } from "./render/trails";
+import { Particle } from "./render/particle";
 
 export {
-  simulationModule,
+  Simulation,
   Environment,
   Boundary,
   Collisions,
@@ -21,5 +21,5 @@ export {
   Trails,
   Interaction,
   Grid,
-  ParticleRenderer,
+  Particle,
 };

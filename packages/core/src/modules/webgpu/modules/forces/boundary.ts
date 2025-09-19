@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor, ModuleRole } from "../module";
+import { Module, type ModuleDescriptor, ModuleRole } from "../../module";
 
 type BoundaryBindingKeys =
   | "restitution"

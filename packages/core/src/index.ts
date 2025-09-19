@@ -71,13 +71,6 @@ export {
   DEFAULT_EMITTER_END_SPEED_MULTIPLIER,
 } from "./modules/emitter";
 export { Emitters } from "./modules/emitters";
-export {
-  type WebGPUParticle,
-  simulationModule,
-  WebGPUEnvironment,
-  WebGPUBoundary,
-  WebGPUCollisions,
-} from "./modules/webgpu";
 export { Engine } from "./modules/webgpu";
 export {
   WebGPUSpawner,

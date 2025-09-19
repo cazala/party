@@ -9,7 +9,7 @@ import {
   DEFAULT_FLUID_ENABLE_NEAR_PRESSURE,
   DEFAULT_FLUID_MAX_ACCELERATION,
   Fluid,
-} from "@cazala/party/modules/webgpu/modules/fluid";
+} from "@cazala/party/modules/webgpu/modules/forces/fluid";
 
 export function WebGPUFluidControls({
   fluid,

@@ -4,7 +4,7 @@ import {
   DEFAULT_INTERACTION_MODE,
   DEFAULT_INTERACTION_STRENGTH,
   DEFAULT_INTERACTION_RADIUS,
-} from "@cazala/party/modules/webgpu/modules/interaction";
+} from "@cazala/party/modules/webgpu/modules/forces/interaction";
 
 interface WebGPUInteractionLike {
   setEnabled?: (v: boolean) => void;

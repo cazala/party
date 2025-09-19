@@ -3,7 +3,7 @@ import {
   type ModuleDescriptor,
   ModuleRole,
   RenderPassKind,
-} from "../module";
+} from "../../module";
 
 type TrailBindingKeys = "trailDecay" | "trailDiffuse";
 

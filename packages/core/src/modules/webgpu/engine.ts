@@ -7,6 +7,8 @@ import { ModuleRegistry } from "./module-registry";
 import { GridSystem } from "./grid-system";
 import { SimulationPipeline } from "./simulation-pipeline";
 import { RenderPipeline } from "./render-pipeline";
+import { Grid } from "./modules/system/grid";
+import { Simulation } from "./modules/system/simulation";
 
 export class Engine {
   private resources: GPUResources;
@@ -39,7 +41,9 @@ export class Engine {
     );
     this.view = new ViewController(width, height);
     this.particles = new ParticleStore(this.maxParticles, 12);
-    this.modules = new ModuleRegistry(modules);
+    const simulation = new Simulation();
+    const grid = new Grid();
+    this.modules = new ModuleRegistry([simulation, grid, ...modules]);
     this.sim = new SimulationPipeline();
     this.render = new RenderPipeline();
     this.grid = new GridSystem();

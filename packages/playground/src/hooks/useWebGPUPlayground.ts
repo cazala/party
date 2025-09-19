@@ -1,15 +1,14 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Engine, simulationModule, WebGPUSpawner } from "@cazala/party";
-import { Environment } from "@cazala/party/modules/webgpu/modules/environment";
-import { Boundary } from "@cazala/party/modules/webgpu/modules/boundary";
-import { Collisions } from "@cazala/party/modules/webgpu/modules/collisions";
-import { Fluid } from "@cazala/party/modules/webgpu/modules/fluid";
-import { Behavior } from "@cazala/party/modules/webgpu/modules/behavior";
-import { Sensors } from "@cazala/party/modules/webgpu/modules/sensors";
-import { Trails } from "@cazala/party/modules/webgpu/modules/trails";
-import { Interaction } from "@cazala/party/modules/webgpu/modules/interaction";
-import { ParticleRenderer } from "@cazala/party/modules/webgpu/modules/particle-renderer";
-import { gridModule } from "@cazala/party/modules/webgpu/modules/grid";
+import { Engine, WebGPUSpawner } from "@cazala/party";
+import { Environment } from "@cazala/party/modules/webgpu/modules/forces/environment";
+import { Boundary } from "@cazala/party/modules/webgpu/modules/forces/boundary";
+import { Collisions } from "@cazala/party/modules/webgpu/modules/forces/collisions";
+import { Fluid } from "@cazala/party/modules/webgpu/modules/forces/fluid";
+import { Behavior } from "@cazala/party/modules/webgpu/modules/forces/behavior";
+import { Sensors } from "@cazala/party/modules/webgpu/modules/forces/sensors";
+import { Trails } from "@cazala/party/modules/webgpu/modules/render/trails";
+import { Interaction } from "@cazala/party/modules/webgpu/modules/forces/interaction";
+import { Particle } from "@cazala/party/modules/webgpu/modules/render/particle";
 import { ToolMode } from "./useToolMode";
 // import { GPUResources } from "@cazala/party/modules/webgpu/runtime/gpu-resources";
 
@@ -214,17 +213,18 @@ export function useWebGPUPlayground(
           const collisions = new Collisions({ restitution: 0.8 });
           const fluid = new Fluid({ enabled: false });
           const behavior = new Behavior({ enabled: false });
-          const trails = new Trails({ enabled: false });
           const sensors = new Sensors({ enabled: false });
           const interaction = new Interaction({
             enabled: false,
             strength: 10000,
             radius: 500,
           });
+
+          const trails = new Trails({ enabled: false });
+          const particle = new Particle();
+
           // Initialize simulation parameters
           const modules = [
-            simulationModule,
-            gridModule,
             environment,
             boundary,
             collisions,
@@ -232,10 +232,8 @@ export function useWebGPUPlayground(
             fluid,
             sensors,
             interaction,
-            // Render modules
             trails,
-            // Render modules (put ParticleRenderer last so particles draw after effects)
-            new ParticleRenderer(),
+            particle,
           ];
           const system = new Engine(canvasRef.current, modules);
           await system.initialize();

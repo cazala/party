@@ -1,5 +1,5 @@
 import type { GPUResources } from "./gpu-resources";
-import { buildProgram, type Program } from "./builder/module-builder";
+import { buildProgram, type Program } from "./builders/module-builder";
 import { Module, ModuleRole, type RenderModuleDescriptor } from "./module";
 
 /**

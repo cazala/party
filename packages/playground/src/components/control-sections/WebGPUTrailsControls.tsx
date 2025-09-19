@@ -3,7 +3,7 @@ import {
   DEFAULT_TRAILS_TRAIL_DECAY,
   DEFAULT_TRAILS_TRAIL_DIFFUSE,
   Trails,
-} from "@cazala/party/modules/webgpu/modules/trails";
+} from "@cazala/party/modules/webgpu/modules/render/trails";
 
 export function WebGPUTrailsControls({
   trails,

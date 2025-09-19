@@ -1,4 +1,4 @@
-import type { ModuleUniformLayout, Program } from "./builder/module-builder";
+import type { ModuleUniformLayout, Program } from "./builders/module-builder";
 import type { GPUResources } from "./gpu-resources";
 import {
   ComputeRenderPass,
@@ -9,7 +9,7 @@ import {
 import {
   buildComputeImagePassWGSL,
   buildFullscreenPassWGSL,
-} from "./builder/render-pass-builder";
+} from "./builders/render-pass-builder";
 import { DEFAULTS } from "./config";
 
 /**

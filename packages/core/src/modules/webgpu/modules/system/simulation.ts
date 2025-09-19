@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor, ModuleRole } from "../module";
+import { Module, type ModuleDescriptor, ModuleRole } from "../../module";
 
 type SimKeys = "dt" | "count" | "simStride";
 
@@ -24,5 +24,3 @@ fn sim_state_write(pid: u32, slot: u32, value: f32) { SIM_STATE[sim_state_index(
     };
   }
 }
-
-export const simulationModule = new Simulation();

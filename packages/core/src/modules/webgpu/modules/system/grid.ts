@@ -1,4 +1,4 @@
-import { Module, type ModuleDescriptor, ModuleRole } from "../module";
+import { Module, type ModuleDescriptor, ModuleRole } from "../../module";
 
 type GridKeys =
   | "minX"
@@ -78,5 +78,3 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     };
   }
 }
-
-export const gridModule = new Grid();

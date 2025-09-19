@@ -6,7 +6,7 @@ import {
   DEFAULT_BOUNDARY_REPEL_DISTANCE,
   DEFAULT_BOUNDARY_REPEL_STRENGTH,
   Boundary,
-} from "@cazala/party/modules/webgpu/modules/boundary";
+} from "@cazala/party/modules/webgpu/modules/forces/boundary";
 
 export function WebGPUBoundaryControls({
   boundary,
