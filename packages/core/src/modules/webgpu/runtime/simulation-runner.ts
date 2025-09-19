@@ -6,7 +6,7 @@ export interface SimulationPipelines {
   integrate?: GPUComputePipeline;
   constrain?: GPUComputePipeline;
   correct?: GPUComputePipeline;
-  monolithic?: GPUComputePipeline; // fallback main
+  main?: GPUComputePipeline; // fallback main
 }
 
 export interface SimulationRunConfig {
@@ -94,10 +94,10 @@ export function runSimulationPasses(
     return;
   }
 
-  if (pipelines.monolithic && groups > 0) {
+  if (pipelines.main && groups > 0) {
     const simPass = encoder.beginComputePass();
     simPass.setBindGroup(0, bindGroup);
-    simPass.setPipeline(pipelines.monolithic);
+    simPass.setPipeline(pipelines.main);
     simPass.dispatchWorkgroups(groups);
     simPass.end();
   }

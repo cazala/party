@@ -1,7 +1,18 @@
 import { Module } from "../compute";
 import { ModuleRole } from "../descriptors";
 import type { ModuleDescriptor } from "../descriptors";
-import { PARTICLE_STRUCT, STORAGE_DECL } from "./wgsl-templates";
+
+export const PARTICLE_STRUCT = `
+struct Particle {
+  position: vec2<f32>,
+  velocity: vec2<f32>,
+  acceleration: vec2<f32>,
+  size: f32,
+  mass: f32,
+  color: vec4<f32>,
+}`;
+
+export const STORAGE_DECL = `@group(0) @binding(0) var<storage, read_write> particles: array<Particle>;`;
 
 function cap(s: string): string {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
@@ -18,7 +29,7 @@ export interface ModuleUniformLayout {
   mapping: Record<string, { flatIndex: number; expr: string }>;
 }
 
-export interface ComputeProgramBuild {
+export interface Program {
   code: string;
   layouts: ModuleUniformLayout[];
   simStateStride: number;
@@ -29,9 +40,9 @@ export interface ComputeProgramBuild {
   };
 }
 
-export function buildComputeProgram(
+export function buildProgram(
   modules: readonly Module<string, string, any>[]
-): ComputeProgramBuild {
+): Program {
   const descriptors = modules.map((m) => m.descriptor());
   const sim = descriptors.find((m) => m.name === "simulation");
   if (!sim) throw new Error("No simulation module provided");

@@ -1,21 +1,3 @@
-import {
-  type RenderModuleDescriptor,
-  type FullscreenRenderPass,
-  RenderPassKind,
-  ComputeRenderPass,
-} from "../shaders/descriptors";
-import type {
-  ComputeProgramBuild,
-  ModuleUniformLayout,
-} from "../shaders/builder/compute-builder";
-import {
-  buildFullscreenPassWGSL,
-  buildComputeImagePassWGSL,
-} from "../shaders/builder/render-dsl-builder";
-import { GPUResources } from "./gpu-resources";
-import { WebGPURenderer } from "../WebGPURenderer";
-import { DEFAULTS } from "../config";
-
 /**
  * Render runner
  *
@@ -27,6 +9,24 @@ import { DEFAULTS } from "../config";
  * view. The function returns the view that has the most up-to-date scene at
  * the end of the chain.
  */
+
+import {
+  type RenderModuleDescriptor,
+  type FullscreenRenderPass,
+  RenderPassKind,
+  ComputeRenderPass,
+} from "../shaders/descriptors";
+import type {
+  Program,
+  ModuleUniformLayout,
+} from "../shaders/builder/compute-builder";
+import {
+  buildFullscreenPassWGSL,
+  buildComputeImagePassWGSL,
+} from "../shaders/builder/render-builder";
+import { GPUResources } from "./gpu-resources";
+import { WebGPURenderer } from "../WebGPURenderer";
+import { DEFAULTS } from "../config";
 
 export interface RenderExecutorViews {
   currentView: GPUTextureView;
@@ -48,7 +48,7 @@ export function runRenderPasses(
   modules: RenderModuleDescriptor[],
   currentView: GPUTextureView,
   otherView: GPUTextureView,
-  computeBuild: ComputeProgramBuild,
+  computeBuild: Program,
   resources: GPUResources,
   renderer: WebGPURenderer,
   particleCount: number
@@ -59,8 +59,11 @@ export function runRenderPasses(
   for (let i = 0; i < modules.length; i++) {
     const module = modules[i];
     if (!module.passes || module.passes.length === 0) continue;
-    for (let p = 0; p < module.passes.length; p++) {
-      const pass = module.passes[p];
+    for (const pass of module.passes) {
+      // Resolve the uniform layout for this module
+      const layout = computeBuild.layouts.find(
+        (l) => l.moduleName === module.name
+      )!;
       // Snapshot the views state for this pass
       const views = { currentView, otherView, anyWrites };
       let wrote: "current" | "other" | null = null;
@@ -69,7 +72,7 @@ export function runRenderPasses(
         runFullscreenPass(
           encoder,
           module,
-          computeBuild.layouts,
+          layout,
           pass,
           views,
           resources,
@@ -82,7 +85,7 @@ export function runRenderPasses(
         runComputePass(
           encoder,
           module,
-          computeBuild.layouts,
+          layout,
           pass,
           views,
           resources,
@@ -117,16 +120,13 @@ export function runRenderPasses(
 function runFullscreenPass(
   encoder: GPUCommandEncoder,
   module: RenderModuleDescriptor,
-  layouts: ModuleUniformLayout[],
+  layout: ModuleUniformLayout,
   pass: FullscreenRenderPass,
   views: RenderExecutorViews,
   resources: GPUResources,
   particleCount: number
 ): void {
-  // Resolve the uniform layout for this module
-  const layout = layouts.find((l) => l.moduleName === module.name)!;
-
-  // Build WGSL program for this pass
+  // Generate WGSL for the fullscreen pass
   const wgsl = buildFullscreenPassWGSL(pass, module.name, layout);
 
   // Acquire or create a cached render pipeline for the generated WGSL
@@ -169,14 +169,13 @@ function runFullscreenPass(
 function runComputePass(
   encoder: GPUCommandEncoder,
   module: RenderModuleDescriptor,
-  layouts: ModuleUniformLayout[],
+  layout: ModuleUniformLayout,
   pass: ComputeRenderPass,
   views: RenderExecutorViews,
   resources: GPUResources,
   renderer: WebGPURenderer
 ): void {
-  // Resolve the uniform layout and generate WGSL for the compute pass
-  const layout = layouts.find((l) => l.moduleName === module.name)!;
+  // Generate WGSL for the compute pass
   const wgsl = buildComputeImagePassWGSL(pass, module.name, layout);
   // Acquire or create a cached compute pipeline
   const pipeline = resources.getOrCreateImageComputePipeline(wgsl);

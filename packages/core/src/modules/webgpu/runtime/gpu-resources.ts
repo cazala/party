@@ -1,6 +1,6 @@
 import { copyShaderWGSL } from "../shaders/copy";
 import type {
-  ComputeProgramBuild,
+  Program,
   ModuleUniformLayout,
 } from "../shaders/builder/compute-builder";
 import type { SimulationPipelines } from "./simulation-runner";
@@ -25,7 +25,7 @@ export class GPUResources {
   private renderBindGroupLayout: GPUBindGroupLayout | null = null;
   private computeBindGroupLayout: GPUBindGroupLayout | null = null;
   private computePipelineLayout: GPUPipelineLayout | null = null;
-  private simPipelines: SimulationPipelines = {};
+  private simulationPipelines: SimulationPipelines = {};
   private gridCountsBuffer: GPUBuffer | null = null;
   private gridIndicesBuffer: GPUBuffer | null = null;
   private simStateBuffer: GPUBuffer | null = null;
@@ -258,7 +258,7 @@ export class GPUResources {
     return this.renderBindGroupLayout;
   }
 
-  buildComputeLayouts(compute: ComputeProgramBuild): void {
+  buildComputeLayouts(compute: Program): void {
     const entries: GPUBindGroupLayoutEntry[] = [];
     entries.push({
       binding: 0,
@@ -331,8 +331,8 @@ export class GPUResources {
         return undefined;
       }
     };
-    this.simPipelines = {
-      monolithic: safeCreateComputePipelineForEntry("main"),
+    this.simulationPipelines = {
+      main: safeCreateComputePipelineForEntry("main"),
       gridClear: safeCreateComputePipelineForEntry("grid_clear"),
       gridBuild: safeCreateComputePipelineForEntry("grid_build"),
       state: safeCreateComputePipelineForEntry("state_pass"),
@@ -344,7 +344,7 @@ export class GPUResources {
   }
 
   getSimulationPipelines(): SimulationPipelines {
-    return this.simPipelines;
+    return this.simulationPipelines;
   }
 
   getCopyPipeline(format: GPUTextureFormat): GPURenderPipeline {
@@ -460,7 +460,7 @@ export class GPUResources {
     });
   }
 
-  createComputeBindGroup(compute: ComputeProgramBuild): GPUBindGroup {
+  createComputeBindGroup(compute: Program): GPUBindGroup {
     if (!this.computeBindGroupLayout) {
       throw new Error("Compute bind group layout not built");
     }

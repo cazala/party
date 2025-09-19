@@ -1,6 +1,6 @@
 import type { WebGPURenderer } from "./WebGPURenderer";
 import { Module, type ModuleDescriptor } from "./shaders/compute";
-import { type ComputeProgramBuild } from "./shaders/builder/compute-builder";
+import { type Program } from "./shaders/builder/compute-builder";
 import { DEFAULTS } from "./config";
 import { GPUResources, ModuleUniformBuffer } from "./runtime/gpu-resources";
 import { runRenderPasses } from "./runtime/render-runner";
@@ -50,7 +50,7 @@ export class WebGPUParticleSystem {
   private particleCount: number = 0;
   private maxParticles: number = DEFAULTS.maxParticles;
 
-  private computeBuild: ComputeProgramBuild | null = null;
+  private computeBuild: Program | null = null;
 
   // Grid buffers
   // Grid and sim state buffers are managed by GPUResources
@@ -92,10 +92,11 @@ export class WebGPUParticleSystem {
     this.resources.ensureSceneTextures(size.width, size.height);
   }
 
-  private runRenderGraph(commandEncoder: GPUCommandEncoder): void {
+  private runRenderPasses(commandEncoder: GPUCommandEncoder): void {
     // Ensure textures sized, then execute via resources-backed render graph
     this.ensureSceneTexturesSized();
 
+    // Filter render modules
     const modules = this.modules
       .map((m) => m.descriptor())
       .filter(
@@ -106,6 +107,7 @@ export class WebGPUParticleSystem {
           descriptor.role === ModuleRole.Render && this.modules[idx].isEnabled()
       );
 
+    // Execute render passes
     const lastView = runRenderPasses(
       commandEncoder,
       modules,
@@ -119,7 +121,7 @@ export class WebGPUParticleSystem {
 
     // Copy to canvas and return
     const canvasViewNew = this.context.getCurrentTexture().createView();
-    this.copyTrailToCanvas(commandEncoder, canvasViewNew, lastView);
+    this.copySceneTextureToCanvas(commandEncoder, canvasViewNew, lastView);
     return;
   }
 
@@ -333,15 +335,15 @@ export class WebGPUParticleSystem {
     // Pipeline layout for compute pipelines is managed in resources
 
     // Compute pipelines are now built in resources/engine; fetch references
-    const sim = this.resources.getSimulationPipelines();
-    this.computePipeline = sim.monolithic || null;
-    this.gridClearPipeline = sim.gridClear || null;
-    this.gridBuildPipeline = sim.gridBuild || null;
-    this.statePipeline = sim.state || null;
-    this.applyPipeline = sim.apply || null;
-    this.integratePipeline = sim.integrate || null;
-    this.constrainPipeline = sim.constrain || null;
-    this.correctPipeline = sim.correct || null;
+    const simulationPipelines = this.resources.getSimulationPipelines();
+    this.computePipeline = simulationPipelines.main || null;
+    this.gridClearPipeline = simulationPipelines.gridClear || null;
+    this.gridBuildPipeline = simulationPipelines.gridBuild || null;
+    this.statePipeline = simulationPipelines.state || null;
+    this.applyPipeline = simulationPipelines.apply || null;
+    this.integratePipeline = simulationPipelines.integrate || null;
+    this.constrainPipeline = simulationPipelines.constrain || null;
+    this.correctPipeline = simulationPipelines.correct || null;
   }
 
   private createBindGroups(): void {
@@ -434,7 +436,7 @@ export class WebGPUParticleSystem {
 
   // removed old trail helpers
 
-  private copyTrailToCanvas(
+  private copySceneTextureToCanvas(
     commandEncoder: GPUCommandEncoder,
     canvasView: GPUTextureView,
     sourceView?: GPUTextureView
@@ -563,7 +565,7 @@ export class WebGPUParticleSystem {
           integrate: this.integratePipeline || undefined,
           constrain: this.constrainPipeline || undefined,
           correct: this.correctPipeline || undefined,
-          monolithic: this.computePipeline || undefined,
+          main: this.computePipeline || undefined,
         },
         {
           particleCount: this.particleCount,
@@ -575,7 +577,7 @@ export class WebGPUParticleSystem {
     }
 
     // Always run the render graph; render modules draw into scene textures and we copy to canvas
-    this.runRenderGraph(commandEncoder);
+    this.runRenderPasses(commandEncoder);
 
     // Submit render commands
     this.device.queue.submit([commandEncoder.finish()]);

@@ -1,6 +1,6 @@
 import { GPUResources } from "../runtime/gpu-resources";
-import { buildComputeProgram } from "../shaders/builder/compute-builder";
-import type { ComputeProgramBuild } from "../shaders/builder/compute-builder";
+import { buildProgram } from "../shaders/builder/compute-builder";
+import type { Program } from "../shaders/builder/compute-builder";
 import { Module } from "../shaders/compute";
 
 export interface EngineInitConfig {
@@ -11,7 +11,7 @@ export class WebGPUEngine {
   private readonly device: GPUDevice;
   private readonly resources: GPUResources;
   private readonly modules: readonly Module<string, string, any>[];
-  private computeBuild: ComputeProgramBuild | null = null;
+  private computeBuild: Program | null = null;
   private maxParticles: number;
 
   constructor(
@@ -29,13 +29,13 @@ export class WebGPUEngine {
     return this.resources;
   }
 
-  getComputeBuild(): ComputeProgramBuild | null {
+  getComputeBuild(): Program | null {
     return this.computeBuild;
   }
 
   initialize(canvasWidth: number, canvasHeight: number): void {
     // Build compute program and allocate core resources
-    this.computeBuild = buildComputeProgram(this.modules);
+    this.computeBuild = buildProgram(this.modules);
     this.resources.createParticleBuffer(this.maxParticles, 12);
     this.resources.createModuleUniformBuffers(this.computeBuild.layouts);
     this.resources.createRenderUniformBuffer(24);
