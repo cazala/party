@@ -2,11 +2,11 @@ import type { WebGPURenderer } from "./WebGPURenderer";
 import { Module, type ModuleDescriptor } from "./shaders/compute";
 import { type Program } from "./shaders/builder/compute-builder";
 import { DEFAULTS } from "./config";
-import { GPUResources, ModuleUniformBuffer } from "./runtime/gpu-resources";
+import { GPUResources } from "./runtime/gpu-resources";
 import { runRenderPasses } from "./runtime/render-runner";
 import { runSimulationPasses } from "./runtime/simulation-runner";
-import { WebGPUEngine } from "./engine/WebGPUEngine";
 import { ModuleRole, RenderModuleDescriptor } from "./shaders/descriptors";
+import { buildProgram } from "./shaders/builder/compute-builder";
 
 export interface WebGPUParticle {
   position: [number, number];
@@ -28,7 +28,6 @@ export class WebGPUParticleSystem {
   private device: GPUDevice;
   private context: GPUCanvasContext;
   private resources: GPUResources;
-  private engine: WebGPUEngine;
 
   private moduleUniformState: Record<string, number>[] = [];
 
@@ -102,9 +101,6 @@ export class WebGPUParticleSystem {
     this.device = webgpuDevice.device;
     this.context = webgpuDevice.context;
     this.resources = new GPUResources(this.device);
-    this.engine = new WebGPUEngine(this.device, this.modules, {
-      maxParticles: DEFAULTS.maxParticles,
-    });
   }
 
   getModule<Name extends string>(
@@ -122,34 +118,38 @@ export class WebGPUParticleSystem {
   async initialize(): Promise<void> {
     // Engine initializes core resources and compute build
     const size = this.renderer.getSize();
-    this.engine.initialize(size.width, size.height);
-
-    // Hydrate local references from engine/resources
-    const engineResources = this.engine.getResources();
-    this.resources = engineResources;
-    const computeBuild = this.engine.getComputeBuild();
-    if (computeBuild) {
-      this.program = computeBuild;
+    // Build compute program and allocate core resources
+    this.program = buildProgram(this.modules);
+    this.resources.createParticleBuffer(this.maxParticles, 12);
+    this.resources.createModuleUniformBuffers(this.program.layouts);
+    this.resources.createRenderUniformBuffer(24);
+    if (this.program.extraBindings.simState) {
+      this.resources.createSimStateBuffer(this.maxParticles, 4);
     }
 
+    // Build compute bind group layout once
+    this.resources.buildComputeLayouts(this.program);
+
+    // Build simulation pipelines once
+    this.resources.buildComputePipelines(this.program.code);
+    this.resources.ensureSceneTextures(size.width, size.height);
+
     // Initialize CPU-side uniform state maps from compute layouts
-    if (this.program) {
-      this.moduleUniformState = this.program.layouts.map((layout) => {
-        const state: Record<string, number> = {};
-        for (const key of Object.keys(layout.mapping)) state[key] = 0;
-        if (layout.moduleName !== "simulation" && "enabled" in layout.mapping) {
-          state["enabled"] = 1;
-        }
-        return state;
-      });
-      // Seed simStride if present
-      const simIdx = this.program.layouts.findIndex(
-        (l) => l.moduleName === "simulation"
-      );
-      if (simIdx !== -1 && this.program.layouts[simIdx].mapping["simStride"]) {
-        this.moduleUniformState[simIdx]["simStride"] =
-          this.program.simStateStride;
+    this.moduleUniformState = this.program.layouts.map((layout) => {
+      const state: Record<string, number> = {};
+      for (const key of Object.keys(layout.mapping)) state[key] = 0;
+      if (layout.moduleName !== "simulation" && "enabled" in layout.mapping) {
+        state["enabled"] = 1;
       }
+      return state;
+    });
+    // Seed simStride if present
+    const simIdx = this.program.layouts.findIndex(
+      (l) => l.moduleName === "simulation"
+    );
+    if (simIdx !== -1 && this.program.layouts[simIdx].mapping["simStride"]) {
+      this.moduleUniformState[simIdx]["simStride"] =
+        this.program.simStateStride;
     }
 
     // Configure grid storage and uniforms using current renderer view
@@ -249,10 +249,6 @@ export class WebGPUParticleSystem {
   }
 
   resize(width: number, height: number): void {
-    // Resize scene textures early via engine/resources, and update grid
-    try {
-      this.engine.resize(width, height);
-    } catch (_) {}
     this.resources.ensureSceneTextures(width, height);
     this.updateGridForSize(width, height);
   }
@@ -500,6 +496,6 @@ export class WebGPUParticleSystem {
   }
 
   destroy(): void {
-    this.engine.dispose();
+    this.resources.dispose();
   }
 }
