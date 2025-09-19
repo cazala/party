@@ -21,7 +21,7 @@ export function buildFullscreenPassWGSL<Keys extends string = string>(
       ),
   };
 
-  const fragmentBody = pass.fragment({
+  const fragment = pass.fragment({
     getUniform: (id: string) =>
       id === "canvasWidth"
         ? "render_uniforms.canvas_size.x"
@@ -67,7 +67,7 @@ struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: v
   out.color = p.color;
   return out;
 }
-@fragment fn fs_main(@location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> ${fragmentBody}`;
+@fragment fn fs_main(@location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> ${fragment}`;
 
   return `${struct}\n@group(0) @binding(4) var<uniform> module_uniforms: Uniforms_${moduleName};\n${code}`;
 }

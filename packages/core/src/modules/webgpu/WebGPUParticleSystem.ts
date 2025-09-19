@@ -30,27 +30,12 @@ export class WebGPUParticleSystem {
   private resources: GPUResources;
   private engine: WebGPUEngine;
 
-  private particleBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
-  private moduleUniformBuffers: ModuleUniformBuffer[] = []; // TODO: migrate to GPUResources
   private moduleUniformState: Record<string, number>[] = [];
-  private renderUniformBuffer: GPUBuffer | null = null; // TODO: migrate to GPUResources
-
-  private computeBindGroup: GPUBindGroup | null = null;
-  private bindGroupLayout: GPUBindGroupLayout | null = null;
-
-  private computePipeline: GPUComputePipeline | null = null;
-  private gridClearPipeline: GPUComputePipeline | null = null;
-  private gridBuildPipeline: GPUComputePipeline | null = null;
-  private statePipeline: GPUComputePipeline | null = null;
-  private applyPipeline: GPUComputePipeline | null = null;
-  private integratePipeline: GPUComputePipeline | null = null;
-  private correctPipeline: GPUComputePipeline | null = null;
-  private constrainPipeline: GPUComputePipeline | null = null;
 
   private particleCount: number = 0;
   private maxParticles: number = DEFAULTS.maxParticles;
 
-  private computeBuild: Program | null = null;
+  private program: Program | null = null;
 
   // Grid buffers
   // Grid and sim state buffers are managed by GPUResources
@@ -67,25 +52,6 @@ export class WebGPUParticleSystem {
 
   // Constraint solver iterations per frame
   private constrainIterations: number = 50;
-
-  // Scene helpers now delegated to GPUResources
-  private getCurrentSceneTextureView(): GPUTextureView {
-    return this.resources.getCurrentSceneTextureView();
-  }
-  private getOtherSceneTextureView(): GPUTextureView {
-    return this.resources.getOtherSceneTextureView();
-  }
-  private getSceneSampler(): GPUSampler {
-    return this.resources.getSceneSampler();
-  }
-  // swapSceneTextures no longer needed; render-graph runner swaps views
-
-  // Cache for render graph
-  // Reserve for future caching (unused until render modules are implemented)
-  // private renderComputePipelines: Map<string, GPUComputePipeline> = new Map();
-  // private renderGraphicsPipelines: Map<string, GPURenderPipeline> = new Map();
-  // Deprecated: sizing tracked by GPUResources.ensureSceneTextures
-  // private sceneTexSize: { width: number; height: number } | null = null;
 
   private ensureSceneTexturesSized(): void {
     const size = this.renderer.getSize();
@@ -111,9 +77,9 @@ export class WebGPUParticleSystem {
     const lastView = runRenderPasses(
       commandEncoder,
       modules,
-      this.getCurrentSceneTextureView(),
-      this.getOtherSceneTextureView(),
-      this.computeBuild!,
+      this.resources.getCurrentSceneTextureView(),
+      this.resources.getOtherSceneTextureView(),
+      this.program!,
       this.resources,
       this.renderer,
       this.particleCount
@@ -141,22 +107,12 @@ export class WebGPUParticleSystem {
     });
   }
 
-  private static toDescriptor(
-    m: Module<string, string, any>
-  ): ModuleDescriptor<string, string, any> {
-    return m.descriptor();
-  }
-
   getModule<Name extends string>(
     name: Name
   ): Module<string, string, any> | undefined {
-    const found = (this.modules as readonly Module<string, string, any>[]).find(
-      (m) => {
-        const d = WebGPUParticleSystem.toDescriptor(m);
-        return d.name === name;
-      }
-    );
-    return found;
+    const idx = this.getModuleIndex(name);
+    if (idx === -1) return undefined;
+    return this.modules[idx];
   }
 
   setConstrainIterations(iters: number): void {
@@ -173,15 +129,12 @@ export class WebGPUParticleSystem {
     this.resources = engineResources;
     const computeBuild = this.engine.getComputeBuild();
     if (computeBuild) {
-      this.computeBuild = computeBuild;
+      this.program = computeBuild;
     }
-    this.particleBuffer = engineResources.getParticleBuffer();
-    this.moduleUniformBuffers = engineResources.getModuleUniformBuffers();
-    this.renderUniformBuffer = engineResources.getRenderUniformBuffer();
 
     // Initialize CPU-side uniform state maps from compute layouts
-    if (this.computeBuild) {
-      this.moduleUniformState = this.computeBuild.layouts.map((layout) => {
+    if (this.program) {
+      this.moduleUniformState = this.program.layouts.map((layout) => {
         const state: Record<string, number> = {};
         for (const key of Object.keys(layout.mapping)) state[key] = 0;
         if (layout.moduleName !== "simulation" && "enabled" in layout.mapping) {
@@ -190,41 +143,33 @@ export class WebGPUParticleSystem {
         return state;
       });
       // Seed simStride if present
-      const simIdx = this.computeBuild.layouts.findIndex(
+      const simIdx = this.program.layouts.findIndex(
         (l) => l.moduleName === "simulation"
       );
-      if (
-        simIdx !== -1 &&
-        this.computeBuild.layouts[simIdx].mapping["simStride"]
-      ) {
+      if (simIdx !== -1 && this.program.layouts[simIdx].mapping["simStride"]) {
         this.moduleUniformState[simIdx]["simStride"] =
-          this.computeBuild.simStateStride;
+          this.program.simStateStride;
       }
     }
 
     // Configure grid storage and uniforms using current renderer view
     this.updateGridFromRenderer();
 
-    // Pipelines and bind groups remain created here for now
-    await this.createPipelines();
-    this.createBindGroups();
     // Attach to renderer automatically
     this.renderer.attachSystem(this);
 
     // Attach per-module uniform writers to modules
-    (this.modules as readonly Module<string, string>[]).forEach((mod) => {
-      const name = WebGPUParticleSystem.toDescriptor(mod).name;
+    this.modules.forEach((mod) => {
+      const name = mod.descriptor().name;
       const writer = (values: Partial<Record<string, number>>) => {
-        this.writeUniform(name, values);
+        this.writeModuleUniform(name, values);
       };
       mod.attachUniformWriter(writer);
 
       // Attach a reader so modules can implement getters
       const reader = () => {
         const idx = this.getModuleIndex(name);
-        return { ...this.moduleUniformState[idx] } as Partial<
-          Record<string, number>
-        >;
+        return { ...this.moduleUniformState[idx] };
       };
       // attach typed reader without using any
       mod.attachUniformReader(reader);
@@ -259,11 +204,11 @@ export class WebGPUParticleSystem {
     // grid storage buffers remain managed in GPUResources
 
     // Seed grid uniforms directly (grid is not a module)
-    const gridIdx = this.computeBuild!.layouts.findIndex(
+    const gridIdx = this.program!.layouts.findIndex(
       (l) => l.moduleName === "grid"
     );
     if (gridIdx !== -1) {
-      const layout = this.computeBuild!.layouts[gridIdx];
+      const layout = this.program!.layouts[gridIdx];
       const values = new Float32Array(layout.vec4Count * 4);
       const mapping = layout.mapping as Record<string, { flatIndex: number }>;
       values[mapping.minX.flatIndex] = minX;
@@ -275,11 +220,6 @@ export class WebGPUParticleSystem {
       values[mapping.cellSize.flatIndex] = cellSize;
       values[mapping.maxPerCell.flatIndex] = maxPerCell;
       this.resources.writeModuleUniform(gridIdx, values);
-    }
-
-    // Recreate compute bind group to include new storage buffers
-    if (this.bindGroupLayout) {
-      this.createBindGroups();
     }
   }
 
@@ -317,54 +257,6 @@ export class WebGPUParticleSystem {
     this.updateGridForSize(width, height);
   }
 
-  private async createPipelines(): Promise<void> {
-    // Compute pipelines and layouts are built in resources via engine
-
-    // Render bind group layout provided by resources now
-
-    // (No static particle canvas pipeline; render modules handle scene writes)
-
-    // Create copy bind group layout (simpler - just texture and sampler)
-    // Copy pipeline construction is handled in GPUResources
-
-    // Copy pipeline/bind group managed per-frame using resources.getCopyPipeline
-
-    // Create an explicit bind group layout and pipeline layout shared by all compute entry points
-    if (!this.computeBuild) throw new Error("Compute program not built");
-    this.bindGroupLayout = this.resources.getComputeBindGroupLayout();
-    // Pipeline layout for compute pipelines is managed in resources
-
-    // Compute pipelines are now built in resources/engine; fetch references
-    const simulationPipelines = this.resources.getSimulationPipelines();
-    this.computePipeline = simulationPipelines.main || null;
-    this.gridClearPipeline = simulationPipelines.gridClear || null;
-    this.gridBuildPipeline = simulationPipelines.gridBuild || null;
-    this.statePipeline = simulationPipelines.state || null;
-    this.applyPipeline = simulationPipelines.apply || null;
-    this.integratePipeline = simulationPipelines.integrate || null;
-    this.constrainPipeline = simulationPipelines.constrain || null;
-    this.correctPipeline = simulationPipelines.correct || null;
-  }
-
-  private createBindGroups(): void {
-    if (
-      !this.particleBuffer ||
-      this.moduleUniformBuffers.some((b) => !b) ||
-      !this.renderUniformBuffer
-    ) {
-      throw new Error("Pipeline or buffers not created");
-    }
-
-    // Create compute bind group: particles storage + module uniforms
-    if (!this.bindGroupLayout) {
-      throw new Error("Bind group layout not created");
-    }
-    if (!this.computeBuild) throw new Error("Compute program not built");
-    this.computeBindGroup = this.resources.createComputeBindGroup(
-      this.computeBuild
-    );
-  }
-
   setParticles(particles: WebGPUParticle[]): void {
     const clampedParticles = particles.slice(0, this.maxParticles);
     this.particleCount = clampedParticles.length;
@@ -372,7 +264,6 @@ export class WebGPUParticleSystem {
   }
 
   addParticle(particle: WebGPUParticle): void {
-    if (!this.particleBuffer) return;
     if (this.particleCount >= this.maxParticles) return;
 
     const STRIDE = 12; // pos2, vel2, accel2, size, mass, color4
@@ -398,8 +289,6 @@ export class WebGPUParticleSystem {
   }
 
   private updateParticleBuffer(particles: WebGPUParticle[]): void {
-    if (!this.particleBuffer) return;
-
     const STRIDE = 12; // pos2, vel2, accel2, size, mass, color4
     const data = new Float32Array(particles.length * STRIDE);
     for (let i = 0; i < particles.length; i++) {
@@ -427,10 +316,7 @@ export class WebGPUParticleSystem {
 
   private getModuleIndex(name: string): number {
     return (this.modules as readonly Module<string, string, any>[]).findIndex(
-      (m) => {
-        const d = WebGPUParticleSystem.toDescriptor(m);
-        return d.name === name;
-      }
+      (module) => module.descriptor().name === name
     );
   }
 
@@ -449,9 +335,9 @@ export class WebGPUParticleSystem {
       entries: [
         {
           binding: 0,
-          resource: sourceView ?? this.getCurrentSceneTextureView(),
+          resource: sourceView ?? this.resources.getCurrentSceneTextureView(),
         },
-        { binding: 1, resource: this.getSceneSampler() },
+        { binding: 1, resource: this.resources.getSceneSampler() },
       ],
     });
     const pass = commandEncoder.beginRenderPass({
@@ -470,38 +356,13 @@ export class WebGPUParticleSystem {
     pass.end();
   }
 
-  // removed scene clear helper; render modules own scene lifecycle
-
-  private writeSimulationUniforms(
-    deltaTime: number,
-    particleCount: number
-  ): void {
-    const idx = this.getModuleIndex("simulation");
-    if (idx === -1) return;
-    const buf = this.moduleUniformBuffers[idx];
-    if (!buf) return;
-    const layout = this.computeBuild!.layouts[idx];
-    // Merge into state
-    this.moduleUniformState[idx]["dt"] = deltaTime;
-    this.moduleUniformState[idx]["count"] = particleCount;
-    // Build full vec array from state
-    const values = new Float32Array(layout.vec4Count * 4);
-    for (const [key, map] of Object.entries(layout.mapping)) {
-      values[(map as unknown as { flatIndex: number }).flatIndex] =
-        this.moduleUniformState[idx][key] ?? 0;
-    }
-    this.resources.writeModuleUniform(idx, values);
-  }
-
-  writeUniform(
+  writeModuleUniform(
     moduleName: string,
     values: Partial<Record<string, number>>
   ): void {
     const idx = this.getModuleIndex(moduleName);
     if (idx === -1) return;
-    const buf = this.moduleUniformBuffers[idx];
-    if (!buf) return;
-    const layout = this.computeBuild!.layouts[idx];
+    const layout = this.program!.layouts[idx];
     // Merge into state to avoid zeroing unspecified fields
     const state = this.moduleUniformState[idx];
     for (const [key, value] of Object.entries(values)) {
@@ -515,9 +376,7 @@ export class WebGPUParticleSystem {
     this.resources.writeModuleUniform(idx, data);
   }
 
-  updateRender(uniforms: RenderUniforms): void {
-    if (!this.renderUniformBuffer) return;
-
+  writeRenderUniform(uniforms: RenderUniforms): void {
     const data = new Float32Array([
       uniforms.canvasSize[0],
       uniforms.canvasSize[1],
@@ -531,7 +390,10 @@ export class WebGPUParticleSystem {
   }
 
   update(deltaTime: number): void {
-    this.writeSimulationUniforms(deltaTime, this.particleCount);
+    this.writeModuleUniform("simulation", {
+      dt: deltaTime,
+      count: this.particleCount,
+    });
   }
 
   render(
@@ -539,44 +401,39 @@ export class WebGPUParticleSystem {
     cameraPosition: [number, number],
     zoom: number
   ): void {
-    // Proceed even with 0 particles to ensure canvas clears and scene stays in sync
+    if (!this.program) {
+      throw new Error("Compute program not built");
+    }
 
-    this.updateRender({ canvasSize, cameraPosition, zoom });
+    this.writeRenderUniform({ canvasSize, cameraPosition, zoom });
 
     // Create command encoder for rendering
     const commandEncoder = this.device.createCommandEncoder();
 
-    // Recreate compute bind group to update trail texture binding for sensors
-    if (this.bindGroupLayout) {
-      this.createBindGroups();
-    }
+    // Run compute passes to build grid and integrate physics
+    const workgroupSize = DEFAULTS.workgroupSize;
+    runSimulationPasses(
+      commandEncoder,
+      this.resources.createComputeBindGroup(this.program),
+      {
+        gridClear: this.resources.getSimulationPipelines().gridClear,
+        gridBuild: this.resources.getSimulationPipelines().gridBuild,
+        state: this.resources.getSimulationPipelines().state,
+        apply: this.resources.getSimulationPipelines().apply,
+        integrate: this.resources.getSimulationPipelines().integrate,
+        constrain: this.resources.getSimulationPipelines().constrain,
+        correct: this.resources.getSimulationPipelines().correct,
+        main: this.resources.getSimulationPipelines().main,
+      },
+      {
+        particleCount: this.particleCount,
+        gridCellCount: this.gridCells,
+        workgroupSize,
+        constrainIterations: this.constrainIterations,
+      }
+    );
 
-    // Run compute passes to build grid and integrate physics (via runner)
-    if (this.computeBindGroup) {
-      const workgroupSize = DEFAULTS.workgroupSize;
-      runSimulationPasses(
-        commandEncoder,
-        this.computeBindGroup,
-        {
-          gridClear: this.gridClearPipeline || undefined,
-          gridBuild: this.gridBuildPipeline || undefined,
-          state: this.statePipeline || undefined,
-          apply: this.applyPipeline || undefined,
-          integrate: this.integratePipeline || undefined,
-          constrain: this.constrainPipeline || undefined,
-          correct: this.correctPipeline || undefined,
-          main: this.computePipeline || undefined,
-        },
-        {
-          particleCount: this.particleCount,
-          gridCellCount: this.gridCells,
-          workgroupSize,
-          constrainIterations: this.constrainIterations,
-        }
-      );
-    }
-
-    // Always run the render graph; render modules draw into scene textures and we copy to canvas
+    // Run render passes
     this.runRenderPasses(commandEncoder);
 
     // Submit render commands
@@ -597,7 +454,7 @@ export class WebGPUParticleSystem {
       const passA = encoder.beginRenderPass({
         colorAttachments: [
           {
-            view: this.getCurrentSceneTextureView(),
+            view: this.resources.getCurrentSceneTextureView(),
             clearValue: { r: 0, g: 0, b: 0, a: 0 },
             loadOp: "clear",
             storeOp: "store",
@@ -608,7 +465,7 @@ export class WebGPUParticleSystem {
       const passB = encoder.beginRenderPass({
         colorAttachments: [
           {
-            view: this.getOtherSceneTextureView(),
+            view: this.resources.getOtherSceneTextureView(),
             clearValue: { r: 0, g: 0, b: 0, a: 0 },
             loadOp: "clear",
             storeOp: "store",
