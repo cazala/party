@@ -156,7 +156,8 @@ function runFullscreenPass(
   });
   renderPass.setPipeline(pipeline);
   renderPass.setBindGroup(0, bindGroup);
-  renderPass.draw(4, particleCount);
+  const instanced = pass.instanced ?? true;
+  renderPass.draw(4, instanced ? particleCount : 1);
   renderPass.end();
 }
 
