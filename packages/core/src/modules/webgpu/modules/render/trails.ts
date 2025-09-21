@@ -20,41 +20,35 @@ export const DEFAULT_TRAILS_TRAIL_DECAY = 0.01;
 export const DEFAULT_TRAILS_TRAIL_DIFFUSE = 0.0;
 
 export class Trails extends Module<"trails", TrailBindingKeys> {
-  private trailDecay: number;
-  private trailDiffuse: number;
-
   constructor(opts?: {
     enabled?: boolean;
     trailDecay?: number;
     trailDiffuse?: number;
   }) {
     super();
-    this.trailDecay = opts?.trailDecay ?? DEFAULT_TRAILS_TRAIL_DECAY;
-    this.trailDiffuse = opts?.trailDiffuse ?? DEFAULT_TRAILS_TRAIL_DIFFUSE;
+    this.write({
+      trailDecay: opts?.trailDecay ?? DEFAULT_TRAILS_TRAIL_DECAY,
+      trailDiffuse: opts?.trailDiffuse ?? DEFAULT_TRAILS_TRAIL_DIFFUSE,
+    });
 
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
     }
   }
 
-  attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
-  ): void {
-    super.attachUniformWriter(writer);
-    this.write({
-      trailDecay: this.trailDecay,
-      trailDiffuse: this.trailDiffuse,
-    });
-  }
-
   setTrailDecay(value: number): void {
-    this.trailDecay = value;
     this.write({ trailDecay: value });
   }
 
   setTrailDiffuse(value: number): void {
-    this.trailDiffuse = value;
     this.write({ trailDiffuse: value });
+  }
+
+  getTrailDecay(): number {
+    return this.readValue("trailDecay");
+  }
+  getTrailDiffuse(): number {
+    return this.readValue("trailDiffuse");
   }
 
   webgpu(): WebGPUDescriptor<"trails", TrailBindingKeys> {

@@ -35,15 +35,6 @@ export const DEFAULT_FLUID_MAX_ACCELERATION = 80;
 type FluidStateKeys = "density" | "nearDensity";
 
 export class Fluid extends Module<"fluid", FluidBindingKeys, FluidStateKeys> {
-  private influenceRadius: number;
-  private targetDensity: number;
-  private pressureMultiplier: number;
-  private viscosity: number;
-  private nearPressureMultiplier: number;
-  private nearThreshold: number;
-  private enableNearPressure: boolean;
-  private maxAcceleration: number;
-
   constructor(opts?: {
     enabled?: boolean;
     influenceRadius?: number;
@@ -56,72 +47,73 @@ export class Fluid extends Module<"fluid", FluidBindingKeys, FluidStateKeys> {
     maxAcceleration?: number;
   }) {
     super();
-    this.influenceRadius =
-      opts?.influenceRadius ?? DEFAULT_FLUID_INFLUENCE_RADIUS;
-    this.targetDensity = opts?.targetDensity ?? DEFAULT_FLUID_TARGET_DENSITY;
-    this.pressureMultiplier =
-      opts?.pressureMultiplier ?? DEFAULT_FLUID_PRESSURE_MULTIPLIER;
-    this.viscosity = opts?.viscosity ?? DEFAULT_FLUID_VISCOSITY;
-    this.nearPressureMultiplier =
-      opts?.nearPressureMultiplier ?? DEFAULT_FLUID_NEAR_PRESSURE_MULTIPLIER;
-    this.nearThreshold = opts?.nearThreshold ?? DEFAULT_FLUID_NEAR_THRESHOLD;
-    this.enableNearPressure =
-      opts?.enableNearPressure ?? DEFAULT_FLUID_ENABLE_NEAR_PRESSURE;
-    this.maxAcceleration =
-      opts?.maxAcceleration ?? DEFAULT_FLUID_MAX_ACCELERATION; // cap fluid acceleration to reduce fly-away droplets
+    this.write({
+      influenceRadius: opts?.influenceRadius ?? DEFAULT_FLUID_INFLUENCE_RADIUS,
+      targetDensity: opts?.targetDensity ?? DEFAULT_FLUID_TARGET_DENSITY,
+      pressureMultiplier:
+        opts?.pressureMultiplier ?? DEFAULT_FLUID_PRESSURE_MULTIPLIER,
+      viscosity: opts?.viscosity ?? DEFAULT_FLUID_VISCOSITY,
+      nearPressureMultiplier:
+        opts?.nearPressureMultiplier ?? DEFAULT_FLUID_NEAR_PRESSURE_MULTIPLIER,
+      nearThreshold: opts?.nearThreshold ?? DEFAULT_FLUID_NEAR_THRESHOLD,
+      enableNearPressure:
+        opts?.enableNearPressure ?? DEFAULT_FLUID_ENABLE_NEAR_PRESSURE ? 1 : 0,
+      maxAcceleration: opts?.maxAcceleration ?? DEFAULT_FLUID_MAX_ACCELERATION,
+    });
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
     }
   }
 
-  attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
-  ): void {
-    super.attachUniformWriter(writer);
-    this.write({
-      influenceRadius: this.influenceRadius,
-      targetDensity: this.targetDensity,
-      pressureMultiplier: this.pressureMultiplier,
-      viscosity: this.viscosity,
-      nearPressureMultiplier: this.nearPressureMultiplier,
-      nearThreshold: this.nearThreshold,
-      enableNearPressure: this.enableNearPressure ? 1 : 0,
-      maxAcceleration: this.maxAcceleration,
-    });
-  }
-
   setInfluenceRadius(v: number): void {
-    this.influenceRadius = v;
     this.write({ influenceRadius: v });
   }
   setTargetDensity(v: number): void {
-    this.targetDensity = v;
     this.write({ targetDensity: v });
   }
   setPressureMultiplier(v: number): void {
-    this.pressureMultiplier = v;
     this.write({ pressureMultiplier: v });
   }
   setViscosity(v: number): void {
-    this.viscosity = v;
     this.write({ viscosity: v });
   }
   setNearPressureMultiplier(v: number): void {
-    this.nearPressureMultiplier = v;
     this.write({ nearPressureMultiplier: v });
   }
   setNearThreshold(v: number): void {
-    this.nearThreshold = v;
     this.write({ nearThreshold: v });
   }
   setEnableNearPressure(enabled: boolean): void {
-    this.enableNearPressure = enabled;
     this.write({ enableNearPressure: enabled ? 1 : 0 });
   }
 
   setMaxAcceleration(v: number): void {
-    this.maxAcceleration = v;
     this.write({ maxAcceleration: v });
+  }
+
+  getInfluenceRadius(): number {
+    return this.readValue("influenceRadius");
+  }
+  getTargetDensity(): number {
+    return this.readValue("targetDensity");
+  }
+  getPressureMultiplier(): number {
+    return this.readValue("pressureMultiplier");
+  }
+  getViscosity(): number {
+    return this.readValue("viscosity");
+  }
+  getNearPressureMultiplier(): number {
+    return this.readValue("nearPressureMultiplier");
+  }
+  getNearThreshold(): number {
+    return this.readValue("nearThreshold");
+  }
+  getEnableNearPressure(): number {
+    return this.readValue("enableNearPressure");
+  }
+  getMaxAcceleration(): number {
+    return this.readValue("maxAcceleration");
   }
 
   webgpu(): WebGPUDescriptor<"fluid", FluidBindingKeys, FluidStateKeys> {

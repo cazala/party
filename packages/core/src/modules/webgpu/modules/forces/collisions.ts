@@ -19,23 +19,19 @@ export const DEFAULT_COLLISIONS_RESTITUTION = 0.9;
 
 // Simple, brute-force elastic collision response applied only to current particle
 export class Collisions extends Module<"collisions", CollisionBindingKeys> {
-  private restitution: number;
-
   constructor(opts?: { restitution?: number }) {
     super();
-    this.restitution = opts?.restitution ?? DEFAULT_COLLISIONS_RESTITUTION;
+    this.write({
+      restitution: opts?.restitution ?? DEFAULT_COLLISIONS_RESTITUTION,
+    });
   }
 
   setRestitution(value: number): void {
-    this.restitution = value;
     this.write({ restitution: value });
   }
 
-  attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
-  ): void {
-    super.attachUniformWriter(writer);
-    this.write({ restitution: this.restitution });
+  getRestitution(): number {
+    return this.readValue("restitution");
   }
 
   webgpu(): WebGPUDescriptor<"collisions", CollisionBindingKeys> {

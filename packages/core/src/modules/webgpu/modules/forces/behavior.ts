@@ -35,16 +35,6 @@ export const DEFAULT_BEHAVIOR_VIEW_RADIUS = 100;
 export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 2 * Math.PI;
 
 export class Behavior extends Module<"behavior", BehaviorBindingKeys> {
-  private wanderWeight: number;
-  private cohesionWeight: number;
-  private alignmentWeight: number;
-  private separationWeight: number;
-  private chaseWeight: number;
-  private avoidWeight: number;
-  private separationRange: number;
-  private viewRadius: number;
-  private viewAngle: number;
-
   constructor(opts?: {
     wanderWeight?: number;
     cohesionWeight?: number;
@@ -58,74 +48,77 @@ export class Behavior extends Module<"behavior", BehaviorBindingKeys> {
     enabled?: boolean;
   }) {
     super();
-    this.wanderWeight = opts?.wanderWeight ?? DEFAULT_BEHAVIOR_WANDER_WEIGHT;
-    this.cohesionWeight =
-      opts?.cohesionWeight ?? DEFAULT_BEHAVIOR_COHESION_WEIGHT;
-    this.alignmentWeight =
-      opts?.alignmentWeight ?? DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT;
-    this.separationWeight =
-      opts?.separationWeight ?? DEFAULT_BEHAVIOR_SEPARATION_WEIGHT;
-    this.chaseWeight = opts?.chaseWeight ?? DEFAULT_BEHAVIOR_CHASE_WEIGHT;
-    this.avoidWeight = opts?.avoidWeight ?? DEFAULT_BEHAVIOR_AVOID_WEIGHT;
-    this.separationRange =
-      opts?.separationRange ?? DEFAULT_BEHAVIOR_SEPARATION_RANGE;
-    this.viewRadius = opts?.viewRadius ?? DEFAULT_BEHAVIOR_VIEW_RADIUS;
-    this.viewAngle = opts?.viewAngle ?? DEFAULT_BEHAVIOR_VIEW_ANGLE;
+    this.write({
+      wanderWeight: opts?.wanderWeight ?? DEFAULT_BEHAVIOR_WANDER_WEIGHT,
+      cohesionWeight: opts?.cohesionWeight ?? DEFAULT_BEHAVIOR_COHESION_WEIGHT,
+      alignmentWeight:
+        opts?.alignmentWeight ?? DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT,
+      separationWeight:
+        opts?.separationWeight ?? DEFAULT_BEHAVIOR_SEPARATION_WEIGHT,
+      chaseWeight: opts?.chaseWeight ?? DEFAULT_BEHAVIOR_CHASE_WEIGHT,
+      avoidWeight: opts?.avoidWeight ?? DEFAULT_BEHAVIOR_AVOID_WEIGHT,
+      separationRange:
+        opts?.separationRange ?? DEFAULT_BEHAVIOR_SEPARATION_RANGE,
+      viewRadius: opts?.viewRadius ?? DEFAULT_BEHAVIOR_VIEW_RADIUS,
+      viewAngle: opts?.viewAngle ?? DEFAULT_BEHAVIOR_VIEW_ANGLE,
+    });
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
 
-  attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
-  ): void {
-    super.attachUniformWriter(writer);
-    this.write({
-      wanderWeight: this.wanderWeight,
-      cohesionWeight: this.cohesionWeight,
-      alignmentWeight: this.alignmentWeight,
-      separationWeight: this.separationWeight,
-      chaseWeight: this.chaseWeight,
-      avoidWeight: this.avoidWeight,
-      separationRange: this.separationRange,
-      viewRadius: this.viewRadius,
-      viewAngle: this.viewAngle,
-    });
-  }
-
   setWanderWeight(v: number): void {
-    this.wanderWeight = v;
     this.write({ wanderWeight: v });
   }
   setCohesionWeight(v: number): void {
-    this.cohesionWeight = v;
     this.write({ cohesionWeight: v });
   }
   setAlignmentWeight(v: number): void {
-    this.alignmentWeight = v;
     this.write({ alignmentWeight: v });
   }
   setSeparationWeight(v: number): void {
-    this.separationWeight = v;
     this.write({ separationWeight: v });
   }
   setChaseWeight(v: number): void {
-    this.chaseWeight = v;
     this.write({ chaseWeight: v });
   }
   setAvoidWeight(v: number): void {
-    this.avoidWeight = v;
     this.write({ avoidWeight: v });
   }
   setSeparationRange(v: number): void {
-    this.separationRange = v;
     this.write({ separationRange: v });
   }
   setViewRadius(v: number): void {
-    this.viewRadius = v;
     this.write({ viewRadius: v });
   }
   setViewAngle(v: number): void {
-    this.viewAngle = v;
     this.write({ viewAngle: v });
+  }
+
+  getWanderWeight(): number {
+    return this.readValue("wanderWeight");
+  }
+  getCohesionWeight(): number {
+    return this.readValue("cohesionWeight");
+  }
+  getAlignmentWeight(): number {
+    return this.readValue("alignmentWeight");
+  }
+  getSeparationWeight(): number {
+    return this.readValue("separationWeight");
+  }
+  getChaseWeight(): number {
+    return this.readValue("chaseWeight");
+  }
+  getAvoidWeight(): number {
+    return this.readValue("avoidWeight");
+  }
+  getSeparationRange(): number {
+    return this.readValue("separationRange");
+  }
+  getViewRadius(): number {
+    return this.readValue("viewRadius");
+  }
+  getViewAngle(): number {
+    return this.readValue("viewAngle");
   }
 
   webgpu(): WebGPUDescriptor<"behavior", BehaviorBindingKeys> {

@@ -39,15 +39,8 @@ export type GravityDirection =
   | "custom";
 
 export class Environment extends Module<"environment", EnvBindingKeys> {
-  private gravityStrength: number;
-  private dirX: number;
-  private dirY: number;
-  private inertia: number;
-  private friction: number;
-  private damping: number;
   private gravityDirection: GravityDirection = "down";
   private gravityAngle: number = Math.PI / 2; // radians, default down
-  private mode: number = 0; // 0 fixed, 1 inwards, 2 outwards
 
   constructor(opts?: {
     gravityStrength?: number;
@@ -60,11 +53,11 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
     gravityAngle?: number; // radians, only used when direction is custom
   }) {
     super();
-    this.gravityStrength =
-      opts?.gravityStrength ?? DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH;
+
     this.gravityDirection =
       opts?.gravityDirection ?? DEFAULT_ENVIRONMENT_GRAVITY_DIRECTION;
     this.gravityAngle = opts?.gravityAngle ?? DEFAULT_ENVIRONMENT_GRAVITY_ANGLE;
+
     // Initialize direction
     const initial = this.directionFromOptions(
       this.gravityDirection,
@@ -72,17 +65,22 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
       opts?.dirX,
       opts?.dirY
     );
-    this.mode =
-      this.gravityDirection === "inwards"
-        ? 1
-        : this.gravityDirection === "outwards"
-        ? 2
-        : 0;
-    this.dirX = initial.x;
-    this.dirY = initial.y;
-    this.inertia = opts?.inertia ?? DEFAULT_ENVIRONMENT_INERTIA;
-    this.friction = opts?.friction ?? DEFAULT_ENVIRONMENT_FRICTION;
-    this.damping = opts?.damping ?? DEFAULT_ENVIRONMENT_DAMPING;
+
+    this.write({
+      gravityStrength:
+        opts?.gravityStrength ?? DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH,
+      dirX: initial.x,
+      dirY: initial.y,
+      inertia: opts?.inertia ?? DEFAULT_ENVIRONMENT_INERTIA,
+      friction: opts?.friction ?? DEFAULT_ENVIRONMENT_FRICTION,
+      damping: opts?.damping ?? DEFAULT_ENVIRONMENT_DAMPING,
+      mode:
+        this.gravityDirection === "inwards"
+          ? 1
+          : this.gravityDirection === "outwards"
+          ? 2
+          : 0,
+    });
   }
 
   private directionFromOptions(
@@ -119,39 +117,22 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
     }
   }
 
-  attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
-  ): void {
-    super.attachUniformWriter(writer);
-    this.write({
-      gravityStrength: this.gravityStrength,
-      dirX: this.dirX,
-      dirY: this.dirY,
-      inertia: this.inertia,
-      friction: this.friction,
-      damping: this.damping,
-      mode: this.mode,
-    });
-  }
-
   setGravityStrength(value: number): void {
-    this.gravityStrength = value;
     this.write({ gravityStrength: value });
   }
   setDirection(x: number, y: number): void {
-    this.dirX = x;
-    this.dirY = y;
     this.write({ dirX: x, dirY: y });
   }
   setGravityDirection(direction: GravityDirection): void {
     this.gravityDirection = direction;
-    this.mode = direction === "inwards" ? 1 : direction === "outwards" ? 2 : 0;
     const v = this.directionFromOptions(
       this.gravityDirection,
       this.gravityAngle
     );
     this.setDirection(v.x, v.y);
-    this.write({ mode: this.mode });
+    this.write({
+      mode: direction === "inwards" ? 1 : direction === "outwards" ? 2 : 0,
+    });
   }
   setGravityAngle(angleRadians: number): void {
     this.gravityAngle = angleRadians;
@@ -161,16 +142,35 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
     }
   }
   setInertia(value: number): void {
-    this.inertia = value;
     this.write({ inertia: value });
   }
   setFriction(value: number): void {
-    this.friction = value;
     this.write({ friction: value });
   }
   setDamping(value: number): void {
-    this.damping = value;
     this.write({ damping: value });
+  }
+
+  getGravityStrength(): number {
+    return this.readValue("gravityStrength");
+  }
+  getDirX(): number {
+    return this.readValue("dirX");
+  }
+  getDirY(): number {
+    return this.readValue("dirY");
+  }
+  getInertia(): number {
+    return this.readValue("inertia");
+  }
+  getFriction(): number {
+    return this.readValue("friction");
+  }
+  getDamping(): number {
+    return this.readValue("damping");
+  }
+  getMode(): number {
+    return this.readValue("mode");
   }
 
   webgpu(): WebGPUDescriptor<"environment", EnvBindingKeys> {

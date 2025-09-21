@@ -31,12 +31,6 @@ export const DEFAULT_BOUNDARY_REPEL_DISTANCE = 0.0;
 export const DEFAULT_BOUNDARY_REPEL_STRENGTH = 0.0;
 
 export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
-  private restitution: number;
-  private friction: number;
-  private mode: BoundaryMode;
-  private repelDistance: number;
-  private repelStrength: number;
-
   constructor(opts?: {
     restitution?: number;
     friction?: number;
@@ -45,36 +39,50 @@ export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
     repelStrength?: number;
   }) {
     super();
-    this.restitution = opts?.restitution ?? DEFAULT_BOUNDARY_RESTITUTION;
-    this.friction = opts?.friction ?? DEFAULT_BOUNDARY_FRICTION;
-    this.mode = opts?.mode ?? DEFAULT_BOUNDARY_MODE;
-    this.repelDistance = opts?.repelDistance ?? DEFAULT_BOUNDARY_REPEL_DISTANCE;
-    this.repelStrength = opts?.repelStrength ?? DEFAULT_BOUNDARY_REPEL_STRENGTH;
+    const mode = opts?.mode ?? DEFAULT_BOUNDARY_MODE;
+    this.write({
+      restitution: opts?.restitution ?? DEFAULT_BOUNDARY_RESTITUTION,
+      friction: opts?.friction ?? DEFAULT_BOUNDARY_FRICTION,
+      mode: this.modeToUniform(mode),
+      repelDistance: opts?.repelDistance ?? DEFAULT_BOUNDARY_REPEL_DISTANCE,
+      repelStrength: opts?.repelStrength ?? DEFAULT_BOUNDARY_REPEL_STRENGTH,
+    });
   }
 
   setRestitution(value: number): void {
-    this.restitution = value;
     this.write({ restitution: value });
   }
 
   setFriction(value: number): void {
-    this.friction = value;
     this.write({ friction: value });
   }
 
   setMode(mode: BoundaryMode): void {
-    this.mode = mode;
     this.write({ mode: this.modeToUniform(mode) });
   }
 
   setRepelDistance(value: number): void {
-    this.repelDistance = value;
     this.write({ repelDistance: value });
   }
 
   setRepelStrength(value: number): void {
-    this.repelStrength = value;
     this.write({ repelStrength: value });
+  }
+
+  getRestitution(): number {
+    return this.readValue("restitution");
+  }
+  getFriction(): number {
+    return this.readValue("friction");
+  }
+  getMode(): number {
+    return this.readValue("mode");
+  }
+  getRepelDistance(): number {
+    return this.readValue("repelDistance");
+  }
+  getRepelStrength(): number {
+    return this.readValue("repelStrength");
   }
 
   private modeToUniform(mode: BoundaryMode): number {
@@ -90,19 +98,6 @@ export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
       default:
         return 0;
     }
-  }
-
-  attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
-  ): void {
-    super.attachUniformWriter(writer);
-    this.write({
-      restitution: this.restitution,
-      friction: this.friction,
-      mode: this.modeToUniform(this.mode),
-      repelDistance: this.repelDistance,
-      repelStrength: this.repelStrength,
-    });
   }
 
   webgpu(): WebGPUDescriptor<"boundary", BoundaryBindingKeys> {

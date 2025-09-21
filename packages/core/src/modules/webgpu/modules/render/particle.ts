@@ -41,7 +41,13 @@ export class Particle extends Module<"particles", ParticleRendererKeys> {
     return {
       name: "particles",
       role: ModuleRole.Render,
-      render: ({ context, input, view, particles, clearColor }) => {
+      render: ({
+        context,
+        input: _input,
+        view: _view,
+        particles,
+        clearColor,
+      }) => {
         context.fillStyle = `rgba(${clearColor.r}, ${clearColor.g}, ${clearColor.b}, ${clearColor.a})`;
         context.fillRect(0, 0, context.canvas.width, context.canvas.height);
         for (const particle of particles) {

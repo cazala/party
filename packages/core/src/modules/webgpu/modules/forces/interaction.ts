@@ -29,14 +29,6 @@ export const DEFAULT_INTERACTION_RADIUS = 500;
 // mode: 0 -> attract, 1 -> repel
 
 export class Interaction extends Module<"interaction", InteractionBindingKeys> {
-  private action: number; // 0 click, 1 right_click
-  private mode: number; // 0 attract, 1 repel
-  private strength: number;
-  private radius: number;
-  private mouseX: number;
-  private mouseY: number;
-  private inputButton: number; // 2 = none, 0 = left, 1 = right
-
   constructor(opts?: {
     enabled?: boolean;
     action?: "click" | "right_click";
@@ -45,58 +37,62 @@ export class Interaction extends Module<"interaction", InteractionBindingKeys> {
     radius?: number;
   }) {
     super();
-    this.action =
+    const action =
       (opts?.action ?? DEFAULT_INTERACTION_ACTION) === "right_click" ? 1 : 0;
-    this.mode = (opts?.mode ?? DEFAULT_INTERACTION_MODE) === "repel" ? 1 : 0;
-    this.strength = opts?.strength ?? DEFAULT_INTERACTION_STRENGTH;
-    this.radius = opts?.radius ?? DEFAULT_INTERACTION_RADIUS;
-    this.mouseX = 0;
-    this.mouseY = 0;
-    this.inputButton = 2; // none
+    const mode = (opts?.mode ?? DEFAULT_INTERACTION_MODE) === "repel" ? 1 : 0;
+    this.write({
+      action,
+      mode,
+      strength: opts?.strength ?? DEFAULT_INTERACTION_STRENGTH,
+      radius: opts?.radius ?? DEFAULT_INTERACTION_RADIUS,
+      mouseX: 0,
+      mouseY: 0,
+      inputButton: 2,
+    });
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
     }
   }
 
-  attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
-  ): void {
-    super.attachUniformWriter(writer);
-    this.write({
-      action: this.action,
-      mode: this.mode,
-      strength: this.strength,
-      radius: this.radius,
-      mouseX: this.mouseX,
-      mouseY: this.mouseY,
-      inputButton: this.inputButton,
-    });
-  }
-
   setAction(v: "click" | "right_click"): void {
-    this.action = v === "right_click" ? 1 : 0;
-    this.write({ action: this.action });
+    this.write({ action: v === "right_click" ? 1 : 0 });
   }
   setMode(v: "attract" | "repel"): void {
-    this.mode = v === "repel" ? 1 : 0;
-    this.write({ mode: this.mode });
+    this.write({ mode: v === "repel" ? 1 : 0 });
   }
   setStrength(v: number): void {
-    this.strength = v;
     this.write({ strength: v });
   }
   setRadius(v: number): void {
-    this.radius = v;
     this.write({ radius: v });
   }
   setMousePosition(x: number, y: number): void {
-    this.mouseX = x;
-    this.mouseY = y;
     this.write({ mouseX: x, mouseY: y });
   }
   setInputButton(button: number): void {
-    this.inputButton = button;
     this.write({ inputButton: button });
+  }
+
+  getAction(): number {
+    return this.readValue("action");
+  }
+  getMode(): number {
+    return this.readValue("mode");
+  }
+  getStrength(): number {
+    return this.readValue("strength");
+  }
+  getRadius(): number {
+    return this.readValue("radius");
+  }
+  getMouseX(): number {
+    return this.readValue("mouseX");
+  }
+  getMouseY(): number {
+    return this.readValue("mouseY");
+  }
+  getInputButton(): number {
+    return this.readValue("inputButton");
   }
 
   webgpu(): WebGPUDescriptor<"interaction", InteractionBindingKeys> {

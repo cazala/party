@@ -41,8 +41,9 @@ export abstract class Module<
   attachUniformWriter(
     writer: (values: Partial<Record<string, number>>) => void
   ): void {
+    const values = this.read();
     this._writer = writer;
-    writer({ enabled: this._enabled ? 1 : 0 });
+    writer({ ...values, enabled: this._enabled ? 1 : 0 });
   }
 
   attachUniformReader(reader: () => Partial<Record<string, number>>): void {
@@ -59,6 +60,13 @@ export abstract class Module<
       Record<InputKeys, number>
     >;
     return vals || {};
+  }
+
+  public readValue(key: InputKeys): number {
+    const vals = this._reader?.() as unknown as Partial<
+      Record<InputKeys, number>
+    >;
+    return vals[key] ?? 0;
   }
 
   isEnabled(): boolean {

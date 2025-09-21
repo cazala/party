@@ -38,16 +38,6 @@ export const DEFAULT_SENSORS_FLEE_BEHAVIOR: SensorBehavior = "none";
 export const DEFAULT_SENSORS_FLEE_ANGLE = Math.PI / 2;
 
 export class Sensors extends Module<"sensors", SensorBindingKeys> {
-  private sensorDistance: number;
-  private sensorAngle: number;
-  private sensorRadius: number;
-  private sensorThreshold: number;
-  private sensorStrength: number;
-  private colorSimilarityThreshold: number;
-  private followBehavior: SensorBehavior;
-  private fleeBehavior: SensorBehavior;
-  private fleeAngle: number;
-
   constructor(opts?: {
     enabled?: boolean;
     sensorDistance?: number;
@@ -61,44 +51,29 @@ export class Sensors extends Module<"sensors", SensorBindingKeys> {
     fleeAngle?: number;
   }) {
     super();
-
-    this.sensorDistance =
-      opts?.sensorDistance ?? DEFAULT_SENSORS_SENSOR_DISTANCE;
-    this.sensorAngle = opts?.sensorAngle ?? DEFAULT_SENSORS_SENSOR_ANGLE; // 30 degrees
-    this.sensorRadius = opts?.sensorRadius ?? DEFAULT_SENSORS_SENSOR_RADIUS;
-    this.sensorThreshold =
-      opts?.sensorThreshold ?? DEFAULT_SENSORS_SENSOR_THRESHOLD;
-    this.sensorStrength =
-      opts?.sensorStrength ?? DEFAULT_SENSORS_SENSOR_STRENGTH;
-    this.colorSimilarityThreshold =
-      opts?.colorSimilarityThreshold ??
-      DEFAULT_SENSORS_COLOR_SIMILARITY_THRESHOLD;
-    this.followBehavior =
-      opts?.followBehavior ?? DEFAULT_SENSORS_FOLLOW_BEHAVIOR;
-    this.fleeBehavior = opts?.fleeBehavior ?? DEFAULT_SENSORS_FLEE_BEHAVIOR;
-    this.fleeAngle = opts?.fleeAngle ?? DEFAULT_SENSORS_FLEE_ANGLE; // 90 degrees
+    this.write({
+      sensorDistance: opts?.sensorDistance ?? DEFAULT_SENSORS_SENSOR_DISTANCE,
+      sensorAngle: opts?.sensorAngle ?? DEFAULT_SENSORS_SENSOR_ANGLE,
+      sensorRadius: opts?.sensorRadius ?? DEFAULT_SENSORS_SENSOR_RADIUS,
+      sensorThreshold:
+        opts?.sensorThreshold ?? DEFAULT_SENSORS_SENSOR_THRESHOLD,
+      sensorStrength: opts?.sensorStrength ?? DEFAULT_SENSORS_SENSOR_STRENGTH,
+      colorSimilarityThreshold:
+        opts?.colorSimilarityThreshold ??
+        DEFAULT_SENSORS_COLOR_SIMILARITY_THRESHOLD,
+      followBehavior: this.behaviorToUniform(
+        opts?.followBehavior ?? DEFAULT_SENSORS_FOLLOW_BEHAVIOR
+      ),
+      fleeBehavior: this.behaviorToUniform(
+        opts?.fleeBehavior ?? DEFAULT_SENSORS_FLEE_BEHAVIOR
+      ),
+      fleeAngle: opts?.fleeAngle ?? DEFAULT_SENSORS_FLEE_ANGLE,
+      enabled: this.isEnabled() ? 1 : 0,
+    });
 
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
     }
-  }
-
-  attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
-  ): void {
-    super.attachUniformWriter(writer);
-    this.write({
-      sensorDistance: this.sensorDistance,
-      sensorAngle: this.sensorAngle,
-      sensorRadius: this.sensorRadius,
-      sensorThreshold: this.sensorThreshold,
-      sensorStrength: this.sensorStrength,
-      colorSimilarityThreshold: this.colorSimilarityThreshold,
-      followBehavior: this.behaviorToUniform(this.followBehavior),
-      fleeBehavior: this.behaviorToUniform(this.fleeBehavior),
-      fleeAngle: this.fleeAngle,
-      enabled: this.isEnabled() ? 1 : 0,
-    });
   }
 
   private behaviorToUniform(behavior: SensorBehavior): number {
@@ -117,48 +92,70 @@ export class Sensors extends Module<"sensors", SensorBindingKeys> {
   }
 
   setSensorDistance(value: number): void {
-    this.sensorDistance = value;
     this.write({ sensorDistance: value });
   }
 
   setSensorAngle(value: number): void {
-    this.sensorAngle = value;
     this.write({ sensorAngle: value });
   }
 
   setSensorRadius(value: number): void {
-    this.sensorRadius = value;
     this.write({ sensorRadius: value });
   }
 
   setSensorThreshold(value: number): void {
-    this.sensorThreshold = value;
     this.write({ sensorThreshold: value });
   }
 
   setSensorStrength(value: number): void {
-    this.sensorStrength = value;
     this.write({ sensorStrength: value });
   }
 
   setColorSimilarityThreshold(value: number): void {
-    this.colorSimilarityThreshold = value;
     this.write({ colorSimilarityThreshold: value });
   }
 
   setFollowBehavior(behavior: SensorBehavior): void {
-    this.followBehavior = behavior;
     this.write({ followBehavior: this.behaviorToUniform(behavior) });
   }
 
   setFleeBehavior(behavior: SensorBehavior): void {
-    this.fleeBehavior = behavior;
     this.write({ fleeBehavior: this.behaviorToUniform(behavior) });
   }
 
   setFleeAngle(value: number): void {
-    this.fleeAngle = value;
     this.write({ fleeAngle: value });
+  }
+
+  getSensorDistance(): number {
+    return this.readValue("sensorDistance");
+  }
+  getSensorAngle(): number {
+    return this.readValue("sensorAngle");
+  }
+  getSensorRadius(): number {
+    return this.readValue("sensorRadius");
+  }
+  getSensorThreshold(): number {
+    return this.readValue("sensorThreshold");
+  }
+  getSensorStrength(): number {
+    return this.readValue("sensorStrength");
+  }
+  getColorSimilarityThreshold(): number {
+    return this.readValue("colorSimilarityThreshold");
+  }
+  getFollowBehavior(): number {
+    return this.readValue("followBehavior");
+  }
+  getFleeBehavior(): number {
+    return this.readValue("fleeBehavior");
+  }
+  getFleeAngle(): number {
+    return this.readValue("fleeAngle");
+  }
+  getEnabled(): number {
+    return this.readValue("enabled");
   }
 
   webgpu(): WebGPUDescriptor<"sensors", SensorBindingKeys> {
