@@ -1,3 +1,5 @@
+import { WebGPUParticle } from "./particle-store";
+
 /**
  * Module descriptors and base Module class
  *
@@ -15,13 +17,6 @@ export enum ModuleRole {
   Force = "force",
   Render = "render",
 }
-
-export enum RenderPassKind {
-  Fullscreen = "fullscreen",
-  Compute = "compute",
-}
-
-type BindingKeysBase = "enabled" | string;
 
 export abstract class Module<
   Name extends string,
@@ -68,20 +63,31 @@ export abstract class Module<
     }
   }
 
-  abstract descriptor(): ModuleDescriptor<Name, BindingKeys, StateKeys>;
+  abstract webgpu(): WebGPUDescriptor<Name, BindingKeys, StateKeys>;
+  abstract cpu(): CPUDescriptor<Name, BindingKeys, StateKeys>;
 }
 
-export interface BaseModuleDescriptor<Name extends string = string> {
+export enum RenderPassKind {
+  Fullscreen = "fullscreen",
+  Compute = "compute",
+}
+
+type BindingKeysBase = "enabled" | string;
+
+export interface BaseDescriptor<
+  Name extends string = string,
+  Keys extends string = string
+> {
   name: Name;
   role: ModuleRole;
-  bindings?: readonly string[];
+  keys?: readonly Keys[];
 }
 
-export interface ForceModuleDescriptor<
+export interface WebGPUForceDescriptor<
   Name extends string = string,
   Keys extends string = string,
   StateKeys extends string = string
-> extends BaseModuleDescriptor<Name> {
+> extends BaseDescriptor<Name> {
   role: ModuleRole.Force;
   states?: readonly StateKeys[];
   global?: (args: { getUniform: (id: Keys) => string }) => string;
@@ -89,27 +95,25 @@ export interface ForceModuleDescriptor<
     particleVar: string;
     dtVar: string;
     getUniform: (id: Keys) => string;
-    getState: (name: StateKeys, pidVar?: string) => string;
-    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
+    setState: (name: StateKeys, valueExpr: string) => string;
   }) => string;
   apply?: (args: {
     particleVar: string;
     dtVar: string;
     getUniform: (id: Keys) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
-    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
   }) => string;
   constrain?: (args: {
     particleVar: string;
     dtVar: string;
     getUniform: (id: Keys) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
-    setState: (name: StateKeys, valueExpr: string, pidVar?: string) => string;
   }) => string;
   correct?: (args: {
     particleVar: string;
     dtVar: string;
     getUniform: (id: Keys) => string;
+    getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
 }
 
@@ -163,18 +167,84 @@ export type RenderPass<Keys extends string = string> =
   | FullscreenRenderPass<Keys>
   | ComputeRenderPass<Keys>;
 
-export interface RenderModuleDescriptor<
+export interface WebGPURenderDescriptor<
   Name extends string = string,
   Keys extends string = string
-> extends BaseModuleDescriptor<Name> {
+> extends BaseDescriptor<Name> {
   role: ModuleRole.Render;
   passes: Array<RenderPass<Keys>>;
 }
 
-export type ModuleDescriptor<
+export type WebGPUDescriptor<
   Name extends string = string,
   Keys extends string = string,
   StateKeys extends string = never
 > =
-  | ForceModuleDescriptor<Name, Keys, StateKeys>
-  | RenderModuleDescriptor<Name, Keys>;
+  | WebGPUForceDescriptor<Name, Keys, StateKeys>
+  | WebGPURenderDescriptor<Name, Keys>;
+
+export interface CPUForceDescriptor<
+  Name extends string = string,
+  Keys extends string = string,
+  StateKeys extends string = never
+> extends BaseDescriptor<Name, Keys> {
+  role: ModuleRole.Force;
+  states?: readonly StateKeys[];
+  global?: (args: { getUniform: (id: Keys) => string }) => string;
+  state?: (args: {
+    particle: WebGPUParticle;
+    getNeighbors: (
+      position: { x: number; y: number },
+      radius: number
+    ) => WebGPUParticle[];
+    dt: string;
+    setState: (name: StateKeys, value: number) => string;
+  }) => string;
+  apply?: (args: {
+    particle: WebGPUParticle;
+    getNeighbors: (
+      position: { x: number; y: number },
+      radius: number
+    ) => WebGPUParticle[];
+    dt: string;
+    values: Record<Keys, number>;
+    state: readonly Record<StateKeys, number>[];
+  }) => string;
+  constrain?: (args: {
+    particle: WebGPUParticle;
+    getNeighbors: (
+      position: { x: number; y: number },
+      radius: number
+    ) => WebGPUParticle[];
+    dt: string;
+    values: Record<Keys, number>;
+    state: readonly Record<StateKeys, number>[];
+  }) => string;
+  correct?: (args: {
+    particle: WebGPUParticle;
+    getNeighbors: (
+      position: { x: number; y: number },
+      radius: number
+    ) => WebGPUParticle[];
+    dt: string;
+    values: Record<Keys, number>;
+    state: readonly Record<StateKeys, number>[];
+  }) => string;
+}
+
+export interface CPURenderDescriptor<
+  Name extends string = string,
+  Keys extends string = string
+> extends BaseDescriptor<Name, Keys> {
+  role: ModuleRole.Render;
+  render: (args: {
+    context: CanvasRenderingContext2D;
+    values: Record<Keys, number>;
+  }) => void;
+}
+
+export type CPUDescriptor<
+  Name extends string = string,
+  Keys extends string = string,
+  StateKeys extends string = never
+> = CPUForceDescriptor<Name, Keys, StateKeys> | CPURenderDescriptor<Name, Keys>;

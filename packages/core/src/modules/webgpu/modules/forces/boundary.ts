@@ -10,8 +10,9 @@
  */
 import {
   Module,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
   ModuleRole,
+  CPUDescriptor,
 } from "../../module-descriptors";
 
 type BoundaryBindingKeys =
@@ -104,11 +105,11 @@ export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
     });
   }
 
-  descriptor(): ModuleDescriptor<"boundary", BoundaryBindingKeys> {
+  webgpu(): WebGPUDescriptor<"boundary", BoundaryBindingKeys> {
     return {
       name: "boundary",
       role: ModuleRole.Force,
-      bindings: [
+      keys: [
         "restitution",
         "friction",
         "mode",
@@ -223,5 +224,9 @@ export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
   }
 }`,
     };
+  }
+
+  cpu(): CPUDescriptor<"boundary", BoundaryBindingKeys> {
+    throw new Error("Not implemented");
   }
 }

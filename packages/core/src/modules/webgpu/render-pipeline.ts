@@ -16,7 +16,7 @@ import {
   ComputeRenderPass,
   RenderPassKind,
   type FullscreenRenderPass,
-  type RenderModuleDescriptor,
+  type WebGPURenderDescriptor,
 } from "./module-descriptors";
 import {
   buildComputeImagePassWGSL,
@@ -76,7 +76,7 @@ export class RenderPipeline {
 
   runPasses(
     encoder: GPUCommandEncoder,
-    descriptors: RenderModuleDescriptor<string, string>[],
+    descriptors: WebGPURenderDescriptor<string, string>[],
     program: Program,
     resources: GPUResources,
     viewSize: { width: number; height: number },
@@ -177,7 +177,7 @@ export class RenderPipeline {
 
   private runFullscreenPass(
     encoder: GPUCommandEncoder,
-    module: RenderModuleDescriptor,
+    module: WebGPURenderDescriptor,
     layout: ModuleUniformLayout,
     pass: FullscreenRenderPass,
     views: {
@@ -225,7 +225,7 @@ export class RenderPipeline {
 
   private runComputePass(
     encoder: GPUCommandEncoder,
-    module: RenderModuleDescriptor,
+    module: WebGPURenderDescriptor,
     layout: ModuleUniformLayout,
     pass: ComputeRenderPass,
     views: {

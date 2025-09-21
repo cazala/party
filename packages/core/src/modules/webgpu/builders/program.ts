@@ -17,7 +17,7 @@
 import {
   Module,
   ModuleRole,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
 } from "../module-descriptors";
 
 export const PARTICLE_STRUCT = `
@@ -61,7 +61,7 @@ export interface Program {
 export function buildProgram(
   modules: readonly Module<string, string, any>[]
 ): Program {
-  const descriptors = modules.map((m) => m.descriptor());
+  const descriptors = modules.map((m) => m.webgpu());
 
   const layouts: ModuleUniformLayout[] = [];
   const uniformDecls: string[] = [];
@@ -125,7 +125,7 @@ export function buildProgram(
     const bindingIndex = idx + 3;
     const uniformsVar = `${mod.name}_uniforms`;
     const structName = `Uniforms_${cap(mod.name)}`;
-    const ids = [...(mod.bindings || []), "enabled"] as string[];
+    const ids = [...(mod.keys || []), "enabled"] as string[];
     const vec4Count = Math.max(1, Math.ceil(ids.length / 4));
     const mapping: Record<string, { flatIndex: number; expr: string }> = {};
     ids.forEach((id, i) => {
@@ -221,7 +221,7 @@ fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { 
   );
 
   // Optional: allow force modules to inject globals
-  const addGlobal = (mod: ModuleDescriptor) => {
+  const addGlobal = (mod: WebGPUDescriptor) => {
     if (mod.role !== ModuleRole.Force) return;
     const g = (mod as any).global as
       | undefined
@@ -301,13 +301,12 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   descriptors.forEach((mod) => {
     if (mod.role !== ModuleRole.Force || !(mod as any).state) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
-    const { get, set } = makeGetSet(mod.name);
+    const { set } = makeGetSet(mod.name);
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
-    const body = (mod as any).state({
+    const body = mod.state?.({
       particleVar: "particle",
       dtVar: dtExpr,
       getUniform,
-      getState: get,
       setState: set,
     });
     if (body && body.trim()) {
@@ -323,14 +322,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   descriptors.forEach((mod) => {
     if (mod.role !== ModuleRole.Force || !(mod as any).apply) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
-    const { get, set } = makeGetSet(mod.name);
+    const { get } = makeGetSet(mod.name);
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
-    const body = (mod as any).apply({
+    const body = mod.apply?.({
       particleVar: "particle",
       dtVar: dtExpr,
       getUniform,
       getState: get,
-      setState: set,
     });
     if (body && body.trim()) {
       const enabled = layout.mapping.enabled.expr;
@@ -345,14 +343,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   descriptors.forEach((mod) => {
     if (mod.role !== ModuleRole.Force || !(mod as any).constrain) return;
     const layout = layouts.find((l) => l.moduleName === mod.name)!;
-    const { get, set } = makeGetSet(mod.name);
+    const { get } = makeGetSet(mod.name);
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
-    const body = (mod as any).constrain({
+    const body = mod.constrain?.({
       particleVar: "particle",
       dtVar: dtExpr,
       getUniform,
       getState: get,
-      setState: set,
     });
     if (body && body.trim()) {
       const enabled = layout.mapping.enabled.expr;

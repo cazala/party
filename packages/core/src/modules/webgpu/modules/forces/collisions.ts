@@ -8,8 +8,9 @@
  */
 import {
   Module,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
   ModuleRole,
+  CPUDescriptor,
 } from "../../module-descriptors";
 
 type CollisionBindingKeys = "restitution";
@@ -37,11 +38,11 @@ export class Collisions extends Module<"collisions", CollisionBindingKeys> {
     this.write({ restitution: this.restitution });
   }
 
-  descriptor(): ModuleDescriptor<"collisions", CollisionBindingKeys> {
+  webgpu(): WebGPUDescriptor<"collisions", CollisionBindingKeys> {
     return {
       name: "collisions",
       role: ModuleRole.Force,
-      bindings: ["restitution"] as const,
+      keys: ["restitution"] as const,
       apply: ({ particleVar, getUniform }) => `
         // Grid neighbors iterator API using vec2 math, only updating the current particle
         var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size * 2.0);
@@ -144,5 +145,9 @@ export class Collisions extends Module<"collisions", CollisionBindingKeys> {
   }
 `,
     };
+  }
+
+  cpu(): CPUDescriptor<"collisions", CollisionBindingKeys> {
+    throw new Error("Not implemented");
   }
 }

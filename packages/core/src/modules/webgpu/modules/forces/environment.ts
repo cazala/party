@@ -7,8 +7,9 @@
  */
 import {
   Module,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
   ModuleRole,
+  CPUDescriptor,
 } from "../../module-descriptors";
 
 export const DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH = 0;
@@ -171,11 +172,11 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
     this.write({ damping: value });
   }
 
-  descriptor(): ModuleDescriptor<"environment", EnvBindingKeys> {
+  webgpu(): WebGPUDescriptor<"environment", EnvBindingKeys> {
     return {
       name: "environment",
       role: ModuleRole.Force,
-      bindings: [
+      keys: [
         "gravityStrength",
         "dirX",
         "dirY",
@@ -223,5 +224,9 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
   }
 `,
     };
+  }
+
+  cpu(): CPUDescriptor<"environment", EnvBindingKeys> {
+    throw new Error("Not implemented");
   }
 }

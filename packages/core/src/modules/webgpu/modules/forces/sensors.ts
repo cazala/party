@@ -8,8 +8,9 @@
  */
 import {
   Module,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
   ModuleRole,
+  CPUDescriptor,
 } from "../../module-descriptors";
 
 export type SensorBehavior = "any" | "same" | "different" | "none";
@@ -160,11 +161,11 @@ export class Sensors extends Module<"sensors", SensorBindingKeys> {
     this.write({ fleeAngle: value });
   }
 
-  descriptor(): ModuleDescriptor<"sensors", SensorBindingKeys> {
+  webgpu(): WebGPUDescriptor<"sensors", SensorBindingKeys> {
     return {
       name: "sensors",
       role: ModuleRole.Force,
-      bindings: [
+      keys: [
         "sensorDistance",
         "sensorAngle",
         "sensorRadius",
@@ -406,5 +407,9 @@ if (length(totalForce) > 0.0) {
 }
 `,
     };
+  }
+
+  cpu(): CPUDescriptor<"sensors", SensorBindingKeys> {
+    throw new Error("Not implemented");
   }
 }

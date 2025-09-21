@@ -6,8 +6,9 @@
  */
 import {
   Module,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
   ModuleRole,
+  CPUDescriptor,
 } from "../../module-descriptors";
 
 type InteractionBindingKeys =
@@ -98,11 +99,11 @@ export class Interaction extends Module<"interaction", InteractionBindingKeys> {
     this.write({ inputButton: button });
   }
 
-  descriptor(): ModuleDescriptor<"interaction", InteractionBindingKeys> {
+  webgpu(): WebGPUDescriptor<"interaction", InteractionBindingKeys> {
     return {
       name: "interaction",
       role: ModuleRole.Force,
-      bindings: [
+      keys: [
         "action",
         "mode",
         "strength",
@@ -129,5 +130,9 @@ export class Interaction extends Module<"interaction", InteractionBindingKeys> {
   ${particleVar}.acceleration += force;
 }`,
     };
+  }
+
+  cpu(): CPUDescriptor<"interaction", InteractionBindingKeys> {
+    throw new Error("Not implemented");
   }
 }

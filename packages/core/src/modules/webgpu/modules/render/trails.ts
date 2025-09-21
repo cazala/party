@@ -8,9 +8,10 @@
  */
 import {
   Module,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
   ModuleRole,
   RenderPassKind,
+  CPUDescriptor,
 } from "../../module-descriptors";
 
 type TrailBindingKeys = "trailDecay" | "trailDiffuse";
@@ -56,12 +57,12 @@ export class Trails extends Module<"trails", TrailBindingKeys> {
     this.write({ trailDiffuse: value });
   }
 
-  descriptor(): ModuleDescriptor<"trails", TrailBindingKeys> {
+  webgpu(): WebGPUDescriptor<"trails", TrailBindingKeys> {
     return {
       name: "trails" as const,
       role: ModuleRole.Render,
       // keep uniforms so UI can write values
-      bindings: ["trailDecay", "trailDiffuse"] as const,
+      keys: ["trailDecay", "trailDiffuse"] as const,
       passes: [
         {
           kind: RenderPassKind.Compute,
@@ -124,5 +125,9 @@ export class Trails extends Module<"trails", TrailBindingKeys> {
         },
       ],
     };
+  }
+
+  cpu(): CPUDescriptor<"trails", TrailBindingKeys> {
+    throw new Error("Not implemented");
   }
 }

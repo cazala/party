@@ -8,8 +8,9 @@
  */
 import {
   Module,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
   ModuleRole,
+  CPUDescriptor,
 } from "../../module-descriptors";
 
 type BehaviorBindingKeys =
@@ -127,11 +128,11 @@ export class Behavior extends Module<"behavior", BehaviorBindingKeys> {
     this.write({ viewAngle: v });
   }
 
-  descriptor(): ModuleDescriptor<"behavior", BehaviorBindingKeys> {
+  webgpu(): WebGPUDescriptor<"behavior", BehaviorBindingKeys> {
     return {
       name: "behavior",
       role: ModuleRole.Force,
-      bindings: [
+      keys: [
         "wanderWeight",
         "cohesionWeight",
         "alignmentWeight",
@@ -262,5 +263,9 @@ export class Behavior extends Module<"behavior", BehaviorBindingKeys> {
   }
 `,
     };
+  }
+
+  cpu(): CPUDescriptor<"behavior", BehaviorBindingKeys> {
+    throw new Error("Not implemented");
   }
 }

@@ -8,8 +8,9 @@
  */
 import {
   Module,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
   ModuleRole,
+  CPUDescriptor,
 } from "../../module-descriptors";
 
 type FluidBindingKeys =
@@ -123,12 +124,12 @@ export class Fluid extends Module<"fluid", FluidBindingKeys, FluidStateKeys> {
     this.write({ maxAcceleration: v });
   }
 
-  descriptor(): ModuleDescriptor<"fluid", FluidBindingKeys, FluidStateKeys> {
+  webgpu(): WebGPUDescriptor<"fluid", FluidBindingKeys, FluidStateKeys> {
     return {
       name: "fluid",
       role: ModuleRole.Force,
       states: ["density", "nearDensity"],
-      bindings: [
+      keys: [
         "influenceRadius",
         "targetDensity",
         "pressureMultiplier",
@@ -271,5 +272,9 @@ export class Fluid extends Module<"fluid", FluidBindingKeys, FluidStateKeys> {
   ${particleVar}.velocity = ${particleVar}.velocity + force;
 }`,
     };
+  }
+
+  cpu(): CPUDescriptor<"fluid", FluidBindingKeys, FluidStateKeys> {
+    throw new Error("Not implemented");
   }
 }

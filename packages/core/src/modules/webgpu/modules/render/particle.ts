@@ -6,15 +6,16 @@
  */
 import {
   Module,
-  type ModuleDescriptor,
+  type WebGPUDescriptor,
   ModuleRole,
   RenderPassKind,
+  CPUDescriptor,
 } from "../../module-descriptors";
 
 type ParticleRendererKeys = "particleBuffer" | "renderUniforms";
 
 export class Particle extends Module<"particles", ParticleRendererKeys> {
-  descriptor(): ModuleDescriptor<"particles", ParticleRendererKeys> {
+  webgpu(): WebGPUDescriptor<"particles", ParticleRendererKeys> {
     return {
       name: "particles" as const,
       role: ModuleRole.Render,
@@ -34,5 +35,9 @@ export class Particle extends Module<"particles", ParticleRendererKeys> {
         },
       ],
     };
+  }
+
+  cpu(): CPUDescriptor<"particles", ParticleRendererKeys> {
+    throw new Error("Not implemented");
   }
 }

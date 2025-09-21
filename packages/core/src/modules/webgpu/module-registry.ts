@@ -16,7 +16,7 @@ import { buildProgram, type Program } from "./builders/program";
 import {
   Module,
   ModuleRole,
-  type RenderModuleDescriptor,
+  type WebGPURenderDescriptor,
 } from "./module-descriptors";
 
 /**
@@ -68,7 +68,7 @@ export class ModuleRegistry {
 
     // Attach per-module uniform writers/readers
     this.modules.forEach((mod) => {
-      const name = mod.descriptor().name;
+      const name = mod.webgpu().name;
       mod.attachUniformWriter((values) =>
         this.writeModuleUniform(name, values)
       );
@@ -94,14 +94,14 @@ export class ModuleRegistry {
   }
 
   /** Filter enabled render module descriptors for the render pipeline. */
-  getEnabledRenderDescriptors(): RenderModuleDescriptor<string, string>[] {
+  getEnabledRenderDescriptors(): WebGPURenderDescriptor<string, string>[] {
     return this.modules
-      .map((m) => m.descriptor())
+      .map((m) => m.webgpu())
       .filter(
         (
           descriptor,
           idx
-        ): descriptor is RenderModuleDescriptor<string, string> =>
+        ): descriptor is WebGPURenderDescriptor<string, string> =>
           descriptor.role === ModuleRole.Render && this.modules[idx].isEnabled()
       );
   }
