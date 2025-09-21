@@ -6,7 +6,6 @@
  * Also enforces simple zoom limits based on canvas size to avoid excessive
  * grid allocation and texture usage.
  */
-import { GPUResources } from "./gpu-resources";
 
 export interface ViewSnapshot {
   width: number;
@@ -16,7 +15,7 @@ export interface ViewSnapshot {
   zoom: number;
 }
 
-export class ViewController {
+export class View {
   private width: number;
   private height: number;
   private cameraX: number = 0;
@@ -78,20 +77,5 @@ export class ViewController {
       cy: this.cameraY,
       zoom: this.zoom,
     };
-  }
-
-  /**
-   * Writes the render uniforms: [canvasWidth, canvasHeight, cameraX, cameraY, zoom, padding]
-   */
-  writeRenderUniforms(resources: GPUResources): void {
-    const data = new Float32Array([
-      this.width,
-      this.height,
-      this.cameraX,
-      this.cameraY,
-      this.zoom,
-      0,
-    ]);
-    resources.writeRenderUniforms(data);
   }
 }

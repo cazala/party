@@ -235,7 +235,11 @@ export function useWebGPUPlayground(
             trails,
             particle,
           ];
-          const system = new Engine({ canvas: canvasRef.current, modules });
+          const system = new Engine({
+            canvas: canvasRef.current,
+            modules,
+            type: "cpu",
+          });
           await system.initialize();
           system.setSize(width, height);
           systemRef.current = system;

@@ -9,7 +9,7 @@
  * [pos.x, pos.y, vel.x, vel.y, ax, ay, size, mass, color.r, color.g, color.b, color.a]
  */
 import { GPUResources } from "./gpu-resources";
-import { WebGPUParticle } from "../../interfaces";
+import { IParticle } from "../../interfaces";
 
 /**
  * CPU-side particle storage and synchronization to GPU storage buffer.
@@ -26,13 +26,13 @@ export class ParticleStore {
     this.data = new Float32Array(this.maxParticles * this.floatsPerParticle);
   }
 
-  setParticles(list: WebGPUParticle[]): void {
+  setParticles(list: IParticle[]): void {
     const n = Math.min(list.length, this.maxParticles);
     for (let i = 0; i < n; i++) this.writeAtIndex(i, list[i]);
     this.count = n;
   }
 
-  addParticle(p: WebGPUParticle): void {
+  addParticle(p: IParticle): void {
     if (this.count >= this.maxParticles) return;
     this.writeAtIndex(this.count, p);
     this.count++;
@@ -46,15 +46,15 @@ export class ParticleStore {
     return this.count;
   }
 
-  getParticles(): WebGPUParticle[] {
-    const particles: WebGPUParticle[] = [];
+  getParticles(): IParticle[] {
+    const particles: IParticle[] = [];
     for (let i = 0; i < this.count; i++) {
       particles.push(this.getParticle(i));
     }
     return particles;
   }
 
-  getParticle(index: number): WebGPUParticle {
+  getParticle(index: number): IParticle {
     const base = index * this.floatsPerParticle;
     return {
       position: { x: this.data[base + 0], y: this.data[base + 1] },
@@ -83,7 +83,7 @@ export class ParticleStore {
   /**
    * Internal: encode one particle into the CPU buffer at a given index.
    */
-  private writeAtIndex(index: number, particle: WebGPUParticle): void {
+  private writeAtIndex(index: number, particle: IParticle): void {
     const base = index * this.floatsPerParticle;
     // Layout: pos2, vel2, accel2, size, mass, color4
     this.data[base + 0] = particle.position.x;

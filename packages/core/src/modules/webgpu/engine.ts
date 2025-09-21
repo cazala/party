@@ -1,12 +1,21 @@
-import { IEngine, WebGPUParticle } from "./interfaces";
+import { IEngine, IParticle } from "./interfaces";
 import { Module } from "./module";
 import { WebGPUEngine } from "./runtimes/webgpu/engine";
+import { CPUEngine } from "./runtimes/cpu/engine";
 
 export class Engine implements IEngine {
-  private engine: WebGPUEngine;
+  private engine: IEngine;
 
-  constructor(options: { canvas: HTMLCanvasElement; modules: Module[] }) {
-    this.engine = new WebGPUEngine(options);
+  constructor(options: {
+    canvas: HTMLCanvasElement;
+    modules: Module[];
+    type: "webgpu" | "cpu";
+  }) {
+    if (options.type === "webgpu") {
+      this.engine = new WebGPUEngine(options);
+    } else {
+      this.engine = new CPUEngine(options);
+    }
   }
 
   initialize(): Promise<void> {
@@ -53,19 +62,19 @@ export class Engine implements IEngine {
     return this.engine.getZoom();
   }
 
-  setParticles(p: WebGPUParticle[]): void {
+  setParticles(p: IParticle[]): void {
     this.engine.setParticles(p);
   }
 
-  addParticle(p: WebGPUParticle): void {
+  addParticle(p: IParticle): void {
     this.engine.addParticle(p);
   }
 
-  getParticles(): WebGPUParticle[] {
+  getParticles(): IParticle[] {
     return this.engine.getParticles();
   }
 
-  getParticle(index: number): WebGPUParticle {
+  getParticle(index: number): IParticle {
     return this.engine.getParticle(index);
   }
 

@@ -8,7 +8,7 @@
  */
 import type { Program } from "./builders/program";
 import type { GPUResources } from "./gpu-resources";
-import type { ViewSnapshot } from "./view-controller";
+import type { ViewSnapshot } from "../../view";
 
 export class GridSystem {
   private cols: number = 0;

@@ -38,6 +38,28 @@ export class Particle extends Module<"particles", ParticleRendererKeys> {
   }
 
   cpu(): CPUDescriptor<"particles", ParticleRendererKeys> {
-    throw new Error("Not implemented");
+    return {
+      name: "particles",
+      role: ModuleRole.Render,
+      render: ({ context, input, view, particles, clearColor }) => {
+        context.fillStyle = `rgba(${clearColor.r}, ${clearColor.g}, ${clearColor.b}, ${clearColor.a})`;
+        context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+        for (const particle of particles) {
+          // draw each particle as a circle with the particle color and size
+          context.fillStyle = `rgba(${particle.color.r * 255}, ${
+            particle.color.g * 255
+          }, ${particle.color.b * 255}, ${particle.color.a * 255})`;
+          context.beginPath();
+          context.arc(
+            particle.position.x,
+            particle.position.y,
+            particle.size,
+            0,
+            Math.PI * 2
+          );
+          context.fill();
+        }
+      },
+    };
   }
 }

@@ -22,7 +22,7 @@ import {
   buildComputeImagePassWGSL,
   buildFullscreenPassWGSL,
 } from "./builders/render-pass";
-import { DEFAULTS } from "./config";
+import { DEFAULTS } from "../../config";
 
 /**
  * Run a fullscreen rasterization pass that draws a screen-aligned quad.

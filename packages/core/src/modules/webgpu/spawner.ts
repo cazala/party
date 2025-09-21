@@ -6,7 +6,7 @@
  * presets (random/in/out/clockwise/counter-clockwise/custom). Also includes
  * lightweight color parsing helpers.
  */
-import { WebGPUParticle } from "./interfaces";
+import { IParticle } from "./interfaces";
 
 export type WebGPUVelocityDirection =
   | "random"
@@ -85,7 +85,7 @@ function calculateVelocity(
 }
 
 export class WebGPUSpawner {
-  initParticles(options: WebGPUSpawnOptions): WebGPUParticle[] {
+  initParticles(options: WebGPUSpawnOptions): IParticle[] {
     const {
       count,
       shape,
@@ -102,7 +102,7 @@ export class WebGPUSpawner {
       colors,
     } = options;
 
-    const particles: WebGPUParticle[] = [];
+    const particles: IParticle[] = [];
 
     if (count <= 0) return particles;
 

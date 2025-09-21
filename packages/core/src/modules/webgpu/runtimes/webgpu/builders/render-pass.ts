@@ -10,7 +10,7 @@
  */
 import type { FullscreenRenderPass, ComputeRenderPass } from "../../../module";
 import { ModuleUniformLayout } from "./program";
-import { DEFAULTS } from "../config";
+import { DEFAULTS } from "../../../config";
 
 // --- Internal helpers to reduce duplication ---
 function buildModuleUniformStruct(

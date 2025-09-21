@@ -11,6 +11,7 @@
  */
 import { copyShaderWGSL } from "./shaders";
 import type { Program, ModuleUniformLayout } from "./builders/program";
+import { ViewSnapshot } from "../../view";
 
 export interface SceneTextures {
   a: GPUTexture;
@@ -195,11 +196,19 @@ export class GPUResources {
     });
   }
 
-  writeRenderUniforms(data: ArrayBufferView, offset = 0): void {
+  writeRenderUniforms(snapshot: ViewSnapshot): void {
+    const data = new Float32Array([
+      snapshot.width,
+      snapshot.height,
+      snapshot.cx,
+      snapshot.cy,
+      snapshot.zoom,
+      0,
+    ]);
     if (!this.renderUniformBuffer) return;
     this.getDevice().queue.writeBuffer(
       this.renderUniformBuffer,
-      offset,
+      0,
       data.buffer,
       data.byteOffset,
       data.byteLength

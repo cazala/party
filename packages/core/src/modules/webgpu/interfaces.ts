@@ -10,16 +10,16 @@ export interface IEngine {
   getCamera(): { x: number; y: number };
   setZoom(z: number): void;
   getZoom(): number;
-  addParticle(p: WebGPUParticle): void;
-  setParticles(p: WebGPUParticle[]): void;
-  getParticles(): WebGPUParticle[];
-  getParticle(index: number): WebGPUParticle;
+  addParticle(p: IParticle): void;
+  setParticles(p: IParticle[]): void;
+  getParticles(): IParticle[];
+  getParticle(index: number): IParticle;
   clear(): void;
   getCount(): number;
   getFPS(): number;
 }
 
-export type WebGPUParticle = {
+export interface IParticle {
   position: { x: number; y: number };
   velocity: { x: number; y: number };
   size: number;
@@ -30,4 +30,4 @@ export type WebGPUParticle = {
     b: number;
     a: number;
   };
-};
+}

@@ -14,12 +14,12 @@
  * - Drive per-frame simulation passes and render passes into ping-pong scene textures
  * - Present the final texture to the canvas, tracking an EMA FPS estimate
  */
-import { DEFAULTS } from "./config";
+import { DEFAULTS } from "../../config";
 import type { Module } from "../../module";
 import { GPUResources } from "./gpu-resources";
-import { ViewController } from "./view-controller";
+import { View } from "../../view";
 import { ParticleStore } from "./particle-store";
-import { IEngine, WebGPUParticle } from "../../interfaces";
+import { IEngine, IParticle } from "../../interfaces";
 import { ModuleRegistry } from "./module-registry";
 import { GridSystem } from "./grid-system";
 import { SimulationPipeline } from "./simulation-pipeline";
@@ -32,7 +32,7 @@ export class WebGPUEngine implements IEngine {
   private sim: SimulationPipeline;
   private render: RenderPipeline;
   private grid: GridSystem;
-  private view: ViewController;
+  private view: View;
 
   private isPlaying: boolean = false;
   private lastTime: number = 0;
@@ -45,12 +45,7 @@ export class WebGPUEngine implements IEngine {
   constructor(options: { canvas: HTMLCanvasElement; modules: Module[] }) {
     const { canvas, modules } = options;
     this.resources = new GPUResources({ canvas });
-    const width = Math.max(1, canvas.width || (canvas as any).clientWidth || 1);
-    const height = Math.max(
-      1,
-      canvas.height || (canvas as any).clientHeight || 1
-    );
-    this.view = new ViewController(width, height);
+    this.view = new View(canvas.width, canvas.height);
     this.particles = new ParticleStore(this.maxParticles, 12);
     this.modules = new ModuleRegistry([...modules]);
     this.sim = new SimulationPipeline();
@@ -153,21 +148,21 @@ export class WebGPUEngine implements IEngine {
     return this.view.getZoom();
   }
 
-  setParticles(p: WebGPUParticle[]): void {
+  setParticles(p: IParticle[]): void {
     this.particles.setParticles(p);
     this.particles.syncToGPU(this.resources);
   }
 
-  addParticle(p: WebGPUParticle): void {
+  addParticle(p: IParticle): void {
     this.particles.addParticle(p);
     this.particles.syncToGPU(this.resources);
   }
 
-  getParticles(): WebGPUParticle[] {
+  getParticles(): IParticle[] {
     return this.particles.getParticles();
   }
 
-  getParticle(index: number): WebGPUParticle {
+  getParticle(index: number): IParticle {
     return this.particles.getParticle(index);
   }
 
@@ -197,7 +192,8 @@ export class WebGPUEngine implements IEngine {
     }
 
     // Write view uniforms
-    this.view.writeRenderUniforms(this.resources);
+    const snapshot = this.view.getSnapshot();
+    this.resources.writeRenderUniforms(snapshot);
 
     // Keep grid/world extents in sync with current view
     this.grid.resizeIfNeeded(
