@@ -233,12 +233,17 @@ export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
         "repelStrength",
       ] as const,
       apply: ({ particle, input, view }) => {
+        // Calculate world bounds similar to WebGPU grid system
+        const camera = view.getCamera();
+        const zoom = Math.max(view.getZoom(), 0.0001);
         const size = view.getSize();
+        const halfW = size.width / (2 * zoom);
+        const halfH = size.height / (2 * zoom);
+        const minX = camera.x - halfW;
+        const maxX = camera.x + halfW;
+        const minY = camera.y - halfH;
+        const maxY = camera.y + halfH;
         const halfSize = particle.size;
-        const minX = 0;
-        const maxX = size.width;
-        const minY = 0;
-        const maxY = size.height;
         const bounce = input.restitution;
         const friction = input.friction;
         const mode = input.mode;
