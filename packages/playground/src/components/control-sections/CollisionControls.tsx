@@ -9,7 +9,7 @@ import {
   DEFAULT_COLLISIONS_FRICTION,
   DEFAULT_JOINT_COLLISIONS_ENABLED,
   DEFAULT_JOINT_CROSSING_RESOLUTION,
-} from "@cazala/party";
+} from "@cazala/party/legacy";
 import { Tooltip } from "../Tooltip";
 
 interface CollisionControlsProps {
@@ -27,32 +27,35 @@ export interface CollisionControlsRef {
     friction: number;
     collisionsEat: boolean;
   };
-  setState: (state: Partial<{
-    collisionsEnabled: boolean;
-    particleCollisionsEnabled: boolean;
-    jointCollisionsEnabled: boolean;
-    jointCrossingResolutionEnabled: boolean;
-    restitution: number;
-    friction: number;
-    collisionsEat: boolean;
-  }>) => void;
+  setState: (
+    state: Partial<{
+      collisionsEnabled: boolean;
+      particleCollisionsEnabled: boolean;
+      jointCollisionsEnabled: boolean;
+      jointCrossingResolutionEnabled: boolean;
+      restitution: number;
+      friction: number;
+      collisionsEat: boolean;
+    }>
+  ) => void;
 }
 
-export const CollisionControls = forwardRef<CollisionControlsRef, CollisionControlsProps>(({
-  collisions,
-  joints,
-}, ref) => {
+export const CollisionControls = forwardRef<
+  CollisionControlsRef,
+  CollisionControlsProps
+>(({ collisions, joints }, ref) => {
   // Collision states
-  const [collisionsEnabled, setCollisionsEnabled] = useState(DEFAULT_COLLISIONS_ENABLED);
+  const [collisionsEnabled, setCollisionsEnabled] = useState(
+    DEFAULT_COLLISIONS_ENABLED
+  );
   const [particleCollisionsEnabled, setParticleCollisionsEnabled] = useState(
     DEFAULT_COLLISIONS_ENABLE_PARTICLES
   );
   const [jointCollisionsEnabled, setJointCollisionsEnabled] = useState(
     DEFAULT_JOINT_COLLISIONS_ENABLED
   );
-  const [jointCrossingResolutionEnabled, setJointCrossingResolutionEnabled] = useState(
-    DEFAULT_JOINT_CROSSING_RESOLUTION
-  );
+  const [jointCrossingResolutionEnabled, setJointCrossingResolutionEnabled] =
+    useState(DEFAULT_JOINT_CROSSING_RESOLUTION);
   const [restitution, setRestitution] = useState(
     DEFAULT_COLLISIONS_RESTITUTION
   );
@@ -128,8 +131,45 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
   };
 
   // Expose state management methods
-  useImperativeHandle(ref, () => ({
-    getState: () => ({
+  useImperativeHandle(
+    ref,
+    () => ({
+      getState: () => ({
+        collisionsEnabled,
+        particleCollisionsEnabled,
+        jointCollisionsEnabled,
+        jointCrossingResolutionEnabled,
+        restitution,
+        friction,
+        collisionsEat,
+      }),
+      setState: (state) => {
+        if (state.collisionsEnabled !== undefined) {
+          setCollisionsEnabled(state.collisionsEnabled);
+        }
+        if (state.particleCollisionsEnabled !== undefined) {
+          setParticleCollisionsEnabled(state.particleCollisionsEnabled);
+        }
+        if (state.jointCollisionsEnabled !== undefined) {
+          setJointCollisionsEnabled(state.jointCollisionsEnabled);
+        }
+        if (state.jointCrossingResolutionEnabled !== undefined) {
+          setJointCrossingResolutionEnabled(
+            state.jointCrossingResolutionEnabled
+          );
+        }
+        if (state.restitution !== undefined) {
+          setRestitution(state.restitution);
+        }
+        if (state.friction !== undefined) {
+          setFriction(state.friction);
+        }
+        if (state.collisionsEat !== undefined) {
+          setCollisionsEat(state.collisionsEat);
+        }
+      },
+    }),
+    [
       collisionsEnabled,
       particleCollisionsEnabled,
       jointCollisionsEnabled,
@@ -137,31 +177,8 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
       restitution,
       friction,
       collisionsEat,
-    }),
-    setState: (state) => {
-      if (state.collisionsEnabled !== undefined) {
-        setCollisionsEnabled(state.collisionsEnabled);
-      }
-      if (state.particleCollisionsEnabled !== undefined) {
-        setParticleCollisionsEnabled(state.particleCollisionsEnabled);
-      }
-      if (state.jointCollisionsEnabled !== undefined) {
-        setJointCollisionsEnabled(state.jointCollisionsEnabled);
-      }
-      if (state.jointCrossingResolutionEnabled !== undefined) {
-        setJointCrossingResolutionEnabled(state.jointCrossingResolutionEnabled);
-      }
-      if (state.restitution !== undefined) {
-        setRestitution(state.restitution);
-      }
-      if (state.friction !== undefined) {
-        setFriction(state.friction);
-      }
-      if (state.collisionsEat !== undefined) {
-        setCollisionsEat(state.collisionsEat);
-      }
-    },
-  }), [collisionsEnabled, particleCollisionsEnabled, jointCollisionsEnabled, jointCrossingResolutionEnabled, restitution, friction, collisionsEat]);
+    ]
+  );
 
   return (
     <div className="control-section">
@@ -170,9 +187,7 @@ export const CollisionControls = forwardRef<CollisionControlsRef, CollisionContr
           <input
             type="checkbox"
             checked={collisionsEnabled}
-            onChange={(e) =>
-              handleCollisionsEnabledChange(e.target.checked)
-            }
+            onChange={(e) => handleCollisionsEnabledChange(e.target.checked)}
           />
           Enable Collisions
           <Tooltip content="Enable/disable the entire collision system" />

@@ -1,3 +1,14 @@
+import { useState } from "react";
+import {
+  Environment,
+  Boundary,
+  Collisions,
+  Fluid,
+  Behavior,
+  Sensors,
+  Trails,
+  Interaction,
+} from "@cazala/party";
 import { WebGPUEnvironmentControls } from "./control-sections/WebGPUEnvironmentControls";
 import { WebGPUBoundaryControls } from "./control-sections/WebGPUBoundaryControls";
 import { WebGPUCollisionsControls } from "./control-sections/WebGPUCollisionsControls";
@@ -7,15 +18,6 @@ import { WebGPUSensorsControls } from "./control-sections/WebGPUSensorsControls"
 import { WebGPUTrailsControls } from "./control-sections/WebGPUTrailsControls";
 import { WebGPUInteractionControls } from "./control-sections/WebGPUInteractionControls";
 import { CollapsibleSection } from "./CollapsibleSection";
-import { useState } from "react";
-import { Environment } from "@cazala/party/modules/webgpu/shaders/modules/environment";
-import { Boundary } from "@cazala/party/modules/webgpu/shaders/modules/boundary";
-import { Collisions } from "@cazala/party/modules/webgpu/shaders/modules/collisions";
-import { Fluid } from "@cazala/party/modules/webgpu/shaders/modules/fluid";
-import { Behavior } from "@cazala/party/modules/webgpu/shaders/modules/behavior";
-import { Sensors } from "@cazala/party/modules/webgpu/shaders/modules/sensors";
-import { Trails } from "@cazala/party/modules/webgpu/shaders/modules/trails";
-import { Interaction } from "@cazala/party/modules/webgpu/shaders/modules/interaction";
 
 export function WebGPUForceControls({
   environment,

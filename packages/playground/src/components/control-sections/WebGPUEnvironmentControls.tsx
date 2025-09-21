@@ -5,7 +5,7 @@ import {
   DEFAULT_ENVIRONMENT_FRICTION,
   DEFAULT_ENVIRONMENT_DAMPING,
   Environment,
-} from "@cazala/party/modules/webgpu/modules/forces/environment";
+} from "@cazala/party";
 
 export function WebGPUEnvironmentControls({
   environment,

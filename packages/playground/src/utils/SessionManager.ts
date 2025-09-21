@@ -1,14 +1,24 @@
-import { System, Particle, Vector2D, Canvas2DRenderer, setIdCounter } from "@cazala/party";
+import {
+  System,
+  Particle,
+  Vector2D,
+  Canvas2DRenderer,
+  setIdCounter,
+} from "@cazala/party/legacy";
 import {
   SavedSession,
   SerializedParticle,
   SerializedJoint,
   SessionMetadata,
 } from "../types/session";
-import { Boundary } from "@cazala/party";
-import { SpatialGrid } from "@cazala/party";
+import { Boundary } from "@cazala/party/legacy";
+import { SpatialGrid } from "@cazala/party/legacy";
 import { UseUndoRedoReturn } from "../hooks/useUndoRedo";
-import { getViewportWorldBounds, calculateCameraToShowWorldBounds, applyCameraSettings } from "./sceneBounds";
+import {
+  getViewportWorldBounds,
+  calculateCameraToShowWorldBounds,
+  applyCameraSettings,
+} from "./sceneBounds";
 
 const STORAGE_KEY = "playground-sessions";
 const VERSION = "1.0.0";
@@ -45,7 +55,9 @@ export class SessionManager {
 
       // Serialize joints
       const joints: SerializedJoint[] = [];
-      const jointsForce = system.forces.find(force => force.constructor.name === 'Joints') as any;
+      const jointsForce = system.forces.find(
+        (force) => force.constructor.name === "Joints"
+      ) as any;
       if (jointsForce && jointsForce.serializeJoints) {
         joints.push(...jointsForce.serializeJoints());
       }
@@ -64,15 +76,19 @@ export class SessionManager {
           };
 
       // Calculate viewport world bounds for viewport-independent loading
-      const viewportWorldBounds = renderer ? getViewportWorldBounds(system, renderer) : null;
-      
-      const scene = viewportWorldBounds ? {
-        viewportWorldBounds,
-        originalViewport: {
-          width: system.width,
-          height: system.height
-        }
-      } : undefined;
+      const viewportWorldBounds = renderer
+        ? getViewportWorldBounds(system, renderer)
+        : null;
+
+      const scene = viewportWorldBounds
+        ? {
+            viewportWorldBounds,
+            originalViewport: {
+              width: system.width,
+              height: system.height,
+            },
+          }
+        : undefined;
 
       // Create session object
       const session: SavedSession = {
@@ -180,7 +196,7 @@ export class SessionManager {
 
       // Update ID counter to prevent conflicts with future particles
       if (session.particles.length > 0) {
-        const maxId = Math.max(...session.particles.map(p => p.id));
+        const maxId = Math.max(...session.particles.map((p) => p.id));
         setIdCounter(maxId + 1);
       }
 
@@ -189,7 +205,9 @@ export class SessionManager {
 
       // Load joints if they exist in the session (backward compatibility)
       if (session.joints) {
-        const jointsForce = system.forces.find(force => force.constructor.name === 'Joints') as any;
+        const jointsForce = system.forces.find(
+          (force) => force.constructor.name === "Joints"
+        ) as any;
         if (jointsForce && jointsForce.deserializeJoints) {
           jointsForce.deserializeJoints(session.joints, loadedParticles);
         }
@@ -208,20 +226,52 @@ export class SessionManager {
             system.width,
             system.height
           );
-          
+
           console.log(`Loading session with viewport-independent positioning:
-            Original viewport: ${session.scene.originalViewport.width}x${session.scene.originalViewport.height}
+            Original viewport: ${session.scene.originalViewport.width}x${
+            session.scene.originalViewport.height
+          }
             Current viewport: ${system.width}x${system.height}
-            Saved world area: ${session.scene.viewportWorldBounds.worldWidth.toFixed(1)}x${session.scene.viewportWorldBounds.worldHeight.toFixed(1)}
-            World bounds: (${session.scene.viewportWorldBounds.worldMinX.toFixed(1)}, ${session.scene.viewportWorldBounds.worldMinY.toFixed(1)}) to (${session.scene.viewportWorldBounds.worldMaxX.toFixed(1)}, ${session.scene.viewportWorldBounds.worldMaxY.toFixed(1)})
-            Calculated camera: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)}) zoom: ${zoom.toFixed(2)}`);
-          
-          applyCameraSettings(renderer, cameraX, cameraY, zoom, boundary, spatialGrid, zoomStateRef);
+            Saved world area: ${session.scene.viewportWorldBounds.worldWidth.toFixed(
+              1
+            )}x${session.scene.viewportWorldBounds.worldHeight.toFixed(1)}
+            World bounds: (${session.scene.viewportWorldBounds.worldMinX.toFixed(
+              1
+            )}, ${session.scene.viewportWorldBounds.worldMinY.toFixed(
+            1
+          )}) to (${session.scene.viewportWorldBounds.worldMaxX.toFixed(
+            1
+          )}, ${session.scene.viewportWorldBounds.worldMaxY.toFixed(1)})
+            Calculated camera: (${cameraX.toFixed(1)}, ${cameraY.toFixed(
+            1
+          )}) zoom: ${zoom.toFixed(2)}`);
+
+          applyCameraSettings(
+            renderer,
+            cameraX,
+            cameraY,
+            zoom,
+            boundary,
+            spatialGrid,
+            zoomStateRef
+          );
         } else {
           // Backward compatibility: use old absolute camera positioning
           const camera = session.camera || { x: 0, y: 0, zoom: 1 };
-          console.log(`Loading session with backward compatibility camera positioning: (${camera.x.toFixed(1)}, ${camera.y.toFixed(1)}) zoom: ${camera.zoom.toFixed(2)}`);
-          applyCameraSettings(renderer, camera.x, camera.y, camera.zoom, boundary, spatialGrid, zoomStateRef);
+          console.log(
+            `Loading session with backward compatibility camera positioning: (${camera.x.toFixed(
+              1
+            )}, ${camera.y.toFixed(1)}) zoom: ${camera.zoom.toFixed(2)}`
+          );
+          applyCameraSettings(
+            renderer,
+            camera.x,
+            camera.y,
+            camera.zoom,
+            boundary,
+            spatialGrid,
+            zoomStateRef
+          );
         }
       }
 

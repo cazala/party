@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { System, Canvas2DRenderer, Boundary, SpatialGrid } from "@cazala/party";
+import {
+  System,
+  Canvas2DRenderer,
+  Boundary,
+  SpatialGrid,
+} from "@cazala/party/legacy";
 import {
   getViewportWorldBounds,
   calculateCameraToShowWorldBounds,

@@ -1,4 +1,4 @@
-import { Particle, Vector2D } from "@cazala/party";
+import { Particle, Vector2D } from "@cazala/party/legacy";
 import { SpawnConfig } from "src/components/control-sections/SpawnControls";
 
 export const getRandomColor = () => {

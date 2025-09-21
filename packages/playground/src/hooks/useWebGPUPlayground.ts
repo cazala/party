@@ -1,16 +1,18 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Engine, WebGPUSpawner } from "@cazala/party/modules/webgpu";
-import { Environment } from "@cazala/party/modules/webgpu/modules/forces/environment";
-import { Boundary } from "@cazala/party/modules/webgpu/modules/forces/boundary";
-import { Collisions } from "@cazala/party/modules/webgpu/modules/forces/collisions";
-import { Fluid } from "@cazala/party/modules/webgpu/modules/forces/fluid";
-import { Behavior } from "@cazala/party/modules/webgpu/modules/forces/behavior";
-import { Sensors } from "@cazala/party/modules/webgpu/modules/forces/sensors";
-import { Trails } from "@cazala/party/modules/webgpu/modules/render/trails";
-import { Interaction } from "@cazala/party/modules/webgpu/modules/forces/interaction";
-import { Particle } from "@cazala/party/modules/webgpu/modules/render/particle";
+import {
+  Environment,
+  Boundary,
+  Collisions,
+  Fluid,
+  Behavior,
+  Sensors,
+  Trails,
+  Interaction,
+  Particle,
+  Engine,
+  WebGPUSpawner,
+} from "@cazala/party";
 import { ToolMode } from "./useToolMode";
-// import { GPUResources } from "@cazala/party/modules/webgpu/runtime/gpu-resources";
 
 const zoomSensitivity = 0.01;
 

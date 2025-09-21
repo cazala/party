@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Boundary, BoundaryMode } from "@cazala/party";
+import { Boundary, BoundaryMode } from "@cazala/party/legacy";
 import {
   DEFAULT_BOUNDARY_BOUNCE,
   DEFAULT_BOUNDARY_REPEL_DISTANCE,
   DEFAULT_BOUNDARY_REPEL_STRENGTH,
   DEFAULT_BOUNDARY_MODE,
   DEFAULT_BOUNDARY_FRICTION,
-} from "@cazala/party/modules/forces/boundary";
+} from "@cazala/party/legacy";
 
 interface BoundaryControlsProps {
   boundary: Boundary | null;
@@ -68,7 +68,6 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
     }
   };
 
-
   return (
     <div className="control-section">
       <div className="control-group">
@@ -76,9 +75,7 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
           Mode
           <select
             value={mode}
-            onChange={(e) =>
-              handleModeChange(e.target.value as BoundaryMode)
-            }
+            onChange={(e) => handleModeChange(e.target.value as BoundaryMode)}
             className="form-select"
           >
             <option value="bounce">Bounce</option>
@@ -88,11 +85,9 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
           </select>
         </label>
       </div>
-      
+
       <div className="control-group">
-        <div
-          style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}
-        >
+        <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
           {mode === "bounce" && "Particles bounce off boundaries"}
           {mode === "kill" && "Particles are removed at boundaries"}
           {mode === "warp" && "Particles teleport to opposite side"}
@@ -111,14 +106,12 @@ export function BoundaryControls({ boundary }: BoundaryControlsProps) {
                 max="1"
                 step="0.01"
                 value={bounce}
-                onChange={(e) =>
-                  handleBounceChange(parseFloat(e.target.value))
-                }
+                onChange={(e) => handleBounceChange(parseFloat(e.target.value))}
                 className="slider"
               />
             </label>
           </div>
-          
+
           <div className="control-group">
             <label>
               Friction: {friction.toFixed(2)}

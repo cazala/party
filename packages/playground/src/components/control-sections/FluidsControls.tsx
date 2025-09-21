@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Fluid } from "@cazala/party";
+import { Fluid } from "@cazala/party/legacy";
 import {
   DEFAULT_INFLUENCE_RADIUS,
   DEFAULT_TARGET_DENSITY,
@@ -8,7 +8,7 @@ import {
   DEFAULT_NEAR_PRESSURE_MULTIPLIER,
   DEFAULT_NEAR_THRESHOLD,
   DEFAULT_ENABLE_NEAR_PRESSURE,
-} from "@cazala/party";
+} from "@cazala/party/legacy";
 
 interface FluidsControlsProps {
   fluid: Fluid | null;

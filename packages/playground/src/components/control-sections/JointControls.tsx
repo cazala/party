@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { Joints, getIdCounter, DEFAULT_MOMENTUM_PRESERVATION } from "@cazala/party";
+import {
+  Joints,
+  getIdCounter,
+  DEFAULT_MOMENTUM_PRESERVATION,
+} from "@cazala/party/legacy";
 import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
 
 interface JointControlsProps {
@@ -63,7 +67,6 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
       joints.setMomentum(value);
     }
   };
-
 
   const handleClearAllJoints = () => {
     if (joints && undoRedo) {
@@ -151,7 +154,8 @@ export function JointControls({ joints, undoRedo }: JointControlsProps) {
           }}
         />
         <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
-          Momentum preservation for joint particles (0 = no preservation, 1 = full preservation)
+          Momentum preservation for joint particles (0 = no preservation, 1 =
+          full preservation)
         </div>
       </div>
 

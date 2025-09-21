@@ -9,7 +9,7 @@ import {
   Emitters,
   Emitter,
   type SerializedEmitter,
-} from "@cazala/party";
+} from "@cazala/party/legacy";
 
 /**
  * Undo/Redo System for Particle Operations
@@ -239,13 +239,13 @@ export function useUndoRedo(
         restLength: serialized.restLength,
         tolerance: serialized.tolerance,
       });
-      
+
       // Restore broken state if needed
       if (serialized.isBroken) {
         (joint as any).isBroken = true;
         joint.isValid = false;
       }
-      
+
       return joint;
     },
     [getSystem]

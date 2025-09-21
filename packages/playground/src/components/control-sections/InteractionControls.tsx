@@ -1,5 +1,5 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
-import { Interaction } from "@cazala/party";
+import { Interaction } from "@cazala/party/legacy";
 
 interface InteractionControlsProps {
   interaction: Interaction | null;
@@ -10,37 +10,46 @@ export interface InteractionControlsRef {
     strength: number;
     radius: number;
   };
-  setState: (state: Partial<{
-    strength: number;
-    radius: number;
-  }>) => void;
+  setState: (
+    state: Partial<{
+      strength: number;
+      radius: number;
+    }>
+  ) => void;
 }
 
-export const InteractionControls = forwardRef<InteractionControlsRef, InteractionControlsProps>(({ interaction }, ref) => {
+export const InteractionControls = forwardRef<
+  InteractionControlsRef,
+  InteractionControlsProps
+>(({ interaction }, ref) => {
   const [strength, setStrength] = useState(5000);
   const [radius, setRadius] = useState(200);
 
   // Expose state management methods
-  useImperativeHandle(ref, () => ({
-    getState: () => ({
-      strength,
-      radius,
+  useImperativeHandle(
+    ref,
+    () => ({
+      getState: () => ({
+        strength,
+        radius,
+      }),
+      setState: (state) => {
+        if (state.strength !== undefined) {
+          setStrength(state.strength);
+          if (interaction) {
+            interaction.setStrength(state.strength);
+          }
+        }
+        if (state.radius !== undefined) {
+          setRadius(state.radius);
+          if (interaction) {
+            interaction.setRadius(state.radius);
+          }
+        }
+      },
     }),
-    setState: (state) => {
-      if (state.strength !== undefined) {
-        setStrength(state.strength);
-        if (interaction) {
-          interaction.setStrength(state.strength);
-        }
-      }
-      if (state.radius !== undefined) {
-        setRadius(state.radius);
-        if (interaction) {
-          interaction.setRadius(state.radius);
-        }
-      }
-    },
-  }), [strength, radius, interaction]);
+    [strength, radius, interaction]
+  );
 
   // Update local state when interaction changes
   useEffect(() => {

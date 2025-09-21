@@ -9,7 +9,7 @@ import {
   DEFAULT_SENSORS_FLEE_BEHAVIOR,
   Sensors,
   type SensorBehavior,
-} from "@cazala/party/modules/webgpu/modules/forces/sensors";
+} from "@cazala/party";
 
 // removed behavior/color controls
 

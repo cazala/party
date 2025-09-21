@@ -52,7 +52,7 @@ import {
   DEFAULT_VISCOSITY,
   DEFAULT_NEAR_THRESHOLD,
   DEFAULT_NEAR_PRESSURE_MULTIPLIER,
-} from "@cazala/party";
+} from "@cazala/party/legacy";
 import { EnvironmentControls } from "./control-sections/EnvironmentControls";
 // Accept any renderer type (Canvas2DRenderer or WebGPURenderer)
 import { BehaviorControls } from "./control-sections/BehaviorControls";

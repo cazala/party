@@ -1,11 +1,11 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
-import { Canvas2DRenderer, Fluid } from "@cazala/party";
+import { Canvas2DRenderer, Fluid } from "@cazala/party/legacy";
 import {
   DEFAULT_RENDER_COLOR_MODE,
   DEFAULT_RENDER_CUSTOM_COLOR,
   DEFAULT_RENDER_HUE_SPEED,
   DEFAULT_RENDER_GLOW_EFFECTS,
-} from "@cazala/party/modules/render";
+} from "@cazala/party/legacy/render";
 
 interface RenderControlsProps {
   renderer: Canvas2DRenderer | null;
@@ -22,88 +22,106 @@ export interface RenderControlsRef {
     densityFieldColor: string;
     glowEffects: boolean;
   };
-  setState: (state: Partial<{
-    colorMode: "particle" | "custom" | "velocity" | "hue";
-    customColor: string;
-    hueSpeed: number;
-    showDensity: boolean;
-    showVelocity: boolean;
-    densityFieldColor: string;
-    glowEffects: boolean;
-  }>) => void;
+  setState: (
+    state: Partial<{
+      colorMode: "particle" | "custom" | "velocity" | "hue";
+      customColor: string;
+      hueSpeed: number;
+      showDensity: boolean;
+      showVelocity: boolean;
+      densityFieldColor: string;
+      glowEffects: boolean;
+    }>
+  ) => void;
 }
 
-export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>(({ renderer, fluid }, ref) => {
+export const RenderControls = forwardRef<
+  RenderControlsRef,
+  RenderControlsProps
+>(({ renderer, fluid }, ref) => {
   const [colorMode, setColorMode] = useState(DEFAULT_RENDER_COLOR_MODE);
   const [customColor, setCustomColor] = useState(DEFAULT_RENDER_CUSTOM_COLOR);
-  const [hueSpeed, setHueSpeed] = useState(
-    DEFAULT_RENDER_HUE_SPEED
-  );
+  const [hueSpeed, setHueSpeed] = useState(DEFAULT_RENDER_HUE_SPEED);
   const [showDensity, setShowDensity] = useState(true);
   const [showVelocity, setShowVelocity] = useState(true);
   const [densityFieldColor, setDensityFieldColor] = useState("#FF6B35");
   const [glowEffects, setGlowEffects] = useState(DEFAULT_RENDER_GLOW_EFFECTS);
 
   // Expose state management methods
-  useImperativeHandle(ref, () => ({
-    getState: () => ({
-      colorMode: colorMode as "particle" | "custom" | "velocity" | "hue",
+  useImperativeHandle(
+    ref,
+    () => ({
+      getState: () => ({
+        colorMode: colorMode as "particle" | "custom" | "velocity" | "hue",
+        customColor,
+        hueSpeed,
+        showDensity,
+        showVelocity,
+        densityFieldColor,
+        glowEffects,
+      }),
+      setState: (state) => {
+        if (state.colorMode !== undefined) {
+          setColorMode(state.colorMode);
+          if (renderer) {
+            renderer.setColorMode(state.colorMode);
+          }
+        }
+        if (state.customColor !== undefined) {
+          setCustomColor(state.customColor);
+          if (renderer) {
+            renderer.setCustomColor(state.customColor);
+          }
+        }
+        if (state.hueSpeed !== undefined) {
+          setHueSpeed(state.hueSpeed);
+          if (renderer) {
+            renderer.setHueSpeed(state.hueSpeed);
+          }
+        }
+        if (state.showDensity !== undefined) {
+          setShowDensity(state.showDensity);
+          if (renderer) {
+            renderer.setShowDensity(state.showDensity);
+          }
+        }
+        if (state.showVelocity !== undefined) {
+          setShowVelocity(state.showVelocity);
+          if (renderer) {
+            renderer.setShowVelocity(state.showVelocity);
+          }
+        }
+        if (state.densityFieldColor !== undefined) {
+          setDensityFieldColor(state.densityFieldColor);
+          if (renderer) {
+            renderer.setDensityFieldColor(state.densityFieldColor);
+          }
+        }
+        if (state.glowEffects !== undefined) {
+          setGlowEffects(state.glowEffects);
+          if (renderer) {
+            renderer.setGlowEffects(state.glowEffects);
+          }
+        }
+      },
+    }),
+    [
+      colorMode,
       customColor,
       hueSpeed,
       showDensity,
       showVelocity,
       densityFieldColor,
       glowEffects,
-    }),
-    setState: (state) => {
-      if (state.colorMode !== undefined) {
-        setColorMode(state.colorMode);
-        if (renderer) {
-          renderer.setColorMode(state.colorMode);
-        }
-      }
-      if (state.customColor !== undefined) {
-        setCustomColor(state.customColor);
-        if (renderer) {
-          renderer.setCustomColor(state.customColor);
-        }
-      }
-      if (state.hueSpeed !== undefined) {
-        setHueSpeed(state.hueSpeed);
-        if (renderer) {
-          renderer.setHueSpeed(state.hueSpeed);
-        }
-      }
-      if (state.showDensity !== undefined) {
-        setShowDensity(state.showDensity);
-        if (renderer) {
-          renderer.setShowDensity(state.showDensity);
-        }
-      }
-      if (state.showVelocity !== undefined) {
-        setShowVelocity(state.showVelocity);
-        if (renderer) {
-          renderer.setShowVelocity(state.showVelocity);
-        }
-      }
-      if (state.densityFieldColor !== undefined) {
-        setDensityFieldColor(state.densityFieldColor);
-        if (renderer) {
-          renderer.setDensityFieldColor(state.densityFieldColor);
-        }
-      }
-      if (state.glowEffects !== undefined) {
-        setGlowEffects(state.glowEffects);
-        if (renderer) {
-          renderer.setGlowEffects(state.glowEffects);
-        }
-      }
-    },
-  }), [colorMode, customColor, hueSpeed, showDensity, showVelocity, densityFieldColor, glowEffects, renderer]);
+      renderer,
+    ]
+  );
 
   useEffect(() => {
     if (renderer) {
-      setColorMode(renderer.colorMode as "particle" | "custom" | "velocity" | "hue");
+      setColorMode(
+        renderer.colorMode as "particle" | "custom" | "velocity" | "hue"
+      );
       setCustomColor(renderer.customColor);
       setHueSpeed(renderer.getHueSpeed());
       setShowDensity(renderer.showDensity);
@@ -116,9 +134,7 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
   const handleColorModeChange = (mode: string) => {
     setColorMode(mode as "particle" | "custom" | "velocity" | "hue");
     if (renderer) {
-      renderer.setColorMode(
-        mode as "particle" | "custom" | "velocity" | "hue"
-      );
+      renderer.setColorMode(mode as "particle" | "custom" | "velocity" | "hue");
     }
   };
 
@@ -202,9 +218,7 @@ export const RenderControls = forwardRef<RenderControlsRef, RenderControlsProps>
               max="10"
               step="0.1"
               value={hueSpeed}
-              onChange={(e) =>
-                handleHueSpeedChange(parseFloat(e.target.value))
-              }
+              onChange={(e) => handleHueSpeedChange(parseFloat(e.target.value))}
               className="slider"
             />
           </label>

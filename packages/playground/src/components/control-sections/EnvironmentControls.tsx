@@ -9,7 +9,7 @@ import {
   radToDeg,
   degToRad,
   DEFAULT_DAMPING,
-} from "@cazala/party";
+} from "@cazala/party/legacy";
 
 type GravityDirection =
   | "up"

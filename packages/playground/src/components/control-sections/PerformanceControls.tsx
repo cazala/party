@@ -4,7 +4,7 @@ import {
   Canvas2DRenderer,
   System,
   DEFAULT_SPATIAL_GRID_CELL_SIZE,
-} from "@cazala/party";
+} from "@cazala/party/legacy";
 
 interface PerformanceControlsProps {
   system: System | null;
@@ -19,19 +19,20 @@ export interface PerformanceControlsRef {
     enableFrustumCulling: boolean;
     maxPoolSize: number;
   };
-  setState: (state: Partial<{
-    cellSize: number;
-    showSpatialGrid: boolean;
-    enableFrustumCulling: boolean;
-    maxPoolSize: number;
-  }>) => void;
+  setState: (
+    state: Partial<{
+      cellSize: number;
+      showSpatialGrid: boolean;
+      enableFrustumCulling: boolean;
+      maxPoolSize: number;
+    }>
+  ) => void;
 }
 
-export const PerformanceControls = forwardRef<PerformanceControlsRef, PerformanceControlsProps>(({
-  system,
-  spatialGrid,
-  renderer,
-}, ref) => {
+export const PerformanceControls = forwardRef<
+  PerformanceControlsRef,
+  PerformanceControlsProps
+>(({ system, spatialGrid, renderer }, ref) => {
   const [cellSize, setCellSize] = useState(DEFAULT_SPATIAL_GRID_CELL_SIZE);
   const [showSpatialGrid, setShowSpatialGrid] = useState(false);
   const [enableFrustumCulling, setEnableFrustumCulling] = useState(false);
@@ -40,40 +41,52 @@ export const PerformanceControls = forwardRef<PerformanceControlsRef, Performanc
   const [particleCount, setParticleCount] = useState(0);
 
   // Expose state management methods
-  useImperativeHandle(ref, () => ({
-    getState: () => ({
+  useImperativeHandle(
+    ref,
+    () => ({
+      getState: () => ({
+        cellSize,
+        showSpatialGrid,
+        enableFrustumCulling,
+        maxPoolSize,
+      }),
+      setState: (state) => {
+        if (state.cellSize !== undefined) {
+          setCellSize(state.cellSize);
+          if (spatialGrid) {
+            spatialGrid.setCellSize(state.cellSize);
+          }
+        }
+        if (state.showSpatialGrid !== undefined) {
+          setShowSpatialGrid(state.showSpatialGrid);
+          if (renderer) {
+            renderer.setShowSpatialGrid(state.showSpatialGrid);
+          }
+        }
+        if (state.enableFrustumCulling !== undefined) {
+          setEnableFrustumCulling(state.enableFrustumCulling);
+          if (system) {
+            system.setFrustumCulling(state.enableFrustumCulling);
+          }
+        }
+        if (state.maxPoolSize !== undefined) {
+          setMaxPoolSize(state.maxPoolSize);
+          if (system) {
+            system.setMaxPoolSize(state.maxPoolSize);
+          }
+        }
+      },
+    }),
+    [
       cellSize,
       showSpatialGrid,
       enableFrustumCulling,
       maxPoolSize,
-    }),
-    setState: (state) => {
-      if (state.cellSize !== undefined) {
-        setCellSize(state.cellSize);
-        if (spatialGrid) {
-          spatialGrid.setCellSize(state.cellSize);
-        }
-      }
-      if (state.showSpatialGrid !== undefined) {
-        setShowSpatialGrid(state.showSpatialGrid);
-        if (renderer) {
-          renderer.setShowSpatialGrid(state.showSpatialGrid);
-        }
-      }
-      if (state.enableFrustumCulling !== undefined) {
-        setEnableFrustumCulling(state.enableFrustumCulling);
-        if (system) {
-          system.setFrustumCulling(state.enableFrustumCulling);
-        }
-      }
-      if (state.maxPoolSize !== undefined) {
-        setMaxPoolSize(state.maxPoolSize);
-        if (system) {
-          system.setMaxPoolSize(state.maxPoolSize);
-        }
-      }
-    },
-  }), [cellSize, showSpatialGrid, enableFrustumCulling, maxPoolSize, spatialGrid, renderer, system]);
+      spatialGrid,
+      renderer,
+      system,
+    ]
+  );
 
   useEffect(() => {
     if (renderer) {
@@ -214,7 +227,7 @@ export const PerformanceControls = forwardRef<PerformanceControlsRef, Performanc
             fontSize: "11px",
             color: "var(--color-text-secondary)",
             marginTop: "2px",
-            fontStyle: "italic"
+            fontStyle: "italic",
           }}
         >
           Memory pooling for grid arrays
@@ -247,7 +260,7 @@ export const PerformanceControls = forwardRef<PerformanceControlsRef, Performanc
             fontSize: "11px",
             color: "var(--color-text-secondary)",
             marginTop: "2px",
-            fontStyle: "italic"
+            fontStyle: "italic",
           }}
         >
           Skip forces for off-screen particles

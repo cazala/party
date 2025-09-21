@@ -14,7 +14,7 @@ import {
   DEFAULT_EMITTER_END_ALPHA,
   DEFAULT_EMITTER_END_COLORS,
   DEFAULT_EMITTER_END_SPEED_MULTIPLIER,
-} from "@cazala/party";
+} from "@cazala/party/legacy";
 
 export interface EmitterConfig {
   particleSize: number;
@@ -69,7 +69,9 @@ export const EmitterControls = forwardRef<
     const [amplitude, setAmplitude] = useState(DEFAULT_EMITTER_AMPLITUDE);
     const [colors, setColors] = useState<string[]>(initialColors);
     const [zIndex, setZIndex] = useState(0);
-    const [followMouse, setFollowMouse] = useState(DEFAULT_EMITTER_FOLLOW_MOUSE);
+    const [followMouse, setFollowMouse] = useState(
+      DEFAULT_EMITTER_FOLLOW_MOUSE
+    );
 
     // Lifetime state
     const [lifetime, setLifetime] = useState(DEFAULT_EMITTER_LIFETIME);
@@ -117,7 +119,8 @@ export const EmitterControls = forwardRef<
           if (state.amplitude !== undefined) setAmplitude(state.amplitude);
           if (state.colors !== undefined) setColors(state.colors);
           if (state.zIndex !== undefined) setZIndex(state.zIndex);
-          if (state.followMouse !== undefined) setFollowMouse(state.followMouse);
+          if (state.followMouse !== undefined)
+            setFollowMouse(state.followMouse);
           if (state.lifetime !== undefined) setLifetime(state.lifetime);
           if (state.duration !== undefined) setDuration(state.duration);
           if (state.endSizeMultiplier !== undefined)

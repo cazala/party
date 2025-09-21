@@ -12,7 +12,7 @@ import {
   Spawner,
   Emitters,
   Emitter,
-} from "@cazala/party";
+} from "@cazala/party/legacy";
 import { getMousePosition } from "../utils/mouse";
 import { getDistance } from "../utils/distance";
 import {
@@ -809,7 +809,7 @@ export function useInteractions({
     (newParticle: Particle) => {
       const mouseState = mouseStateRef.current;
       const renderer = getRenderer();
-      
+
       // Only proceed if we're in joint mode and have a selected particle
       if (
         toolMode !== "joint" ||
@@ -821,8 +821,10 @@ export function useInteractions({
       }
 
       // Calculate distance between selected particle and new particle
-      const dx = newParticle.position.x - mouseState.selectedParticle.position.x;
-      const dy = newParticle.position.y - mouseState.selectedParticle.position.y;
+      const dx =
+        newParticle.position.x - mouseState.selectedParticle.position.x;
+      const dy =
+        newParticle.position.y - mouseState.selectedParticle.position.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       // Convert screen-space threshold to world-space
@@ -921,7 +923,7 @@ export function useInteractions({
     (worldPos: { x: number; y: number }) => {
       const emitters = getEmitters();
       const emitterConfig = getEmitterConfig();
-      
+
       if (!emitters) return;
 
       // Create new emitter at clicked position with current configuration
@@ -960,7 +962,7 @@ export function useInteractions({
    */
   const handleGrabToJoint = useCallback(() => {
     const mouseState = mouseStateRef.current;
-    
+
     if (!mouseState.isGrabbing || !mouseState.grabbedParticle) {
       return false; // No particle being grabbed
     }
@@ -998,14 +1000,14 @@ export function useInteractions({
    */
   const handleJointToSpawn = useCallback(() => {
     const mouseState = mouseStateRef.current;
-    
+
     if (!mouseState.isCreatingJoint || !mouseState.selectedParticle) {
       return false; // No joint creation in progress
     }
 
     // Enable pending joint spawn mode - maintain joint creation state but prepare for spawning
     mouseState.pendingJointSpawn = true;
-    
+
     // Keep selectedParticle and isCreatingJoint true so joint preview continues to show
     // Joint preview will be maintained by existing updateJointPreview logic
 
@@ -1019,9 +1021,13 @@ export function useInteractions({
 
     const handleParticleAdded = ({ particle }: { particle: Particle }) => {
       const mouseState = mouseStateRef.current;
-      
+
       // Only auto-create joint if we're in pending joint spawn mode
-      if (!mouseState.pendingJointSpawn || !mouseState.selectedParticle || !mouseState.isCreatingJoint) {
+      if (
+        !mouseState.pendingJointSpawn ||
+        !mouseState.selectedParticle ||
+        !mouseState.isCreatingJoint
+      ) {
         return;
       }
 
@@ -1034,7 +1040,7 @@ export function useInteractions({
       const joint = createJoint(mouseState.selectedParticle, particle);
       if (joint) {
         mouseState.createdJoints.push(joint.id);
-        
+
         // Record joint creation for undo
         undoRedo.current?.recordJointCreate(joint, getIdCounter());
       }
@@ -1043,7 +1049,7 @@ export function useInteractions({
       mouseState.selectedParticle = null;
       mouseState.isCreatingJoint = false;
       mouseState.pendingJointSpawn = false;
-      
+
       // Clear visual feedback
       const renderer = getRenderer();
       if (renderer) {
@@ -1052,19 +1058,24 @@ export function useInteractions({
       }
     };
 
-    system.events.on('particle-added', handleParticleAdded);
+    system.events.on("particle-added", handleParticleAdded);
 
     return () => {
-      system.events.off('particle-added', handleParticleAdded);
+      system.events.off("particle-added", handleParticleAdded);
     };
   }, [getSystem, getRenderer, hasJointBetween, createJoint, undoRedo]);
 
   // Handle tool mode changes - detect joint-to-spawn transitions
   useEffect(() => {
     const mouseState = mouseStateRef.current;
-    
+
     // If we switched from joint mode to spawn mode while creating a joint, activate pending joint spawn
-    if (toolMode === "spawn" && mouseState.isCreatingJoint && mouseState.selectedParticle && !mouseState.pendingJointSpawn) {
+    if (
+      toolMode === "spawn" &&
+      mouseState.isCreatingJoint &&
+      mouseState.selectedParticle &&
+      !mouseState.pendingJointSpawn
+    ) {
       mouseState.pendingJointSpawn = true;
     }
   }, [toolMode]);
@@ -1416,11 +1427,16 @@ export function useInteractions({
       // Also check for emitters to remove
       const emitters = getEmitters();
       if (emitters) {
-        const emitterAtPosition = emitters.findEmitterAt(new Vector2D(worldPos.x, worldPos.y));
+        const emitterAtPosition = emitters.findEmitterAt(
+          new Vector2D(worldPos.x, worldPos.y)
+        );
         if (emitterAtPosition) {
           // Record emitter removal for undo
-          undoRedo.current?.recordEmitterRemove(emitterAtPosition, getIdCounter());
-          
+          undoRedo.current?.recordEmitterRemove(
+            emitterAtPosition,
+            getIdCounter()
+          );
+
           // Remove emitter
           emitters.removeEmitter(emitterAtPosition.id);
         }
@@ -1673,7 +1689,10 @@ export function useInteractions({
 
       // Handle joint mode preview and particle highlighting
       // Also handle joint preview when in spawn mode with pending joint
-      if (toolMode === "joint" || (mouseState.isCreatingJoint && mouseState.pendingJointSpawn)) {
+      if (
+        toolMode === "joint" ||
+        (mouseState.isCreatingJoint && mouseState.pendingJointSpawn)
+      ) {
         mouseState.currentPos = worldPos;
 
         // Update particle highlighting (only in joint mode)

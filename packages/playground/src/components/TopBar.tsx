@@ -1,12 +1,6 @@
 import { useState, useEffect } from "react";
-import {
-  RefreshCw,
-  Save,
-  FolderOpen,
-  Maximize,
-  Trash2,
-} from "lucide-react";
-import { System } from "@cazala/party";
+import { RefreshCw, Save, FolderOpen, Maximize, Trash2 } from "lucide-react";
+import { System } from "@cazala/party/legacy";
 
 interface TopBarProps {
   system: System | null;
