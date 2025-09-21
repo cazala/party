@@ -1,3 +1,9 @@
+/**
+ * Particle (Render Module)
+ *
+ * Single fullscreen pass that instanced-draws particle quads into the scene.
+ * Fragment shader renders a soft-disc using the particle color and alpha falloff.
+ */
 import {
   Module,
   type ModuleDescriptor,

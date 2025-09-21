@@ -1,3 +1,11 @@
+/**
+ * Fluid (Force Module)
+ *
+ * SPH-inspired fluid approximation. Two-phase algorithm:
+ * - state(): compute particle density and near-density using neighbor kernels
+ * - apply(): compute pressure gradient and viscosity forces; clamp max accel
+ * Stores per-particle state in shared SIM_STATE via the Program-provided helpers.
+ */
 import {
   Module,
   type ModuleDescriptor,

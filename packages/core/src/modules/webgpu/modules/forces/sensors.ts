@@ -1,3 +1,11 @@
+/**
+ * Sensors (Force/Behavior Module)
+ *
+ * Samples the scene texture around two forward-biased sensor points (left/right)
+ * to derive simple follow/flee steering decisions. Supports color-aware behaviors
+ * (same/different) and intensity-only mode. Writes directly to velocity for snappy
+ * reactions (mirrors CPU behavior path).
+ */
 import {
   Module,
   type ModuleDescriptor,

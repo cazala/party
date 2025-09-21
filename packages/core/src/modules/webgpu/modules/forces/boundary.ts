@@ -1,3 +1,13 @@
+/**
+ * Boundary (Force Module)
+ *
+ * Enforces world bounds using the grid extents. Modes:
+ * - bounce: reflect with restitution and tangential friction
+ * - warp: wrap to the opposite side once fully outside
+ * - kill: set mass=0 to cull particle when fully outside
+ * - none: no constraint (repel still optional)
+ * Supports optional repel force near edges.
+ */
 import {
   Module,
   type ModuleDescriptor,

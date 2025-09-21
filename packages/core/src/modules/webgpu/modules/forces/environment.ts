@@ -1,3 +1,10 @@
+/**
+ * Environment (Force Module)
+ *
+ * Applies global influences: gravity (fixed/inwards/outwards/custom), inertia,
+ * friction, and velocity damping. Gravity direction can be vector- or mode-driven,
+ * with center computed from grid extents for inwards/outwards.
+ */
 import {
   Module,
   type ModuleDescriptor,

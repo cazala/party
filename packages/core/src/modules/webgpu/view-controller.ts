@@ -1,3 +1,11 @@
+/**
+ * ViewController
+ *
+ * Tracks canvas size, camera position, and zoom. Provides snapshot and writes
+ * render uniforms consumed by render passes (canvas size, camera, zoom).
+ * Also enforces simple zoom limits based on canvas size to avoid excessive
+ * grid allocation and texture usage.
+ */
 import { GPUResources } from "./gpu-resources";
 
 export interface ViewSnapshot {

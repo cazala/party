@@ -1,3 +1,13 @@
+/**
+ * ParticleStore
+ *
+ * CPU-side SoA-like packed Float32Array for particle attributes with helpers
+ * to set/add/read particles and to synchronize active slices to the GPU
+ * storage buffer owned by GPUResources.
+ *
+ * Layout (floatsPerParticle=12):
+ * [pos.x, pos.y, vel.x, vel.y, ax, ay, size, mass, color.r, color.g, color.b, color.a]
+ */
 import { Vector2D } from "../..";
 import { GPUResources } from "./gpu-resources";
 

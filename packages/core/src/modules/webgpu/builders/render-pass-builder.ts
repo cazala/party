@@ -1,3 +1,13 @@
+/**
+ * Render Pass Builder
+ *
+ * Translates `RenderModuleDescriptor` passes into standalone WGSL programs:
+ * - Fullscreen (raster) pass: draws a screen-aligned quad; optionally instanced per particle
+ * - Compute image pass: reads from an input scene texture and writes to an output scene texture
+ *
+ * Provides helpers to resolve module uniforms (`getUniform`), sample/read/write scene
+ * textures, and injects default vertex logic for instanced vs non-instanced fullscreen draws.
+ */
 import type {
   FullscreenRenderPass,
   ComputeRenderPass,

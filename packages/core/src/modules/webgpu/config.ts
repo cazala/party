@@ -1,3 +1,6 @@
+/**
+ * Global defaults for WebGPU engine and pipelines.
+ */
 export const DEFAULTS = {
   maxParticles: 100000,
   workgroupSize: 64,

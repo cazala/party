@@ -1,3 +1,11 @@
+/**
+ * Trails (Render Module)
+ *
+ * Two compute image passes over the scene texture:
+ * - decay: exponential fade toward clear color with alpha decay
+ * - diffuse: gaussian-like blur with configurable radius
+ * Both read from input texture and write to output, participating in ping-pong.
+ */
 import {
   Module,
   type ModuleDescriptor,

@@ -1,3 +1,11 @@
+/**
+ * GridSystem
+ *
+ * Maintains a world-aligned uniform grid based on the current view snapshot.
+ * Allocates GPU storage for per-cell counts/indices and writes grid uniforms
+ * into the `grid` system module's uniform buffer. Exposes resizeIfNeeded to
+ * keep grid state synchronized with camera/zoom/size changes.
+ */
 import type { Program } from "./builders/module-builder";
 import type { GPUResources } from "./gpu-resources";
 import type { ViewSnapshot } from "./view-controller";

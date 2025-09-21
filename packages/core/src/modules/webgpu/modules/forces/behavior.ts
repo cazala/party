@@ -1,3 +1,11 @@
+/**
+ * Behavior (Force Module)
+ *
+ * Boids-like steering behaviors: separation, alignment, cohesion, chase/avoid, wander.
+ * Uses the spatial grid neighbor iterator to accumulate local influences and writes
+ * into particle acceleration (no extra state). Tuned to avoid heavy branching and
+ * zero-velocity edge cases.
+ */
 import {
   Module,
   type ModuleDescriptor,

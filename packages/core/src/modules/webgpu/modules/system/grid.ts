@@ -1,3 +1,10 @@
+/**
+ * Grid (System Module)
+ *
+ * Exposes grid uniforms and emits global WGSL helpers for spatial hashing and
+ * neighborhood iteration. Also provides compute entrypoints to clear and build
+ * the grid per frame.
+ */
 import {
   Module,
   type ModuleDescriptor,

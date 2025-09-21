@@ -1,3 +1,9 @@
+/**
+ * Interaction (Force Module)
+ *
+ * Mouse-driven attract/repel impulse applied within a radius when the selected
+ * input button is active. Strength falls off to zero at the edge of the radius.
+ */
 import {
   Module,
   type ModuleDescriptor,

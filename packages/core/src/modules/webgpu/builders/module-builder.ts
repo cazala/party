@@ -1,3 +1,19 @@
+/**
+ * Module Builder (Program generator)
+ *
+ * Builds a single WGSL Program from a list of `Module` instances by:
+ * - Creating a packed uniform layout per module and mapping named fields to `vec4` slots
+ * - Emitting global helpers from system/force modules
+ * - Generating optional state/apply/constrain/correct functions for force modules
+ * - Defining simulation entrypoints and grid entrypoints if provided by system modules
+ * - Assigning extra bind group bindings (grid, sim state, scene texture)
+ *
+ * Output:
+ * - `Program.code`: complete WGSL source for all compute passes
+ * - `Program.layouts`: uniform layout/offset metadata for writing uniforms from CPU
+ * - `Program.simStateStride`: size of the shared SIM_STATE row per particle
+ * - `Program.extraBindings`: indices for additional buffers/textures bound by pipelines
+ */
 import {
   Module,
   ModuleRole,

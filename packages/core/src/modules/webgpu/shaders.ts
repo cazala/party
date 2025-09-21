@@ -1,3 +1,9 @@
+/**
+ * Presentation shader (copy)
+ *
+ * Minimal fullscreen copy shader used to present the rendered scene texture to the canvas.
+ * A small pipeline built with this WGSL is cached per canvas format.
+ */
 export const copyShaderWGSL = `
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,

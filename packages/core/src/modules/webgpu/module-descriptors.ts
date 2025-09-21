@@ -1,3 +1,16 @@
+/**
+ * Module descriptors and base Module class
+ *
+ * Defines the type-level contract for modules and the DSL surface used by the
+ * WGSL builders. A `Module` instance provides a `descriptor()` which declares:
+ * - role: `system`, `force`, or `render`
+ * - bindings: uniform fields exposed to CPU and populated into GPU uniform buffers
+ * - for system/force modules: optional global/state/apply/constrain/correct hooks
+ * - for render modules: one or more passes (fullscreen or compute) with their bindings
+ *
+ * The base `Module` offers uniform writer/reader plumbing and enabled toggling,
+ * and module authors extend it to implement their descriptor and any runtime API.
+ */
 export enum ModuleRole {
   Force = "force",
   System = "system",

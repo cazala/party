@@ -1,3 +1,14 @@
+/**
+ * GPUResources
+ *
+ * Low-level WebGPU resource manager. Responsible for:
+ * - Adapter/device/context acquisition and canvas configuration
+ * - Creation and caching of GPU buffers, textures, bind group layouts, and pipelines
+ * - Managing ping-pong scene textures and a small shader cache keyed by WGSL hashes
+ * - Building compute pipeline layouts from the generated Program and creating per-pass pipelines
+ * - Providing helpers to write CPU data into GPU buffers and to create bind groups
+ * - Cleaning up all GPU objects on dispose
+ */
 import { copyShaderWGSL } from "./shaders";
 import type { Program, ModuleUniformLayout } from "./builders/module-builder";
 

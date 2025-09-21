@@ -1,3 +1,15 @@
+/**
+ * RenderPipeline
+ *
+ * Manages scene render targets (ping-pong textures) and executes a sequence of
+ * render module passes. Two pass types are supported:
+ * - Fullscreen (raster) passes: draw a screen-aligned quad, optionally instanced per particle
+ * - Compute image passes: read from a scene texture and write to the other scene texture
+ *
+ * The pipeline resolves each module's uniform layout, binds particle/render uniforms
+ * and module uniforms, and handles ping-pong view swapping when a pass writes the scene.
+ * Finally, it presents the last written scene view to the canvas using a cached copy pipeline.
+ */
 import type { ModuleUniformLayout, Program } from "./builders/module-builder";
 import type { GPUResources } from "./gpu-resources";
 import {

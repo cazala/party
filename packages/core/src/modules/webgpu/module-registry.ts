@@ -1,3 +1,16 @@
+/**
+ * ModuleRegistry
+ *
+ * Central registry for modules. It builds the combined WGSL Program and manages
+ * per-module uniform state on the CPU, mirroring it into GPU uniform buffers.
+ *
+ * Key behaviors:
+ * - Builds `Program` via the builders (uniform layouts + generated WGSL code)
+ * - Allocates module uniform buffers and seeds default CPU-side uniform values
+ * - Attaches uniform writers/readers to each Module instance
+ * - Exposes helpers to get enabled render descriptors for the render pipeline
+ * - Flushes uniform state to GPU upon writes and on initialization
+ */
 import type { GPUResources } from "./gpu-resources";
 import { buildProgram, type Program } from "./builders/module-builder";
 import {

@@ -1,3 +1,11 @@
+/**
+ * WebGPUSpawner
+ *
+ * Utility for generating initial `WebGPUParticle[]` configurations for common
+ * shapes (grid, random, circle, donut, square) with optional initial velocity
+ * presets (random/in/out/clockwise/counter-clockwise/custom). Also includes
+ * lightweight color parsing helpers.
+ */
 import { WebGPUParticle } from "./particle-store";
 
 export type WebGPUVelocityDirection =

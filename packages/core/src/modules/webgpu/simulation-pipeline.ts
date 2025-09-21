@@ -1,3 +1,12 @@
+/**
+ * SimulationPipeline
+ *
+ * Wraps the compute side of the program. Builds compute layouts/pipelines from the
+ * generated WGSL and runs the available passes in sequence each frame:
+ * - grid_clear, grid_build (if present)
+ * - state_pass, apply_pass, integrate_pass, constrain_pass (N iterations), correct_pass
+ * If specialized passes are not present, falls back to `main`.
+ */
 import type { Program } from "./builders/module-builder";
 import type { GPUResources } from "./gpu-resources";
 

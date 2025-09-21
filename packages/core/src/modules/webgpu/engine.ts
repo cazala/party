@@ -1,3 +1,19 @@
+/**
+ * WebGPU Engine
+ *
+ * High-level orchestrator that wires together GPU resources, the simulation pipeline,
+ * the render pipeline, the spatial grid, and the view controller. It owns the main
+ * animation loop and exposes a minimal API for sizing, camera/zoom control, particle
+ * data management, and play/pause lifecycle.
+ *
+ * Responsibilities:
+ * - Initialize GPU device/context and allocate core buffers via GPUResources
+ * - Build the WGSL program and per-module uniform buffers via ModuleRegistry
+ * - Initialize compute (simulation) and render pipelines
+ * - Maintain and sync the spatial grid to match the current view/camera
+ * - Drive per-frame simulation passes and render passes into ping-pong scene textures
+ * - Present the final texture to the canvas, tracking an EMA FPS estimate
+ */
 import { DEFAULTS } from "./config";
 import type { Module } from "./module-descriptors";
 import { GPUResources } from "./gpu-resources";

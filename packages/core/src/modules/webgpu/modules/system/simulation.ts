@@ -1,3 +1,10 @@
+/**
+ * Simulation (System Module)
+ *
+ * Declares simulation uniforms (dt, count, simStride) and emits global WGSL
+ * helpers to access the shared SIM_STATE buffer used by force modules across
+ * the multi-pass simulation pipeline.
+ */
 import {
   Module,
   type ModuleDescriptor,

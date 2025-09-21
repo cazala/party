@@ -1,3 +1,11 @@
+/**
+ * Collisions (Force Module)
+ *
+ * Simple pairwise collision response using the spatial grid for neighbor queries.
+ * Uses a two-phase approach: pick deepest overlap neighbor (to reduce bias), then
+ * correct position and apply a bounce impulse along the contact normal.
+ * Velocity response in apply() is commented out; constraint/correct handle stability.
+ */
 import {
   Module,
   type ModuleDescriptor,
@@ -49,6 +57,7 @@ export class Collisions extends Module<"collisions", CollisionBindingKeys> {
             let dist = sqrt(dist2);
             let n = delta / dist;
 
+            // TODO: REMOVE THIS
             // Velocity response (normal/tangent decomposition)
             // let v1 = ${particleVar}.velocity;
             // let v2 = other.velocity;
