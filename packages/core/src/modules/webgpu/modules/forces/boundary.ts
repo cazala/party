@@ -14,7 +14,7 @@ import {
   ModuleRole,
   CPUDescriptor,
 } from "../../module";
-
+import { Vector } from "../../vector";
 type BoundaryBindingKeys =
   | "restitution"
   | "friction"
@@ -222,6 +222,125 @@ export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
   }
 
   cpu(): CPUDescriptor<"boundary", BoundaryBindingKeys> {
-    throw new Error("Not implemented");
+    return {
+      name: "boundary",
+      role: ModuleRole.Force,
+      keys: [
+        "restitution",
+        "friction",
+        "mode",
+        "repelDistance",
+        "repelStrength",
+      ] as const,
+      apply: ({ particle, input, view }) => {
+        const size = view.getSize();
+        const halfSize = particle.size;
+        const minX = 0;
+        const maxX = size.width;
+        const minY = 0;
+        const maxY = size.height;
+        const bounce = input.restitution;
+        const friction = input.friction;
+        const mode = input.mode;
+        const repelDist = input.repelDistance;
+        const repelStrength = input.repelStrength;
+
+        // Repel force applied for all modes
+        if (repelStrength > 0) {
+          const distLeft = particle.position.x - halfSize - minX;
+          const distRight = maxX - (particle.position.x + halfSize);
+          const distTop = particle.position.y - halfSize - minY;
+          const distBottom = maxY - (particle.position.y + halfSize);
+
+          let fx = 0;
+          let fy = 0;
+
+          if (repelDist <= 0) {
+            if (distLeft < 0) fx += repelStrength;
+            if (distRight < 0) fx -= repelStrength;
+            if (distTop < 0) fy += repelStrength;
+            if (distBottom < 0) fy -= repelStrength;
+          } else {
+            // Outside of bounds: apply full-strength push back in
+            if (distLeft < 0) fx += repelStrength;
+            if (distRight < 0) fx -= repelStrength;
+            if (distTop < 0) fy += repelStrength;
+            if (distBottom < 0) fy -= repelStrength;
+
+            // Inside within repel distance: scale by proximity
+            if (distLeft < repelDist && distLeft > 0) {
+              const ratio = (repelDist - distLeft) / repelDist;
+              fx += ratio * repelStrength;
+            }
+            if (distRight < repelDist && distRight > 0) {
+              const ratio = (repelDist - distRight) / repelDist;
+              fx -= ratio * repelStrength;
+            }
+            if (distTop < repelDist && distTop > 0) {
+              const ratio = (repelDist - distTop) / repelDist;
+              fy += ratio * repelStrength;
+            }
+            if (distBottom < repelDist && distBottom > 0) {
+              const ratio = (repelDist - distBottom) / repelDist;
+              fy -= ratio * repelStrength;
+            }
+          }
+
+          particle.acceleration.add(new Vector(fx, fy));
+        }
+
+        if (mode === 0) {
+          // bounce
+          // X axis
+          if (particle.position.x - halfSize < minX) {
+            particle.position.x = minX + halfSize;
+            particle.velocity.x = -particle.velocity.x * bounce;
+            particle.velocity.y *= Math.max(0, 1 - friction);
+          } else if (particle.position.x + halfSize > maxX) {
+            particle.position.x = maxX - halfSize;
+            particle.velocity.x = -particle.velocity.x * bounce;
+            particle.velocity.y *= Math.max(0, 1 - friction);
+          }
+
+          // Y axis
+          if (particle.position.y - halfSize < minY) {
+            particle.position.y = minY + halfSize;
+            particle.velocity.y = -particle.velocity.y * bounce;
+            particle.velocity.x *= Math.max(0, 1 - friction);
+          } else if (particle.position.y + halfSize > maxY) {
+            particle.position.y = maxY - halfSize;
+            particle.velocity.y = -particle.velocity.y * bounce;
+            particle.velocity.x *= Math.max(0, 1 - friction);
+          }
+        } else if (mode === 1) {
+          // warp
+          // Only warp once the particle is fully outside the bounds
+          const eps = 1; // spawn just outside the opposite edge so it slides in
+          if (particle.position.x + halfSize < minX) {
+            particle.position.x = maxX + halfSize + eps;
+          } else if (particle.position.x - halfSize > maxX) {
+            particle.position.x = minX - halfSize - eps;
+          }
+          if (particle.position.y + halfSize < minY) {
+            particle.position.y = maxY + halfSize + eps;
+          } else if (particle.position.y - halfSize > maxY) {
+            particle.position.y = minY - halfSize - eps;
+          }
+        } else if (mode === 2) {
+          // kill
+          // Only kill once the particle is fully outside the bounds
+          if (
+            particle.position.x + halfSize < minX ||
+            particle.position.x - halfSize > maxX ||
+            particle.position.y + halfSize < minY ||
+            particle.position.y - halfSize > maxY
+          ) {
+            particle.mass = 0;
+          }
+        } else if (mode === 3) {
+          // none: no boundary constraints; repel force above still applies
+        }
+      },
+    };
   }
 }
