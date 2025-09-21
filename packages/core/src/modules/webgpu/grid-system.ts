@@ -6,7 +6,7 @@
  * into the `grid` system module's uniform buffer. Exposes resizeIfNeeded to
  * keep grid state synchronized with camera/zoom/size changes.
  */
-import type { Program } from "./builders/module-builder";
+import type { Program } from "./builders/program";
 import type { GPUResources } from "./gpu-resources";
 import type { ViewSnapshot } from "./view-controller";
 

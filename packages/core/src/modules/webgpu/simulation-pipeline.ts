@@ -7,7 +7,7 @@
  * - state_pass, apply_pass, integrate_pass, constrain_pass (N iterations), correct_pass
  * If specialized passes are not present, falls back to `main`.
  */
-import type { Program } from "./builders/module-builder";
+import type { Program } from "./builders/program";
 import type { GPUResources } from "./gpu-resources";
 
 export class SimulationPipeline {

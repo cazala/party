@@ -10,7 +10,7 @@
  * - Cleaning up all GPU objects on dispose
  */
 import { copyShaderWGSL } from "./shaders";
-import type { Program, ModuleUniformLayout } from "./builders/module-builder";
+import type { Program, ModuleUniformLayout } from "./builders/program";
 
 export interface SceneTextures {
   a: GPUTexture;
@@ -216,6 +216,27 @@ export class GPUResources {
       data.byteOffset,
       data.byteLength
     );
+  }
+
+  /**
+   * Writes simulation uniforms (dt, count, simStride) into the internal
+   * 'simulation' uniform buffer using the provided Program's layout.
+   */
+  writeSimulationUniform(
+    program: Program,
+    values: { dt?: number; count?: number; simStride?: number }
+  ): void {
+    const idx = program.layouts.findIndex((l) => l.moduleName === "simulation");
+    if (idx === -1) return;
+    const layout = program.layouts[idx];
+    const map = layout.mapping as Record<string, { flatIndex: number }>;
+    const data = new Float32Array(layout.vec4Count * 4);
+    if (values.dt !== undefined && map.dt) data[map.dt.flatIndex] = values.dt;
+    if (values.count !== undefined && map.count)
+      data[map.count.flatIndex] = values.count;
+    if (values.simStride !== undefined && map.simStride)
+      data[map.simStride.flatIndex] = values.simStride;
+    this.writeModuleUniform(idx, data);
   }
 
   ensureSceneTextures(width: number, height: number): void {
@@ -548,8 +569,8 @@ export class GPUResources {
     }
     const entries: GPUBindGroupEntry[] = [
       { binding: 0, resource: { buffer: this.particleBuffer } },
-      ...this.moduleUniformBuffers.map((muf, i) => ({
-        binding: i + 1,
+      ...this.moduleUniformBuffers.map((muf) => ({
+        binding: muf.layout.bindingIndex,
         resource: { buffer: muf.buffer },
       })),
     ];

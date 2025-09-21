@@ -12,7 +12,7 @@
  * - Flushes uniform state to GPU upon writes and on initialization
  */
 import type { GPUResources } from "./gpu-resources";
-import { buildProgram, type Program } from "./builders/module-builder";
+import { buildProgram, type Program } from "./builders/program";
 import {
   Module,
   ModuleRole,
@@ -31,7 +31,6 @@ export class ModuleRegistry {
 
   constructor(modules: readonly Module<string, string, any>[]) {
     this.modules = modules;
-    modules.forEach((m, i) => this.nameToIndex.set(m.descriptor().name, i));
   }
 
   /**
@@ -41,6 +40,11 @@ export class ModuleRegistry {
   initialize(resources: GPUResources): void {
     this.resources = resources;
     this.program = buildProgram(this.modules);
+    // Rebuild name -> layout index map using Program layouts (includes internal first)
+    this.nameToIndex = new Map();
+    this.program.layouts.forEach((layout, i) =>
+      this.nameToIndex.set(layout.moduleName, i)
+    );
     resources.createModuleUniformBuffers(this.program.layouts);
 
     // Initialize CPU-side uniform state for each module
@@ -106,6 +110,8 @@ export class ModuleRegistry {
   writeAllModuleUniforms(): void {
     if (!this.resources || !this.program) return;
     for (let i = 0; i < this.program.layouts.length; i++) {
+      const name = this.program.layouts[i].moduleName;
+      if (name === "simulation" || name === "grid") continue; // internal uniforms are managed elsewhere
       this.flushModuleUniform(i);
     }
   }

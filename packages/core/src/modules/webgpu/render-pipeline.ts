@@ -10,7 +10,7 @@
  * and module uniforms, and handles ping-pong view swapping when a pass writes the scene.
  * Finally, it presents the last written scene view to the canvas using a cached copy pipeline.
  */
-import type { ModuleUniformLayout, Program } from "./builders/module-builder";
+import type { ModuleUniformLayout, Program } from "./builders/program";
 import type { GPUResources } from "./gpu-resources";
 import {
   ComputeRenderPass,
@@ -21,7 +21,7 @@ import {
 import {
   buildComputeImagePassWGSL,
   buildFullscreenPassWGSL,
-} from "./builders/render-pass-builder";
+} from "./builders/render-pass";
 import { DEFAULTS } from "./config";
 
 /**

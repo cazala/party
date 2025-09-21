@@ -1,5 +1,3 @@
-import { Simulation } from "./system/simulation";
-import { Grid } from "./system/grid";
 import { Environment } from "./forces/environment";
 import { Boundary } from "./forces/boundary";
 import { Collisions } from "./forces/collisions";
@@ -11,7 +9,6 @@ import { Trails } from "./render/trails";
 import { Particle } from "./render/particle";
 
 export {
-  Simulation,
   Environment,
   Boundary,
   Collisions,
@@ -20,6 +17,5 @@ export {
   Sensors,
   Trails,
   Interaction,
-  Grid,
   Particle,
 };

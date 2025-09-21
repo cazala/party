@@ -12,7 +12,7 @@ import type {
   FullscreenRenderPass,
   ComputeRenderPass,
 } from "../module-descriptors";
-import { ModuleUniformLayout } from "./module-builder";
+import { ModuleUniformLayout } from "./program";
 import { DEFAULTS } from "../config";
 
 // --- Internal helpers to reduce duplication ---

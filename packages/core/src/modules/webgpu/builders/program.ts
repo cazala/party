@@ -3,9 +3,9 @@
  *
  * Builds a single WGSL Program from a list of `Module` instances by:
  * - Creating a packed uniform layout per module and mapping named fields to `vec4` slots
- * - Emitting global helpers from system/force modules
+ * - Emitting internal global helpers (simulation/grid) and optional force module globals
  * - Generating optional state/apply/constrain/correct functions for force modules
- * - Defining simulation entrypoints and grid entrypoints if provided by system modules
+ * - Defining simulation entrypoints and grid entrypoints (inlined internally)
  * - Assigning extra bind group bindings (grid, sim state, scene texture)
  *
  * Output:
@@ -62,13 +62,67 @@ export function buildProgram(
   modules: readonly Module<string, string, any>[]
 ): Program {
   const descriptors = modules.map((m) => m.descriptor());
-  const sim = descriptors.find((m) => m.name === "simulation");
-  if (!sim) throw new Error("No simulation module provided");
 
   const layouts: ModuleUniformLayout[] = [];
   const uniformDecls: string[] = [];
+  // 1) Internal simulation uniforms at binding(1)
+  const pushUniformLayout = (
+    name: string,
+    fieldIds: readonly string[],
+    bindingIndex: number
+  ) => {
+    const uniformsVar = `${name}_uniforms`;
+    const structName = `Uniforms_${cap(name)}`;
+    const idsLocal = [...fieldIds] as string[];
+    const vec4Count = Math.max(1, Math.ceil(idsLocal.length / 4));
+    const mapping: Record<string, { flatIndex: number; expr: string }> = {};
+    idsLocal.forEach((id, i) => {
+      const v = Math.floor(i / 4),
+        c = i % 4;
+      const comp = c === 0 ? "x" : c === 1 ? "y" : c === 2 ? "z" : "w";
+      mapping[id] = {
+        flatIndex: v * 4 + c,
+        expr: `${uniformsVar}.v${v}.${comp}`,
+      };
+    });
+    const structWGSL = `struct ${structName} {\n${Array.from(
+      { length: vec4Count },
+      (_, i) => `  v${i}: vec4<f32>,`
+    ).join("\n")}\n}`;
+    const varDecl = `@group(0) @binding(${bindingIndex}) var<uniform> ${uniformsVar}: ${structName};`;
+    layouts.push({
+      moduleName: name,
+      moduleRole: ModuleRole.Force as ModuleRole, // internal; role unused for gating
+      bindingIndex,
+      uniformsVar,
+      structName,
+      sizeBytes: vec4Count * 16,
+      vec4Count,
+      mapping,
+    });
+    uniformDecls.push(structWGSL, varDecl);
+  };
+
+  // Internal: simulation + grid
+  pushUniformLayout("simulation", ["dt", "count", "simStride"] as const, 1);
+  pushUniformLayout(
+    "grid",
+    [
+      "minX",
+      "minY",
+      "maxX",
+      "maxY",
+      "cols",
+      "rows",
+      "cellSize",
+      "maxPerCell",
+    ] as const,
+    2
+  );
+
+  // 2) User module uniforms start at binding(3)
   descriptors.forEach((mod, idx) => {
-    const bindingIndex = idx + 1;
+    const bindingIndex = idx + 3;
     const uniformsVar = `${mod.name}_uniforms`;
     const structName = `Uniforms_${cap(mod.name)}`;
     const ids = [...(mod.bindings || []), "enabled"] as string[];
@@ -101,9 +155,9 @@ export function buildProgram(
     uniformDecls.push(structWGSL, varDecl);
   });
 
-  const dtExpr = layouts.find((l) => l.moduleName === sim.name)!.mapping.dt
+  const dtExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping.dt
     .expr;
-  const countExpr = layouts.find((l) => l.moduleName === sim.name)!.mapping
+  const countExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping
     .count.expr;
 
   const baseState = ["prevX", "prevY", "posIntX", "posIntY"] as const;
@@ -136,8 +190,39 @@ export function buildProgram(
   ];
 
   const globals: string[] = [];
+  // Internal simulation helpers
+  const simLayout = layouts.find((l) => l.moduleName === "simulation")!;
+  const gridLayout = layouts.find((l) => l.moduleName === "grid")!;
+  globals.push(`// Internal simulation helpers`);
+  globals.push(
+    `fn SIM_STATE_STRIDE() -> u32 { return u32(${simLayout.mapping.simStride.expr}); }
+fn SIM_COUNT() -> u32 { return u32(${simLayout.mapping.count.expr}); }
+fn sim_state_index(pid: u32, slot: u32) -> u32 { return pid * SIM_STATE_STRIDE() + slot; }
+fn sim_state_read(pid: u32, slot: u32) -> f32 { return SIM_STATE[sim_state_index(pid, slot)]; }
+fn sim_state_write(pid: u32, slot: u32, value: f32) { SIM_STATE[sim_state_index(pid, slot)] = value; }`
+  );
+  // Internal grid helpers
+  globals.push(`// Internal grid helpers`);
+  globals.push(
+    `const NEIGHBOR_NONE: u32 = 0xffffffffu;
+fn GRID_COLS() -> u32 { return u32(${gridLayout.mapping.cols.expr}); }
+fn GRID_ROWS() -> u32 { return u32(${gridLayout.mapping.rows.expr}); }
+fn GRID_MINX() -> f32 { return ${gridLayout.mapping.minX.expr}; }
+fn GRID_MINY() -> f32 { return ${gridLayout.mapping.minY.expr}; }
+fn GRID_MAXX() -> f32 { return ${gridLayout.mapping.maxX.expr}; }
+fn GRID_MAXY() -> f32 { return ${gridLayout.mapping.maxY.expr}; }
+fn GRID_CELL_SIZE() -> f32 { return ${gridLayout.mapping.cellSize.expr}; }
+fn GRID_MAX_PER_CELL() -> u32 { return u32(${gridLayout.mapping.maxPerCell.expr}); }
+fn grid_cell_index(pos: vec2<f32>) -> u32 { let col = i32(floor((pos.x - GRID_MINX()) / GRID_CELL_SIZE())); let row = i32(floor((pos.y - GRID_MINY()) / GRID_CELL_SIZE())); let c = max(0, min(col, i32(GRID_COLS()) - 1)); let r = max(0, min(row, i32(GRID_ROWS()) - 1)); return u32(r) * GRID_COLS() + u32(c); }
+fn grid_cell_index_from_rc(r: i32, c: i32) -> u32 { let rr = max(0, min(r, i32(GRID_ROWS()) - 1)); let cc = max(0, min(c, i32(GRID_COLS()) - 1)); return u32(rr) * GRID_COLS() + u32(cc); }
+struct NeighborIter { cx: i32, cy: i32, r: i32, c: i32, k: u32, reach: i32, maxK: u32, base: u32 }
+fn neighbor_iter_init(pos: vec2<f32>, radius: f32) -> NeighborIter { let cx = i32(floor((pos.x - GRID_MINX()) / GRID_CELL_SIZE())); let cy = i32(floor((pos.y - GRID_MINY()) / GRID_CELL_SIZE())); let reach = max(1, i32(ceil(radius / GRID_CELL_SIZE()))); var it: NeighborIter; it.cx = cx; it.cy = cy; it.reach = reach; it.r = cy - reach; it.c = cx - reach; let firstCell = grid_cell_index_from_rc(it.r, it.c); let cnt = atomicLoad(&GRID_COUNTS[firstCell]); it.maxK = min(cnt, GRID_MAX_PER_CELL()); it.base = firstCell * GRID_MAX_PER_CELL(); it.k = 0u; return it; }
+fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { loop { if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } if ((*it).k < (*it).maxK) { let id = GRID_INDICES[(*it).base + (*it).k]; (*it).k = (*it).k + 1u; if (id != selfIndex) { return id; } else { continue; } } (*it).c = (*it).c + 1; if ((*it).c > (*it).cx + (*it).reach) { (*it).c = (*it).cx - (*it).reach; (*it).r = (*it).r + 1; } if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } let cell = grid_cell_index_from_rc((*it).r, (*it).c); let cnt = atomicLoad(&GRID_COUNTS[cell]); (*it).maxK = min(cnt, GRID_MAX_PER_CELL()); (*it).base = cell * GRID_MAX_PER_CELL(); (*it).k = 0u; } }`
+  );
+
+  // Optional: allow force modules to inject globals
   const addGlobal = (mod: ModuleDescriptor) => {
-    if (mod.role === ModuleRole.Render) return;
+    if (mod.role !== ModuleRole.Force) return;
     const g = (mod as any).global as
       | undefined
       | ((a: { getUniform: (id: string) => string }) => string);
@@ -151,22 +236,40 @@ export function buildProgram(
     }
   };
   descriptors
-    .filter((d) => d.role === ModuleRole.System)
-    .forEach((m) => addGlobal(m as any));
-  descriptors
-    .filter((d) => d.role !== ModuleRole.System && d.role !== ModuleRole.Render)
+    .filter((d) => d.role === ModuleRole.Force)
     .forEach((m) => addGlobal(m as any));
 
   const systemEntrypoints: string[] = [];
-  descriptors.forEach((mod) => {
-    if (mod.role !== ModuleRole.System) return;
-    const f = (mod as any).entrypoints;
-    const s = typeof f === "function" ? f() : "";
-    if (s && s.trim())
-      systemEntrypoints.push(
-        `// System entrypoints for ${mod.name}\n${s.trim()}`
-      );
-  });
+  systemEntrypoints.push(`@compute @workgroup_size(64)
+fn grid_clear(@builtin(global_invocation_id) global_id: vec3<u32>) {
+  let idx = global_id.x;
+  let total = GRID_COLS() * GRID_ROWS();
+  if (idx < total) {
+    atomicStore(&GRID_COUNTS[idx], 0u);
+  }
+}`);
+  systemEntrypoints.push(`@compute @workgroup_size(64)
+fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
+  let i = global_id.x;
+  let count = SIM_COUNT();
+  if (i >= count) { return; }
+  let p = particles[i];
+  if (p.mass == 0.0) { return; }
+  let minX = GRID_MINX();
+  let maxX = GRID_MAXX();
+  let minY = GRID_MINY();
+  let maxY = GRID_MAXY();
+  let pad = GRID_CELL_SIZE() * 2.0;
+  if (p.position.x + p.size < minX - pad || p.position.x - p.size > maxX + pad || p.position.y + p.size < minY - pad || p.position.y - p.size > maxY + pad) {
+    return;
+  }
+  let cell = grid_cell_index(p.position);
+  let offset = atomicAdd(&GRID_COUNTS[cell], 1u);
+  if (offset < GRID_MAX_PER_CELL()) {
+    let base = cell * GRID_MAX_PER_CELL();
+    GRID_INDICES[base + offset] = i;
+  }
+}`);
 
   const moduleFns: string[] = [];
   const stateStmts: string[] = [];

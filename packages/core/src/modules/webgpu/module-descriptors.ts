@@ -13,7 +13,6 @@
  */
 export enum ModuleRole {
   Force = "force",
-  System = "system",
   Render = "render",
 }
 
@@ -76,13 +75,6 @@ export interface BaseModuleDescriptor<Name extends string = string> {
   name: Name;
   role: ModuleRole;
   bindings?: readonly string[];
-}
-
-export interface SystemModuleDescriptor<Name extends string = string>
-  extends BaseModuleDescriptor<Name> {
-  role: ModuleRole.System;
-  global?: (args: { getUniform: (id: string) => string }) => string;
-  entrypoints?: () => string;
 }
 
 export interface ForceModuleDescriptor<
@@ -184,6 +176,5 @@ export type ModuleDescriptor<
   Keys extends string = string,
   StateKeys extends string = never
 > =
-  | SystemModuleDescriptor<Name>
   | ForceModuleDescriptor<Name, Keys, StateKeys>
   | RenderModuleDescriptor<Name, Keys>;

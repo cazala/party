@@ -23,8 +23,6 @@ import { ModuleRegistry } from "./module-registry";
 import { GridSystem } from "./grid-system";
 import { SimulationPipeline } from "./simulation-pipeline";
 import { RenderPipeline } from "./render-pipeline";
-import { Grid } from "./modules/system/grid";
-import { Simulation } from "./modules/system/simulation";
 
 export class Engine {
   private resources: GPUResources;
@@ -39,9 +37,7 @@ export class Engine {
   private lastTime: number = 0;
   private constrainIterations: number = DEFAULTS.constrainIterations;
   private maxParticles: number = DEFAULTS.maxParticles;
-  private simWriter:
-    | ((values: Partial<Record<string, number>>) => void)
-    | null = null;
+  private simStrideValue: number = 0;
   private fpsEstimate: number = 60;
   private fpsSmoothing: number = 0.15; // EMA smoothing factor
 
@@ -57,9 +53,7 @@ export class Engine {
     );
     this.view = new ViewController(width, height);
     this.particles = new ParticleStore(this.maxParticles, 12);
-    const simulation = new Simulation();
-    const grid = new Grid();
-    this.modules = new ModuleRegistry([simulation, grid, ...modules]);
+    this.modules = new ModuleRegistry([...modules]);
     this.sim = new SimulationPipeline();
     this.render = new RenderPipeline();
     this.grid = new GridSystem();
@@ -94,8 +88,8 @@ export class Engine {
     // Seed module uniforms on GPU
     this.modules.writeAllModuleUniforms();
 
-    // Cache sim uniform writer
-    this.simWriter = this.modules.getUniformWriter("simulation");
+    // Cache sim stride value
+    this.simStrideValue = program.simStateStride;
   }
 
   play(): void {
@@ -213,8 +207,12 @@ export class Engine {
       this.modules.getProgram()
     );
 
-    // Update simulation uniforms
-    this.simWriter?.({ dt, count: this.particles.getCount() });
+    // Update simulation uniforms (dt, count, simStride)
+    this.resources.writeSimulationUniform(this.modules.getProgram(), {
+      dt,
+      count: this.particles.getCount(),
+      simStride: this.simStrideValue,
+    });
 
     // Encode simulation + render
     const encoder = this.resources.getDevice().createCommandEncoder();
