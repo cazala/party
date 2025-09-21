@@ -10,7 +10,7 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
-} from "../../module-descriptors";
+} from "../../module";
 
 export const DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH = 0;
 export const DEFAULT_ENVIRONMENT_GRAVITY_DIRECTION: GravityDirection = "down";

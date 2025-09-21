@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Engine, WebGPUSpawner } from "@cazala/party";
+import { Engine, WebGPUSpawner } from "@cazala/party/modules/webgpu";
 import { Environment } from "@cazala/party/modules/webgpu/modules/forces/environment";
 import { Boundary } from "@cazala/party/modules/webgpu/modules/forces/boundary";
 import { Collisions } from "@cazala/party/modules/webgpu/modules/forces/collisions";
@@ -235,7 +235,7 @@ export function useWebGPUPlayground(
             trails,
             particle,
           ];
-          const system = new Engine(canvasRef.current, modules);
+          const system = new Engine({ canvas: canvasRef.current, modules });
           await system.initialize();
           system.setSize(width, height);
           systemRef.current = system;

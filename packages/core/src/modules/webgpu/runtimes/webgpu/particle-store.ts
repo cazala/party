@@ -8,21 +8,8 @@
  * Layout (floatsPerParticle=12):
  * [pos.x, pos.y, vel.x, vel.y, ax, ay, size, mass, color.r, color.g, color.b, color.a]
  */
-import { Vector2D } from "../..";
 import { GPUResources } from "./gpu-resources";
-
-export type WebGPUParticle = {
-  position: { x: number; y: number };
-  velocity: { x: number; y: number };
-  size: number;
-  mass: number;
-  color: {
-    r: number;
-    g: number;
-    b: number;
-    a: number;
-  };
-};
+import { WebGPUParticle } from "../../interfaces";
 
 /**
  * CPU-side particle storage and synchronization to GPU storage buffer.
@@ -70,8 +57,8 @@ export class ParticleStore {
   getParticle(index: number): WebGPUParticle {
     const base = index * this.floatsPerParticle;
     return {
-      position: new Vector2D(this.data[base + 0], this.data[base + 1]),
-      velocity: new Vector2D(this.data[base + 2], this.data[base + 3]),
+      position: { x: this.data[base + 0], y: this.data[base + 1] },
+      velocity: { x: this.data[base + 2], y: this.data[base + 3] },
       size: this.data[base + 6],
       mass: this.data[base + 7],
       color: {

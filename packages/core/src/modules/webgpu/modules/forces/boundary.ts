@@ -13,7 +13,7 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
-} from "../../module-descriptors";
+} from "../../module";
 
 type BoundaryBindingKeys =
   | "restitution"

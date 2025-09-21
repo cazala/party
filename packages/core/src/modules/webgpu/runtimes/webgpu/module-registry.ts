@@ -13,11 +13,7 @@
  */
 import type { GPUResources } from "./gpu-resources";
 import { buildProgram, type Program } from "./builders/program";
-import {
-  Module,
-  ModuleRole,
-  type WebGPURenderDescriptor,
-} from "./module-descriptors";
+import { Module, ModuleRole, type WebGPURenderDescriptor } from "../../module";
 
 /**
  * Manages module enablement/state, builds the Program, and exposes uniform writers/readers.

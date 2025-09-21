@@ -9,7 +9,7 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
-} from "../../module-descriptors";
+} from "../../module";
 
 type InteractionBindingKeys =
   | "action"

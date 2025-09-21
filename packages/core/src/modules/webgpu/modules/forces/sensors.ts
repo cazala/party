@@ -11,7 +11,7 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
-} from "../../module-descriptors";
+} from "../../module";
 
 export type SensorBehavior = "any" | "same" | "different" | "none";
 

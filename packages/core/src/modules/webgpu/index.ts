@@ -1,4 +1,4 @@
-// Public WebGPU API surface
-export { Engine } from "./engine";
-export * from "./spawn";
+export * from "./engine";
 export * from "./modules";
+export * from "./spawner";
+export * from "./interfaces";

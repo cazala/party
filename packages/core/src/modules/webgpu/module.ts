@@ -1,4 +1,4 @@
-import { WebGPUParticle } from "./particle-store";
+import { WebGPUParticle } from "./interfaces";
 
 /**
  * Module descriptors and base Module class
@@ -19,9 +19,9 @@ export enum ModuleRole {
 }
 
 export abstract class Module<
-  Name extends string,
-  BindingKeys extends BindingKeysBase,
-  StateKeys extends string = never
+  Name extends string = string,
+  BindingKeys extends BindingKeysBase = BindingKeysBase,
+  StateKeys extends string = any
 > {
   private _writer: ((values: Partial<Record<string, number>>) => void) | null =
     null;

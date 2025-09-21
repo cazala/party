@@ -12,7 +12,7 @@ import {
   ModuleRole,
   RenderPassKind,
   CPUDescriptor,
-} from "../../module-descriptors";
+} from "../../module";
 
 type TrailBindingKeys = "trailDecay" | "trailDiffuse";
 

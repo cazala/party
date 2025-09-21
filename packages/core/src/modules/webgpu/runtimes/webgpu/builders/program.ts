@@ -14,11 +14,7 @@
  * - `Program.simStateStride`: size of the shared SIM_STATE row per particle
  * - `Program.extraBindings`: indices for additional buffers/textures bound by pipelines
  */
-import {
-  Module,
-  ModuleRole,
-  type WebGPUDescriptor,
-} from "../module-descriptors";
+import { Module, ModuleRole, type WebGPUDescriptor } from "../../../module";
 
 export const PARTICLE_STRUCT = `
 struct Particle {

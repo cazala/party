@@ -8,10 +8,7 @@
  * Provides helpers to resolve module uniforms (`getUniform`), sample/read/write scene
  * textures, and injects default vertex logic for instanced vs non-instanced fullscreen draws.
  */
-import type {
-  FullscreenRenderPass,
-  ComputeRenderPass,
-} from "../../../module-descriptors";
+import type { FullscreenRenderPass, ComputeRenderPass } from "../../../module";
 import { ModuleUniformLayout } from "./program";
 import { DEFAULTS } from "../config";
 

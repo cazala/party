@@ -10,7 +10,7 @@ import {
   ModuleRole,
   RenderPassKind,
   CPUDescriptor,
-} from "../../module-descriptors";
+} from "../../module";
 
 type ParticleRendererKeys = "particleBuffer" | "renderUniforms";
 

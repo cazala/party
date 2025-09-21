@@ -6,7 +6,7 @@
  * presets (random/in/out/clockwise/counter-clockwise/custom). Also includes
  * lightweight color parsing helpers.
  */
-import { WebGPUParticle } from "./particle-store";
+import { WebGPUParticle } from "./interfaces";
 
 export type WebGPUVelocityDirection =
   | "random"

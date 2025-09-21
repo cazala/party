@@ -17,7 +17,7 @@ import {
   RenderPassKind,
   type FullscreenRenderPass,
   type WebGPURenderDescriptor,
-} from "./module-descriptors";
+} from "../../module";
 import {
   buildComputeImagePassWGSL,
   buildFullscreenPassWGSL,
