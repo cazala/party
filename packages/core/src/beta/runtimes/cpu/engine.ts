@@ -209,8 +209,23 @@ export class CPUEngine implements IEngine {
   }
 
   private update(dt: number): void {
+    // Update spatial grid with current particle positions and camera
+    this.spatialGrid.setCamera(
+      this.view.getCamera().x,
+      this.view.getCamera().y,
+      this.view.getZoom()
+    );
+    this.spatialGrid.clear();
+    for (const particle of this.particles) {
+      this.spatialGrid.insert(particle);
+    }
+
     // Global state for modules that need it
     const globalState: Record<number, Record<string, number>> = {};
+
+    // Get neighbors function
+    const getNeighbors = (position: { x: number; y: number }, radius: number) =>
+      this.getNeighbors(position, radius);
 
     // First pass: state computation for all modules
     for (const module of this.modules) {
@@ -233,7 +248,7 @@ export class CPUEngine implements IEngine {
             force.state({
               particle: particle,
               dt,
-              getNeighbors: this.getNeighbors,
+              getNeighbors,
               input,
               setState,
               view: this.view,
@@ -261,7 +276,7 @@ export class CPUEngine implements IEngine {
             force.apply({
               particle: particle,
               dt,
-              getNeighbors: this.getNeighbors,
+              getNeighbors,
               input,
               getState,
               view: this.view,
@@ -287,7 +302,6 @@ export class CPUEngine implements IEngine {
           for (const key of force.keys ?? []) {
             input[key] = module.read()[key] ?? 0;
           }
-
           for (const particle of this.particles) {
             const getState = (name: string, pid?: number) => {
               return globalState[pid ?? particle.id]?.[name] ?? 0;
@@ -295,7 +309,7 @@ export class CPUEngine implements IEngine {
 
             force.constrain({
               particle: particle,
-              getNeighbors: this.getNeighbors,
+              getNeighbors,
               dt: dt,
               input,
               getState,
@@ -323,7 +337,7 @@ export class CPUEngine implements IEngine {
 
             force.correct({
               particle: particle,
-              getNeighbors: this.getNeighbors,
+              getNeighbors,
               dt: dt,
               input,
               getState,

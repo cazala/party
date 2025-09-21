@@ -240,7 +240,7 @@ export function useWebGPUPlayground(
           const system = new Engine({
             canvas: canvasRef.current,
             modules,
-            type: "cpu",
+            type: "webgpu",
           });
           await system.initialize();
           system.setSize(width, height);
