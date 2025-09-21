@@ -209,31 +209,28 @@ export class CPUEngine implements IEngine {
   }
 
   private update(dt: number): void {
+    // Global state for modules that need it
+    const globalState: Record<number, Record<string, number>> = {};
+
+    // First pass: state computation for all modules
     for (const module of this.modules) {
       try {
         const force = module.cpu();
-        for (const particle of this.particles) {
-          if (force.role === ModuleRole.Force) {
-            // input
-            const input: Record<string, number> = {};
-            for (const key of force.keys ?? []) {
-              input[key] = module.read()[key] ?? 0;
-            }
+        if (force.role === ModuleRole.Force && force.state) {
+          const input: Record<string, number> = {};
+          for (const key of force.keys ?? []) {
+            input[key] = module.read()[key] ?? 0;
+          }
 
-            // state
-            const state: Record<number, Record<string, number>> = {};
-            const getState = (name: string, pid?: number) => {
-              return state[pid ?? particle.id][name] ?? 0;
-            };
+          for (const particle of this.particles) {
             const setState = (name: string, value: number) => {
-              if (!state[particle.id]) {
-                state[particle.id] = {};
+              if (!globalState[particle.id]) {
+                globalState[particle.id] = {};
               }
-              state[particle.id][name] = value;
+              globalState[particle.id][name] = value;
             };
 
-            // state pass
-            force.state?.({
+            force.state({
               particle: particle,
               dt,
               getNeighbors: this.getNeighbors,
@@ -241,9 +238,27 @@ export class CPUEngine implements IEngine {
               setState,
               view: this.view,
             });
+          }
+        }
+      } catch (error) {}
+    }
 
-            // apply pass
-            force.apply?.({
+    // Second pass: apply forces for all modules
+    for (const module of this.modules) {
+      try {
+        const force = module.cpu();
+        if (force.role === ModuleRole.Force && force.apply) {
+          const input: Record<string, number> = {};
+          for (const key of force.keys ?? []) {
+            input[key] = module.read()[key] ?? 0;
+          }
+
+          for (const particle of this.particles) {
+            const getState = (name: string, pid?: number) => {
+              return globalState[pid ?? particle.id]?.[name] ?? 0;
+            };
+
+            force.apply({
               particle: particle,
               dt,
               getNeighbors: this.getNeighbors,
@@ -251,14 +266,34 @@ export class CPUEngine implements IEngine {
               getState,
               view: this.view,
             });
+          }
+        }
+      } catch (error) {}
+    }
 
-            // integration pass
-            particle.velocity.add(particle.acceleration.multiply(dt));
-            particle.position.add(particle.velocity.multiply(dt));
-            particle.acceleration.zero();
+    // Third pass: integration (once per particle)
+    for (const particle of this.particles) {
+      particle.velocity.add(particle.acceleration.clone().multiply(dt));
+      particle.position.add(particle.velocity.clone().multiply(dt));
+      particle.acceleration.zero();
+    }
 
-            // constrain pass
-            force.constrain?.({
+    // Fourth pass: constraints for all modules
+    for (const module of this.modules) {
+      try {
+        const force = module.cpu();
+        if (force.role === ModuleRole.Force && force.constrain) {
+          const input: Record<string, number> = {};
+          for (const key of force.keys ?? []) {
+            input[key] = module.read()[key] ?? 0;
+          }
+
+          for (const particle of this.particles) {
+            const getState = (name: string, pid?: number) => {
+              return globalState[pid ?? particle.id]?.[name] ?? 0;
+            };
+
+            force.constrain({
               particle: particle,
               getNeighbors: this.getNeighbors,
               dt: dt,
@@ -266,9 +301,27 @@ export class CPUEngine implements IEngine {
               getState,
               view: this.view,
             });
+          }
+        }
+      } catch (error) {}
+    }
 
-            // correct pass
-            force.correct?.({
+    // Fifth pass: corrections for all modules
+    for (const module of this.modules) {
+      try {
+        const force = module.cpu();
+        if (force.role === ModuleRole.Force && force.correct) {
+          const input: Record<string, number> = {};
+          for (const key of force.keys ?? []) {
+            input[key] = module.read()[key] ?? 0;
+          }
+
+          for (const particle of this.particles) {
+            const getState = (name: string, pid?: number) => {
+              return globalState[pid ?? particle.id]?.[name] ?? 0;
+            };
+
+            force.correct({
               particle: particle,
               getNeighbors: this.getNeighbors,
               dt: dt,

@@ -251,25 +251,26 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
         } else if (input.mode === 2) {
           const cx = size.width / 2;
           const cy = size.height / 2;
-          gdir.set(cx, cy).subtract(particle.position);
+          gdir.set(particle.position.x - cx, particle.position.y - cy);
         }
         const glen = gdir.magnitude();
         if (glen > 0) {
-          particle.acceleration.add(
-            gdir.divide(glen).multiply(input.gravityStrength)
-          );
+          const gravityForce = gdir.clone().divide(glen).multiply(input.gravityStrength);
+          particle.acceleration.add(gravityForce);
         }
 
         // Inertia: acceleration += velocity * dt * inertia
         const inertia = input.inertia;
         if (inertia > 0) {
-          particle.acceleration.add(particle.velocity.multiply(dt * inertia));
+          const inertiaForce = particle.velocity.clone().multiply(dt * inertia);
+          particle.acceleration.add(inertiaForce);
         }
 
         // Friction: acceleration += -velocity * friction
         const friction = input.friction;
         if (friction > 0) {
-          particle.acceleration.add(particle.velocity.multiply(-friction));
+          const frictionForce = particle.velocity.clone().multiply(-friction);
+          particle.acceleration.add(frictionForce);
         }
 
         // Damping: directly scale velocity (post-force effect in CPU code)
