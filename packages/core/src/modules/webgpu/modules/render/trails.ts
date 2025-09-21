@@ -122,6 +122,17 @@ export class Trails extends Module<"trails", TrailBindingKeys> {
   }
 
   cpu(): CPUDescriptor<"trails", TrailBindingKeys> {
-    throw new Error("Not implemented");
+    return {
+      name: "trails",
+      role: ModuleRole.Render,
+      setup: ({ context, input, clearColor }) => {
+        // Simple trail effect: draw semi-transparent background to fade previous frame
+        const decay = Math.max(0, Math.min(1, input.trailDecay));
+        if (decay > 0.001) {
+          context.fillStyle = `rgba(${clearColor.r * 255}, ${clearColor.g * 255}, ${clearColor.b * 255}, ${decay})`;
+          context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+        }
+      },
+    };
   }
 }

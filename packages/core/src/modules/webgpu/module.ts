@@ -252,17 +252,54 @@ export interface CPUForceDescriptor<
   }) => void;
 }
 
+export interface CPURenderUtils {
+  formatColor(color: { r: number; g: number; b: number; a: number }): string;
+  drawCircle(
+    x: number,
+    y: number,
+    radius: number,
+    color: { r: number; g: number; b: number; a: number }
+  ): void;
+  drawRect(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: { r: number; g: number; b: number; a: number }
+  ): void;
+}
+
 export interface CPURenderDescriptor<
   Name extends string = string,
   InputKeys extends string = string
 > extends BaseDescriptor<Name, InputKeys> {
   role: ModuleRole.Render;
-  render: (args: {
+
+  // Optional setup phase (called once per frame before particles)
+  setup?: (args: {
     context: CanvasRenderingContext2D;
     input: Record<InputKeys, number>;
     view: View;
-    particles: Particle[];
     clearColor: { r: number; g: number; b: number; a: number };
+    utils: CPURenderUtils;
+  }) => void;
+
+  // Optional per-particle rendering (called for each visible particle with transformed coordinates)
+  render?: (args: {
+    context: CanvasRenderingContext2D;
+    particle: Particle;
+    screenX: number;
+    screenY: number;
+    screenSize: number;
+    input: Record<InputKeys, number>;
+    utils: CPURenderUtils;
+  }) => void;
+
+  // Optional teardown phase (called once per frame after all particles)
+  teardown?: (args: {
+    context: CanvasRenderingContext2D;
+    input: Record<InputKeys, number>;
+    utils: CPURenderUtils;
   }) => void;
 }
 

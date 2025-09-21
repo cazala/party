@@ -338,7 +338,57 @@ export class CPUEngine implements IEngine {
     this.removeDeadParticles();
   }
 
+  private createRenderUtils(context: CanvasRenderingContext2D) {
+    return {
+      formatColor: (color: {
+        r: number;
+        g: number;
+        b: number;
+        a: number;
+      }): string => {
+        return `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, ${
+          color.a
+        })`;
+      },
+      drawCircle: (
+        x: number,
+        y: number,
+        radius: number,
+        color: { r: number; g: number; b: number; a: number }
+      ): void => {
+        context.fillStyle = `rgba(${color.r * 255}, ${color.g * 255}, ${
+          color.b * 255
+        }, ${color.a})`;
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
+      },
+      drawRect: (
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        color: { r: number; g: number; b: number; a: number }
+      ): void => {
+        context.fillStyle = `rgba(${color.r * 255}, ${color.g * 255}, ${
+          color.b * 255
+        }, ${color.a})`;
+        context.fillRect(x, y, width, height);
+      },
+    };
+  }
+
   private render(): void {
+    const context = this.canvas.getContext("2d")!;
+
+    // Get camera and canvas info for coordinate transformation
+    const camera = this.view.getCamera();
+    const zoom = this.view.getZoom();
+    const size = this.view.getSize();
+    const centerX = size.width / 2;
+    const centerY = size.height / 2;
+    const utils = this.createRenderUtils(context);
+
     for (const module of this.modules) {
       try {
         const render = module.cpu();
@@ -349,12 +399,50 @@ export class CPUEngine implements IEngine {
             input[key] = module.read()[key] ?? 0;
           }
 
-          render.render({
-            context: this.canvas.getContext("2d")!,
+          // Setup phase
+          render.setup?.({
+            context,
             input,
             view: this.view,
             clearColor: DEFAULTS.clearColor,
-            particles: this.particles,
+            utils,
+          });
+
+          // Render each visible particle
+          for (const particle of this.particles) {
+            // Transform world position to screen position
+            const worldX = (particle.position.x - camera.x) * zoom;
+            const worldY = (particle.position.y - camera.y) * zoom;
+            const screenX = centerX + worldX;
+            const screenY = centerY + worldY;
+            const screenSize = particle.size * zoom;
+
+            // Skip rendering if particle is outside canvas bounds (culling)
+            if (
+              screenX + screenSize < 0 ||
+              screenX - screenSize > size.width ||
+              screenY + screenSize < 0 ||
+              screenY - screenSize > size.height
+            ) {
+              continue;
+            }
+
+            render.render?.({
+              context,
+              particle,
+              screenX,
+              screenY,
+              screenSize,
+              input,
+              utils,
+            });
+          }
+
+          // Teardown phase
+          render.teardown?.({
+            context,
+            input,
+            utils,
           });
         }
       } catch (error) {}
