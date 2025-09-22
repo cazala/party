@@ -11,7 +11,7 @@ import {
   CPUDescriptor,
 } from "../../module";
 
-type InteractionBindingKeys =
+type InteractionInputKeys =
   | "action"
   | "mode"
   | "strength"
@@ -28,7 +28,19 @@ export const DEFAULT_INTERACTION_RADIUS = 500;
 // action: 0 -> click (left), 1 -> right_click
 // mode: 0 -> attract, 1 -> repel
 
-export class Interaction extends Module<"interaction", InteractionBindingKeys> {
+export class Interaction extends Module<"interaction", InteractionInputKeys> {
+  readonly name = "interaction" as const;
+  readonly role = ModuleRole.Force;
+  readonly keys = [
+    "action",
+    "mode",
+    "strength",
+    "radius",
+    "mouseX",
+    "mouseY",
+    "inputButton",
+  ] as const;
+
   constructor(opts?: {
     enabled?: boolean;
     action?: "click" | "right_click";
@@ -95,19 +107,8 @@ export class Interaction extends Module<"interaction", InteractionBindingKeys> {
     return this.readValue("inputButton");
   }
 
-  webgpu(): WebGPUDescriptor<"interaction", InteractionBindingKeys> {
+  webgpu(): WebGPUDescriptor<InteractionInputKeys> {
     return {
-      name: "interaction",
-      role: ModuleRole.Force,
-      keys: [
-        "action",
-        "mode",
-        "strength",
-        "radius",
-        "mouseX",
-        "mouseY",
-        "inputButton",
-      ] as const,
       apply: ({ particleVar, getUniform }) => `{
   if (${getUniform("inputButton")} != ${getUniform("action")} ) { return; }
   // Compute vector from particle to mouse
@@ -128,7 +129,7 @@ export class Interaction extends Module<"interaction", InteractionBindingKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<"interaction", InteractionBindingKeys> {
+  cpu(): CPUDescriptor<InteractionInputKeys> {
     throw new Error("Not implemented");
   }
 }

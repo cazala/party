@@ -13,6 +13,7 @@
 import type { ModuleUniformLayout, Program } from "./builders/program";
 import type { GPUResources } from "./gpu-resources";
 import {
+  Module,
   ComputeRenderPass,
   RenderPassKind,
   type FullscreenRenderPass,
@@ -76,7 +77,7 @@ export class RenderPipeline {
 
   runPasses(
     encoder: GPUCommandEncoder,
-    descriptors: WebGPURenderDescriptor<string, string>[],
+    modules: Module[],
     program: Program,
     resources: GPUResources,
     viewSize: { width: number; height: number },
@@ -87,10 +88,11 @@ export class RenderPipeline {
     let lastWritten: GPUTextureView | null = null;
     let anyWrites = false;
 
-    for (let i = 0; i < descriptors.length; i++) {
-      const module = descriptors[i];
-      if (!module.passes || module.passes.length === 0) continue;
-      for (const pass of module.passes) {
+    for (let i = 0; i < modules.length; i++) {
+      const module = modules[i];
+      const descriptor = module.webgpu() as WebGPURenderDescriptor<string>;
+      if (!descriptor.passes || descriptor.passes.length === 0) continue;
+      for (const pass of descriptor.passes) {
         // Resolve the uniform layout for this module
         const layout = program.layouts.find(
           (l) => l.moduleName === module.name
@@ -102,7 +104,7 @@ export class RenderPipeline {
           // Fullscreen raster pass (quad). Can write the scene directly to current view
           this.runFullscreenPass(
             encoder,
-            module,
+            module.name,
             layout,
             pass,
             views,
@@ -115,7 +117,7 @@ export class RenderPipeline {
           // Compute image pass. Writes into other view; if it writes the scene we ping-pong swap
           this.runComputePass(
             encoder,
-            module,
+            module.name,
             layout,
             pass,
             views,
@@ -177,7 +179,7 @@ export class RenderPipeline {
 
   private runFullscreenPass(
     encoder: GPUCommandEncoder,
-    module: WebGPURenderDescriptor,
+    moduleName: string,
     layout: ModuleUniformLayout,
     pass: FullscreenRenderPass,
     views: {
@@ -189,7 +191,7 @@ export class RenderPipeline {
     particleCount: number
   ): void {
     // Generate WGSL for the fullscreen pass
-    const wgsl = buildFullscreenPassWGSL(pass, module.name, layout);
+    const wgsl = buildFullscreenPassWGSL(pass, moduleName, layout);
 
     // Acquire or create a cached render pipeline for the generated WGSL
     const pipeline = resources.getOrCreateFullscreenRenderPipeline(wgsl);
@@ -202,7 +204,7 @@ export class RenderPipeline {
       resources.getSceneSampler(),
       resources
         .getModuleUniformBuffers()
-        .find((muf) => muf.layout.moduleName === module.name)!.buffer
+        .find((muf) => muf.layout.moduleName === moduleName)!.buffer
     );
 
     // Begin render pass targeting the current view. Clear only on the very first write
@@ -225,7 +227,7 @@ export class RenderPipeline {
 
   private runComputePass(
     encoder: GPUCommandEncoder,
-    module: WebGPURenderDescriptor,
+    moduleName: string,
     layout: ModuleUniformLayout,
     pass: ComputeRenderPass,
     views: {
@@ -237,12 +239,12 @@ export class RenderPipeline {
     size: { width: number; height: number }
   ): void {
     // Generate WGSL for the compute pass
-    const wgsl = buildComputeImagePassWGSL(pass, module.name, layout);
+    const wgsl = buildComputeImagePassWGSL(pass, moduleName, layout);
     // Acquire or create a cached compute pipeline
     const pipeline = resources.getOrCreateImageComputePipeline(wgsl);
     const muf = resources
       .getModuleUniformBuffers()
-      .find((muf) => muf.layout.moduleName === module.name)!;
+      .find((muf) => muf.layout.moduleName === moduleName)!;
     // Bind current/other scene views and module uniforms
     const bindGroup = resources.createImageComputeBindGroup(
       pipeline,

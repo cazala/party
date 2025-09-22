@@ -20,7 +20,7 @@ export const DEFAULT_ENVIRONMENT_INERTIA = 0;
 export const DEFAULT_ENVIRONMENT_FRICTION = 0;
 export const DEFAULT_ENVIRONMENT_DAMPING = 0;
 
-type EnvBindingKeys =
+type EnvInputKeys =
   | "gravityStrength"
   | "dirX"
   | "dirY"
@@ -38,7 +38,19 @@ export type GravityDirection =
   | "outwards"
   | "custom";
 
-export class Environment extends Module<"environment", EnvBindingKeys> {
+export class Environment extends Module<"environment", EnvInputKeys> {
+  readonly name = "environment" as const;
+  readonly role = ModuleRole.Force;
+  readonly keys = [
+    "gravityStrength",
+    "dirX",
+    "dirY",
+    "inertia",
+    "friction",
+    "damping",
+    "mode",
+  ] as const;
+
   private gravityDirection: GravityDirection = "down";
   private gravityAngle: number = Math.PI / 2; // radians, default down
 
@@ -173,19 +185,8 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
     return this.readValue("mode");
   }
 
-  webgpu(): WebGPUDescriptor<"environment", EnvBindingKeys> {
+  webgpu(): WebGPUDescriptor<EnvInputKeys> {
     return {
-      name: "environment",
-      role: ModuleRole.Force,
-      keys: [
-        "gravityStrength",
-        "dirX",
-        "dirY",
-        "inertia",
-        "friction",
-        "damping",
-        "mode",
-      ] as const,
       apply: ({ particleVar, dtVar, getUniform }) => `
   // Gravity as force: acceleration += dir * strength
   let mode = ${getUniform("mode")};
@@ -227,21 +228,9 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<"environment", EnvBindingKeys> {
+  cpu(): CPUDescriptor<EnvInputKeys> {
     return {
-      name: "environment",
-      role: ModuleRole.Force,
-      keys: [
-        "gravityStrength",
-        "dirX",
-        "dirY",
-        "inertia",
-        "friction",
-        "damping",
-        "mode",
-      ] as const,
-
-      apply: ({ particle, dt, input, getNeighbors, view }) => {
+      apply: ({ particle, dt, input, view }) => {
         const gdir = new Vector(input.dirX, input.dirY);
         const size = view.getSize();
         if (input.mode === 1) {
@@ -255,7 +244,10 @@ export class Environment extends Module<"environment", EnvBindingKeys> {
         }
         const glen = gdir.magnitude();
         if (glen > 0) {
-          const gravityForce = gdir.clone().divide(glen).multiply(input.gravityStrength);
+          const gravityForce = gdir
+            .clone()
+            .divide(glen)
+            .multiply(input.gravityStrength);
           particle.acceleration.add(gravityForce);
         }
 

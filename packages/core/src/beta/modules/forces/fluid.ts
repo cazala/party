@@ -13,7 +13,7 @@ import {
   CPUDescriptor,
 } from "../../module";
 
-type FluidBindingKeys =
+type FluidInputKeys =
   | "influenceRadius"
   | "targetDensity"
   | "pressureMultiplier"
@@ -34,7 +34,20 @@ export const DEFAULT_FLUID_MAX_ACCELERATION = 80;
 
 type FluidStateKeys = "density" | "nearDensity";
 
-export class Fluid extends Module<"fluid", FluidBindingKeys, FluidStateKeys> {
+export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
+  readonly name = "fluid" as const;
+  readonly role = ModuleRole.Force;
+  readonly keys = [
+    "influenceRadius",
+    "targetDensity",
+    "pressureMultiplier",
+    "viscosity",
+    "nearPressureMultiplier",
+    "nearThreshold",
+    "enableNearPressure",
+    "maxAcceleration",
+  ] as const;
+
   constructor(opts?: {
     enabled?: boolean;
     influenceRadius?: number;
@@ -116,21 +129,9 @@ export class Fluid extends Module<"fluid", FluidBindingKeys, FluidStateKeys> {
     return this.readValue("maxAcceleration");
   }
 
-  webgpu(): WebGPUDescriptor<"fluid", FluidBindingKeys, FluidStateKeys> {
+  webgpu(): WebGPUDescriptor<FluidInputKeys, FluidStateKeys> {
     return {
-      name: "fluid",
-      role: ModuleRole.Force,
       states: ["density", "nearDensity"],
-      keys: [
-        "influenceRadius",
-        "targetDensity",
-        "pressureMultiplier",
-        "viscosity",
-        "nearPressureMultiplier",
-        "nearThreshold",
-        "enableNearPressure",
-        "maxAcceleration",
-      ] as const,
       // State pass: precompute density and near-density per particle
       state: ({ particleVar, dtVar, getUniform, setState }) => `{
   // Predict current particle position for this frame (approximate)
@@ -266,7 +267,7 @@ export class Fluid extends Module<"fluid", FluidBindingKeys, FluidStateKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<"fluid", FluidBindingKeys, FluidStateKeys> {
+  cpu(): CPUDescriptor<FluidInputKeys, FluidStateKeys> {
     throw new Error("Not implemented");
   }
 }

@@ -64,7 +64,7 @@ export class ModuleRegistry {
 
     // Attach per-module uniform writers/readers
     this.modules.forEach((mod) => {
-      const name = mod.webgpu().name;
+      const name = mod.name;
       mod.attachUniformWriter((values) =>
         this.writeModuleUniform(name, values)
       );
@@ -90,16 +90,22 @@ export class ModuleRegistry {
   }
 
   /** Filter enabled render module descriptors for the render pipeline. */
-  getEnabledRenderDescriptors(): WebGPURenderDescriptor<string, string>[] {
+  getEnabledRenderDescriptors(): WebGPURenderDescriptor<string>[] {
     return this.modules
       .map((m) => m.webgpu())
       .filter(
         (
-          descriptor,
+          _descriptor,
           idx
-        ): descriptor is WebGPURenderDescriptor<string, string> =>
-          descriptor.role === ModuleRole.Render && this.modules[idx].isEnabled()
+        ): _descriptor is WebGPURenderDescriptor<string> =>
+          this.modules[idx].role === ModuleRole.Render && this.modules[idx].isEnabled()
       );
+  }
+
+  /** Get enabled render modules for the render pipeline. */
+  getEnabledRenderModules(): Module[] {
+    return this.modules
+      .filter((module) => module.role === ModuleRole.Render && module.isEnabled());
   }
 
   /** Write the current CPU state for all module uniforms to GPU buffers. */

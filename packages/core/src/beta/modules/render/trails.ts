@@ -14,12 +14,16 @@ import {
   CPUDescriptor,
 } from "../../module";
 
-type TrailBindingKeys = "trailDecay" | "trailDiffuse";
+type TrailInputKeys = "trailDecay" | "trailDiffuse";
 
 export const DEFAULT_TRAILS_TRAIL_DECAY = 0.01;
 export const DEFAULT_TRAILS_TRAIL_DIFFUSE = 0.0;
 
-export class Trails extends Module<"trails", TrailBindingKeys> {
+export class Trails extends Module<"trails", TrailInputKeys> {
+  readonly name = "trails" as const;
+  readonly role = ModuleRole.Render;
+  readonly keys = ["trailDecay", "trailDiffuse"] as const;
+
   constructor(opts?: {
     enabled?: boolean;
     trailDecay?: number;
@@ -51,12 +55,8 @@ export class Trails extends Module<"trails", TrailBindingKeys> {
     return this.readValue("trailDiffuse");
   }
 
-  webgpu(): WebGPUDescriptor<"trails", TrailBindingKeys> {
+  webgpu(): WebGPUDescriptor<TrailInputKeys> {
     return {
-      name: "trails" as const,
-      role: ModuleRole.Render,
-      // keep uniforms so UI can write values
-      keys: ["trailDecay", "trailDiffuse"] as const,
       passes: [
         {
           kind: RenderPassKind.Compute,
@@ -121,15 +121,15 @@ export class Trails extends Module<"trails", TrailBindingKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<"trails", TrailBindingKeys> {
+  cpu(): CPUDescriptor<TrailInputKeys> {
     return {
-      name: "trails",
-      role: ModuleRole.Render,
       setup: ({ context, input, clearColor }) => {
         // Simple trail effect: draw semi-transparent background to fade previous frame
         const decay = Math.max(0, Math.min(1, input.trailDecay));
         if (decay > 0.001) {
-          context.fillStyle = `rgba(${clearColor.r * 255}, ${clearColor.g * 255}, ${clearColor.b * 255}, ${decay})`;
+          context.fillStyle = `rgba(${clearColor.r * 255}, ${
+            clearColor.g * 255
+          }, ${clearColor.b * 255}, ${decay})`;
           context.fillRect(0, 0, context.canvas.width, context.canvas.height);
         }
       },

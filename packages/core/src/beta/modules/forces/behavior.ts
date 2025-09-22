@@ -13,7 +13,7 @@ import {
   CPUDescriptor,
 } from "../../module";
 
-type BehaviorBindingKeys =
+type BehaviorInputKeys =
   | "wanderWeight"
   | "cohesionWeight"
   | "alignmentWeight"
@@ -34,7 +34,21 @@ export const DEFAULT_BEHAVIOR_SEPARATION_RANGE = 30;
 export const DEFAULT_BEHAVIOR_VIEW_RADIUS = 100;
 export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 2 * Math.PI;
 
-export class Behavior extends Module<"behavior", BehaviorBindingKeys> {
+export class Behavior extends Module<"behavior", BehaviorInputKeys> {
+  readonly name = "behavior" as const;
+  readonly role = ModuleRole.Force;
+  readonly keys = [
+    "wanderWeight",
+    "cohesionWeight",
+    "alignmentWeight",
+    "separationWeight",
+    "chaseWeight",
+    "avoidWeight",
+    "separationRange",
+    "viewRadius",
+    "viewAngle",
+  ] as const;
+
   constructor(opts?: {
     wanderWeight?: number;
     cohesionWeight?: number;
@@ -121,21 +135,8 @@ export class Behavior extends Module<"behavior", BehaviorBindingKeys> {
     return this.readValue("viewAngle");
   }
 
-  webgpu(): WebGPUDescriptor<"behavior", BehaviorBindingKeys> {
+  webgpu(): WebGPUDescriptor<BehaviorInputKeys> {
     return {
-      name: "behavior",
-      role: ModuleRole.Force,
-      keys: [
-        "wanderWeight",
-        "cohesionWeight",
-        "alignmentWeight",
-        "separationWeight",
-        "chaseWeight",
-        "avoidWeight",
-        "separationRange",
-        "viewRadius",
-        "viewAngle",
-      ] as const,
       apply: ({ particleVar, getUniform }) => `
   // Neighbor loop within view radius
   let viewR = ${getUniform("viewRadius")};
@@ -258,7 +259,7 @@ export class Behavior extends Module<"behavior", BehaviorBindingKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<"behavior", BehaviorBindingKeys> {
+  cpu(): CPUDescriptor<BehaviorInputKeys> {
     throw new Error("Not implemented");
   }
 }

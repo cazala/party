@@ -230,7 +230,7 @@ export class WebGPUEngine implements IEngine {
 
     const lastView = this.render.runPasses(
       encoder,
-      this.modules.getEnabledRenderDescriptors(),
+      this.modules.getEnabledRenderModules(),
       this.modules.getProgram(),
       this.resources,
       this.view.getSize(),

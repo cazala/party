@@ -117,11 +117,11 @@ export function buildProgram(
   );
 
   // 2) User module uniforms start at binding(3)
-  descriptors.forEach((mod, idx) => {
+  modules.forEach((module, idx) => {
     const bindingIndex = idx + 3;
-    const uniformsVar = `${mod.name}_uniforms`;
-    const structName = `Uniforms_${cap(mod.name)}`;
-    const ids = [...(mod.keys || []), "enabled"] as string[];
+    const uniformsVar = `${module.name}_uniforms`;
+    const structName = `Uniforms_${cap(module.name)}`;
+    const ids = [...module.keys, "enabled"] as string[];
     const vec4Count = Math.max(1, Math.ceil(ids.length / 4));
     const mapping: Record<string, { flatIndex: number; expr: string }> = {};
     ids.forEach((id, i) => {
@@ -139,8 +139,8 @@ export function buildProgram(
     ).join("\n")}\n}`;
     const varDecl = `@group(0) @binding(${bindingIndex}) var<uniform> ${uniformsVar}: ${structName};`;
     layouts.push({
-      moduleName: mod.name,
-      moduleRole: mod.role as ModuleRole,
+      moduleName: module.name,
+      moduleRole: module.role,
       bindingIndex,
       uniformsVar,
       structName,
@@ -161,13 +161,14 @@ export function buildProgram(
   baseState.forEach((k, i) => (stateSlots[k] = i));
   let nextSlot = baseState.length;
   const localSlots: Record<string, Record<string, number>> = {};
-  descriptors.forEach((mod) => {
-    localSlots[mod.name] = {};
-    if (mod.role === ModuleRole.Force && (mod as any).states) {
-      ((mod as any).states as readonly string[]).forEach((field) => {
-        const key = `${mod.name}.${field}`;
+  modules.forEach((module, idx) => {
+    const descriptor = descriptors[idx];
+    localSlots[module.name] = {};
+    if (module.role === ModuleRole.Force && (descriptor as any).states) {
+      ((descriptor as any).states as readonly string[]).forEach((field) => {
+        const key = `${module.name}.${field}`;
         if (stateSlots[key] === undefined) stateSlots[key] = nextSlot++;
-        localSlots[mod.name][field] = stateSlots[key];
+        localSlots[module.name][field] = stateSlots[key];
       });
     }
   });
@@ -217,23 +218,23 @@ fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { 
   );
 
   // Optional: allow force modules to inject globals
-  const addGlobal = (mod: WebGPUDescriptor) => {
-    if (mod.role !== ModuleRole.Force) return;
-    const g = (mod as any).global as
+  const addGlobal = (module: Module, descriptor: WebGPUDescriptor<string, any>) => {
+    if (module.role !== ModuleRole.Force) return;
+    const g = (descriptor as any).global as
       | undefined
       | ((a: { getUniform: (id: string) => string }) => string);
     if (!g) return;
-    const layout = layouts.find((l) => l.moduleName === mod.name)!;
+    const layout = layouts.find((l) => l.moduleName === module.name)!;
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
     const code = g({ getUniform });
     if (code && code.trim()) {
-      globals.push(`// Global for ${mod.name}`);
+      globals.push(`// Global for ${module.name}`);
       globals.push(code.trim());
     }
   };
-  descriptors
-    .filter((d) => d.role === ModuleRole.Force)
-    .forEach((m) => addGlobal(m as any));
+  modules
+    .filter((m) => m.role === ModuleRole.Force)
+    .forEach((m, idx) => addGlobal(m, descriptors[idx]));
 
   const systemEntrypoints: string[] = [];
   systemEntrypoints.push(`@compute @workgroup_size(64)
@@ -295,12 +296,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     return { get, set };
   };
 
-  descriptors.forEach((mod) => {
-    if (mod.role !== ModuleRole.Force || !(mod as any).state) return;
-    const layout = layouts.find((l) => l.moduleName === mod.name)!;
-    const { set } = makeGetSet(mod.name);
+  modules.forEach((module, idx) => {
+    const descriptor = descriptors[idx];
+    if (module.role !== ModuleRole.Force || !(descriptor as any).state) return;
+    const layout = layouts.find((l) => l.moduleName === module.name)!;
+    const { set } = makeGetSet(module.name);
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
-    const body = mod.state?.({
+    const body = (descriptor as any).state?.({
       particleVar: "particle",
       dtVar: dtExpr,
       getUniform,
@@ -308,7 +310,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     });
     if (body && body.trim()) {
       const enabled = layout.mapping.enabled.expr;
-      const name = fn("state", mod.name);
+      const name = fn("state", module.name);
       moduleFns.push(
         `fn ${name}(particle: ptr<function, Particle>, index: u32) {\n  ${body.trim()}\n}`
       );
@@ -316,12 +318,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
   });
 
-  descriptors.forEach((mod) => {
-    if (mod.role !== ModuleRole.Force || !(mod as any).apply) return;
-    const layout = layouts.find((l) => l.moduleName === mod.name)!;
-    const { get } = makeGetSet(mod.name);
+  modules.forEach((module, idx) => {
+    const descriptor = descriptors[idx];
+    if (module.role !== ModuleRole.Force || !(descriptor as any).apply) return;
+    const layout = layouts.find((l) => l.moduleName === module.name)!;
+    const { get } = makeGetSet(module.name);
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
-    const body = mod.apply?.({
+    const body = (descriptor as any).apply?.({
       particleVar: "particle",
       dtVar: dtExpr,
       getUniform,
@@ -329,7 +332,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     });
     if (body && body.trim()) {
       const enabled = layout.mapping.enabled.expr;
-      const name = fn("apply", mod.name);
+      const name = fn("apply", module.name);
       moduleFns.push(
         `fn ${name}(particle: ptr<function, Particle>, index: u32) {\n  ${body.trim()}\n}`
       );
@@ -337,12 +340,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
   });
 
-  descriptors.forEach((mod) => {
-    if (mod.role !== ModuleRole.Force || !(mod as any).constrain) return;
-    const layout = layouts.find((l) => l.moduleName === mod.name)!;
-    const { get } = makeGetSet(mod.name);
+  modules.forEach((module, idx) => {
+    const descriptor = descriptors[idx];
+    if (module.role !== ModuleRole.Force || !(descriptor as any).constrain) return;
+    const layout = layouts.find((l) => l.moduleName === module.name)!;
+    const { get } = makeGetSet(module.name);
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
-    const body = mod.constrain?.({
+    const body = (descriptor as any).constrain?.({
       particleVar: "particle",
       dtVar: dtExpr,
       getUniform,
@@ -350,7 +354,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     });
     if (body && body.trim()) {
       const enabled = layout.mapping.enabled.expr;
-      const name = fn("constrain", mod.name);
+      const name = fn("constrain", module.name);
       moduleFns.push(
         `fn ${name}(particle: ptr<function, Particle>, index: u32) {\n  ${body.trim()}\n}`
       );
@@ -360,12 +364,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
   });
 
-  descriptors.forEach((mod) => {
-    if (mod.role !== ModuleRole.Force || !(mod as any).correct) return;
-    const layout = layouts.find((l) => l.moduleName === mod.name)!;
-    const { get } = makeGetSet(mod.name);
+  modules.forEach((module, idx) => {
+    const descriptor = descriptors[idx];
+    if (module.role !== ModuleRole.Force || !(descriptor as any).correct) return;
+    const layout = layouts.find((l) => l.moduleName === module.name)!;
+    const { get } = makeGetSet(module.name);
     const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
-    const body = mod.correct?.({
+    const body = (descriptor as any).correct?.({
       particleVar: "particle",
       dtVar: dtExpr,
       prevPosVar: "prevPos",
@@ -375,7 +380,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     });
     if (body && body.trim()) {
       const enabled = layout.mapping.enabled.expr;
-      const name = fn("correct", mod.name);
+      const name = fn("correct", module.name);
       moduleFns.push(
         `fn ${name}(particle: ptr<function, Particle>, index: u32, prevPos: vec2<f32>, postPos: vec2<f32>) {\n  ${body.trim()}\n}`
       );

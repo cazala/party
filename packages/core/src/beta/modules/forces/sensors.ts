@@ -15,7 +15,7 @@ import {
 
 export type SensorBehavior = "any" | "same" | "different" | "none";
 
-type SensorBindingKeys =
+type SensorInputKeys =
   | "sensorDistance"
   | "sensorAngle"
   | "sensorRadius"
@@ -37,7 +37,21 @@ export const DEFAULT_SENSORS_FOLLOW_BEHAVIOR: SensorBehavior = "any";
 export const DEFAULT_SENSORS_FLEE_BEHAVIOR: SensorBehavior = "none";
 export const DEFAULT_SENSORS_FLEE_ANGLE = Math.PI / 2;
 
-export class Sensors extends Module<"sensors", SensorBindingKeys> {
+export class Sensors extends Module<"sensors", SensorInputKeys> {
+  readonly name = "sensors" as const;
+  readonly role = ModuleRole.Force;
+  readonly keys = [
+    "sensorDistance",
+    "sensorAngle",
+    "sensorRadius",
+    "sensorThreshold",
+    "sensorStrength",
+    "colorSimilarityThreshold",
+    "followBehavior",
+    "fleeBehavior",
+    "fleeAngle",
+  ] as const;
+
   constructor(opts?: {
     enabled?: boolean;
     sensorDistance?: number;
@@ -158,21 +172,8 @@ export class Sensors extends Module<"sensors", SensorBindingKeys> {
     return this.readValue("enabled");
   }
 
-  webgpu(): WebGPUDescriptor<"sensors", SensorBindingKeys> {
+  webgpu(): WebGPUDescriptor<SensorInputKeys> {
     return {
-      name: "sensors",
-      role: ModuleRole.Force,
-      keys: [
-        "sensorDistance",
-        "sensorAngle",
-        "sensorRadius",
-        "sensorThreshold",
-        "sensorStrength",
-        "colorSimilarityThreshold",
-        "followBehavior",
-        "fleeBehavior",
-        "fleeAngle",
-      ] as const,
       global: () => `// Sensor helper functions (defined at global scope)
 // Sample from the scene texture bound to the compute pipeline
 
@@ -406,7 +407,7 @@ if (length(totalForce) > 0.0) {
     };
   }
 
-  cpu(): CPUDescriptor<"sensors", SensorBindingKeys> {
+  cpu(): CPUDescriptor<SensorInputKeys> {
     throw new Error("Not implemented");
   }
 }

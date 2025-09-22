@@ -15,7 +15,7 @@ import {
   CPUDescriptor,
 } from "../../module";
 import { Vector } from "../../vector";
-type BoundaryBindingKeys =
+type BoundaryInputKeys =
   | "restitution"
   | "friction"
   | "mode"
@@ -30,7 +30,17 @@ export const DEFAULT_BOUNDARY_MODE: BoundaryMode = "bounce";
 export const DEFAULT_BOUNDARY_REPEL_DISTANCE = 0.0;
 export const DEFAULT_BOUNDARY_REPEL_STRENGTH = 0.0;
 
-export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
+export class Boundary extends Module<"boundary", BoundaryInputKeys> {
+  readonly name = "boundary" as const;
+  readonly role = ModuleRole.Force;
+  readonly keys = [
+    "restitution",
+    "friction",
+    "mode",
+    "repelDistance",
+    "repelStrength",
+  ] as const;
+
   constructor(opts?: {
     restitution?: number;
     friction?: number;
@@ -100,17 +110,8 @@ export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
     }
   }
 
-  webgpu(): WebGPUDescriptor<"boundary", BoundaryBindingKeys> {
+  webgpu(): WebGPUDescriptor<BoundaryInputKeys> {
     return {
-      name: "boundary",
-      role: ModuleRole.Force,
-      keys: [
-        "restitution",
-        "friction",
-        "mode",
-        "repelDistance",
-        "repelStrength",
-      ] as const,
       apply: ({ particleVar, getUniform }) => `{
   // Bounce using global grid extents
   let halfSize = ${particleVar}.size;
@@ -221,17 +222,8 @@ export class Boundary extends Module<"boundary", BoundaryBindingKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<"boundary", BoundaryBindingKeys> {
+  cpu(): CPUDescriptor<BoundaryInputKeys> {
     return {
-      name: "boundary",
-      role: ModuleRole.Force,
-      keys: [
-        "restitution",
-        "friction",
-        "mode",
-        "repelDistance",
-        "repelStrength",
-      ] as const,
       apply: ({ particle, input, view }) => {
         // Calculate world bounds similar to WebGPU grid system
         const camera = view.getCamera();

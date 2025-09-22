@@ -13,12 +13,16 @@ import {
   CPUDescriptor,
 } from "../../module";
 
-type CollisionBindingKeys = "restitution";
+type CollisionInputKeys = "restitution";
 
 export const DEFAULT_COLLISIONS_RESTITUTION = 0.9;
 
 // Simple, brute-force elastic collision response applied only to current particle
-export class Collisions extends Module<"collisions", CollisionBindingKeys> {
+export class Collisions extends Module<"collisions", CollisionInputKeys> {
+  readonly name = "collisions" as const;
+  readonly role = ModuleRole.Force;
+  readonly keys = ["restitution"] as const;
+
   constructor(opts?: { restitution?: number }) {
     super();
     this.write({
@@ -34,11 +38,8 @@ export class Collisions extends Module<"collisions", CollisionBindingKeys> {
     return this.readValue("restitution");
   }
 
-  webgpu(): WebGPUDescriptor<"collisions", CollisionBindingKeys> {
+  webgpu(): WebGPUDescriptor<CollisionInputKeys> {
     return {
-      name: "collisions",
-      role: ModuleRole.Force,
-      keys: ["restitution"] as const,
       constrain: ({ particleVar, getUniform }) => `
   // Pass 1: find deepest overlap neighbor to reduce scan-order bias
   var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size * 2.0);
@@ -133,11 +134,8 @@ export class Collisions extends Module<"collisions", CollisionBindingKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<"collisions", CollisionBindingKeys> {
+  cpu(): CPUDescriptor<CollisionInputKeys> {
     return {
-      name: "collisions",
-      role: ModuleRole.Force,
-      keys: ["restitution"] as const,
       constrain: ({ particle, getNeighbors, input }) => {
         // Find deepest overlap neighbor to reduce scan-order bias
         const searchRadius = particle.size * 2;

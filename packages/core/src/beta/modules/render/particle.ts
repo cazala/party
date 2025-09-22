@@ -12,13 +12,15 @@ import {
   CPUDescriptor,
 } from "../../module";
 
-type ParticleRendererKeys = "particleBuffer" | "renderUniforms";
+type ParticleInputKeys = "particleBuffer" | "renderUniforms";
 
-export class Particle extends Module<"particles", ParticleRendererKeys> {
-  webgpu(): WebGPUDescriptor<"particles", ParticleRendererKeys> {
+export class Particle extends Module<"particles", ParticleInputKeys> {
+  readonly name = "particles" as const;
+  readonly role = ModuleRole.Render;
+  readonly keys = ["particleBuffer", "renderUniforms"] as const;
+
+  webgpu(): WebGPUDescriptor<ParticleInputKeys> {
     return {
-      name: "particles" as const,
-      role: ModuleRole.Render,
       // Single fullscreen pass that draws particles into the scene texture
       passes: [
         {
@@ -37,10 +39,8 @@ export class Particle extends Module<"particles", ParticleRendererKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<"particles", ParticleRendererKeys> {
+  cpu(): CPUDescriptor<ParticleInputKeys> {
     return {
-      name: "particles",
-      role: ModuleRole.Render,
       setup: ({ context, clearColor }) => {
         // Clear canvas for fresh particle rendering
         context.fillStyle = `rgba(${clearColor.r * 255}, ${

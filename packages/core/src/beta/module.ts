@@ -26,6 +26,10 @@ export abstract class Module<
   InputKeys extends InputKeysBase = InputKeysBase,
   StateKeys extends string = any
 > {
+  abstract readonly name: Name;
+  abstract readonly role: ModuleRole;
+  abstract readonly keys: readonly InputKeys[];
+
   private _state: Record<StateKeys, number> = {} as Record<StateKeys, number>;
   private _writer: ((values: Partial<Record<string, number>>) => void) | null =
     (values: Partial<Record<string, number>>) => {
@@ -81,25 +85,18 @@ export abstract class Module<
     }
   }
 
-  abstract webgpu(): WebGPUDescriptor<Name, InputKeys, StateKeys>;
-  abstract cpu(): CPUDescriptor<Name, InputKeys, StateKeys>;
+  abstract webgpu(): WebGPUDescriptor<InputKeys, StateKeys>;
+  abstract cpu(): CPUDescriptor<InputKeys, StateKeys>;
 }
 
-export interface BaseDescriptor<
-  Name extends string = string,
-  Keys extends string = string
-> {
-  name: Name;
-  role: ModuleRole;
-  keys?: readonly Keys[];
+export interface BaseDescriptor {
+  // Base descriptors no longer need name, role, keys as they're in the Module class
 }
 
 export interface WebGPUForceDescriptor<
-  Name extends string = string,
   InputKeys extends string = string,
   StateKeys extends string = string
-> extends BaseDescriptor<Name> {
-  role: ModuleRole.Force;
+> extends BaseDescriptor {
   states?: readonly StateKeys[];
   global?: (args: { getUniform: (id: InputKeys) => string }) => string;
   state?: (args: {
@@ -185,28 +182,22 @@ export type RenderPass<Keys extends string = string> =
   | FullscreenRenderPass<Keys>
   | ComputeRenderPass<Keys>;
 
-export interface WebGPURenderDescriptor<
-  Name extends string = string,
-  InputKeys extends string = string
-> extends BaseDescriptor<Name> {
-  role: ModuleRole.Render;
+export interface WebGPURenderDescriptor<InputKeys extends string = string>
+  extends BaseDescriptor {
   passes: Array<RenderPass<InputKeys>>;
 }
 
 export type WebGPUDescriptor<
-  Name extends string = string,
   InputKeys extends string = string,
   StateKeys extends string = never
 > =
-  | WebGPUForceDescriptor<Name, InputKeys, StateKeys>
-  | WebGPURenderDescriptor<Name, InputKeys>;
+  | WebGPUForceDescriptor<InputKeys, StateKeys>
+  | WebGPURenderDescriptor<InputKeys>;
 
 export interface CPUForceDescriptor<
-  Name extends string = string,
   InputKeys extends string = string,
   StateKeys extends string = never
-> extends BaseDescriptor<Name, InputKeys> {
-  role: ModuleRole.Force;
+> extends BaseDescriptor {
   states?: readonly StateKeys[];
   state?: (args: {
     particle: Particle;
@@ -273,12 +264,8 @@ export interface CPURenderUtils {
   ): void;
 }
 
-export interface CPURenderDescriptor<
-  Name extends string = string,
-  InputKeys extends string = string
-> extends BaseDescriptor<Name, InputKeys> {
-  role: ModuleRole.Render;
-
+export interface CPURenderDescriptor<InputKeys extends string = string>
+  extends BaseDescriptor {
   // Optional setup phase (called once per frame before particles)
   setup?: (args: {
     context: CanvasRenderingContext2D;
@@ -308,9 +295,6 @@ export interface CPURenderDescriptor<
 }
 
 export type CPUDescriptor<
-  Name extends string = string,
   InputKeys extends string = string,
   StateKeys extends string = never
-> =
-  | CPUForceDescriptor<Name, InputKeys, StateKeys>
-  | CPURenderDescriptor<Name, InputKeys>;
+> = CPUForceDescriptor<InputKeys, StateKeys> | CPURenderDescriptor<InputKeys>;

@@ -251,10 +251,11 @@ export class CPUEngine implements IEngine {
     // First pass: state computation for all modules
     for (const module of this.modules) {
       try {
-        const force = module.cpu();
-        if (force.role === ModuleRole.Force && force.state) {
+        const descriptor = module.cpu();
+        if (module.role === ModuleRole.Force && (descriptor as any).state) {
+          const force = descriptor as any;
           const input: Record<string, number> = {};
-          for (const key of force.keys ?? []) {
+          for (const key of module.keys ?? []) {
             input[key] = module.read()[key] ?? 0;
           }
 
@@ -282,10 +283,11 @@ export class CPUEngine implements IEngine {
     // Second pass: apply forces for all modules
     for (const module of this.modules) {
       try {
-        const force = module.cpu();
-        if (force.role === ModuleRole.Force && force.apply) {
+        const descriptor = module.cpu();
+        if (module.role === ModuleRole.Force && (descriptor as any).apply) {
+          const force = descriptor as any;
           const input: Record<string, number> = {};
-          for (const key of force.keys ?? []) {
+          for (const key of module.keys ?? []) {
             input[key] = module.read()[key] ?? 0;
           }
 
@@ -326,10 +328,11 @@ export class CPUEngine implements IEngine {
     for (let iter = 0; iter < iterations; iter++) {
       for (const module of this.modules) {
         try {
-          const force = module.cpu();
-          if (force.role === ModuleRole.Force && force.constrain) {
+          const descriptor = module.cpu();
+          if (module.role === ModuleRole.Force && (descriptor as any).constrain) {
+            const force = descriptor as any;
             const input: Record<string, number> = {};
-            for (const key of force.keys ?? []) {
+            for (const key of module.keys ?? []) {
               input[key] = module.read()[key] ?? 0;
             }
             for (const particle of this.particles) {
@@ -354,10 +357,11 @@ export class CPUEngine implements IEngine {
     // Fifth pass: corrections for all modules
     for (const module of this.modules) {
       try {
-        const force = module.cpu();
-        if (force.role === ModuleRole.Force && force.correct) {
+        const descriptor = module.cpu();
+        if (module.role === ModuleRole.Force && (descriptor as any).correct) {
+          const force = descriptor as any;
           const input: Record<string, number> = {};
-          for (const key of force.keys ?? []) {
+          for (const key of module.keys ?? []) {
             input[key] = module.read()[key] ?? 0;
           }
 
@@ -448,11 +452,12 @@ export class CPUEngine implements IEngine {
 
     for (const module of this.modules) {
       try {
-        const render = module.cpu();
-        if (render.role === ModuleRole.Render) {
+        const descriptor = module.cpu();
+        if (module.role === ModuleRole.Render) {
+          const render = descriptor as any;
           // input
           const input: Record<string, number> = {};
-          for (const key of render.keys ?? []) {
+          for (const key of module.keys ?? []) {
             input[key] = module.read()[key] ?? 0;
           }
 
