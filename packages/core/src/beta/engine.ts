@@ -93,4 +93,12 @@ export class Engine implements IEngine {
   getFPS(): number {
     return this.engine.getFPS();
   }
+
+  export(): Record<string, Record<string, number>> {
+    return this.engine.export();
+  }
+
+  import(settings: Record<string, Record<string, number>>): void {
+    this.engine.import(settings);
+  }
 }

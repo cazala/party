@@ -18,6 +18,8 @@ export interface IEngine {
   clear(): void;
   getCount(): number;
   getFPS(): number;
+  export(): Record<string, Record<string, number>>;
+  import(settings: Record<string, Record<string, number>>): void;
 }
 
 export interface IParticle {

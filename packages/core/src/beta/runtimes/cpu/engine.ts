@@ -196,7 +196,7 @@ export class CPUEngine implements IEngine {
 
   private animate = (): void => {
     const time = performance.now();
-    const dt = Math.min((time - this.lastTime) / 1000, 1 / 30); // Cap deltaTime to prevent spikes
+    const dt = (time - this.lastTime) / 1000;
     this.lastTime = time;
 
     // Update FPS calculation
@@ -329,7 +329,10 @@ export class CPUEngine implements IEngine {
       for (const module of this.modules) {
         try {
           const descriptor = module.cpu();
-          if (module.role === ModuleRole.Force && (descriptor as any).constrain) {
+          if (
+            module.role === ModuleRole.Force &&
+            (descriptor as any).constrain
+          ) {
             const force = descriptor as any;
             const input: Record<string, number> = {};
             for (const key of module.keys ?? []) {
@@ -508,6 +511,23 @@ export class CPUEngine implements IEngine {
           });
         }
       } catch (error) {}
+    }
+  }
+
+  export(): Record<string, Record<string, number>> {
+    const settings: Record<string, Record<string, number>> = {};
+    for (const module of this.modules) {
+      const moduleData = module.read();
+      settings[module.name] = moduleData as Record<string, number>;
+    }
+    return settings;
+  }
+
+  import(settings: Record<string, Record<string, number>>): void {
+    for (const module of this.modules) {
+      if (settings[module.name]) {
+        module.write(settings[module.name]);
+      }
     }
   }
 }

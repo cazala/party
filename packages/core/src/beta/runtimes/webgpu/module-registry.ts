@@ -108,6 +108,11 @@ export class ModuleRegistry {
       .filter((module) => module.role === ModuleRole.Render && module.isEnabled());
   }
 
+  /** Get all modules. */
+  getModules(): readonly Module[] {
+    return this.modules;
+  }
+
   /** Write the current CPU state for all module uniforms to GPU buffers. */
   writeAllModuleUniforms(): void {
     if (!this.resources || !this.program) return;

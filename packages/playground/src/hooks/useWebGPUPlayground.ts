@@ -322,35 +322,10 @@ export function useWebGPUPlayground(
           engineStateRef.current.particles ||
           engineStateRef.current.moduleSettings
         ) {
-          // First, restore module settings to the new module instances
+          // First, restore module settings using dynamic import
           if (engineStateRef.current.moduleSettings && engineRef.current) {
             try {
-              const settings = engineStateRef.current.moduleSettings;
-
-              if (settings.environment && environmentRef.current) {
-                environmentRef.current.write(settings.environment);
-              }
-              if (settings.boundary && boundaryRef.current) {
-                boundaryRef.current.write(settings.boundary);
-              }
-              if (settings.collisions && collisionsRef.current) {
-                collisionsRef.current.write(settings.collisions);
-              }
-              if (settings.fluid && fluidRef.current) {
-                fluidRef.current.write(settings.fluid);
-              }
-              if (settings.behavior && behaviorRef.current) {
-                behaviorRef.current.write(settings.behavior);
-              }
-              if (settings.sensors && sensorsRef.current) {
-                sensorsRef.current.write(settings.sensors);
-              }
-              if (settings.trails && trailsRef.current) {
-                trailsRef.current.write(settings.trails);
-              }
-              if (settings.interaction && interactionRef.current) {
-                interactionRef.current.write(settings.interaction);
-              }
+              engineRef.current.import(engineStateRef.current.moduleSettings);
             } catch (settingsError) {
               console.error("Failed to restore module settings:", settingsError);
             }
@@ -679,17 +654,8 @@ export function useWebGPUPlayground(
           zoom: captureZoom,
         };
 
-        // Capture module settings
-        const moduleSettings = {
-          environment: environmentRef.current?.read(),
-          boundary: boundaryRef.current?.read(),
-          collisions: collisionsRef.current?.read(),
-          fluid: fluidRef.current?.read(),
-          behavior: behaviorRef.current?.read(),
-          sensors: sensorsRef.current?.read(),
-          trails: trailsRef.current?.read(),
-          interaction: interactionRef.current?.read(),
-        };
+        // Capture module settings using dynamic export
+        const moduleSettings = engineRef.current.export();
         engineStateRef.current.moduleSettings = moduleSettings;
       } catch (captureError) {
         console.error(

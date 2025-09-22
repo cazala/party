@@ -190,7 +190,7 @@ export class WebGPUEngine implements IEngine {
     if (!this.playing) return;
 
     const now = performance.now();
-    const dt = Math.min((now - this.lastTime) / 1000, 1 / 30);
+    const dt = (now - this.lastTime) / 1000;
     this.lastTime = now;
 
     // Update FPS estimate (EMA)
@@ -245,5 +245,25 @@ export class WebGPUEngine implements IEngine {
 
   getFPS(): number {
     return this.fpsEstimate;
+  }
+
+  export(): Record<string, Record<string, number>> {
+    const settings: Record<string, Record<string, number>> = {};
+    for (const module of this.modules.getModules()) {
+      const moduleData = module.read();
+      settings[module.name] = moduleData as Record<string, number>;
+    }
+    return settings;
+  }
+
+  import(settings: Record<string, Record<string, number>>): void {
+    const modules = this.modules.getModules();
+    for (const module of modules) {
+      if (settings[module.name]) {
+        module.write(settings[module.name]);
+      }
+    }
+    // Sync the updated settings to GPU
+    this.modules.writeAllModuleUniforms();
   }
 }
