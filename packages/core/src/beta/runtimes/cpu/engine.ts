@@ -12,7 +12,7 @@ export class CPUEngine implements IEngine {
   private canvas: HTMLCanvasElement;
   private spatialGrid: SpatialGrid;
   private view: View;
-  private isPlaying: boolean = false;
+  private playing: boolean = false;
   private animationId: number | null = null;
   private lastTime: number = 0;
   private fpsEstimate: number = 60;
@@ -67,14 +67,24 @@ export class CPUEngine implements IEngine {
    * If already playing, this method does nothing.
    */
   public play(): void {
-    if (this.isPlaying) return;
+    if (this.playing) return;
 
-    this.isPlaying = true;
+    this.playing = true;
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
+    // Reset timing to prevent deltaTime spikes after engine restoration
+    this.resetTiming();
     this.animate();
+  }
+
+  /**
+   * Resets animation timing to prevent large deltaTime spikes.
+   * Useful when starting after engine restoration or long pauses.
+   */
+  public resetTiming(): void {
+    this.lastTime = performance.now();
   }
 
   /**
@@ -82,18 +92,22 @@ export class CPUEngine implements IEngine {
    * The simulation state is preserved and can be resumed with play().
    */
   public pause(): void {
-    this.isPlaying = false;
+    this.playing = false;
   }
 
   /**
    * Toggles the simulation between playing and paused states.
    */
   public toggle(): void {
-    if (this.isPlaying) {
+    if (this.playing) {
       this.pause();
     } else {
       this.play();
     }
+  }
+
+  isPlaying(): boolean {
+    return this.playing;
   }
 
   /**
@@ -165,12 +179,12 @@ export class CPUEngine implements IEngine {
     this.particles.push(new Particle(particle));
   }
 
-  getParticles(): IParticle[] {
-    return this.particles.map((p) => p.toJSON());
+  getParticles(): Promise<IParticle[]> {
+    return Promise.resolve(this.particles.map((p) => p.toJSON()));
   }
 
-  getParticle(index: number): IParticle {
-    return this.particles[index];
+  getParticle(index: number): Promise<IParticle> {
+    return Promise.resolve(this.particles[index]);
   }
 
   destroy(): void {
@@ -181,7 +195,7 @@ export class CPUEngine implements IEngine {
 
   private animate = (): void => {
     const time = performance.now();
-    const dt = (time - this.lastTime) / 1000;
+    const dt = Math.min((time - this.lastTime) / 1000, 1 / 30); // Cap deltaTime to prevent spikes
     this.lastTime = time;
 
     // Update FPS calculation
@@ -192,7 +206,7 @@ export class CPUEngine implements IEngine {
         instantFps * this.fpsSmoothing;
     }
 
-    if (this.isPlaying) {
+    if (this.playing) {
       this.update(dt);
     }
 

@@ -2,7 +2,7 @@ import { useWebGPUPlayground } from "./hooks/useWebGPUPlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useToolMode } from "./hooks/useToolMode";
 import { useFullscreen } from "./hooks/useFullscreen";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TopBar } from "./components/TopBar";
 import {
   InitControls,
@@ -26,6 +26,8 @@ function WebGPUApp() {
   const initControlsRef = useRef<InitControlsRef>(null);
   const [tool, setTool] = useState<"cursor" | "spawn">("cursor");
   const { toolMode } = useToolMode();
+  const [particleCount, setParticleCount] = useState(0);
+  const [fps, setFPS] = useState(0);
 
   const {
     system,
@@ -44,6 +46,11 @@ function WebGPUApp() {
     pause,
     clear,
     handleZoom,
+    getParticleCount,
+    getFPS,
+    useWebGPU,
+    toggleEngineType,
+    engineType,
   } = useWebGPUPlayground(canvasRef, toolMode);
 
   const { isFullscreen, toggleFullscreen } = useFullscreen({
@@ -54,6 +61,13 @@ function WebGPUApp() {
     zoomStateRef: { current: { x: 0, y: 0, zoom: 1 } },
   });
   const size = useWindowSize();
+
+  (window as any)._resize = () => {
+    const width = window.innerWidth - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
+    const height = window.innerHeight - TOPBAR_HEIGHT;
+    console.log("Resizing to", width, height);
+    system?.setSize(width, height);
+  };
 
   // Update canvas size when window size changes
   useEffect(() => {
@@ -66,7 +80,7 @@ function WebGPUApp() {
         : size.height - TOPBAR_HEIGHT;
       system.setSize(targetWidth, targetHeight);
     }
-  }, [system, isInitialized, size, isFullscreen]);
+  }, [system, isInitialized, size, isFullscreen, useWebGPU]);
 
   // Auto-play when initialized
   useEffect(() => {
@@ -107,6 +121,18 @@ function WebGPUApp() {
 
     return () => clearTimeout(timeout);
   }, [isInitialized, error]);
+
+  // Update performance metrics periodically
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const interval = setInterval(() => {
+      setParticleCount(getParticleCount());
+      setFPS(getFPS());
+    }, 100); // Update every 100ms
+
+    return () => clearInterval(interval);
+  }, [isInitialized, getParticleCount, getFPS]);
 
   let content = null;
 
@@ -209,6 +235,33 @@ function WebGPUApp() {
               })}
             />
           </CollapsibleSection>
+
+          <CollapsibleSection title="PERFORMANCE" defaultOpen={true}>
+            <div className="control-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={useWebGPU}
+                  onChange={() => toggleEngineType()}
+                />
+                Use WebGPU
+              </label>
+            </div>
+            <div className="control-group">
+              <div className="metric-display">
+                <span className="metric-label">Particles:</span>
+                <span className="metric-value">
+                  {particleCount.toLocaleString()}
+                </span>
+              </div>
+            </div>
+            <div className="control-group">
+              <div className="metric-display">
+                <span className="metric-label">FPS:</span>
+                <span className="metric-value">{fps.toFixed(1)}</span>
+              </div>
+            </div>
+          </CollapsibleSection>
         </div>
         <div className="canvas-container">
           <WebGPUToolBar
@@ -220,6 +273,7 @@ function WebGPUApp() {
             style={{ display: isFullscreen ? "none" : "block" }}
           />
           <canvas
+            key={engineType} // Force canvas recreation when engine type changes
             ref={canvasRef}
             id="canvas"
             className={isFullscreen ? "fullscreen" : ""}

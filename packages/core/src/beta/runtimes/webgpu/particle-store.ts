@@ -81,6 +81,25 @@ export class ParticleStore {
   }
 
   /**
+   * Reads particle data back from GPU to CPU, updating the local data array.
+   * This ensures getParticles() returns current GPU simulation state.
+   */
+  async syncFromGPU(resources: GPUResources): Promise<void> {
+    if (this.count === 0) return;
+    
+    const sizeFloats = this.count * this.floatsPerParticle;
+    try {
+      const gpuData = await resources.readParticleBuffer(sizeFloats);
+      
+      // Update our CPU-side data with fresh GPU data
+      this.data.set(gpuData.subarray(0, sizeFloats));
+      
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Internal: encode one particle into the CPU buffer at a given index.
    */
   private writeAtIndex(index: number, particle: IParticle): void {

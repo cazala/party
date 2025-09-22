@@ -30,6 +30,10 @@ export class Engine implements IEngine {
     this.engine.pause();
   }
 
+  isPlaying(): boolean {
+    return this.engine.isPlaying();
+  }
+
   toggle(): void {
     this.engine.toggle();
   }
@@ -70,11 +74,11 @@ export class Engine implements IEngine {
     this.engine.addParticle(p);
   }
 
-  getParticles(): IParticle[] {
+  getParticles(): Promise<IParticle[]> {
     return this.engine.getParticles();
   }
 
-  getParticle(index: number): IParticle {
+  getParticle(index: number): Promise<IParticle> {
     return this.engine.getParticle(index);
   }
 

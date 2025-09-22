@@ -3,6 +3,7 @@ export interface IEngine {
   play(): void;
   pause(): void;
   toggle(): void;
+  isPlaying(): boolean;
   destroy(): void;
   getSize(): { width: number; height: number };
   setSize(width: number, height: number): void;
@@ -12,8 +13,8 @@ export interface IEngine {
   getZoom(): number;
   addParticle(p: IParticle): void;
   setParticles(p: IParticle[]): void;
-  getParticles(): IParticle[];
-  getParticle(index: number): IParticle;
+  getParticles(): Promise<IParticle[]>;
+  getParticle(index: number): Promise<IParticle>;
   clear(): void;
   getCount(): number;
   getFPS(): number;

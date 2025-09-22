@@ -34,7 +34,7 @@ export class WebGPUEngine implements IEngine {
   private grid: GridSystem;
   private view: View;
 
-  private isPlaying: boolean = false;
+  private playing: boolean = false;
   private lastTime: number = 0;
   private constrainIterations: number = DEFAULTS.constrainIterations;
   private maxParticles: number = DEFAULTS.maxParticles;
@@ -87,18 +87,22 @@ export class WebGPUEngine implements IEngine {
   }
 
   play(): void {
-    if (this.isPlaying) return;
-    this.isPlaying = true;
+    if (this.playing) return;
+    this.playing = true;
     this.lastTime = performance.now();
     this.animate();
   }
 
   pause(): void {
-    this.isPlaying = false;
+    this.playing = false;
   }
 
   toggle(): void {
-    this.isPlaying ? this.pause() : this.play();
+    this.playing ? this.pause() : this.play();
+  }
+
+  isPlaying(): boolean {
+    return this.playing;
   }
 
   destroy(): void {
@@ -158,11 +162,17 @@ export class WebGPUEngine implements IEngine {
     this.particles.syncToGPU(this.resources);
   }
 
-  getParticles(): IParticle[] {
+  /**
+   * Forces GPU-to-CPU synchronization and returns current particle data.
+   * Use this when you need the most up-to-date particle positions from GPU.
+   */
+  async getParticles(): Promise<IParticle[]> {
+    await this.particles.syncFromGPU(this.resources);
     return this.particles.getParticles();
   }
 
-  getParticle(index: number): IParticle {
+  async getParticle(index: number): Promise<IParticle> {
+    await this.particles.syncFromGPU(this.resources);
     return this.particles.getParticle(index);
   }
 
@@ -177,7 +187,7 @@ export class WebGPUEngine implements IEngine {
   }
 
   private animate = (): void => {
-    if (!this.isPlaying) return;
+    if (!this.playing) return;
 
     const now = performance.now();
     const dt = Math.min((now - this.lastTime) / 1000, 1 / 30);

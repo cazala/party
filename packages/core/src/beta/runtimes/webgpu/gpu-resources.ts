@@ -95,7 +95,6 @@ export class GPUResources {
 
     this.context = this.canvas.getContext("webgpu");
     if (!this.context) {
-      console.error("Failed to get WebGPU context");
       throw new Error("Failed to get WebGPU context");
     }
 
@@ -150,7 +149,7 @@ export class GPUResources {
     this.particleBuffer?.destroy();
     this.particleBuffer = this.getDevice().createBuffer({
       size,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
     });
   }
 
@@ -174,6 +173,49 @@ export class GPUResources {
       data.byteOffset,
       data.byteLength
     );
+  }
+
+  /**
+   * Reads particle data back from GPU to CPU
+   */
+  async readParticleBuffer(sizeFloats: number): Promise<Float32Array> {
+    if (!this.particleBuffer) {
+      throw new Error("Particle buffer not initialized");
+    }
+
+    const sizeBytes = sizeFloats * 4;
+    
+    // Create staging buffer for readback
+    const stagingBuffer = this.getDevice().createBuffer({
+      size: sizeBytes,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+
+    try {
+      // Copy from particle buffer to staging buffer
+      const encoder = this.getDevice().createCommandEncoder();
+      encoder.copyBufferToBuffer(
+        this.particleBuffer,
+        0,
+        stagingBuffer,
+        0,
+        sizeBytes
+      );
+      
+      // Submit commands and wait for completion
+      this.getDevice().queue.submit([encoder.finish()]);
+      await this.getDevice().queue.onSubmittedWorkDone();
+
+      // Map and read the staging buffer
+      await stagingBuffer.mapAsync(GPUMapMode.READ);
+      const arrayBuffer = stagingBuffer.getMappedRange();
+      const data = new Float32Array(arrayBuffer.slice(0));
+      stagingBuffer.unmap();
+
+      return data;
+    } finally {
+      stagingBuffer.destroy();
+    }
   }
 
   createModuleUniformBuffers(layouts: ModuleUniformLayout[]): void {

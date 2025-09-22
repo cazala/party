@@ -8,10 +8,10 @@ import {
   Sensors,
   Trails,
   Interaction,
-  Particle,
   Engine,
   WebGPUSpawner,
 } from "@cazala/party";
+import { Particle as ParticleRenderer } from "@cazala/party";
 import { ToolMode } from "./useToolMode";
 
 const zoomSensitivity = 0.01;
@@ -20,8 +20,7 @@ export function useWebGPUPlayground(
   canvasRef: React.RefObject<HTMLCanvasElement>,
   _toolMode: ToolMode = "spawn"
 ) {
-  const instanceId = useRef(Math.random().toString(36).substr(2, 9));
-  const systemRef = useRef<Engine | null>(null);
+  const engineRef = useRef<Engine | null>(null);
   const environmentRef = useRef<Environment | null>(null);
   const boundaryRef = useRef<Boundary | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
@@ -32,6 +31,27 @@ export function useWebGPUPlayground(
   const interactionRef = useRef<Interaction | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useWebGPU, setUseWebGPU] = useState(false);
+
+  // Store state for engine switching
+  const engineStateRef = useRef<{
+    particles?: any[];
+    moduleSettings?: {
+      environment?: any;
+      boundary?: any;
+      collisions?: any;
+      fluid?: any;
+      behavior?: any;
+      sensors?: any;
+      trails?: any;
+      interaction?: any;
+    };
+    coordinateState?: {
+      size: { width: number; height: number };
+      camera: { x: number; y: number };
+      zoom: number;
+    };
+  }>({});
 
   // ---------------------------------------------------------------------------
   // Zoom handling
@@ -45,13 +65,13 @@ export function useWebGPUPlayground(
   });
 
   const animateZoom = useCallback(() => {
-    const system = systemRef.current;
+    const engine = engineRef.current;
     const zoomState = zoomStateRef.current;
 
-    if (!system) return;
+    if (!engine) return;
 
-    const currentZoom = system.getZoom();
-    const camera = system.getCamera();
+    const currentZoom = engine.getZoom();
+    const camera = engine.getCamera();
 
     // Smooth interpolation with easing
     const easeFactor = 0.15; // Higher = faster, lower = smoother
@@ -67,8 +87,8 @@ export function useWebGPUPlayground(
       Math.abs(cameraDiffY) < threshold
     ) {
       // Animation complete - set exact target values
-      system.setZoom(zoomState.targetZoom);
-      system.setCamera(zoomState.targetCameraX, zoomState.targetCameraY);
+      engine.setZoom(zoomState.targetZoom);
+      engine.setCamera(zoomState.targetCameraX, zoomState.targetCameraY);
 
       zoomState.isAnimating = false;
       if (zoomState.animationId) {
@@ -83,8 +103,8 @@ export function useWebGPUPlayground(
     const newCameraX = camera.x + cameraDiffX * easeFactor;
     const newCameraY = camera.y + cameraDiffY * easeFactor;
 
-    system.setZoom(newZoom);
-    system.setCamera(newCameraX, newCameraY);
+    engine.setZoom(newZoom);
+    engine.setCamera(newCameraX, newCameraY);
 
     // Continue animation
     zoomState.animationId = requestAnimationFrame(animateZoom);
@@ -92,16 +112,16 @@ export function useWebGPUPlayground(
 
   const handleZoom = useCallback(
     (deltaY: number, centerX: number, centerY: number) => {
-      const system = systemRef.current;
+      const engine = engineRef.current;
       const zoomState = zoomStateRef.current;
-      if (!system) return;
+      if (!engine) return;
 
       // Use configurable zoom sensitivity
       const zoomDirection = deltaY > 0 ? -zoomSensitivity : zoomSensitivity;
 
       const currentTargetZoom = zoomState.isAnimating
         ? zoomState.targetZoom
-        : system.getZoom();
+        : engine.getZoom();
       // Clamp target zoom to renderer's min/max (renderer will further clamp)
       const newTargetZoom = Math.max(
         0.1,
@@ -111,7 +131,7 @@ export function useWebGPUPlayground(
       // Calculate camera adjustment to zoom towards the cursor position
       const currentTargetCamera = zoomState.isAnimating
         ? { x: zoomState.targetCameraX, y: zoomState.targetCameraY }
-        : system.getCamera();
+        : engine.getCamera();
 
       const zoomDelta = newTargetZoom / currentTargetZoom;
       const newTargetCameraX =
@@ -135,34 +155,37 @@ export function useWebGPUPlayground(
     [animateZoom]
   );
 
-  console.log(
-    "WebGPU hook instance:",
-    instanceId.current,
-    "initialized:",
-    isInitialized
-  );
 
   // Initialize WebGPU renderer
   useEffect(() => {
     let cancelled = false;
 
+    // Clean up previous engine when switching types (state already captured in toggle function)
+    if (engineRef.current) {
+      engineRef.current.destroy();
+      engineRef.current = null;
+      environmentRef.current = null;
+      boundaryRef.current = null;
+      collisionsRef.current = null;
+      fluidRef.current = null;
+      behaviorRef.current = null;
+      sensorsRef.current = null;
+      trailsRef.current = null;
+      interactionRef.current = null;
+      setIsInitialized(false);
+      setError(null);
+    }
+
     async function waitForCanvasAndInit() {
+      // Wait a bit for React to recreate the canvas with new key
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Poll for canvas availability
       const maxAttempts = 50; // 5 seconds with 100ms intervals
       let attempts = 0;
 
       while (attempts < maxAttempts && !cancelled) {
-        console.log(`WebGPU: Attempt ${attempts + 1} - checking for canvas...`);
-
         if (canvasRef.current) {
-          console.log("=== WEBGPU PLAYGROUND INIT START ===");
-          console.log("Canvas element found:", canvasRef.current);
-          console.log(
-            "Canvas dimensions:",
-            canvasRef.current.width,
-            "x",
-            canvasRef.current.height
-          );
           break;
         }
 
@@ -173,27 +196,13 @@ export function useWebGPUPlayground(
       if (cancelled) return;
 
       if (!canvasRef.current) {
-        console.error("Canvas not found after polling");
         setError("Canvas element not available");
         return;
       }
 
       try {
-        // Create WebGPU renderer directly (diagnostics already validated WebGPU support)
-        console.log("Creating WebGPU engine...");
-        // Use actual canvas dimensions from clientWidth/clientHeight for proper sizing
-        const width =
-          canvasRef.current.clientWidth || canvasRef.current.width || 800;
-        const height =
-          canvasRef.current.clientHeight || canvasRef.current.height || 600;
-
-        console.log("Canvas dimensions for WebGPU:", width, "x", height);
-
-        console.log("WebGPU engine created successfully");
-
-        console.log("Initializing WebGPU engine...");
-
-        console.log("=== WEBGPU PLAYGROUND INIT SUCCESS ===");
+        const width = canvasRef.current.width || 800;
+        const height = canvasRef.current.height || 600;
         setError(null);
 
         // Create a default particle system with default modules and attach it BEFORE exposing renderer
@@ -223,7 +232,7 @@ export function useWebGPUPlayground(
           });
 
           const trails = new Trails({ enabled: false });
-          const particle = new Particle();
+          const particle = new ParticleRenderer();
 
           // Initialize simulation parameters
           const modules = [
@@ -237,14 +246,50 @@ export function useWebGPUPlayground(
             trails,
             particle,
           ];
-          const system = new Engine({
-            canvas: canvasRef.current,
-            modules,
-            type: "webgpu",
-          });
-          await system.initialize();
-          system.setSize(width, height);
-          systemRef.current = system;
+          // Try creating the engine with retries for context conflicts
+          let engine;
+          let initSuccess = false;
+          const maxRetries = 3;
+
+          for (let retry = 0; retry < maxRetries && !initSuccess; retry++) {
+            try {
+              if (retry > 0) {
+                await new Promise((resolve) =>
+                  setTimeout(resolve, 200 * retry)
+                );
+              }
+
+              engine = new Engine({
+                canvas: canvasRef.current,
+                modules,
+                type: useWebGPU ? "webgpu" : "cpu",
+              });
+              await engine.initialize();
+              initSuccess = true;
+            } catch (initError: any) {
+              if (engine) {
+                try {
+                  engine.destroy();
+                } catch (destroyError) {
+                  console.warn("Error destroying failed engine:", destroyError);
+                }
+                engine = null;
+              }
+
+              // If this is the last retry, throw the error
+              if (retry === maxRetries - 1) {
+                throw initError;
+              }
+            }
+          }
+
+          if (!engine) {
+            throw new Error("Failed to create engine after retries");
+          }
+
+          // Set initial size for the engine
+          engine.setSize(width, height);
+          engineRef.current = engine;
           environmentRef.current = environment;
           boundaryRef.current = boundary;
           collisionsRef.current = collisions;
@@ -254,21 +299,141 @@ export function useWebGPUPlayground(
           trailsRef.current = trails;
           interactionRef.current = interaction;
         } catch (sysErr) {
-          console.error(
-            "Failed to create/attach WebGPU particle system:",
-            sysErr
-          );
+          // If WebGPU fails and we were trying WebGPU, fallback to CPU
+          if (
+            useWebGPU &&
+            (sysErr as Error).message.includes("WebGPU context")
+          ) {
+            setUseWebGPU(false);
+            return; // Let the useEffect re-run with CPU mode
+          }
         }
+
+        // Let the engine fully initialize before restoring state
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        // Pause physics during state restoration to prevent corruption
+        if (engineRef.current) {
+          engineRef.current.pause();
+        }
+
+        // Restore captured state if available (after engine is fully set up)
+        if (
+          engineStateRef.current.particles ||
+          engineStateRef.current.moduleSettings
+        ) {
+          // First, restore module settings to the new module instances
+          if (engineStateRef.current.moduleSettings && engineRef.current) {
+            try {
+              const settings = engineStateRef.current.moduleSettings;
+
+              if (settings.environment && environmentRef.current) {
+                environmentRef.current.write(settings.environment);
+              }
+              if (settings.boundary && boundaryRef.current) {
+                boundaryRef.current.write(settings.boundary);
+              }
+              if (settings.collisions && collisionsRef.current) {
+                collisionsRef.current.write(settings.collisions);
+              }
+              if (settings.fluid && fluidRef.current) {
+                fluidRef.current.write(settings.fluid);
+              }
+              if (settings.behavior && behaviorRef.current) {
+                behaviorRef.current.write(settings.behavior);
+              }
+              if (settings.sensors && sensorsRef.current) {
+                sensorsRef.current.write(settings.sensors);
+              }
+              if (settings.trails && trailsRef.current) {
+                trailsRef.current.write(settings.trails);
+              }
+              if (settings.interaction && interactionRef.current) {
+                interactionRef.current.write(settings.interaction);
+              }
+            } catch (settingsError) {
+              console.error("Failed to restore module settings:", settingsError);
+            }
+          }
+
+          // Then restore particles
+          if (
+            engineStateRef.current.particles &&
+            engineStateRef.current.particles.length > 0 &&
+            engineRef.current
+          ) {
+            try {
+              const particles = engineStateRef.current.particles;
+
+              // Deep clone the particles to avoid reference issues
+              const clonedParticles = particles.map((p) => ({
+                position: { x: p.position.x, y: p.position.y },
+                velocity: { x: p.velocity.x, y: p.velocity.y }, // Preserve velocity for both engines
+                size: p.size,
+                mass: p.mass,
+                color: {
+                  r: p.color.r,
+                  g: p.color.g,
+                  b: p.color.b,
+                  a: p.color.a,
+                },
+              }));
+
+
+              engineRef.current.setParticles(clonedParticles);
+
+
+            } catch (particlesError) {
+              console.error("Failed to restore particles:", particlesError);
+            }
+          }
+
+          // Clear the captured state
+          engineStateRef.current = {};
+
+          // Ensure the engine is playing after restoration
+          if (engineRef.current) {
+            // Restore coordinate system state if available to maintain consistent positioning
+            if (engineStateRef.current.coordinateState) {
+              const coordState = engineStateRef.current.coordinateState;
+              engineRef.current.setSize(
+                coordState.size.width,
+                coordState.size.height
+              );
+              engineRef.current.setCamera(
+                coordState.camera.x,
+                coordState.camera.y
+              );
+              engineRef.current.setZoom(coordState.zoom);
+            } else {
+              // If no coordinate state, sync canvas size
+              const currentCanvasWidth = canvasRef.current.width || width;
+              const currentCanvasHeight = canvasRef.current?.height || height;
+              engineRef.current.setSize(
+                currentCanvasWidth,
+                currentCanvasHeight
+              );
+              // Reset camera/zoom to ensure particles are visible
+              engineRef.current.setCamera(0, 0);
+              engineRef.current.setZoom(1);
+            }
+
+            // Wait a moment for everything to settle, then start physics
+            setTimeout(() => {
+              if (engineRef.current) {
+                engineRef.current.play();
+              }
+            }, 100);
+
+          }
+        }
+
         setIsInitialized(true);
       } catch (err) {
-        console.error("=== WEBGPU PLAYGROUND INIT FAILED ===");
-        console.error("WebGPU initialization error:", err);
-        console.error("Error details:", {
-          name: (err as Error).name,
-          message: (err as Error).message,
-          stack: (err as Error).stack,
-        });
-        setError("WebGPU initialization failed: " + (err as Error).message);
+        setError(
+          `${useWebGPU ? "WebGPU" : "CPU"} initialization failed: ` +
+            (err as Error).message
+        );
       }
     }
 
@@ -276,9 +441,9 @@ export function useWebGPUPlayground(
 
     return () => {
       cancelled = true;
-      if (systemRef.current) {
-        systemRef.current.destroy();
-        systemRef.current = null;
+      if (engineRef.current) {
+        engineRef.current.destroy();
+        engineRef.current = null;
       }
       environmentRef.current = null;
       boundaryRef.current = null;
@@ -295,7 +460,7 @@ export function useWebGPUPlayground(
         zoomState.isAnimating = false;
       }
     };
-  }, []); // Run once on mount, cleanup on unmount
+  }, [useWebGPU]); // Re-initialize when engine type changes
 
   // Wire mouse input to WebGPU Interaction module
   useEffect(() => {
@@ -304,10 +469,10 @@ export function useWebGPUPlayground(
     if (!canvas || !interaction) return;
 
     const screenToWorld = (sx: number, sy: number) => {
-      const size = systemRef.current?.getSize() || { width: 800, height: 600 };
-      const system = systemRef.current;
-      const cam = system?.getCamera() || { x: 0, y: 0 };
-      const zoom = system?.getZoom() || 1;
+      const size = engineRef.current?.getSize() || { width: 800, height: 600 };
+      const engine = engineRef.current;
+      const cam = engine?.getCamera() || { x: 0, y: 0 };
+      const zoom = engine?.getZoom() || 1;
       const rect = canvas.getBoundingClientRect();
       const scaleX = size.width / Math.max(rect.width, 1e-6);
       const scaleY = size.height / Math.max(rect.height, 1e-6);
@@ -347,11 +512,11 @@ export function useWebGPUPlayground(
         const size = 5;
         const mass = 1;
         const { x, y } = screenToWorld(sx, sy);
-        const sys = systemRef.current as any;
+        const sys = engineRef.current as any;
         if (sys?.addParticle) {
           sys.addParticle({ position: [x, y], velocity: [0, 0], size, mass });
         }
-        systemRef.current?.play();
+        engineRef.current?.play();
         return;
       }
       if (e.button === 0) {
@@ -398,41 +563,21 @@ export function useWebGPUPlayground(
       cornerRadius?: number,
       particleMass?: number
     ) => {
-      const system = systemRef.current;
-      console.log(
-        "WebGPU spawnParticles called (instance " + instanceId.current + "):",
-        {
-          numParticles,
-          shape,
-          spacing,
-          particleSize,
-          radius,
-          velocityConfig,
-          particleMass,
-          isInitialized,
-        }
-      );
-
-      if (!system) {
-        console.warn(
-          "WebGPU system not available for spawning particles (systemRef.current:",
-          "systemRef.current:",
-          system,
-          ")"
-        );
+      const engine = engineRef.current;
+      if (!engine) {
         return;
       }
 
       // Clear existing particles
-      system.clear();
+      engine.clear();
 
       // Generate particles using WebGPUSpawner (camera-centered)
       const spawner = new WebGPUSpawner();
 
-      const cam = system.getCamera();
+      const cam = engine.getCamera();
       // Compute world-space bounds matching the current viewport (fill screen)
-      const size = system.getSize();
-      const zoom = system.getZoom();
+      const size = engine.getSize();
+      const zoom = engine.getZoom();
       const worldWidth = size.width / Math.max(zoom, 0.0001);
       const worldHeight = size.height / Math.max(zoom, 0.0001);
 
@@ -464,50 +609,104 @@ export function useWebGPUPlayground(
       // Apply UI-selected colors randomly to spawned particles if provided
       // kept for reference if needed in future color utils
 
-      system.setParticles(particles);
+      engine.setParticles(particles);
     },
     [isInitialized]
   );
 
   const play = useCallback(() => {
-    if (systemRef.current) {
-      systemRef.current?.play();
+    if (engineRef.current) {
+      engineRef.current?.play();
     }
   }, [isInitialized]);
 
   const pause = useCallback(() => {
-    if (systemRef.current) {
-      systemRef.current.pause();
+    if (engineRef.current) {
+      engineRef.current.pause();
     }
   }, [isInitialized]);
 
   const clear = useCallback(() => {
-    if (systemRef.current) {
-      systemRef.current.clear();
+    if (engineRef.current) {
+      engineRef.current.clear();
       // Ensure the loop continues so the cleared scene is presented
-      systemRef.current.play();
+      engineRef.current.play();
     }
   }, [isInitialized]);
 
   const resetParticles = useCallback(() => {
     // Deprecated in favor of restarting via spawn from UI state.
     // Keep as a no-op that clears and resumes.
-    if (systemRef.current) {
-      systemRef.current.clear();
-      systemRef.current.play();
+    if (engineRef.current) {
+      engineRef.current.clear();
+      engineRef.current.play();
     }
   }, [isInitialized]);
 
   const getParticleCount = useCallback(() => {
-    return systemRef.current?.getCount() || 0;
+    return engineRef.current?.getCount() || 0;
   }, [isInitialized]);
 
   const getFPS = useCallback(() => {
-    return systemRef.current?.getFPS() || 0;
+    return engineRef.current?.getFPS() || 0;
   }, [isInitialized]);
 
+  const toggleEngineType = useCallback(async () => {
+    // Always clear previous state first to avoid reuse
+    engineStateRef.current = {};
+
+    // Capture state BEFORE changing useWebGPU (which triggers canvas recreation)
+    if (engineRef.current) {
+      try {
+        // For WebGPU engines, pause and wait to ensure latest GPU state is captured
+        if (useWebGPU) {
+          engineRef.current.pause();
+          // Wait for current frame to complete and GPU pipeline to settle
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        // Capture particles
+        let particles = await engineRef.current.getParticles();
+        engineStateRef.current.particles = particles;
+
+        // Capture coordinate system state
+        const captureSize = engineRef.current.getSize();
+        const captureCamera = engineRef.current.getCamera();
+        const captureZoom = engineRef.current.getZoom();
+        engineStateRef.current.coordinateState = {
+          size: captureSize,
+          camera: captureCamera,
+          zoom: captureZoom,
+        };
+
+        // Capture module settings
+        const moduleSettings = {
+          environment: environmentRef.current?.read(),
+          boundary: boundaryRef.current?.read(),
+          collisions: collisionsRef.current?.read(),
+          fluid: fluidRef.current?.read(),
+          behavior: behaviorRef.current?.read(),
+          sensors: sensorsRef.current?.read(),
+          trails: trailsRef.current?.read(),
+          interaction: interactionRef.current?.read(),
+        };
+        engineStateRef.current.moduleSettings = moduleSettings;
+      } catch (captureError) {
+        console.error(
+          `Failed to capture ${useWebGPU ? "WebGPU" : "CPU"} engine state:`,
+          captureError
+        );
+        engineStateRef.current = {}; // Reset on error
+      }
+    } else {
+      engineStateRef.current = {}; // Ensure clean state
+    }
+
+    setUseWebGPU(!useWebGPU);
+  }, [useWebGPU]);
+
   return {
-    system: systemRef.current,
+    system: engineRef.current,
     environment: environmentRef.current,
     boundary: boundaryRef.current,
     collisions: collisionsRef.current,
@@ -526,5 +725,8 @@ export function useWebGPUPlayground(
     getParticleCount,
     getFPS,
     handleZoom,
+    useWebGPU,
+    toggleEngineType,
+    engineType: useWebGPU ? "webgpu" : "cpu", // For canvas key
   };
 }
