@@ -17,6 +17,7 @@ export class CPUEngine implements IEngine {
   private lastTime: number = 0;
   private fpsEstimate: number = 60;
   private fpsSmoothing: number = 0.15;
+  private constrainIterations: number = 5;
 
   constructor(options: { canvas: HTMLCanvasElement; modules: Module[] }) {
     this.canvas = options.canvas;
@@ -236,9 +237,12 @@ export class CPUEngine implements IEngine {
 
     // Global state for modules that need it
     const globalState: Record<number, Record<string, number>> = {};
-    
+
     // Position tracking for correct pass
-    const positionState: Map<number, { prev: { x: number; y: number }; post: { x: number; y: number } }> = new Map();
+    const positionState: Map<
+      number,
+      { prev: { x: number; y: number }; post: { x: number; y: number } }
+    > = new Map();
 
     // Get neighbors function
     const getNeighbors = (position: { x: number; y: number }, radius: number) =>
@@ -307,41 +311,44 @@ export class CPUEngine implements IEngine {
     for (const particle of this.particles) {
       // Capture position before integration
       const prevPos = { x: particle.position.x, y: particle.position.y };
-      
+
       particle.velocity.add(particle.acceleration.clone().multiply(dt));
       particle.position.add(particle.velocity.clone().multiply(dt));
       particle.acceleration.zero();
-      
+
       // Capture position after integration
       const postPos = { x: particle.position.x, y: particle.position.y };
       positionState.set(particle.id, { prev: prevPos, post: postPos });
     }
 
-    // Fourth pass: constraints for all modules
-    for (const module of this.modules) {
-      try {
-        const force = module.cpu();
-        if (force.role === ModuleRole.Force && force.constrain) {
-          const input: Record<string, number> = {};
-          for (const key of force.keys ?? []) {
-            input[key] = module.read()[key] ?? 0;
-          }
-          for (const particle of this.particles) {
-            const getState = (name: string, pid?: number) => {
-              return globalState[pid ?? particle.id]?.[name] ?? 0;
-            };
+    // Fourth pass: constraints for all modules (multiple iterations)
+    const iterations = Math.max(1, this.constrainIterations);
+    for (let iter = 0; iter < iterations; iter++) {
+      for (const module of this.modules) {
+        try {
+          const force = module.cpu();
+          if (force.role === ModuleRole.Force && force.constrain) {
+            const input: Record<string, number> = {};
+            for (const key of force.keys ?? []) {
+              input[key] = module.read()[key] ?? 0;
+            }
+            for (const particle of this.particles) {
+              const getState = (name: string, pid?: number) => {
+                return globalState[pid ?? particle.id]?.[name] ?? 0;
+              };
 
-            force.constrain({
-              particle: particle,
-              getNeighbors,
-              dt: dt,
-              input,
-              getState,
-              view: this.view,
-            });
+              force.constrain({
+                particle: particle,
+                getNeighbors,
+                dt: dt,
+                input,
+                getState,
+                view: this.view,
+              });
+            }
           }
-        }
-      } catch (error) {}
+        } catch (error) {}
+      }
     }
 
     // Fifth pass: corrections for all modules
@@ -358,10 +365,16 @@ export class CPUEngine implements IEngine {
             const getState = (name: string, pid?: number) => {
               return globalState[pid ?? particle.id]?.[name] ?? 0;
             };
-            
+
             const positions = positionState.get(particle.id);
-            const prevPos = positions?.prev ?? { x: particle.position.x, y: particle.position.y };
-            const postPos = positions?.post ?? { x: particle.position.x, y: particle.position.y };
+            const prevPos = positions?.prev ?? {
+              x: particle.position.x,
+              y: particle.position.y,
+            };
+            const postPos = positions?.post ?? {
+              x: particle.position.x,
+              y: particle.position.y,
+            };
 
             force.correct({
               particle: particle,
