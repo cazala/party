@@ -109,6 +109,27 @@ export class Collisions extends Module<"collisions", CollisionBindingKeys> {
     }
   }
 `,
+      correct: ({ particleVar, dtVar, prevPosVar, postPosVar }) => `
+  // Position-based velocity correction from integration state
+  let disp = ${particleVar}.position - ${prevPosVar};
+  let disp2 = dot(disp, disp);
+  let corr = ${particleVar}.position - ${postPosVar};
+  let corr2 = dot(corr, corr);
+  if (corr2 > 0.0 && ${dtVar} > 0.0) {
+    let corrLenInv = inverseSqrt(corr2);
+    let corrDir = corr * corrLenInv;
+    let corrVel = corr / ${dtVar};
+    let corrVelAlong = dot(corrVel, corrDir);
+    let vNBefore = dot(${particleVar}.velocity, corrDir);
+    let vNAfterCandidate = vNBefore + corrVelAlong;
+    let vNAfter = select(vNBefore, vNAfterCandidate, abs(vNAfterCandidate) < abs(vNBefore));
+    ${particleVar}.velocity = ${particleVar}.velocity + corrDir * (vNAfter - vNBefore);
+  }
+  let v2_total = dot(${particleVar}.velocity, ${particleVar}.velocity);
+  if (disp2 < 1e-8 && v2_total < 0.5) {
+    ${particleVar}.velocity = vec2<f32>(0.0, 0.0);
+  }
+`,
     };
   }
 
@@ -206,6 +227,44 @@ export class Collisions extends Module<"collisions", CollisionBindingKeys> {
             particle.velocity.x = v1x + n.x * dv;
             particle.velocity.y = v1y + n.y * dv;
           }
+        }
+      },
+      correct: ({ particle, dt, prevPos, postPos }) => {
+        const dispX = particle.position.x - prevPos.x;
+        const dispY = particle.position.y - prevPos.y;
+        const disp2 = dispX * dispX + dispY * dispY;
+
+        const corrX = particle.position.x - postPos.x;
+        const corrY = particle.position.y - postPos.y;
+        const corr2 = corrX * corrX + corrY * corrY;
+
+        if (corr2 > 0.0 && dt > 0.0) {
+          const corrLenInv = 1.0 / Math.sqrt(corr2);
+          const corrDirX = corrX * corrLenInv;
+          const corrDirY = corrY * corrLenInv;
+          const corrVelX = corrX / dt;
+          const corrVelY = corrY / dt;
+          const corrVelAlong = corrVelX * corrDirX + corrVelY * corrDirY;
+          const vNBefore =
+            particle.velocity.x * corrDirX + particle.velocity.y * corrDirY;
+          const vNAfterCandidate = vNBefore + corrVelAlong;
+          const vNAfter =
+            Math.abs(vNAfterCandidate) < Math.abs(vNBefore)
+              ? vNAfterCandidate
+              : vNBefore;
+
+          particle.velocity.x =
+            particle.velocity.x + corrDirX * (vNAfter - vNBefore);
+          particle.velocity.y =
+            particle.velocity.y + corrDirY * (vNAfter - vNBefore);
+        }
+
+        const v2_total =
+          particle.velocity.x * particle.velocity.x +
+          particle.velocity.y * particle.velocity.y;
+        if (disp2 < 1e-8 && v2_total < 0.5) {
+          particle.velocity.x = 0.0;
+          particle.velocity.y = 0.0;
         }
       },
     };

@@ -236,6 +236,9 @@ export class CPUEngine implements IEngine {
 
     // Global state for modules that need it
     const globalState: Record<number, Record<string, number>> = {};
+    
+    // Position tracking for correct pass
+    const positionState: Map<number, { prev: { x: number; y: number }; post: { x: number; y: number } }> = new Map();
 
     // Get neighbors function
     const getNeighbors = (position: { x: number; y: number }, radius: number) =>
@@ -302,9 +305,16 @@ export class CPUEngine implements IEngine {
 
     // Third pass: integration (once per particle)
     for (const particle of this.particles) {
+      // Capture position before integration
+      const prevPos = { x: particle.position.x, y: particle.position.y };
+      
       particle.velocity.add(particle.acceleration.clone().multiply(dt));
       particle.position.add(particle.velocity.clone().multiply(dt));
       particle.acceleration.zero();
+      
+      // Capture position after integration
+      const postPos = { x: particle.position.x, y: particle.position.y };
+      positionState.set(particle.id, { prev: prevPos, post: postPos });
     }
 
     // Fourth pass: constraints for all modules
@@ -348,11 +358,17 @@ export class CPUEngine implements IEngine {
             const getState = (name: string, pid?: number) => {
               return globalState[pid ?? particle.id]?.[name] ?? 0;
             };
+            
+            const positions = positionState.get(particle.id);
+            const prevPos = positions?.prev ?? { x: particle.position.x, y: particle.position.y };
+            const postPos = positions?.post ?? { x: particle.position.x, y: particle.position.y };
 
             force.correct({
               particle: particle,
               getNeighbors,
               dt: dt,
+              prevPos,
+              postPos,
               input,
               getState,
               view: this.view,

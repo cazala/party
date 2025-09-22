@@ -27,12 +27,13 @@ Force modules run across multiple compute passes. You may implement any subset o
 - `state({ particleVar, dtVar, getUniform, getState, setState }) => string`: run before forces to compute per-particle values. Use `getState(name, pid?)`/`setState(name, value, pid?)` to read/write your declared `states` in the shared `SIM_STATE` buffer.
 - `apply({ particleVar, dtVar, getUniform, getState, setState }) => string`: add forces by modifying `particle.acceleration` and/or `particle.velocity`.
 - `constrain({ ... }) => string`: enforce constraints on position/velocity; may run multiple iterations.
-- `correct({ ... }) => string`: after constraints, correct velocity artifacts.
+- `correct({ particleVar, dtVar, prevPosVar, postPosVar, getUniform, getState }) => string`: after constraints, correct velocity artifacts using position information from the integration pass.
 
 The `args` objects provide:
 
 - `particleVar`: name of the local WGSL variable representing the current particle
 - `dtVar`: WGSL expression to the current delta time
+- `prevPosVar` / `postPosVar` (correct only): WGSL variables containing particle position before and after integration 
 - `getUniform(id)`: returns a WGSL expression to read your uniform
 - `getState(name, pidVar?)` / `setState(name, expr, pidVar?)`: helpers to access shared simulation state
 
@@ -151,6 +152,45 @@ apply: ({ particleVar, getUniform }) => `{
 ```
 
 You can see richer variants in `behavior.ts` (flocking-style steering) and `collisions.ts` (contact selection + resolution). For scan-order bias reduction tricks, see comments in `collisions.ts`.
+
+#### Position-based velocity correction (correct pass)
+
+The `correct` pass runs after constraints and can access position data from before and after the integration step. This is useful for position-based velocity correction, preventing velocity artifacts from constraint resolution, and implementing stabilization effects.
+
+```ts
+// Example correct pass for velocity stabilization
+correct: ({ particleVar, dtVar, prevPosVar, postPosVar }) => `{
+  // Calculate displacement from integration
+  let disp = ${particleVar}.position - ${prevPosVar};
+  let disp2 = dot(disp, disp);
+  
+  // Calculate correction from constraints  
+  let corr = ${particleVar}.position - ${postPosVar};
+  let corr2 = dot(corr, corr);
+  
+  if (corr2 > 0.0 && ${dtVar} > 0.0) {
+    // Convert position correction to velocity correction
+    let corrLenInv = inverseSqrt(corr2);
+    let corrDir = corr * corrLenInv;
+    let corrVel = corr / ${dtVar};
+    let corrVelAlong = dot(corrVel, corrDir);
+    
+    // Apply conservative velocity correction
+    let vNBefore = dot(${particleVar}.velocity, corrDir);
+    let vNAfterCandidate = vNBefore + corrVelAlong;
+    let vNAfter = select(vNBefore, vNAfterCandidate, abs(vNAfterCandidate) < abs(vNBefore));
+    ${particleVar}.velocity = ${particleVar}.velocity + corrDir * (vNAfter - vNBefore);
+  }
+  
+  // Damping for very small movements
+  let v2_total = dot(${particleVar}.velocity, ${particleVar}.velocity);
+  if (disp2 < 1e-8 && v2_total < 0.5) {
+    ${particleVar}.velocity = vec2<f32>(0.0, 0.0);
+  }
+}`;
+```
+
+This pattern is used in `collisions.ts` to prevent velocity artifacts from collision resolution while preserving realistic collision responses.
 
 ### Render modules
 

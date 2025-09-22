@@ -271,6 +271,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   const stateStmts: string[] = [];
   const applyStmts: string[] = [];
   const constrainStmts: string[] = [];
+  const correctStmts: string[] = [];
   const fn = (kind: string, name: string) => `${kind}_${name}`;
   const makeGetSet = (modName: string) => {
     const get = (name: string, pidVar = "index") => {
@@ -359,6 +360,31 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
   });
 
+  descriptors.forEach((mod) => {
+    if (mod.role !== ModuleRole.Force || !(mod as any).correct) return;
+    const layout = layouts.find((l) => l.moduleName === mod.name)!;
+    const { get } = makeGetSet(mod.name);
+    const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const body = mod.correct?.({
+      particleVar: "particle",
+      dtVar: dtExpr,
+      prevPosVar: "prevPos",
+      postPosVar: "postPos", 
+      getUniform,
+      getState: get,
+    });
+    if (body && body.trim()) {
+      const enabled = layout.mapping.enabled.expr;
+      const name = fn("correct", mod.name);
+      moduleFns.push(
+        `fn ${name}(particle: ptr<function, Particle>, index: u32, prevPos: vec2<f32>, postPos: vec2<f32>) {\n  ${body.trim()}\n}`
+      );
+      correctStmts.push(
+        `if (${enabled} != 0.0) { ${name}(&particle, index, prevPos, postPos); }`
+      );
+    }
+  });
+
   const statePass = `@compute @workgroup_size(64)\nfn state_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = u32(${countExpr});\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass == 0.0) { return; }\n  ${stateStmts.join(
     "\n  "
   )}\n  particles[index] = particle;\n}`;
@@ -369,7 +395,9 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   const constrainPass = `@compute @workgroup_size(64)\nfn constrain_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = u32(${countExpr});\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass == 0.0) { return; }\n  ${constrainStmts.join(
     "\n  "
   )}\n  particles[index] = particle;\n}`;
-  const correctPass = `@compute @workgroup_size(64)\nfn correct_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = u32(${countExpr});\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass == 0.0) { return; }\n  let prevPos = vec2<f32>(sim_state_read(index, 0u), sim_state_read(index, 1u));\n  let posAfterIntegration = vec2<f32>(sim_state_read(index, 2u), sim_state_read(index, 3u));\n  let disp = particle.position - prevPos;\n  let disp2 = dot(disp, disp);\n  let corr = particle.position - posAfterIntegration;\n  let corr2 = dot(corr, corr);\n  if (corr2 > 0.0 && ${dtExpr} > 0.0) {\n    let corrLenInv = inverseSqrt(corr2);\n    let corrDir = corr * corrLenInv;\n    let corrVel = corr / ${dtExpr};\n    let corrVelAlong = dot(corrVel, corrDir);\n    let vNBefore = dot(particle.velocity, corrDir);\n    let vNAfterCandidate = vNBefore + corrVelAlong;\n    let vNAfter = select(vNBefore, vNAfterCandidate, abs(vNAfterCandidate) < abs(vNBefore));\n    particle.velocity = particle.velocity + corrDir * (vNAfter - vNBefore);\n  }\n  let v2_total = dot(particle.velocity, particle.velocity);\n  if (disp2 < 1e-8 && v2_total < 0.5) {\n    particle.velocity = vec2<f32>(0.0, 0.0);\n  }\n  particles[index] = particle;\n}`;
+  const correctPass = `@compute @workgroup_size(64)\nfn correct_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = u32(${countExpr});\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass == 0.0) { return; }\n  \n  // Compute position variables from integration state\n  let prevPos = vec2<f32>(sim_state_read(index, 0u), sim_state_read(index, 1u));\n  let postPos = vec2<f32>(sim_state_read(index, 2u), sim_state_read(index, 3u));\n  \n  ${correctStmts.join(
+    "\n  "
+  )}\n  particles[index] = particle;\n}`;
   const mainPass = `@compute @workgroup_size(64)\nfn main(@builtin(global_invocation_id) _gid: vec3<u32>) {}`;
 
   const code = [

@@ -123,6 +123,8 @@ export interface WebGPUForceDescriptor<
   correct?: (args: {
     particleVar: string;
     dtVar: string;
+    prevPosVar: string;
+    postPosVar: string;
     getUniform: (id: InputKeys) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
@@ -246,6 +248,8 @@ export interface CPUForceDescriptor<
       radius: number
     ) => Particle[];
     dt: number;
+    prevPos: { x: number; y: number };
+    postPos: { x: number; y: number };
     input: Record<InputKeys, number>;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
