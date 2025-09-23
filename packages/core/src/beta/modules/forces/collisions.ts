@@ -161,6 +161,9 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
   }
 
   cpu(): CPUDescriptor<CollisionInputKeys> {
+    // Helper function equivalent to GLSL fract()
+    const fract = (x: number) => x - Math.floor(x);
+    
     return {
       constrain: ({ particle, getNeighbors, input }) => {
         // Find deepest overlap neighbor to reduce scan-order bias
@@ -199,7 +202,7 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
           // Generate pseudo-random separation direction based on particle IDs (matching WebGPU logic)
           const seed = particle.id * 73 + identicalPositionOther.id * 37;
           const h = seed * 0.01234567;
-          const angle = ((Math.sin(h) * 43758.5453) % 1) * 6.283185307; // 0 to 2*PI
+          const angle = fract(Math.sin(h) * 43758.5453) * 6.283185307; // 0 to 2*PI
           const sepDist = (identicalPositionOther.size + particle.size) * 0.51; // Slightly more than touching
 
           const separationX = Math.cos(angle) * sepDist;
@@ -215,10 +218,10 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
           // Pseudo-random helpers based on world position to avoid index-order bias
           const h1 =
             particle.position.x * 12.9898 + particle.position.y * 78.233;
-          const rand1 = (Math.sin(h1) * 43758.5453) % 1;
+          const rand1 = fract(Math.sin(h1) * 43758.5453);
           const h2 =
             particle.position.x * 93.9898 + particle.position.y * 67.345;
-          const rand2 = (Math.sin(h2) * 15731.7431) % 1;
+          const rand2 = fract(Math.sin(h2) * 15731.7431);
 
           // Symmetry breaking: if nearly vertical or horizontal alignment, slightly rotate normal
           const ax = Math.abs(n.x);

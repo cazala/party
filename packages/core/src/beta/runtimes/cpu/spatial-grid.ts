@@ -166,7 +166,7 @@ export class SpatialGrid {
           const cellParticles = this.grid[row][col];
           for (const candidate of cellParticles) {
             const distance = point.distance(candidate.position);
-            if (distance > 0 && distance < radius) {
+            if (distance < radius) {
               neighbors.push(candidate);
             }
           }
