@@ -232,15 +232,15 @@ export class Environment extends Module<"environment", EnvInputKeys> {
     return {
       apply: ({ particle, dt, input, view }) => {
         const gdir = new Vector(input.dirX, input.dirY);
-        const size = view.getSize();
+        
         if (input.mode === 1) {
-          const cx = size.width / 2;
-          const cy = size.height / 2;
-          gdir.set(cx, cy).subtract(particle.position);
+          // Inwards gravity: center is camera position (matches WebGPU grid center)
+          const camera = view.getCamera();
+          gdir.set(camera.x, camera.y).subtract(particle.position);
         } else if (input.mode === 2) {
-          const cx = size.width / 2;
-          const cy = size.height / 2;
-          gdir.set(particle.position.x - cx, particle.position.y - cy);
+          // Outwards gravity: center is camera position (matches WebGPU grid center)
+          const camera = view.getCamera();
+          gdir.set(particle.position.x - camera.x, particle.position.y - camera.y);
         }
         const glen = gdir.magnitude();
         if (glen > 0) {
