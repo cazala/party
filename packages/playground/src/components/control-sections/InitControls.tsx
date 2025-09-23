@@ -8,7 +8,7 @@ import {
 import { ColorSelector } from "../ColorSelector";
 import { calculateMassFromSize } from "../../utils/particle";
 
-const DEFAULT_SPAWN_NUM_PARTICLES = 10000;
+const DEFAULT_SPAWN_NUM_PARTICLES = 100;
 const DEFAULT_SPAWN_SHAPE = "grid";
 const DEFAULT_SPAWN_SPACING = 12;
 const DEFAULT_SPAWN_PARTICLE_SIZE = 5;
@@ -44,22 +44,8 @@ interface InitControlsProps {
     innerRadius?: number,
     squareSize?: number,
     cornerRadius?: number,
-    particleMass?: number,
+    particleMass?: number
   ) => void;
-  onGetInitConfig?: () => {
-    numParticles: number;
-    shape: "grid" | "random" | "circle" | "donut" | "square";
-    spacing: number;
-    particleSize: number;
-    radius?: number;
-    colors?: string[];
-    velocityConfig?: InitVelocityConfig;
-    camera?: { x: number; y: number; zoom: number };
-    innerRadius?: number;
-    squareSize?: number;
-    cornerRadius?: number;
-    particleMass?: number;
-  };
   onParticleSizeChange?: (size: number) => void;
   onColorsChange?: (colors: string[]) => void;
   getCurrentCamera?: () => { x: number; y: number; zoom: number };
@@ -98,13 +84,7 @@ export interface InitControlsRef {
 
 export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
   (
-    {
-      onInitParticles,
-      onGetInitConfig,
-      onParticleSizeChange,
-      onColorsChange,
-      getCurrentCamera,
-    },
+    { onInitParticles, onParticleSizeChange, onColorsChange, getCurrentCamera },
     ref
   ) => {
     const [numParticles, setNumParticles] = useState(
@@ -227,40 +207,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       colors,
       velocityConfig,
       skipResetRef,
-    ]);
-
-    useEffect(() => {
-      if (onGetInitConfig) {
-        const getConfig = () => ({
-          numParticles,
-          shape: spawnShape,
-          spacing,
-          particleSize,
-          particleMass,
-          radius,
-          colors: colors.length > 0 ? colors : undefined,
-          velocityConfig,
-          camera: getCurrentCamera ? getCurrentCamera() : undefined,
-          innerRadius,
-          squareSize,
-          cornerRadius,
-        });
-        (window as any).__getInitConfig = getConfig;
-      }
-    }, [
-      onGetInitConfig,
-      numParticles,
-      spawnShape,
-      spacing,
-      particleSize,
-      particleMass,
-      radius,
-      innerRadius,
-      squareSize,
-      cornerRadius,
-      colors,
-      velocityConfig,
-      getCurrentCamera,
     ]);
 
     const handleSpawnChange = (
@@ -586,7 +532,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
             </div>
           </>
         )}
-
 
         <ColorSelector colors={colors} onColorsChange={handleColorsChange} />
 

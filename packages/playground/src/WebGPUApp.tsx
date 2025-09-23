@@ -2,7 +2,7 @@ import { useWebGPUPlayground } from "./hooks/useWebGPUPlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useToolMode } from "./hooks/useToolMode";
 import { useFullscreen } from "./hooks/useFullscreen";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TopBar } from "./components/TopBar";
 import {
   InitControls,
@@ -276,22 +276,6 @@ function WebGPUApp() {
             <InitControls
               ref={initControlsRef}
               onInitParticles={isInitialized ? spawnParticles : undefined}
-              onGetInitConfig={() => ({
-                numParticles: 10000,
-                shape: "grid" as const,
-                spacing: 25,
-                particleSize: 5,
-                radius: 100,
-                colors: undefined,
-                velocityConfig: {
-                  speed: 0,
-                  direction: "random" as const,
-                  angle: 0,
-                },
-                innerRadius: 50,
-                squareSize: 200,
-                cornerRadius: 0,
-              })}
             />
           </CollapsibleSection>
 
