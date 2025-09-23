@@ -13,9 +13,13 @@ import type { ViewSnapshot } from "../../view";
 export class SpacialGrid {
   private cols: number = 0;
   private rows: number = 0;
-  private cellSize: number = 16;
+  private cellSize: number;
   private maxPerCell: number = 256;
   private lastView: ViewSnapshot | null = null;
+
+  constructor(cellSize: number = 16) {
+    this.cellSize = cellSize;
+  }
 
   configure(
     view: ViewSnapshot,

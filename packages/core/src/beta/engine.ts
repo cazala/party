@@ -16,6 +16,7 @@ export class Engine implements IEngine {
     runtime: RuntimeType;
     constrainIterations?: number;
     clearColor?: { r: number; g: number; b: number; a: number };
+    cellSize?: number;
     maxParticles?: number;
     workgroupSize?: number;
   }) {

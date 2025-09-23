@@ -16,13 +16,14 @@ export class CPUEngine extends AbstractEngine {
     render: Module[];
     constrainIterations?: number;
     clearColor?: { r: number; g: number; b: number; a: number };
+    cellSize?: number;
   }) {
     super(options);
     this.canvas = options.canvas;
     this.grid = new SpatialGrid({
       width: this.canvas.width,
       height: this.canvas.height,
-      cellSize: 100,
+      cellSize: this.cellSize,
     });
   }
 

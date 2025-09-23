@@ -40,6 +40,7 @@ export class WebGPUEngine extends AbstractEngine {
     render: Module[];
     constrainIterations?: number;
     clearColor?: { r: number; g: number; b: number; a: number };
+    cellSize?: number;
     maxParticles?: number;
     workgroupSize?: number;
   }) {
@@ -51,7 +52,7 @@ export class WebGPUEngine extends AbstractEngine {
     this.registry = new ModuleRegistry([...options.forces, ...options.render]);
     this.sim = new SimulationPipeline();
     this.render = new RenderPipeline();
-    this.grid = new SpacialGrid();
+    this.grid = new SpacialGrid(this.cellSize);
   }
 
   async initialize(): Promise<void> {
