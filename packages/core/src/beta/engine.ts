@@ -83,8 +83,6 @@ export class Engine implements IEngine {
         console.warn(
           "Auto runtime selection: Using CPU (WebGPU not available or failed)"
         );
-      } else {
-        console.log("Auto runtime selection: Using WebGPU");
       }
     }
   }
