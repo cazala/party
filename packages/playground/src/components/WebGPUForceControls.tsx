@@ -77,7 +77,7 @@ export function WebGPUForceControls({
   return (
     <div className="controls-panel">
       <div className="controls-header">
-        <h3>Forces</h3>
+        <h3>Modules</h3>
       </div>
 
       <CollapsibleSection title="Environment" defaultOpen={true}>

@@ -216,6 +216,10 @@ export class SpatialGrid {
     this.updateBounds(this.cameraX, this.cameraY, this.zoom);
   }
 
+  getCellSize(): number {
+    return this.cellSize;
+  }
+
   setCellSize(cellSize: number): void {
     this.cellSize = cellSize;
     // Update bounds with new cell size

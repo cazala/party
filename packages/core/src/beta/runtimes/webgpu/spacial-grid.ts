@@ -67,6 +67,19 @@ export class SpacialGrid {
     return this.cols * this.rows;
   }
 
+  getCellSize(): number {
+    return this.cellSize;
+  }
+
+  setCellSize(cellSize: number): void {
+    if (cellSize <= 0) {
+      throw new Error("Cell size must be greater than 0");
+    }
+    this.cellSize = cellSize;
+    // Clear last view to force reconfiguration on next resizeIfNeeded/configure call
+    this.lastView = null;
+  }
+
   private computeGrid(view: ViewSnapshot): {
     minX: number;
     minY: number;

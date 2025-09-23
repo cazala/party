@@ -36,6 +36,14 @@ export interface IEngine {
   getFPS(): number;
   export(): Record<string, Record<string, number>>;
   import(settings: Record<string, Record<string, number>>): void;
+  
+  // Configuration getters and setters
+  getClearColor(): { r: number; g: number; b: number; a: number };
+  setClearColor(color: { r: number; g: number; b: number; a: number }): void;
+  getCellSize(): number;
+  setCellSize(size: number): void;
+  getConstrainIterations(): number;
+  setConstrainIterations(iterations: number): void;
 }
 
 export abstract class AbstractEngine implements IEngine {
@@ -179,6 +187,53 @@ export abstract class AbstractEngine implements IEngine {
   }
 
   protected onModuleSettingsChanged(): void {
+    // Override in subclasses if needed
+  }
+
+  // Configuration getters and setters
+  getClearColor(): { r: number; g: number; b: number; a: number } {
+    return { ...this.clearColor };
+  }
+
+  setClearColor(color: { r: number; g: number; b: number; a: number }): void {
+    this.clearColor = { ...color };
+    this.onClearColorChanged();
+  }
+
+  getCellSize(): number {
+    return this.cellSize;
+  }
+
+  setCellSize(size: number): void {
+    if (size <= 0) {
+      throw new Error("Cell size must be greater than 0");
+    }
+    this.cellSize = size;
+    this.onCellSizeChanged();
+  }
+
+  getConstrainIterations(): number {
+    return this.constrainIterations;
+  }
+
+  setConstrainIterations(iterations: number): void {
+    if (iterations < 0) {
+      throw new Error("Constrain iterations must be non-negative");
+    }
+    this.constrainIterations = iterations;
+    this.onConstrainIterationsChanged();
+  }
+
+  // Protected hooks for subclasses to override
+  protected onClearColorChanged(): void {
+    // Override in subclasses if needed
+  }
+
+  protected onCellSizeChanged(): void {
+    // Override in subclasses if needed
+  }
+
+  protected onConstrainIterationsChanged(): void {
     // Override in subclasses if needed
   }
 }

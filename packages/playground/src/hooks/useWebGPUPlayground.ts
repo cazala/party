@@ -30,6 +30,7 @@ export function useWebGPUPlayground(
   const trailsRef = useRef<Trails | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useWebGPU, setUseWebGPU] = useState(false);
 
@@ -50,6 +51,9 @@ export function useWebGPUPlayground(
       size: { width: number; height: number };
       camera: { x: number; y: number };
       zoom: number;
+    };
+    engineConfig?: {
+      clearColor: { r: number; g: number; b: number; a: number };
     };
   }>({});
 
@@ -175,6 +179,8 @@ export function useWebGPUPlayground(
       setError(null);
     }
 
+    setIsInitializing(true);
+
     async function waitForCanvasAndInit() {
       // Wait a bit for React to recreate the canvas with new key
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -192,10 +198,14 @@ export function useWebGPUPlayground(
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      if (cancelled) return;
+      if (cancelled) {
+        setIsInitializing(false);
+        return;
+      }
 
       if (!canvasRef.current) {
         setError("Canvas element not available");
+        setIsInitializing(false);
         return;
       }
 
@@ -319,7 +329,8 @@ export function useWebGPUPlayground(
         // Restore captured state if available (after engine is fully set up)
         if (
           engineStateRef.current.particles ||
-          engineStateRef.current.moduleSettings
+          engineStateRef.current.moduleSettings ||
+          engineStateRef.current.engineConfig
         ) {
           // First, restore module settings using dynamic import
           if (engineStateRef.current.moduleSettings && engineRef.current) {
@@ -329,6 +340,19 @@ export function useWebGPUPlayground(
               console.error(
                 "Failed to restore module settings:",
                 settingsError
+              );
+            }
+          }
+
+          // Restore engine configuration
+          if (engineStateRef.current.engineConfig && engineRef.current) {
+            try {
+              const config = engineStateRef.current.engineConfig;
+              engineRef.current.setClearColor(config.clearColor);
+            } catch (configError) {
+              console.error(
+                "Failed to restore engine configuration:",
+                configError
               );
             }
           }
@@ -402,11 +426,13 @@ export function useWebGPUPlayground(
         }
 
         setIsInitialized(true);
+        setIsInitializing(false);
       } catch (err) {
         setError(
           `${useWebGPU ? "WebGPU" : "CPU"} initialization failed: ` +
             (err as Error).message
         );
+        setIsInitializing(false);
       }
     }
 
@@ -652,6 +678,11 @@ export function useWebGPUPlayground(
           zoom: captureZoom,
         };
 
+        // Capture engine configuration
+        engineStateRef.current.engineConfig = {
+          clearColor: engineRef.current.getClearColor(),
+        };
+
         // Capture module settings using dynamic export
         const moduleSettings = engineRef.current.export();
         engineStateRef.current.moduleSettings = moduleSettings;
@@ -680,6 +711,7 @@ export function useWebGPUPlayground(
     trails: trailsRef.current,
     interaction: interactionRef.current,
     isInitialized,
+    isInitializing,
     error,
     spawnParticles,
     play,

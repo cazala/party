@@ -92,4 +92,24 @@ export class Engine implements IEngine {
   import(settings: Record<string, Record<string, number>>): void {
     this.engine.import(settings);
   }
+  
+  // Configuration getters and setters
+  getClearColor(): { r: number; g: number; b: number; a: number } {
+    return this.engine.getClearColor();
+  }
+  setClearColor(color: { r: number; g: number; b: number; a: number }): void {
+    this.engine.setClearColor(color);
+  }
+  getCellSize(): number {
+    return this.engine.getCellSize();
+  }
+  setCellSize(size: number): void {
+    this.engine.setCellSize(size);
+  }
+  getConstrainIterations(): number {
+    return this.engine.getConstrainIterations();
+  }
+  setConstrainIterations(iterations: number): void {
+    this.engine.setConstrainIterations(iterations);
+  }
 }

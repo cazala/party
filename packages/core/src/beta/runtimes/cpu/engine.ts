@@ -144,6 +144,22 @@ export class CPUEngine extends AbstractEngine {
     this.grid.clear();
   }
 
+  // Handle configuration changes
+  protected onClearColorChanged(): void {
+    // Clear color changes don't require any immediate system updates
+    // The new color will be used in the next render pass
+  }
+
+  protected onCellSizeChanged(): void {
+    // Rebuild spatial grid with new cell size
+    this.grid.setCellSize(this.cellSize);
+  }
+
+  protected onConstrainIterationsChanged(): void {
+    // Constrain iterations changes don't require any immediate system updates
+    // The new value will be used in the next simulation pass
+  }
+
   private animate = (): void => {
     const dt = this.getTimeDelta();
     this.updateFPS(dt);

@@ -44,7 +44,10 @@ export class WebGPUEngine extends AbstractEngine {
     maxParticles?: number;
     workgroupSize?: number;
   }) {
-    super(options);
+    super({
+      ...options,
+      constrainIterations: options.constrainIterations ?? 50, // Higher default for WebGPU
+    });
     this.maxParticles = options.maxParticles ?? 100000;
     this.workgroupSize = options.workgroupSize ?? 64;
     this.resources = new GPUResources({ canvas: options.canvas });
@@ -221,5 +224,31 @@ export class WebGPUEngine extends AbstractEngine {
   // Override onModuleSettingsChanged to sync to GPU
   protected onModuleSettingsChanged(): void {
     this.registry.writeAllModuleUniforms();
+  }
+
+  // Handle configuration changes
+  protected onClearColorChanged(): void {
+    // Clear color changes don't require any immediate system updates
+    // The new color will be used in the next render pass
+  }
+
+  protected onCellSizeChanged(): void {
+    // Update spatial grid with new cell size
+    this.grid.setCellSize(this.cellSize);
+    
+    // If initialized, reconfigure the grid with current view
+    if (this.resources && this.view) {
+      try {
+        const program = this.registry.getProgram();
+        this.grid.configure(this.view.getSnapshot(), this.resources, program);
+      } catch (error) {
+        // Ignore if not fully initialized yet
+      }
+    }
+  }
+
+  protected onConstrainIterationsChanged(): void {
+    // Constrain iterations changes don't require any immediate system updates
+    // The new value will be used in the next simulation pass
   }
 }
