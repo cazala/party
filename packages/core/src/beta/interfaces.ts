@@ -43,7 +43,8 @@ export abstract class AbstractEngine implements IEngine {
   protected lastTime: number = 0;
   protected fpsEstimate: number = 60;
   protected fpsSmoothing: number = 0.15;
-  protected constrainIterations: number = 5;
+  protected constrainIterations: number;
+  protected clearColor: { r: number; g: number; b: number; a: number };
   protected view: View;
   protected modules: Module[];
 
@@ -51,9 +52,13 @@ export abstract class AbstractEngine implements IEngine {
     canvas: HTMLCanvasElement;
     forces: Module[];
     render: Module[];
+    constrainIterations?: number;
+    clearColor?: { r: number; g: number; b: number; a: number };
   }) {
     this.view = new View(options.canvas.width, options.canvas.height);
     this.modules = [...options.forces, ...options.render];
+    this.constrainIterations = options.constrainIterations ?? 5;
+    this.clearColor = options.clearColor ?? { r: 0, g: 0, b: 0, a: 1 };
   }
 
   // Abstract methods that must be implemented by subclasses

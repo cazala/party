@@ -3,7 +3,6 @@ import { Module, ModuleRole, CanvasComposition } from "../../module";
 import { SpatialGrid } from "./spatial-grid";
 import { Particle } from "../../particle";
 import { Vector } from "../../vector";
-import { DEFAULTS } from "../../config";
 
 export class CPUEngine extends AbstractEngine {
   private particles: Particle[] = [];
@@ -15,6 +14,8 @@ export class CPUEngine extends AbstractEngine {
     canvas: HTMLCanvasElement;
     forces: Module[];
     render: Module[];
+    constrainIterations?: number;
+    clearColor?: { r: number; g: number; b: number; a: number };
   }) {
     super(options);
     this.canvas = options.canvas;
@@ -419,10 +420,9 @@ export class CPUEngine extends AbstractEngine {
       });
 
       if (needsClearing) {
-        const clearColor = DEFAULTS.clearColor;
-        context.fillStyle = `rgba(${clearColor.r * 255}, ${
-          clearColor.g * 255
-        }, ${clearColor.b * 255}, ${clearColor.a})`;
+        context.fillStyle = `rgba(${this.clearColor.r * 255}, ${
+          this.clearColor.g * 255
+        }, ${this.clearColor.b * 255}, ${this.clearColor.a})`;
         context.fillRect(0, 0, context.canvas.width, context.canvas.height);
       }
     }
@@ -446,7 +446,7 @@ export class CPUEngine extends AbstractEngine {
             context,
             input,
             view: this.view,
-            clearColor: DEFAULTS.clearColor,
+            clearColor: this.clearColor,
             utils,
           });
 

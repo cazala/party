@@ -10,7 +10,6 @@
  */
 import type { FullscreenRenderPass, ComputeRenderPass } from "../../../module";
 import { ModuleUniformLayout } from "./program";
-import { DEFAULTS } from "../../../config";
 
 // --- Internal helpers to reduce duplication ---
 function buildModuleUniformStruct(
@@ -37,13 +36,14 @@ function makeGetUniformExpr(
 }
 
 function getUniformForFullscreen(
-  lookupExpr: (id: string) => string
+  lookupExpr: (id: string) => string,
+  clearColor: { r: number; g: number; b: number; a: number }
 ): (id: string) => string {
   const toFloatLiteral = (n: number) =>
     Number.isInteger(n) ? `${n}.0` : `${n}`;
-  const cr = toFloatLiteral(DEFAULTS.clearColor.r);
-  const cg = toFloatLiteral(DEFAULTS.clearColor.g);
-  const cb = toFloatLiteral(DEFAULTS.clearColor.b);
+  const cr = toFloatLiteral(clearColor.r);
+  const cg = toFloatLiteral(clearColor.g);
+  const cb = toFloatLiteral(clearColor.b);
   return (id: string) =>
     id === "canvasWidth"
       ? "render_uniforms.canvas_size.x"
@@ -59,13 +59,14 @@ function getUniformForFullscreen(
 }
 
 function getUniformForCompute(
-  lookupExpr: (id: string) => string
+  lookupExpr: (id: string) => string,
+  clearColor: { r: number; g: number; b: number; a: number }
 ): (id: string) => string {
   const toFloatLiteral = (n: number) =>
     Number.isInteger(n) ? `${n}.0` : `${n}`;
-  const cr = toFloatLiteral(DEFAULTS.clearColor.r);
-  const cg = toFloatLiteral(DEFAULTS.clearColor.g);
-  const cb = toFloatLiteral(DEFAULTS.clearColor.b);
+  const cr = toFloatLiteral(clearColor.r);
+  const cg = toFloatLiteral(clearColor.g);
+  const cb = toFloatLiteral(clearColor.b);
   return (id: string) =>
     id === "canvasWidth"
       ? "f32(textureDimensions(input_texture).x)"
@@ -90,7 +91,8 @@ function moduleUniformBindingDecl(
 export function buildFullscreenPassWGSL<Keys extends string = string>(
   pass: FullscreenRenderPass<Keys>,
   moduleName: string,
-  layout: ModuleUniformLayout
+  layout: ModuleUniformLayout,
+  clearColor: { r: number; g: number; b: number; a: number }
 ): string {
   // build WGSL
   const struct = buildModuleUniformStruct(moduleName, layout);
@@ -99,7 +101,7 @@ export function buildFullscreenPassWGSL<Keys extends string = string>(
   const instanced = pass.instanced ?? true;
 
   const fragment = pass.fragment({
-    getUniform: getUniformForFullscreen(uniformExpr),
+    getUniform: getUniformForFullscreen(uniformExpr, clearColor),
     sampleScene: (uvExpr: string) =>
       `textureSampleLevel(scene_texture, scene_sampler, ${uvExpr}, 0.0)`,
   });
@@ -107,7 +109,7 @@ export function buildFullscreenPassWGSL<Keys extends string = string>(
   // Vertex hook and defaults
   const vertexBodyHook = pass.vertex
     ? pass.vertex({
-        getUniform: getUniformForFullscreen(uniformExpr),
+        getUniform: getUniformForFullscreen(uniformExpr, clearColor),
       } as any)
     : null;
 
@@ -182,6 +184,7 @@ export function buildComputeImagePassWGSL<Keys extends string = string>(
   pass: ComputeRenderPass<Keys>,
   moduleName: string,
   layout: ModuleUniformLayout,
+  clearColor: { r: number; g: number; b: number; a: number },
   workgroup: [number, number, number] = [8, 8, 1]
 ): string {
   // struct and uniform lookup
@@ -190,7 +193,7 @@ export function buildComputeImagePassWGSL<Keys extends string = string>(
 
   // kernel
   const kernelBody = pass.kernel({
-    getUniform: getUniformForCompute(uniformExpr) as any,
+    getUniform: getUniformForCompute(uniformExpr, clearColor) as any,
     readScene: (coordsExpr: string) =>
       `textureLoad(input_texture, ${coordsExpr}, 0)`,
     writeScene: (coordsExpr: string, colorExpr: string) =>

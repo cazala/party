@@ -14,6 +14,10 @@ export class Engine implements IEngine {
     forces: Module[];
     render: Module[];
     runtime: RuntimeType;
+    constrainIterations?: number;
+    clearColor?: { r: number; g: number; b: number; a: number };
+    maxParticles?: number;
+    workgroupSize?: number;
   }) {
     this.runtime = options.runtime;
     if (options.runtime === "webgpu") {

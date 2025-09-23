@@ -14,7 +14,6 @@
  * - Drive per-frame simulation passes and render passes into ping-pong scene textures
  * - Present the final texture to the canvas, tracking an EMA FPS estimate
  */
-import { DEFAULTS } from "../../config";
 import type { Module } from "../../module";
 import { GPUResources } from "./gpu-resources";
 import { ParticleStore } from "./particle-store";
@@ -31,15 +30,22 @@ export class WebGPUEngine extends AbstractEngine {
   private sim: SimulationPipeline;
   private render: RenderPipeline;
   private grid: SpacialGrid;
-  private maxParticles: number = DEFAULTS.maxParticles;
+  private maxParticles: number;
+  private workgroupSize: number;
   private simStrideValue: number = 0;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
     forces: Module[];
     render: Module[];
+    constrainIterations?: number;
+    clearColor?: { r: number; g: number; b: number; a: number };
+    maxParticles?: number;
+    workgroupSize?: number;
   }) {
     super(options);
+    this.maxParticles = options.maxParticles ?? 100000;
+    this.workgroupSize = options.workgroupSize ?? 64;
     this.resources = new GPUResources({ canvas: options.canvas });
     this.particles = new ParticleStore(this.maxParticles, 12);
     this.registry = new ModuleRegistry([...options.forces, ...options.render]);
@@ -181,7 +187,7 @@ export class WebGPUEngine extends AbstractEngine {
     this.sim.runPasses(encoder, this.resources, {
       particleCount: this.particles.getCount(),
       gridCellCount: this.grid.getCellCount(),
-      workgroupSize: DEFAULTS.workgroupSize,
+      workgroupSize: this.workgroupSize,
       constrainIterations: this.constrainIterations,
     });
 
@@ -191,7 +197,8 @@ export class WebGPUEngine extends AbstractEngine {
       this.registry.getProgram(),
       this.resources,
       this.view.getSize(),
-      this.particles.getCount()
+      this.particles.getCount(),
+      this.clearColor
     );
 
     this.render.present(encoder, this.resources, lastView);

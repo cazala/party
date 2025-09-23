@@ -23,7 +23,6 @@ import {
   buildComputeImagePassWGSL,
   buildFullscreenPassWGSL,
 } from "./builders/render-pass";
-import { DEFAULTS } from "../../config";
 
 /**
  * Run a fullscreen rasterization pass that draws a screen-aligned quad.
@@ -81,7 +80,8 @@ export class RenderPipeline {
     program: Program,
     resources: GPUResources,
     viewSize: { width: number; height: number },
-    particleCount: number
+    particleCount: number,
+    clearColor: { r: number; g: number; b: number; a: number }
   ): GPUTextureView {
     let currentView = resources.getCurrentSceneTextureView();
     let otherView = resources.getOtherSceneTextureView();
@@ -109,7 +109,8 @@ export class RenderPipeline {
             pass,
             views,
             resources,
-            particleCount
+            particleCount,
+            clearColor
           );
           wrote = pass.writesScene ? "current" : null;
         }
@@ -122,7 +123,8 @@ export class RenderPipeline {
             pass,
             views,
             resources,
-            viewSize
+            viewSize,
+            clearColor
           );
           wrote = pass.writesScene ? "other" : null;
         }
@@ -188,10 +190,11 @@ export class RenderPipeline {
       anyWrites: boolean;
     },
     resources: GPUResources,
-    particleCount: number
+    particleCount: number,
+    clearColor: { r: number; g: number; b: number; a: number }
   ): void {
     // Generate WGSL for the fullscreen pass
-    const wgsl = buildFullscreenPassWGSL(pass, moduleName, layout);
+    const wgsl = buildFullscreenPassWGSL(pass, moduleName, layout, clearColor);
 
     // Acquire or create a cached render pipeline for the generated WGSL
     const pipeline = resources.getOrCreateFullscreenRenderPipeline(wgsl);
@@ -212,7 +215,7 @@ export class RenderPipeline {
       colorAttachments: [
         {
           view: views.currentView,
-          clearValue: DEFAULTS.clearColor,
+          clearValue: clearColor,
           loadOp: views.anyWrites ? "load" : "clear",
           storeOp: "store",
         },
@@ -236,10 +239,11 @@ export class RenderPipeline {
       anyWrites: boolean;
     },
     resources: GPUResources,
-    size: { width: number; height: number }
+    size: { width: number; height: number },
+    clearColor: { r: number; g: number; b: number; a: number }
   ): void {
     // Generate WGSL for the compute pass
-    const wgsl = buildComputeImagePassWGSL(pass, moduleName, layout);
+    const wgsl = buildComputeImagePassWGSL(pass, moduleName, layout, clearColor);
     // Acquire or create a cached compute pipeline
     const pipeline = resources.getOrCreateImageComputePipeline(wgsl);
     const muf = resources
