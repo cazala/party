@@ -260,6 +260,198 @@ export class Behavior extends Module<"behavior", BehaviorInputKeys> {
   }
 
   cpu(): CPUDescriptor<BehaviorInputKeys> {
-    throw new Error("Not implemented");
+    return {
+      apply: ({ particle, getNeighbors }) => {
+        // Get behavior parameters
+        const viewR = this.readValue("viewRadius");
+        const sepRange = this.readValue("separationRange");
+        const wSep = this.readValue("separationWeight");
+        const wAli = this.readValue("alignmentWeight");
+        const wCoh = this.readValue("cohesionWeight");
+        const wChase = this.readValue("chaseWeight");
+        const wAvoid = this.readValue("avoidWeight");
+        const wWander = this.readValue("wanderWeight");
+        const halfAngle = this.readValue("viewAngle") * 0.5;
+        const cosHalf = Math.cos(halfAngle);
+
+        // Accumulators
+        let sepX = 0,
+          sepY = 0;
+        let aliX = 0,
+          aliY = 0;
+        let cohPosX = 0,
+          cohPosY = 0;
+        let cohCount = 0;
+        let aliCount = 0;
+
+        // Normalize particle velocity for FOV; if zero, skip FOV filtering
+        const vMag2 =
+          particle.velocity.x * particle.velocity.x +
+          particle.velocity.y * particle.velocity.y;
+        const hasVel = vMag2 > 1e-6;
+        let vNormX = 1,
+          vNormY = 0;
+        if (hasVel) {
+          const vMag = Math.sqrt(vMag2);
+          vNormX = particle.velocity.x / vMag;
+          vNormY = particle.velocity.y / vMag;
+        }
+
+        // Get neighbors within view radius using spatial grid
+        const neighbors = getNeighbors(particle.position, viewR);
+
+        for (const other of neighbors) {
+          if (other.id === particle.id) continue; // Skip self
+
+          const toOtherX = other.position.x - particle.position.x;
+          const toOtherY = other.position.y - particle.position.y;
+          const dist2 = toOtherX * toOtherX + toOtherY * toOtherY;
+
+          if (dist2 <= 0.0) continue;
+
+          const dist = Math.sqrt(dist2);
+          if (dist >= viewR) continue;
+
+          // Field of view check
+          if (hasVel) {
+            const dirX = toOtherX / dist;
+            const dirY = toOtherY / dist;
+            const dotProduct = vNormX * dirX + vNormY * dirY;
+            if (dotProduct < cosHalf) continue;
+          }
+
+          // Separation (closer than sepRange)
+          if (dist < sepRange && wSep > 0.0) {
+            const awayX =
+              (particle.position.x - other.position.x) / Math.max(dist, 1e-3);
+            const awayY =
+              (particle.position.y - other.position.y) / Math.max(dist, 1e-3);
+            sepX += awayX;
+            sepY += awayY;
+          }
+
+          // Alignment
+          if (wAli > 0.0) {
+            aliX += other.velocity.x;
+            aliY += other.velocity.y;
+            aliCount += 1.0;
+          }
+
+          // Cohesion
+          if (wCoh > 0.0) {
+            cohPosX += other.position.x;
+            cohPosY += other.position.y;
+            cohCount += 1.0;
+          }
+
+          // Chase / Avoid based on mass relation
+          if (wChase > 0.0 && particle.mass > other.mass) {
+            const massDelta =
+              (particle.mass - other.mass) / Math.max(particle.mass, 1e-6);
+            const seekX =
+              (toOtherX / Math.max(dist, 1e-3)) * (massDelta * particle.mass);
+            const seekY =
+              (toOtherY / Math.max(dist, 1e-3)) * (massDelta * particle.mass);
+            // accumulate into cohesion-like vector
+            cohPosX += particle.position.x + seekX;
+            cohPosY += particle.position.y + seekY;
+            cohCount += 1.0;
+          }
+
+          if (
+            wAvoid > 0.0 &&
+            particle.mass < other.mass &&
+            dist < viewR * 0.5
+          ) {
+            const massDelta =
+              (other.mass - particle.mass) / Math.max(other.mass, 1e-6);
+            let repX = particle.position.x - other.position.x;
+            let repY = particle.position.y - other.position.y;
+            const repLen = Math.sqrt(repX * repX + repY * repY);
+            if (repLen > 0.0) {
+              repX =
+                (repX / repLen) *
+                100000.0 *
+                massDelta *
+                (1.0 / Math.max(repLen, 1.0));
+              repY =
+                (repY / repLen) *
+                100000.0 *
+                massDelta *
+                (1.0 / Math.max(repLen, 1.0));
+              sepX += repX;
+              sepY += repY;
+            }
+          }
+        }
+
+        // Finalize alignment: steer toward avg neighbor velocity
+        if (aliCount > 0.0) {
+          let avgVX = aliX / aliCount;
+          let avgVY = aliY / aliCount;
+          const avgVLen = Math.sqrt(avgVX * avgVX + avgVY * avgVY);
+          if (avgVLen > 0.0) {
+            avgVX = (avgVX / avgVLen) * 1000.0;
+            avgVY = (avgVY / avgVLen) * 1000.0;
+            const steerAliX = avgVX - particle.velocity.x;
+            const steerAliY = avgVY - particle.velocity.y;
+            particle.acceleration.x += steerAliX * wAli;
+            particle.acceleration.y += steerAliY * wAli;
+          }
+        }
+
+        // Finalize cohesion: seek centroid
+        if (cohCount > 0.0) {
+          const centerX = cohPosX / cohCount;
+          const centerY = cohPosY / cohCount;
+          let seekX = centerX - particle.position.x;
+          let seekY = centerY - particle.position.y;
+          const seekLen = Math.sqrt(seekX * seekX + seekY * seekY);
+          if (seekLen > 0.0) {
+            seekX = (seekX / seekLen) * 1000.0 - particle.velocity.x;
+            seekY = (seekY / seekLen) * 1000.0 - particle.velocity.y;
+            particle.acceleration.x += seekX * wCoh;
+            particle.acceleration.y += seekY * wCoh;
+          }
+        }
+
+        // Apply separation
+        const sepLen = Math.sqrt(sepX * sepX + sepY * sepY);
+        if (sepLen > 0.0) {
+          sepX = (sepX / sepLen) * 1000.0 - particle.velocity.x;
+          sepY = (sepY / sepLen) * 1000.0 - particle.velocity.y;
+          particle.acceleration.x += sepX * wSep;
+          particle.acceleration.y += sepY * wSep;
+        }
+
+        // Simple wander: small perturbation perpendicular to velocity (no state)
+        if (wWander > 0.0) {
+          const velX = particle.velocity.x;
+          const velY = particle.velocity.y;
+          const velLen = Math.sqrt(velX * velX + velY * velY);
+
+          let dirX = 1.0,
+            dirY = 0.0;
+          if (velLen > 1e-6) {
+            dirX = velX / velLen;
+            dirY = velY / velLen;
+          }
+
+          const perpX = -dirY;
+          const perpY = dirX;
+
+          // pseudo-random based on position (matching WebGPU logic)
+          const h =
+            particle.position.x * 12.9898 + particle.position.y * 78.233;
+          const fract = (x: number) => x - Math.floor(x);
+          const r = fract(Math.sin(h) * 43758.5453) - 0.5;
+          const jitterX = perpX * (r * 200.0);
+          const jitterY = perpY * (r * 200.0);
+
+          particle.acceleration.x += jitterX * wWander;
+          particle.acceleration.y += jitterY * wWander;
+        }
+      },
+    };
   }
 }

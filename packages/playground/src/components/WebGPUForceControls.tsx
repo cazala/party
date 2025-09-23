@@ -29,6 +29,8 @@ export function WebGPUForceControls({
   trails,
   interaction,
   isSupported,
+  isInitialized,
+  isInitializing,
 }: {
   environment: Environment | null;
   boundary: Boundary | null;
@@ -39,6 +41,8 @@ export function WebGPUForceControls({
   trails?: Trails | null;
   interaction?: Interaction | null;
   isSupported?: (module: any) => boolean;
+  isInitialized?: boolean;
+  isInitializing?: boolean;
 }) {
   const [environmentEnabled, setEnvironmentEnabled] = useState(true);
   const [boundaryEnabled, setBoundaryEnabled] = useState(true);
@@ -157,6 +161,8 @@ export function WebGPUForceControls({
             behavior={behavior}
             hideEnabled
             enabled={behaviorEnabled}
+            isInitialized={isInitialized}
+            isInitializing={isInitializing}
           />
         </CollapsibleSection>
       )}

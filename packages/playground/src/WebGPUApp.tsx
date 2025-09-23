@@ -426,6 +426,8 @@ function WebGPUApp() {
             trails={trails}
             interaction={interaction}
             isSupported={isSupported}
+            isInitialized={isInitialized}
+            isInitializing={isInitializing}
           />
         </div>
       </div>

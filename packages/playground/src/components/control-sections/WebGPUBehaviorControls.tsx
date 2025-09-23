@@ -16,10 +16,14 @@ export function WebGPUBehaviorControls({
   behavior,
   hideEnabled = false,
   enabled = true,
+  isInitialized = true,
+  isInitializing = false,
 }: {
   behavior: Behavior | null;
   hideEnabled?: boolean;
   enabled?: boolean;
+  isInitialized?: boolean;
+  isInitializing?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(true);
   const [wander, setWander] = useState(DEFAULT_BEHAVIOR_WANDER_WEIGHT);
@@ -35,8 +39,20 @@ export function WebGPUBehaviorControls({
   const [viewAngle, setVA] = useState(DEFAULT_BEHAVIOR_VIEW_ANGLE);
 
   useEffect(() => {
-    // could hydrate from module if getters existed
-  }, [behavior]);
+    // Sync UI state with actual module values when behavior module changes
+    if (behavior && isInitialized && !isInitializing) {
+      setWander(behavior.getWanderWeight());
+      setCohesion(behavior.getCohesionWeight());
+      setAlignment(behavior.getAlignmentWeight());
+      setSeparation(behavior.getSeparationWeight());
+      setChase(behavior.getChaseWeight());
+      setAvoid(behavior.getAvoidWeight());
+      setSepRange(behavior.getSeparationRange());
+      setVR(behavior.getViewRadius());
+      setVA(behavior.getViewAngle());
+      setInternalEnabled(behavior.isEnabled());
+    }
+  }, [behavior, isInitialized, isInitializing]);
 
   return (
     <div className="control-section">
