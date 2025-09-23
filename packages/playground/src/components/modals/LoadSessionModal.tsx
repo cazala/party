@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { SpatialGrid, Boundary, Canvas2DRenderer, System } from "@cazala/party";
+import {
+  SpatialGrid,
+  Boundary,
+  Canvas2DRenderer,
+  System,
+} from "@cazala/party/legacy";
 import { SessionManager } from "../../utils/SessionManager";
 import { SessionMetadata } from "../../types/session";
 import { UseUndoRedoReturn } from "../../hooks/useUndoRedo";
@@ -128,10 +133,12 @@ export function LoadSessionModal({
           if (systemControls && systemControlsRef?.current) {
             systemControlsRef.current.setSystemControlsState(systemControls);
           }
-          
+
           // Restore collision controls state if available
           if (systemControls?.collisionControls && forcesControlsRef?.current) {
-            forcesControlsRef.current.setCollisionControlsState(systemControls.collisionControls);
+            forcesControlsRef.current.setCollisionControlsState(
+              systemControls.collisionControls
+            );
           }
         }
       );
