@@ -190,6 +190,9 @@ export class CPUEngine extends AbstractEngine {
     // First pass: state computation for all modules
     for (const module of this.modules) {
       try {
+        // Skip disabled modules
+        if (!module.isEnabled()) continue;
+        
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Force && (descriptor as any).state) {
           const force = descriptor as any;
@@ -222,6 +225,9 @@ export class CPUEngine extends AbstractEngine {
     // Second pass: apply forces for all modules
     for (const module of this.modules) {
       try {
+        // Skip disabled modules
+        if (!module.isEnabled()) continue;
+        
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Force && (descriptor as any).apply) {
           const force = descriptor as any;
@@ -267,6 +273,9 @@ export class CPUEngine extends AbstractEngine {
     for (let iter = 0; iter < iterations; iter++) {
       for (const module of this.modules) {
         try {
+          // Skip disabled modules
+          if (!module.isEnabled()) continue;
+          
           const descriptor = module.cpu();
           if (
             module.role === ModuleRole.Force &&
@@ -299,6 +308,9 @@ export class CPUEngine extends AbstractEngine {
     // Fifth pass: corrections for all modules
     for (const module of this.modules) {
       try {
+        // Skip disabled modules
+        if (!module.isEnabled()) continue;
+        
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Force && (descriptor as any).correct) {
           const force = descriptor as any;
@@ -394,6 +406,9 @@ export class CPUEngine extends AbstractEngine {
 
     for (const module of this.modules) {
       try {
+        // Skip disabled modules
+        if (!module.isEnabled()) continue;
+        
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Render) {
           const render = descriptor as any;
