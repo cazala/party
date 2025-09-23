@@ -363,9 +363,6 @@ export function useWebGPUPlayground(
             }
           }
 
-          // Clear the captured state
-          engineStateRef.current = {};
-
           // Ensure the engine is playing after restoration
           if (engineRef.current) {
             // Restore coordinate system state if available to maintain consistent positioning
@@ -399,8 +396,10 @@ export function useWebGPUPlayground(
                 engineRef.current.play();
               }
             }, 100);
-
           }
+
+          // Clear the captured state after restoration
+          engineStateRef.current = {};
         }
 
         setIsInitialized(true);

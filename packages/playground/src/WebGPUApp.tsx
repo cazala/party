@@ -62,13 +62,6 @@ function WebGPUApp() {
   });
   const size = useWindowSize();
 
-  (window as any)._resize = () => {
-    const width = window.innerWidth - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
-    const height = window.innerHeight - TOPBAR_HEIGHT;
-    console.log("Resizing to", width, height);
-    system?.setSize(width, height);
-  };
-
   // Update canvas size when window size changes
   useEffect(() => {
     if (system && isInitialized) {
@@ -92,7 +85,7 @@ function WebGPUApp() {
   // Add wheel event listener for zoom
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !handleZoom) return;
+    if (!canvas || !handleZoom || !isInitialized) return;
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault(); // Prevent page scroll
@@ -109,7 +102,7 @@ function WebGPUApp() {
     return () => {
       canvas.removeEventListener("wheel", onWheel);
     };
-  }, [handleZoom]);
+  }, [handleZoom, isInitialized, engineType]); // Add engineType and isInitialized to dependencies
 
   // Add a timeout for initialization
   useEffect(() => {
