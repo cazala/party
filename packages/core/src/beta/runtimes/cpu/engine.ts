@@ -11,8 +11,12 @@ export class CPUEngine extends AbstractEngine {
   private spatialGrid: SpatialGrid;
   private animationId: number | null = null;
 
-  constructor(options: { canvas: HTMLCanvasElement; modules: Module[] }) {
-    super(options.canvas, options.modules);
+  constructor(options: {
+    canvas: HTMLCanvasElement;
+    forces: Module[];
+    render: Module[];
+  }) {
+    super(options);
     this.canvas = options.canvas;
     this.spatialGrid = new SpatialGrid({
       width: this.canvas.width,

@@ -10,6 +10,7 @@ import {
   Interaction,
   Engine,
   WebGPUSpawner,
+  RuntimeType,
 } from "@cazala/party";
 import { Particle as ParticleRenderer } from "@cazala/party";
 import { ToolMode } from "./useToolMode";
@@ -155,7 +156,6 @@ export function useWebGPUPlayground(
     [animateZoom]
   );
 
-
   // Initialize WebGPU renderer
   useEffect(() => {
     let cancelled = false;
@@ -235,7 +235,7 @@ export function useWebGPUPlayground(
           const particle = new ParticleRenderer();
 
           // Initialize simulation parameters
-          const modules = [
+          const forces = [
             environment,
             boundary,
             collisions,
@@ -243,9 +243,8 @@ export function useWebGPUPlayground(
             fluid,
             sensors,
             interaction,
-            trails,
-            particle,
           ];
+          const render = [trails, particle];
           // Try creating the engine with retries for context conflicts
           let engine;
           let initSuccess = false;
@@ -261,8 +260,9 @@ export function useWebGPUPlayground(
 
               engine = new Engine({
                 canvas: canvasRef.current,
-                modules,
-                type: useWebGPU ? "webgpu" : "cpu",
+                forces,
+                render,
+                runtime: useWebGPU ? RuntimeType.WEBGPU : RuntimeType.CPU,
               });
               await engine.initialize();
               initSuccess = true;
@@ -327,7 +327,10 @@ export function useWebGPUPlayground(
             try {
               engineRef.current.import(engineStateRef.current.moduleSettings);
             } catch (settingsError) {
-              console.error("Failed to restore module settings:", settingsError);
+              console.error(
+                "Failed to restore module settings:",
+                settingsError
+              );
             }
           }
 
@@ -354,10 +357,7 @@ export function useWebGPUPlayground(
                 },
               }));
 
-
               engineRef.current.setParticles(clonedParticles);
-
-
             } catch (particlesError) {
               console.error("Failed to restore particles:", particlesError);
             }

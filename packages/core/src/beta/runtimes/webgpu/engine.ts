@@ -34,12 +34,15 @@ export class WebGPUEngine extends AbstractEngine {
   private maxParticles: number = DEFAULTS.maxParticles;
   private simStrideValue: number = 0;
 
-  constructor(options: { canvas: HTMLCanvasElement; modules: Module[] }) {
-    const { canvas, modules } = options;
-    super(canvas, modules);
-    this.resources = new GPUResources({ canvas });
+  constructor(options: {
+    canvas: HTMLCanvasElement;
+    forces: Module[];
+    render: Module[];
+  }) {
+    super(options);
+    this.resources = new GPUResources({ canvas: options.canvas });
     this.particles = new ParticleStore(this.maxParticles, 12);
-    this.registry = new ModuleRegistry([...modules]);
+    this.registry = new ModuleRegistry([...options.forces, ...options.render]);
     this.sim = new SimulationPipeline();
     this.render = new RenderPipeline();
     this.grid = new GridSystem();

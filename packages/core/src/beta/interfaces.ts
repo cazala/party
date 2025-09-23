@@ -47,9 +47,13 @@ export abstract class AbstractEngine implements IEngine {
   protected view: View;
   protected modules: Module[];
 
-  constructor(canvas: HTMLCanvasElement, modules: Module[]) {
-    this.view = new View(canvas.width, canvas.height);
-    this.modules = modules;
+  constructor(options: {
+    canvas: HTMLCanvasElement;
+    forces: Module[];
+    render: Module[];
+  }) {
+    this.view = new View(options.canvas.width, options.canvas.height);
+    this.modules = [...options.forces, ...options.render];
   }
 
   // Abstract methods that must be implemented by subclasses
