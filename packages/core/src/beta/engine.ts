@@ -171,4 +171,22 @@ export class Engine implements IEngine {
   setConstrainIterations(iterations: number): void {
     this.engine.setConstrainIterations(iterations);
   }
+
+  // Check if a module is supported by the current runtime
+  isSupported(module: Module): boolean {
+    try {
+      if (this.actualRuntime === "webgpu") {
+        // For WebGPU, check if the module has a webgpu() method that doesn't throw
+        module.webgpu();
+        return true;
+      } else {
+        // For CPU, check if the module has a cpu() method that doesn't throw
+        module.cpu();
+        return true;
+      }
+    } catch (error) {
+      // If the method throws "Not implemented" or any other error, the module is not supported
+      return false;
+    }
+  }
 }

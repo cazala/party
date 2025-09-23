@@ -701,6 +701,11 @@ export function useWebGPUPlayground(
     setUseWebGPU(!useWebGPU);
   }, [useWebGPU]);
 
+  // Helper to check if a module is supported by the current engine
+  const isSupported = useCallback((module: any) => {
+    return engineRef.current?.isSupported(module) ?? false;
+  }, [isInitialized, useWebGPU]); // React to engine type changes
+
   return {
     system: engineRef.current,
     environment: environmentRef.current,
@@ -725,5 +730,6 @@ export function useWebGPUPlayground(
     useWebGPU,
     toggleEngineType,
     engineType: useWebGPU ? "webgpu" : "cpu", // For canvas key
+    isSupported,
   };
 }

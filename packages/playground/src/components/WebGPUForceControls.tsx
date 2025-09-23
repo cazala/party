@@ -28,6 +28,7 @@ export function WebGPUForceControls({
   sensors,
   trails,
   interaction,
+  isSupported,
 }: {
   environment: Environment | null;
   boundary: Boundary | null;
@@ -37,6 +38,7 @@ export function WebGPUForceControls({
   sensors?: Sensors | null;
   trails?: Trails | null;
   interaction?: Interaction | null;
+  isSupported?: (module: any) => boolean;
 }) {
   const [environmentEnabled, setEnvironmentEnabled] = useState(true);
   const [boundaryEnabled, setBoundaryEnabled] = useState(true);
@@ -123,7 +125,7 @@ export function WebGPUForceControls({
         </CollapsibleSection>
       )}
 
-      {fluid && (
+      {fluid && isSupported?.(fluid) && (
         <CollapsibleSection title="Fluids">
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(fluidEnabled, setFluidEnabled, fluid)}
@@ -136,7 +138,17 @@ export function WebGPUForceControls({
         </CollapsibleSection>
       )}
 
-      {behavior && (
+      {fluid && !isSupported?.(fluid) && (
+        <CollapsibleSection title="Fluids">
+          <div style={{ padding: "8px 0", opacity: 0.7 }}>
+            <span style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}>
+              Not supported in current runtime
+            </span>
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {behavior && isSupported?.(behavior) && (
         <CollapsibleSection title="Behavior">
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(behaviorEnabled, setBehaviorEnabled, behavior)}
@@ -146,6 +158,16 @@ export function WebGPUForceControls({
             hideEnabled
             enabled={behaviorEnabled}
           />
+        </CollapsibleSection>
+      )}
+
+      {behavior && !isSupported?.(behavior) && (
+        <CollapsibleSection title="Behavior">
+          <div style={{ padding: "8px 0", opacity: 0.7 }}>
+            <span style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}>
+              Not supported in current runtime
+            </span>
+          </div>
         </CollapsibleSection>
       )}
 
@@ -162,7 +184,7 @@ export function WebGPUForceControls({
         </CollapsibleSection>
       )}
 
-      {sensors && (
+      {sensors && isSupported?.(sensors) && (
         <CollapsibleSection title="Sensors">
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(sensorsEnabled, setSensorsEnabled, sensors)}
@@ -175,7 +197,17 @@ export function WebGPUForceControls({
         </CollapsibleSection>
       )}
 
-      {interaction && (
+      {sensors && !isSupported?.(sensors) && (
+        <CollapsibleSection title="Sensors">
+          <div style={{ padding: "8px 0", opacity: 0.7 }}>
+            <span style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}>
+              Not supported in current runtime
+            </span>
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {interaction && isSupported?.(interaction) && (
         <CollapsibleSection title="Interaction">
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(
@@ -189,6 +221,16 @@ export function WebGPUForceControls({
             hideEnabled
             enabled={interactionEnabled}
           />
+        </CollapsibleSection>
+      )}
+
+      {interaction && !isSupported?.(interaction) && (
+        <CollapsibleSection title="Interaction">
+          <div style={{ padding: "8px 0", opacity: 0.7 }}>
+            <span style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}>
+              Not supported in current runtime
+            </span>
+          </div>
         </CollapsibleSection>
       )}
     </div>

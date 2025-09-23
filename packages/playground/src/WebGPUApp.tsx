@@ -55,6 +55,7 @@ function WebGPUApp() {
     useWebGPU,
     toggleEngineType,
     engineType,
+    isSupported,
   } = useWebGPUPlayground(canvasRef, toolMode);
 
   const { isFullscreen, toggleFullscreen } = useFullscreen({
@@ -440,6 +441,7 @@ function WebGPUApp() {
             sensors={sensors}
             trails={trails}
             interaction={interaction}
+            isSupported={isSupported}
           />
         </div>
       </div>
