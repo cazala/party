@@ -268,6 +268,172 @@ export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
   }
 
   cpu(): CPUDescriptor<FluidInputKeys, FluidStateKeys> {
-    throw new Error("Not implemented");
+    return {
+      states: ["density", "nearDensity"],
+      
+      // State pass: precompute density and near-density per particle
+      state: ({ particle, getNeighbors, dt, setState }) => {
+        // Get fluid parameters
+        const rad = this.readValue("influenceRadius");
+        const enableNearPressure = this.readValue("enableNearPressure");
+
+        // Predict current particle position for this frame (approximate)
+        const posPredX = particle.position.x + particle.velocity.x * dt;
+        const posPredY = particle.position.y + particle.velocity.y * dt;
+        let density = 0.0;
+        let nearDensity = 0.0;
+
+        // Precompute radius powers for kernels
+        const r2 = rad * rad;
+        const r4 = r2 * r2;
+        const r6 = r4 * r2;
+
+        // Get neighbors using predicted position
+        const neighbors = getNeighbors({ x: posPredX, y: posPredY }, rad);
+
+        for (const other of neighbors) {
+          if (other.id === particle.id) continue; // Skip self
+
+          const dX = posPredX - other.position.x;
+          const dY = posPredY - other.position.y;
+          const dist2 = dX * dX + dY * dY;
+          
+          if (dist2 <= 0.0) continue;
+          
+          const dist = Math.sqrt(dist2);
+          const factor = Math.max(rad - dist, 0.0);
+          if (factor <= 0.0) continue;
+
+          // Density kernel: (factor^2) / (pi/6 * r^4)
+          const kDensity = (factor * factor) / ((Math.PI / 6.0) * r4);
+          density += kDensity * 1000.0 * other.mass;
+
+          // Near-density kernel: (factor^4) / (pi/15 * r^6)
+          if (enableNearPressure !== 0.0) {
+            const f2 = factor * factor;
+            const kNear = (f2 * f2) / ((Math.PI / 15.0) * r6);
+            nearDensity += kNear * 1000.0 * other.mass;
+          }
+        }
+
+        // Store results in shared state for use in apply pass
+        setState("density", density);
+        setState("nearDensity", nearDensity);
+      },
+
+      // Apply pass: compute pressure and viscosity forces using precomputed densities
+      apply: ({ particle, getNeighbors, getState }) => {
+        // Get fluid parameters
+        const rad = this.readValue("influenceRadius");
+        const targetDensity = this.readValue("targetDensity");
+        const pressureMul = this.readValue("pressureMultiplier");
+        const visc = this.readValue("viscosity");
+        const nearMul = this.readValue("nearPressureMultiplier");
+        const nearThreshold = this.readValue("nearThreshold");
+        const useNear = this.readValue("enableNearPressure");
+        const maxAccel = this.readValue("maxAcceleration");
+
+        const myDensity = Math.max(getState("density"), 1e-6);
+
+        // Precompute radius powers for kernels
+        const r2 = rad * rad;
+        const r4 = r2 * r2;
+        const r8 = r4 * r4;
+
+        // Pressure gradient accumulation
+        let gradSumX = 0.0;
+        let gradSumY = 0.0;
+
+        const neighbors = getNeighbors(particle.position, rad);
+
+        for (const other of neighbors) {
+          if (other.id === particle.id) continue; // Skip self
+
+          const deltaX = other.position.x - particle.position.x;
+          const deltaY = other.position.y - particle.position.y;
+          const dist2 = deltaX * deltaX + deltaY * deltaY;
+          
+          if (dist2 <= 0.0) continue;
+          
+          const dist = Math.sqrt(dist2);
+          if (dist <= 0.0 || dist >= rad) continue;
+          
+          const dirX = deltaX / dist;
+          const dirY = deltaY / dist;
+
+          // Derivative kernel: scale * (dist - rad), scale = (-12/pi)/r^4
+          const scale = (-12.0 / Math.PI) / r4;
+          const slope = (dist - rad) * scale;
+
+          // Neighbor pressures from precomputed densities
+          const dN = Math.max(getState("density", other.id), 1e-6);
+          const nearN = useNear !== 0.0 ? getState("nearDensity", other.id) : 0.0;
+          const densityDiff = dN - targetDensity;
+          const pressure = densityDiff * pressureMul;
+          const nearPressure = nearN * nearMul;
+          const effectivePressure = dist < nearThreshold ? nearPressure : pressure;
+
+          // Gradient contribution
+          const gradContribX = dirX * (effectivePressure * slope) / dN;
+          const gradContribY = dirY * (effectivePressure * slope) / dN;
+          gradSumX += gradContribX;
+          gradSumY += gradContribY;
+        }
+
+        // Pressure force is negative gradient
+        let pressureForceX = -gradSumX;
+        let pressureForceY = -gradSumY;
+
+        // Viscosity accumulation
+        let viscosityForceX = 0.0;
+        let viscosityForceY = 0.0;
+
+        if (visc !== 0.0) {
+          for (const other of neighbors) {
+            if (other.id === particle.id) continue; // Skip self
+
+            const deltaX = other.position.x - particle.position.x;
+            const deltaY = other.position.y - particle.position.y;
+            const dist2 = deltaX * deltaX + deltaY * deltaY;
+            
+            if (dist2 <= 0.0) continue;
+            
+            const dist = Math.sqrt(dist2);
+            if (dist >= rad) continue;
+
+            // Viscosity kernel: (max(0, r^2 - d^2)^3) / (pi/4 * r^8)
+            const val = Math.max(0.0, r2 - dist2);
+            const kVisc = (val * val * val) / ((Math.PI / 4.0) * r8);
+            
+            viscosityForceX += (other.velocity.x - particle.velocity.x) * kVisc;
+            viscosityForceY += (other.velocity.y - particle.velocity.y) * kVisc;
+          }
+          
+          viscosityForceX *= visc;
+          viscosityForceY *= visc;
+        }
+
+        // Convert to acceleration-like effect: a = F / density
+        let forceX = (pressureForceX / myDensity) * 1000000.0;
+        let forceY = (pressureForceY / myDensity) * 1000000.0;
+        
+        if (visc !== 0.0) {
+          forceX += (viscosityForceX * 1000.0) / myDensity;
+          forceY += (viscosityForceY * 1000.0) / myDensity;
+        }
+
+        // Clamp force magnitude to avoid instabilities
+        const f2 = forceX * forceX + forceY * forceY;
+        if (f2 > maxAccel * maxAccel) {
+          const fLen = Math.sqrt(f2);
+          forceX = forceX * (maxAccel / fLen);
+          forceY = forceY * (maxAccel / fLen);
+        }
+
+        // Apply directly to velocity (matching WebGPU behavior)
+        particle.velocity.x += forceX;
+        particle.velocity.y += forceY;
+      },
+    };
   }
 }

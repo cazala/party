@@ -138,6 +138,8 @@ export function WebGPUForceControls({
             fluid={fluid}
             hideEnabled
             enabled={fluidEnabled}
+            isInitialized={isInitialized}
+            isInitializing={isInitializing}
           />
         </CollapsibleSection>
       )}

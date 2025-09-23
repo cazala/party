@@ -15,10 +15,14 @@ export function WebGPUFluidControls({
   fluid,
   hideEnabled = false,
   enabled = true,
+  isInitialized = true,
+  isInitializing = false,
 }: {
   fluid: Fluid | null;
   hideEnabled?: boolean;
   enabled?: boolean;
+  isInitialized?: boolean;
+  isInitializing?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(false);
   const [influenceRadius, setInfluenceRadius] = useState(
@@ -45,8 +49,19 @@ export function WebGPUFluidControls({
   );
 
   useEffect(() => {
-    // Could hydrate current values if the module exposed getters. For now, keep UI state local.
-  }, [fluid]);
+    // Sync UI state with actual module values when fluid module changes
+    if (fluid && isInitialized && !isInitializing) {
+      setInfluenceRadius(fluid.getInfluenceRadius());
+      setTargetDensity(fluid.getTargetDensity());
+      setPressureMultiplier(fluid.getPressureMultiplier());
+      setViscosity(fluid.getViscosity());
+      setNearPressureMultiplier(fluid.getNearPressureMultiplier());
+      setNearThreshold(fluid.getNearThreshold());
+      setEnableNearPressure(fluid.getEnableNearPressure() !== 0);
+      setMaxAcceleration(fluid.getMaxAcceleration());
+      setInternalEnabled(fluid.isEnabled());
+    }
+  }, [fluid, isInitialized, isInitializing]);
 
   return (
     <div className="control-section">
