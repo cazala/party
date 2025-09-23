@@ -5,6 +5,10 @@
  * Uses a two-phase approach: pick deepest overlap neighbor (to reduce bias), then
  * correct position and apply a bounce impulse along the contact normal.
  * Velocity response in apply() is commented out; constraint/correct handle stability.
+ *
+ * Special handling: When particles are at identical positions (e.g., from boundary
+ * repositioning), they are separated with a small pseudo-random offset to prevent
+ * them from being stuck together permanently.
  */
 import {
   Module,
@@ -12,6 +16,7 @@ import {
   ModuleRole,
   CPUDescriptor,
 } from "../../module";
+import { Particle } from "../../particle";
 
 type CollisionInputKeys = "restitution";
 
@@ -46,6 +51,7 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
   var bestJ: u32 = NEIGHBOR_NONE;
   var bestN: vec2<f32> = vec2<f32>(0.0, 0.0);
   var bestOverlap: f32 = 0.0;
+  var identicalPositionJ: u32 = NEIGHBOR_NONE;
   loop {
     let j = neighbor_iter_next(&it, index);
     if (j == NEIGHBOR_NONE) { break; }
@@ -53,7 +59,11 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
     let r = other.size + ${particleVar}.size;
     let delta = ${particleVar}.position - other.position;
     let dist2 = dot(delta, delta);
-    if (dist2 > 0.0001 && dist2 < r*r) {
+    
+    // Special case: particles at identical positions
+    if (dist2 <= 0.000001) {
+      identicalPositionJ = j;
+    } else if (dist2 > 0.0001 && dist2 < r*r) {
       let dist = sqrt(dist2);
       let overlap = r - dist;
       if (overlap > bestOverlap) {
@@ -62,6 +72,22 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
         bestN = delta / dist;
       }
     }
+  }
+
+  // Handle particles at identical positions first
+  if (identicalPositionJ != NEIGHBOR_NONE) {
+    var other = particles[identicalPositionJ];
+    
+    // Generate pseudo-random separation direction based on particle indices
+    let seed = f32(index * 73 + identicalPositionJ * 37);
+    let h = seed * 0.01234567;
+    let angle = fract(sin(h) * 43758.5453) * 6.283185307; // 0 to 2*PI
+    let sepDist = (other.size + ${particleVar}.size) * 0.51; // Slightly more than touching
+    
+    let separationX = cos(angle) * sepDist;
+    let separationY = sin(angle) * sepDist;
+    
+    ${particleVar}.position = ${particleVar}.position + vec2<f32>(separationX, separationY);
   }
 
   if (bestJ != NEIGHBOR_NONE) {
@@ -144,6 +170,7 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
         let bestOverlap = 0;
         let bestOther: any = null;
         let bestN = { x: 0, y: 0 };
+        let identicalPositionOther: Particle | null = null;
 
         for (const other of neighbors) {
           if (other.id === particle.id) continue;
@@ -153,7 +180,10 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
           const deltaY = particle.position.y - other.position.y;
           const dist2 = deltaX * deltaX + deltaY * deltaY;
 
-          if (dist2 > 0.0001 && dist2 < r * r) {
+          // Special case: particles at identical positions
+          if (dist2 <= 0.000001) {
+            identicalPositionOther = other;
+          } else if (dist2 > 0.0001 && dist2 < r * r) {
             const dist = Math.sqrt(dist2);
             const overlap = r - dist;
             if (overlap > bestOverlap) {
@@ -162,6 +192,21 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
               bestN = { x: deltaX / dist, y: deltaY / dist };
             }
           }
+        }
+
+        // Handle particles at identical positions first
+        if (identicalPositionOther) {
+          // Generate pseudo-random separation direction based on particle IDs (matching WebGPU logic)
+          const seed = particle.id * 73 + identicalPositionOther.id * 37;
+          const h = seed * 0.01234567;
+          const angle = ((Math.sin(h) * 43758.5453) % 1) * 6.283185307; // 0 to 2*PI
+          const sepDist = (identicalPositionOther.size + particle.size) * 0.51; // Slightly more than touching
+
+          const separationX = Math.cos(angle) * sepDist;
+          const separationY = Math.sin(angle) * sepDist;
+
+          particle.position.x += separationX;
+          particle.position.y += separationY;
         }
 
         if (bestOther) {
