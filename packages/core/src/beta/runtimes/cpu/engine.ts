@@ -8,7 +8,7 @@ import { DEFAULTS } from "../../config";
 export class CPUEngine extends AbstractEngine {
   private particles: Particle[] = [];
   private canvas: HTMLCanvasElement;
-  private spatialGrid: SpatialGrid;
+  private grid: SpatialGrid;
   private animationId: number | null = null;
 
   constructor(options: {
@@ -18,7 +18,7 @@ export class CPUEngine extends AbstractEngine {
   }) {
     super(options);
     this.canvas = options.canvas;
-    this.spatialGrid = new SpatialGrid({
+    this.grid = new SpatialGrid({
       width: this.canvas.width,
       height: this.canvas.height,
       cellSize: 100,
@@ -106,7 +106,7 @@ export class CPUEngine extends AbstractEngine {
 
   clear(): void {
     this.particles = [];
-    this.spatialGrid.clear();
+    this.grid.clear();
     this.fpsEstimate = 60;
   }
 
@@ -117,7 +117,7 @@ export class CPUEngine extends AbstractEngine {
   // Override setSize to also update spatial grid
   setSize(width: number, height: number): void {
     this.view.setSize(width, height);
-    this.spatialGrid.setSize(width, height);
+    this.grid.setSize(width, height);
   }
 
   setParticles(particle: IParticle[]): void {
@@ -139,7 +139,7 @@ export class CPUEngine extends AbstractEngine {
   destroy(): void {
     this.pause();
     this.particles = [];
-    this.spatialGrid.clear();
+    this.grid.clear();
   }
 
   private animate = (): void => {
@@ -156,22 +156,19 @@ export class CPUEngine extends AbstractEngine {
   };
 
   private getNeighbors(position: { x: number; y: number }, radius: number) {
-    return this.spatialGrid.getParticles(
-      new Vector(position.x, position.y),
-      radius
-    );
+    return this.grid.getParticles(new Vector(position.x, position.y), radius);
   }
 
   private update(dt: number): void {
     // Update spatial grid with current particle positions and camera
-    this.spatialGrid.setCamera(
+    this.grid.setCamera(
       this.view.getCamera().x,
       this.view.getCamera().y,
       this.view.getZoom()
     );
-    this.spatialGrid.clear();
+    this.grid.clear();
     for (const particle of this.particles) {
-      this.spatialGrid.insert(particle);
+      this.grid.insert(particle);
     }
 
     // Global state for modules that need it
@@ -192,7 +189,7 @@ export class CPUEngine extends AbstractEngine {
       try {
         // Skip disabled modules
         if (!module.isEnabled()) continue;
-        
+
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Force && (descriptor as any).state) {
           const force = descriptor as any;
@@ -227,7 +224,7 @@ export class CPUEngine extends AbstractEngine {
       try {
         // Skip disabled modules
         if (!module.isEnabled()) continue;
-        
+
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Force && (descriptor as any).apply) {
           const force = descriptor as any;
@@ -275,7 +272,7 @@ export class CPUEngine extends AbstractEngine {
         try {
           // Skip disabled modules
           if (!module.isEnabled()) continue;
-          
+
           const descriptor = module.cpu();
           if (
             module.role === ModuleRole.Force &&
@@ -310,7 +307,7 @@ export class CPUEngine extends AbstractEngine {
       try {
         // Skip disabled modules
         if (!module.isEnabled()) continue;
-        
+
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Force && (descriptor as any).correct) {
           const force = descriptor as any;
@@ -405,23 +402,27 @@ export class CPUEngine extends AbstractEngine {
     const utils = this.createRenderUtils(context);
 
     // Check composition requirements of enabled render modules
-    const hasBackgroundHandler = this.modules.some(module => {
-      if (!module.isEnabled() || module.role !== ModuleRole.Render) return false;
+    const hasBackgroundHandler = this.modules.some((module) => {
+      if (!module.isEnabled() || module.role !== ModuleRole.Render)
+        return false;
       const descriptor = module.cpu() as any;
       return descriptor.composition === CanvasComposition.HandlesBackground;
     });
 
     // Only clear canvas if no module handles background AND some module requires clearing
     if (!hasBackgroundHandler) {
-      const needsClearing = this.modules.some(module => {
-        if (!module.isEnabled() || module.role !== ModuleRole.Render) return false;
+      const needsClearing = this.modules.some((module) => {
+        if (!module.isEnabled() || module.role !== ModuleRole.Render)
+          return false;
         const descriptor = module.cpu() as any;
         return descriptor.composition === CanvasComposition.RequiresClear;
       });
 
       if (needsClearing) {
         const clearColor = DEFAULTS.clearColor;
-        context.fillStyle = `rgba(${clearColor.r * 255}, ${clearColor.g * 255}, ${clearColor.b * 255}, ${clearColor.a})`;
+        context.fillStyle = `rgba(${clearColor.r * 255}, ${
+          clearColor.g * 255
+        }, ${clearColor.b * 255}, ${clearColor.a})`;
         context.fillRect(0, 0, context.canvas.width, context.canvas.height);
       }
     }
@@ -430,7 +431,7 @@ export class CPUEngine extends AbstractEngine {
       try {
         // Skip disabled modules
         if (!module.isEnabled()) continue;
-        
+
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Render) {
           const render = descriptor as any;

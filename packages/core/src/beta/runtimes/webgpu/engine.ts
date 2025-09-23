@@ -20,7 +20,7 @@ import { GPUResources } from "./gpu-resources";
 import { ParticleStore } from "./particle-store";
 import { AbstractEngine, IParticle } from "../../interfaces";
 import { ModuleRegistry } from "./module-registry";
-import { GridSystem } from "./grid-system";
+import { SpacialGrid } from "./spacial-grid";
 import { SimulationPipeline } from "./simulation-pipeline";
 import { RenderPipeline } from "./render-pipeline";
 
@@ -30,7 +30,7 @@ export class WebGPUEngine extends AbstractEngine {
   private registry: ModuleRegistry;
   private sim: SimulationPipeline;
   private render: RenderPipeline;
-  private grid: GridSystem;
+  private grid: SpacialGrid;
   private maxParticles: number = DEFAULTS.maxParticles;
   private simStrideValue: number = 0;
 
@@ -45,7 +45,7 @@ export class WebGPUEngine extends AbstractEngine {
     this.registry = new ModuleRegistry([...options.forces, ...options.render]);
     this.sim = new SimulationPipeline();
     this.render = new RenderPipeline();
-    this.grid = new GridSystem();
+    this.grid = new SpacialGrid();
   }
 
   async initialize(): Promise<void> {

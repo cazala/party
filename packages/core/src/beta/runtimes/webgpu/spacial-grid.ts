@@ -10,7 +10,7 @@ import type { Program } from "./builders/program";
 import type { GPUResources } from "./gpu-resources";
 import type { ViewSnapshot } from "../../view";
 
-export class GridSystem {
+export class SpacialGrid {
   private cols: number = 0;
   private rows: number = 0;
   private cellSize: number = 16;
