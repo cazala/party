@@ -10,7 +10,6 @@ import {
   Interaction,
   Engine,
   WebGPUSpawner,
-  RuntimeType,
 } from "@cazala/party";
 import { Particle as ParticleRenderer } from "@cazala/party";
 import { ToolMode } from "./useToolMode";
@@ -262,7 +261,7 @@ export function useWebGPUPlayground(
                 canvas: canvasRef.current,
                 forces,
                 render,
-                runtime: useWebGPU ? RuntimeType.WEBGPU : RuntimeType.CPU,
+                runtime: useWebGPU ? "webgpu" : "cpu",
               });
               await engine.initialize();
               initSuccess = true;

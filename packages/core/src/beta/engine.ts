@@ -3,10 +3,7 @@ import { Module } from "./module";
 import { WebGPUEngine } from "./runtimes/webgpu/engine";
 import { CPUEngine } from "./runtimes/cpu/engine";
 
-export enum RuntimeType {
-  CPU = "cpu",
-  WEBGPU = "webgpu",
-}
+export type RuntimeType = "cpu" | "webgpu";
 
 export class Engine implements IEngine {
   private engine: IEngine;
