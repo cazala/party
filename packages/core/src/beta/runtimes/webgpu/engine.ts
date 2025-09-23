@@ -17,37 +17,29 @@
 import { DEFAULTS } from "../../config";
 import type { Module } from "../../module";
 import { GPUResources } from "./gpu-resources";
-import { View } from "../../view";
 import { ParticleStore } from "./particle-store";
-import { IEngine, IParticle } from "../../interfaces";
+import { AbstractEngine, IParticle } from "../../interfaces";
 import { ModuleRegistry } from "./module-registry";
 import { GridSystem } from "./grid-system";
 import { SimulationPipeline } from "./simulation-pipeline";
 import { RenderPipeline } from "./render-pipeline";
 
-export class WebGPUEngine implements IEngine {
+export class WebGPUEngine extends AbstractEngine {
   private resources: GPUResources;
   private particles: ParticleStore;
-  private modules: ModuleRegistry;
+  private registry: ModuleRegistry;
   private sim: SimulationPipeline;
   private render: RenderPipeline;
   private grid: GridSystem;
-  private view: View;
-
-  private playing: boolean = false;
-  private lastTime: number = 0;
-  private constrainIterations: number = DEFAULTS.constrainIterations;
   private maxParticles: number = DEFAULTS.maxParticles;
   private simStrideValue: number = 0;
-  private fpsEstimate: number = 60;
-  private fpsSmoothing: number = 0.15; // EMA smoothing factor
 
   constructor(options: { canvas: HTMLCanvasElement; modules: Module[] }) {
     const { canvas, modules } = options;
+    super(canvas, modules);
     this.resources = new GPUResources({ canvas });
-    this.view = new View(canvas.width, canvas.height);
     this.particles = new ParticleStore(this.maxParticles, 12);
-    this.modules = new ModuleRegistry([...modules]);
+    this.registry = new ModuleRegistry([...modules]);
     this.sim = new SimulationPipeline();
     this.render = new RenderPipeline();
     this.grid = new GridSystem();
@@ -61,8 +53,8 @@ export class WebGPUEngine implements IEngine {
     this.resources.createRenderUniformBuffer(24);
 
     // Build program + module uniform buffers
-    this.modules.initialize(this.resources);
-    const program = this.modules.getProgram();
+    this.registry.initialize(this.resources);
+    const program = this.registry.getProgram();
     if (program.extraBindings.simState) {
       this.resources.createSimStateBuffer(this.maxParticles, 4);
     }
@@ -80,29 +72,20 @@ export class WebGPUEngine implements IEngine {
     this.grid.configure(this.view.getSnapshot(), this.resources, program);
 
     // Seed module uniforms on GPU
-    this.modules.writeAllModuleUniforms();
+    this.registry.writeAllModuleUniforms();
 
     // Cache sim stride value
     this.simStrideValue = program.simStateStride;
   }
 
-  play(): void {
-    if (this.playing) return;
-    this.playing = true;
-    this.lastTime = performance.now();
+  // Implement abstract methods for animation loop
+  protected startAnimationLoop(): void {
     this.animate();
   }
 
-  pause(): void {
-    this.playing = false;
-  }
-
-  toggle(): void {
-    this.playing ? this.pause() : this.play();
-  }
-
-  isPlaying(): boolean {
-    return this.playing;
+  protected stopAnimationLoop(): void {
+    // WebGPU doesn't need to cancel requestAnimationFrame explicitly
+    // since it's handled in the animate method
   }
 
   destroy(): void {
@@ -110,10 +93,7 @@ export class WebGPUEngine implements IEngine {
     this.resources.dispose();
   }
 
-  getSize(): { width: number; height: number } {
-    return this.view.getSize();
-  }
-
+  // Override setSize to also update WebGPU-specific resources
   setSize(width: number, height: number): void {
     this.view.setSize(width, height);
     this.resources.canvas.width = width;
@@ -122,34 +102,17 @@ export class WebGPUEngine implements IEngine {
     this.grid.resizeIfNeeded(
       this.view.getSnapshot(),
       this.resources,
-      this.modules.getProgram()
+      this.registry.getProgram()
     );
   }
 
-  setCamera(x: number, y: number): void {
-    this.view.setCamera(x, y);
+  // Override onViewChanged to update grid when view changes
+  protected onViewChanged(): void {
     this.grid.resizeIfNeeded(
       this.view.getSnapshot(),
       this.resources,
-      this.modules.getProgram()
+      this.registry.getProgram()
     );
-  }
-
-  getCamera(): { x: number; y: number } {
-    return this.view.getCamera();
-  }
-
-  setZoom(z: number): void {
-    this.view.setZoom(z);
-    this.grid.resizeIfNeeded(
-      this.view.getSnapshot(),
-      this.resources,
-      this.modules.getProgram()
-    );
-  }
-
-  getZoom(): number {
-    return this.view.getZoom();
   }
 
   setParticles(p: IParticle[]): void {
@@ -189,17 +152,8 @@ export class WebGPUEngine implements IEngine {
   private animate = (): void => {
     if (!this.playing) return;
 
-    const now = performance.now();
-    const dt = (now - this.lastTime) / 1000;
-    this.lastTime = now;
-
-    // Update FPS estimate (EMA)
-    if (dt > 0) {
-      const instantFps = 1 / dt;
-      this.fpsEstimate =
-        this.fpsEstimate * (1 - this.fpsSmoothing) +
-        instantFps * this.fpsSmoothing;
-    }
+    const dt = this.getTimeDelta();
+    this.updateFPS(dt);
 
     // Write view uniforms
     const snapshot = this.view.getSnapshot();
@@ -209,11 +163,11 @@ export class WebGPUEngine implements IEngine {
     this.grid.resizeIfNeeded(
       this.view.getSnapshot(),
       this.resources,
-      this.modules.getProgram()
+      this.registry.getProgram()
     );
 
     // Update simulation uniforms (dt, count, simStride)
-    this.resources.writeSimulationUniform(this.modules.getProgram(), {
+    this.resources.writeSimulationUniform(this.registry.getProgram(), {
       dt,
       count: this.particles.getCount(),
       simStride: this.simStrideValue,
@@ -230,8 +184,8 @@ export class WebGPUEngine implements IEngine {
 
     const lastView = this.render.runPasses(
       encoder,
-      this.modules.getEnabledRenderModules(),
-      this.modules.getProgram(),
+      this.registry.getEnabledRenderModules(),
+      this.registry.getProgram(),
       this.resources,
       this.view.getSize(),
       this.particles.getCount()
@@ -243,27 +197,18 @@ export class WebGPUEngine implements IEngine {
     requestAnimationFrame(this.animate);
   };
 
-  getFPS(): number {
-    return this.fpsEstimate;
-  }
-
+  // Override export to use module registry
   export(): Record<string, Record<string, number>> {
     const settings: Record<string, Record<string, number>> = {};
-    for (const module of this.modules.getModules()) {
+    for (const module of this.registry.getModules()) {
       const moduleData = module.read();
       settings[module.name] = moduleData as Record<string, number>;
     }
     return settings;
   }
 
-  import(settings: Record<string, Record<string, number>>): void {
-    const modules = this.modules.getModules();
-    for (const module of modules) {
-      if (settings[module.name]) {
-        module.write(settings[module.name]);
-      }
-    }
-    // Sync the updated settings to GPU
-    this.modules.writeAllModuleUniforms();
+  // Override onModuleSettingsChanged to sync to GPU
+  protected onModuleSettingsChanged(): void {
+    this.registry.writeAllModuleUniforms();
   }
 }

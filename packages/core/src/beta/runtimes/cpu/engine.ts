@@ -1,28 +1,19 @@
-import { IEngine, IParticle } from "../../interfaces";
+import { AbstractEngine, IParticle } from "../../interfaces";
 import { Module, ModuleRole } from "../../module";
 import { SpatialGrid } from "./spatial-grid";
-import { View } from "../../view";
 import { Particle } from "../../particle";
 import { Vector } from "../../vector";
 import { DEFAULTS } from "../../config";
 
-export class CPUEngine implements IEngine {
+export class CPUEngine extends AbstractEngine {
   private particles: Particle[] = [];
-  private modules: Module[] = [];
   private canvas: HTMLCanvasElement;
   private spatialGrid: SpatialGrid;
-  private view: View;
-  private playing: boolean = false;
   private animationId: number | null = null;
-  private lastTime: number = 0;
-  private fpsEstimate: number = 60;
-  private fpsSmoothing: number = 0.15;
-  private constrainIterations: number = 5;
 
   constructor(options: { canvas: HTMLCanvasElement; modules: Module[] }) {
+    super(options.canvas, options.modules);
     this.canvas = options.canvas;
-    this.modules = options.modules;
-    this.view = new View(this.canvas.width, this.canvas.height);
     this.spatialGrid = new SpatialGrid({
       width: this.canvas.width,
       height: this.canvas.height,
@@ -63,21 +54,20 @@ export class CPUEngine implements IEngine {
     this.particles.length = writeIndex;
   }
 
-  /**
-   * Starts the simulation animation loop.
-   * If already playing, this method does nothing.
-   */
-  public play(): void {
-    if (this.playing) return;
-
-    this.playing = true;
+  // Implement abstract methods for animation loop
+  protected startAnimationLoop(): void {
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
-    // Reset timing to prevent deltaTime spikes after engine restoration
-    this.resetTiming();
     this.animate();
+  }
+
+  protected stopAnimationLoop(): void {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
   }
 
   /**
@@ -86,29 +76,6 @@ export class CPUEngine implements IEngine {
    */
   public resetTiming(): void {
     this.lastTime = performance.now();
-  }
-
-  /**
-   * Pauses the simulation animation loop.
-   * The simulation state is preserved and can be resumed with play().
-   */
-  public pause(): void {
-    this.playing = false;
-  }
-
-  /**
-   * Toggles the simulation between playing and paused states.
-   */
-  public toggle(): void {
-    if (this.playing) {
-      this.pause();
-    } else {
-      this.play();
-    }
-  }
-
-  isPlaying(): boolean {
-    return this.playing;
   }
 
   /**
@@ -143,33 +110,10 @@ export class CPUEngine implements IEngine {
     return this.particles.length;
   }
 
-  getFPS(): number {
-    return this.fpsEstimate;
-  }
-
-  getSize(): { width: number; height: number } {
-    return this.view.getSize();
-  }
-
+  // Override setSize to also update spatial grid
   setSize(width: number, height: number): void {
     this.view.setSize(width, height);
     this.spatialGrid.setSize(width, height);
-  }
-
-  setCamera(x: number, y: number): void {
-    this.view.setCamera(x, y);
-  }
-
-  getCamera(): { x: number; y: number } {
-    return this.view.getCamera();
-  }
-
-  setZoom(zoom: number): void {
-    this.view.setZoom(zoom);
-  }
-
-  getZoom(): number {
-    return this.view.getZoom();
   }
 
   setParticles(particle: IParticle[]): void {
@@ -195,17 +139,8 @@ export class CPUEngine implements IEngine {
   }
 
   private animate = (): void => {
-    const time = performance.now();
-    const dt = (time - this.lastTime) / 1000;
-    this.lastTime = time;
-
-    // Update FPS calculation
-    if (dt > 0) {
-      const instantFps = 1 / dt;
-      this.fpsEstimate =
-        this.fpsEstimate * (1 - this.fpsSmoothing) +
-        instantFps * this.fpsSmoothing;
-    }
+    const dt = this.getTimeDelta();
+    this.updateFPS(dt);
 
     if (this.playing) {
       this.update(dt);
@@ -511,23 +446,6 @@ export class CPUEngine implements IEngine {
           });
         }
       } catch (error) {}
-    }
-  }
-
-  export(): Record<string, Record<string, number>> {
-    const settings: Record<string, Record<string, number>> = {};
-    for (const module of this.modules) {
-      const moduleData = module.read();
-      settings[module.name] = moduleData as Record<string, number>;
-    }
-    return settings;
-  }
-
-  import(settings: Record<string, Record<string, number>>): void {
-    for (const module of this.modules) {
-      if (settings[module.name]) {
-        module.write(settings[module.name]);
-      }
     }
   }
 }

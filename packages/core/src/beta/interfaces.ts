@@ -1,3 +1,19 @@
+import { View } from "./view";
+import type { Module } from "./module";
+
+export interface IParticle {
+  position: { x: number; y: number };
+  velocity: { x: number; y: number };
+  size: number;
+  mass: number;
+  color: {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  };
+}
+
 export interface IEngine {
   initialize(): Promise<void>;
   play(): void;
@@ -22,15 +38,123 @@ export interface IEngine {
   import(settings: Record<string, Record<string, number>>): void;
 }
 
-export interface IParticle {
-  position: { x: number; y: number };
-  velocity: { x: number; y: number };
-  size: number;
-  mass: number;
-  color: {
-    r: number;
-    g: number;
-    b: number;
-    a: number;
-  };
+export abstract class AbstractEngine implements IEngine {
+  protected playing: boolean = false;
+  protected lastTime: number = 0;
+  protected fpsEstimate: number = 60;
+  protected fpsSmoothing: number = 0.15;
+  protected constrainIterations: number = 5;
+  protected view: View;
+  protected modules: Module[];
+
+  constructor(canvas: HTMLCanvasElement, modules: Module[]) {
+    this.view = new View(canvas.width, canvas.height);
+    this.modules = modules;
+  }
+
+  // Abstract methods that must be implemented by subclasses
+  abstract initialize(): Promise<void>;
+  abstract destroy(): void;
+  abstract setSize(width: number, height: number): void;
+  abstract addParticle(p: IParticle): void;
+  abstract setParticles(p: IParticle[]): void;
+  abstract getParticles(): Promise<IParticle[]>;
+  abstract getParticle(index: number): Promise<IParticle>;
+  abstract clear(): void;
+  abstract getCount(): number;
+
+  // Protected abstract methods for animation loop
+  protected abstract startAnimationLoop(): void;
+  protected abstract stopAnimationLoop(): void;
+
+  // Common implementations
+  play(): void {
+    if (this.playing) return;
+    this.playing = true;
+    this.lastTime = performance.now();
+    this.startAnimationLoop();
+  }
+
+  pause(): void {
+    this.playing = false;
+    this.stopAnimationLoop();
+  }
+
+  toggle(): void {
+    this.playing ? this.pause() : this.play();
+  }
+
+  isPlaying(): boolean {
+    return this.playing;
+  }
+
+  getSize(): { width: number; height: number } {
+    return this.view.getSize();
+  }
+
+  setCamera(x: number, y: number): void {
+    this.view.setCamera(x, y);
+    this.onViewChanged();
+  }
+
+  getCamera(): { x: number; y: number } {
+    return this.view.getCamera();
+  }
+
+  setZoom(z: number): void {
+    this.view.setZoom(z);
+    this.onViewChanged();
+  }
+
+  getZoom(): number {
+    return this.view.getZoom();
+  }
+
+  getFPS(): number {
+    return this.fpsEstimate;
+  }
+
+  export(): Record<string, Record<string, number>> {
+    const settings: Record<string, Record<string, number>> = {};
+    for (const module of this.modules) {
+      const moduleData = module.read();
+      settings[module.name] = moduleData as Record<string, number>;
+    }
+    return settings;
+  }
+
+  import(settings: Record<string, Record<string, number>>): void {
+    for (const module of this.modules) {
+      if (settings[module.name]) {
+        module.write(settings[module.name]);
+      }
+    }
+    this.onModuleSettingsChanged();
+  }
+
+  // Protected helper methods
+  protected updateFPS(dt: number): void {
+    if (dt > 0) {
+      const instantFps = 1 / dt;
+      this.fpsEstimate =
+        this.fpsEstimate * (1 - this.fpsSmoothing) +
+        instantFps * this.fpsSmoothing;
+    }
+  }
+
+  protected getTimeDelta(): number {
+    const now = performance.now();
+    const dt = (now - this.lastTime) / 1000;
+    this.lastTime = now;
+    return dt;
+  }
+
+  // Hook methods for subclasses
+  protected onViewChanged(): void {
+    // Override in subclasses if needed
+  }
+
+  protected onModuleSettingsChanged(): void {
+    // Override in subclasses if needed
+  }
 }
