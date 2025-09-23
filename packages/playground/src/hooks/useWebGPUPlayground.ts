@@ -32,7 +32,8 @@ export function useWebGPUPlayground(
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [useWebGPU, setUseWebGPU] = useState(false);
+  const [useWebGPU, setUseWebGPU] = useState(false); // Will be set based on actual runtime
+  const [isAutoMode, setIsAutoMode] = useState(true); // Start in auto mode
 
   // Store state for engine switching
   const engineStateRef = useRef<{
@@ -271,7 +272,7 @@ export function useWebGPUPlayground(
                 canvas: canvasRef.current,
                 forces,
                 render,
-                runtime: useWebGPU ? "webgpu" : "cpu",
+                runtime: isAutoMode ? "auto" : useWebGPU ? "webgpu" : "cpu",
               });
               await engine.initialize();
               initSuccess = true;
@@ -298,6 +299,13 @@ export function useWebGPUPlayground(
 
           // Set initial size for the engine
           engine.setSize(width, height);
+
+          // Set useWebGPU based on actual runtime used (only in auto mode)
+          if (isAutoMode) {
+            const actualRuntime = engine.getActualRuntime();
+            setUseWebGPU(actualRuntime === "webgpu");
+          }
+
           engineRef.current = engine;
           environmentRef.current = environment;
           boundaryRef.current = boundary;
@@ -308,14 +316,8 @@ export function useWebGPUPlayground(
           trailsRef.current = trails;
           interactionRef.current = interaction;
         } catch (sysErr) {
-          // If WebGPU fails and we were trying WebGPU, fallback to CPU
-          if (
-            useWebGPU &&
-            (sysErr as Error).message.includes("WebGPU context")
-          ) {
-            setUseWebGPU(false);
-            return; // Let the useEffect re-run with CPU mode
-          }
+          // Engine handles auto fallback internally, so just throw the error
+          throw sysErr;
         }
 
         // Let the engine fully initialize before restoring state
@@ -328,7 +330,8 @@ export function useWebGPUPlayground(
 
         // Restore captured state if available (after engine is fully set up)
         if (
-          engineStateRef.current.particles ||
+          (engineStateRef.current.particles &&
+            engineStateRef.current.particles.length > 0) ||
           engineStateRef.current.moduleSettings ||
           engineStateRef.current.engineConfig
         ) {
@@ -414,15 +417,14 @@ export function useWebGPUPlayground(
             }
 
             // Wait a moment for everything to settle, then start physics
-            setTimeout(() => {
-              if (engineRef.current) {
-                engineRef.current.play();
-              }
-            }, 100);
+            engineRef.current.play();
           }
 
           // Clear the captured state after restoration
           engineStateRef.current = {};
+        } else {
+          // No state to restore, just resume the engine after a short delay
+          engineRef.current.play();
         }
 
         setIsInitialized(true);
@@ -459,7 +461,7 @@ export function useWebGPUPlayground(
         zoomState.isAnimating = false;
       }
     };
-  }, [useWebGPU]); // Re-initialize when engine type changes
+  }, [useWebGPU, isAutoMode]); // Re-initialize when engine type changes
 
   // Wire mouse input to WebGPU Interaction module
   useEffect(() => {
@@ -651,10 +653,7 @@ export function useWebGPUPlayground(
   }, [isInitialized]);
 
   const toggleEngineType = useCallback(async () => {
-    // Always clear previous state first to avoid reuse
-    engineStateRef.current = {};
-
-    // Capture state BEFORE changing useWebGPU (which triggers canvas recreation)
+    // Capture state BEFORE changing any state (which triggers canvas recreation)
     if (engineRef.current) {
       try {
         // For WebGPU engines, pause and wait to ensure latest GPU state is captured
@@ -697,6 +696,8 @@ export function useWebGPUPlayground(
       engineStateRef.current = {}; // Ensure clean state
     }
 
+    // Disable auto mode and toggle engine type AFTER state capture
+    setIsAutoMode(false);
     setUseWebGPU(!useWebGPU);
   }, [useWebGPU]);
 

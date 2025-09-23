@@ -3,25 +3,40 @@ import { Module } from "./module";
 import { WebGPUEngine } from "./runtimes/webgpu/engine";
 import { CPUEngine } from "./runtimes/cpu/engine";
 
-export type RuntimeType = "cpu" | "webgpu";
+export type EngineOptions = {
+  canvas: HTMLCanvasElement;
+  forces: Module[];
+  render: Module[];
+  runtime: "cpu" | "webgpu" | "auto";
+  constrainIterations?: number;
+  clearColor?: { r: number; g: number; b: number; a: number };
+  cellSize?: number;
+  maxParticles?: number;
+  workgroupSize?: number;
+};
 
 export class Engine implements IEngine {
   private engine: IEngine;
-  public runtime: RuntimeType;
+  private actualRuntime: "cpu" | "webgpu"; // The actual runtime being used
+  private preferredRuntime: "cpu" | "webgpu" | "auto"; // The requested runtime (can be 'auto')
+  private originalOptions: EngineOptions; // Store original options for fallback
 
-  constructor(options: {
-    canvas: HTMLCanvasElement;
-    forces: Module[];
-    render: Module[];
-    runtime: RuntimeType;
-    constrainIterations?: number;
-    clearColor?: { r: number; g: number; b: number; a: number };
-    cellSize?: number;
-    maxParticles?: number;
-    workgroupSize?: number;
-  }) {
-    this.runtime = options.runtime;
-    if (options.runtime === "webgpu") {
+  constructor(options: EngineOptions) {
+    this.preferredRuntime = options.runtime;
+    this.originalOptions = { ...options }; // Store original options for fallback
+
+    // Determine actual runtime to use
+    let targetRuntime: "cpu" | "webgpu" | "auto";
+    if (options.runtime === "auto") {
+      // Synchronous check - we'll handle WebGPU availability in initialize()
+      targetRuntime = "webgpu"; // Default to WebGPU for auto, fallback to CPU if it fails
+    } else {
+      targetRuntime = options.runtime;
+    }
+
+    this.actualRuntime = targetRuntime;
+
+    if (targetRuntime === "webgpu") {
       this.engine = new WebGPUEngine(options);
     } else {
       this.engine = new CPUEngine(options);
@@ -29,8 +44,54 @@ export class Engine implements IEngine {
   }
 
   // Delegate all methods to the concrete engine implementation
-  initialize(): Promise<void> {
-    return this.engine.initialize();
+  async initialize(): Promise<void> {
+    try {
+      await this.engine.initialize();
+    } catch (error) {
+      // Handle fallback for auto mode or WebGPU failures
+      if (this.preferredRuntime === "auto" && this.actualRuntime === "webgpu") {
+        console.warn(
+          "WebGPU initialization failed, falling back to CPU runtime:",
+          error
+        );
+
+        // Destroy the failed WebGPU engine
+        try {
+          this.engine.destroy();
+        } catch (destroyError) {
+          console.warn("Error destroying failed WebGPU engine:", destroyError);
+        }
+
+        // Create CPU engine with same options
+        this.actualRuntime = "cpu";
+        const fallbackOptions = {
+          ...this.originalOptions,
+          runtime: "cpu",
+        };
+        this.engine = new CPUEngine(fallbackOptions);
+
+        // Initialize the CPU engine
+        await this.engine.initialize();
+      } else {
+        throw error; // Re-throw if not auto mode or already CPU
+      }
+    }
+
+    // Log runtime selection for auto mode
+    if (this.preferredRuntime === "auto") {
+      if (this.actualRuntime === "cpu") {
+        console.warn(
+          "Auto runtime selection: Using CPU (WebGPU not available or failed)"
+        );
+      } else {
+        console.log("Auto runtime selection: Using WebGPU");
+      }
+    }
+  }
+
+  // Get the actual runtime being used (cpu or webgpu)
+  getActualRuntime(): "cpu" | "webgpu" {
+    return this.actualRuntime;
   }
   play(): void {
     this.engine.play();
@@ -92,7 +153,7 @@ export class Engine implements IEngine {
   import(settings: Record<string, Record<string, number>>): void {
     this.engine.import(settings);
   }
-  
+
   // Configuration getters and setters
   getClearColor(): { r: number; g: number; b: number; a: number } {
     return this.engine.getClearColor();

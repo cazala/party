@@ -79,7 +79,7 @@ function WebGPUApp() {
     }
   }, [system, isInitialized, size, isFullscreen, useWebGPU]);
 
-  // Auto-play when initialized
+  // Spawn initial particles when initialized
   useEffect(() => {
     if (isInitialized && system) {
       play();
@@ -198,7 +198,12 @@ function WebGPUApp() {
     }
   };
 
-  const handleClearColorChange = (color: { r: number; g: number; b: number; a: number }) => {
+  const handleClearColorChange = (color: {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  }) => {
     setClearColor(color);
     if (system && isInitialized) {
       system.setClearColor(color);
@@ -212,18 +217,23 @@ function WebGPUApp() {
 
   // Utility functions for color conversion
   const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
-    const toHex = (value: number) => Math.round(value * 255).toString(16).padStart(2, '0');
+    const toHex = (value: number) =>
+      Math.round(value * 255)
+        .toString(16)
+        .padStart(2, "0");
     return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
   };
 
   const hexToRgba = (hex: string, alpha: number = 1) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16) / 255,
-      g: parseInt(result[2], 16) / 255,
-      b: parseInt(result[3], 16) / 255,
-      a: alpha
-    } : { r: 0, g: 0, b: 0, a: 1 };
+    return result
+      ? {
+          r: parseInt(result[1], 16) / 255,
+          g: parseInt(result[2], 16) / 255,
+          b: parseInt(result[3], 16) / 255,
+          a: alpha,
+        }
+      : { r: 0, g: 0, b: 0, a: 1 };
   };
 
   return (
@@ -264,7 +274,7 @@ function WebGPUApp() {
           <CollapsibleSection title="INIT" defaultOpen={true}>
             <InitControls
               ref={initControlsRef}
-              onInitParticles={spawnParticles}
+              onInitParticles={isInitialized ? spawnParticles : undefined}
               onGetInitConfig={() => ({
                 numParticles: 10000,
                 shape: "grid" as const,
@@ -295,7 +305,7 @@ function WebGPUApp() {
                 Use WebGPU
               </label>
             </div>
-            
+
             <div className="control-group">
               <label>
                 Constrain Iterations: {constrainIterations}
@@ -305,7 +315,9 @@ function WebGPUApp() {
                   max="100"
                   step="1"
                   value={constrainIterations || 1}
-                  onChange={(e) => handleConstrainIterationsChange(parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleConstrainIterationsChange(parseInt(e.target.value))
+                  }
                   className="slider"
                   disabled={!isInitialized || isInitializing}
                 />
@@ -321,7 +333,9 @@ function WebGPUApp() {
                   max="64"
                   step="2"
                   value={cellSize || 4}
-                  onChange={(e) => handleCellSizeChange(parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleCellSizeChange(parseInt(e.target.value))
+                  }
                   className="slider"
                   disabled={!isInitialized || isInitializing}
                 />
@@ -346,18 +360,27 @@ function WebGPUApp() {
 
           <CollapsibleSection title="RENDER" defaultOpen={true}>
             <div className="control-group">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
                 <label style={{ marginBottom: 0 }}>Clear Color:</label>
-                <div style={{ position: 'relative' }}>
-                  <div 
+                <div style={{ position: "relative" }}>
+                  <div
                     className="color-square"
-                    style={{ 
+                    style={{
                       backgroundColor: rgbaToHex(clearColor),
-                      cursor: !isInitialized || isInitializing ? 'not-allowed' : 'pointer'
+                      cursor:
+                        !isInitialized || isInitializing
+                          ? "not-allowed"
+                          : "pointer",
                     }}
                     onClick={() => {
                       if (!isInitialized || isInitializing) return;
-                      document.getElementById('clear-color-picker')?.click();
+                      document.getElementById("clear-color-picker")?.click();
                     }}
                     title={`Clear color: ${rgbaToHex(clearColor)}`}
                   />
@@ -367,14 +390,14 @@ function WebGPUApp() {
                     value={rgbaToHex(clearColor)}
                     onChange={(e) => handleColorPickerChange(e.target.value)}
                     disabled={!isInitialized || isInitializing}
-                    style={{ 
-                      position: 'absolute',
-                      top: '0',
-                      left: '0',
-                      width: '24px',
-                      height: '24px',
+                    style={{
+                      position: "absolute",
+                      top: "0",
+                      left: "0",
+                      width: "24px",
+                      height: "24px",
                       opacity: 0,
-                      cursor: 'pointer'
+                      cursor: "pointer",
                     }}
                   />
                 </div>
