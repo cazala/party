@@ -1,5 +1,5 @@
 import { AbstractEngine, IParticle } from "../../interfaces";
-import { Module, ModuleRole } from "../../module";
+import { Module, ModuleRole, CanvasComposition } from "../../module";
 import { SpatialGrid } from "./spatial-grid";
 import { Particle } from "../../particle";
 import { Vector } from "../../vector";
@@ -403,6 +403,28 @@ export class CPUEngine extends AbstractEngine {
     const centerX = size.width / 2;
     const centerY = size.height / 2;
     const utils = this.createRenderUtils(context);
+
+    // Check composition requirements of enabled render modules
+    const hasBackgroundHandler = this.modules.some(module => {
+      if (!module.isEnabled() || module.role !== ModuleRole.Render) return false;
+      const descriptor = module.cpu() as any;
+      return descriptor.composition === CanvasComposition.HandlesBackground;
+    });
+
+    // Only clear canvas if no module handles background AND some module requires clearing
+    if (!hasBackgroundHandler) {
+      const needsClearing = this.modules.some(module => {
+        if (!module.isEnabled() || module.role !== ModuleRole.Render) return false;
+        const descriptor = module.cpu() as any;
+        return descriptor.composition === CanvasComposition.RequiresClear;
+      });
+
+      if (needsClearing) {
+        const clearColor = DEFAULTS.clearColor;
+        context.fillStyle = `rgba(${clearColor.r * 255}, ${clearColor.g * 255}, ${clearColor.b * 255}, ${clearColor.a})`;
+        context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+      }
+    }
 
     for (const module of this.modules) {
       try {

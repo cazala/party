@@ -10,6 +10,7 @@ import {
   ModuleRole,
   RenderPassKind,
   CPUDescriptor,
+  CanvasComposition,
 } from "../../module";
 
 type ParticleInputKeys = "particleBuffer" | "renderUniforms";
@@ -41,13 +42,7 @@ export class Particle extends Module<"particles", ParticleInputKeys> {
 
   cpu(): CPUDescriptor<ParticleInputKeys> {
     return {
-      setup: ({ context, clearColor }) => {
-        // Clear canvas for fresh particle rendering
-        context.fillStyle = `rgba(${clearColor.r * 255}, ${
-          clearColor.g * 255
-        }, ${clearColor.b * 255}, ${clearColor.a})`;
-        context.fillRect(0, 0, context.canvas.width, context.canvas.height);
-      },
+      composition: CanvasComposition.RequiresClear,
       render: ({ particle, screenX, screenY, screenSize, utils }) => {
         // Just render a circle - engine handles all coordinate transformations and culling
         utils.drawCircle(screenX, screenY, screenSize, particle.color);

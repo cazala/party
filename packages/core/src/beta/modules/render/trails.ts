@@ -12,6 +12,7 @@ import {
   ModuleRole,
   RenderPassKind,
   CPUDescriptor,
+  CanvasComposition,
 } from "../../module";
 
 type TrailInputKeys = "trailDecay" | "trailDiffuse";
@@ -123,14 +124,36 @@ export class Trails extends Module<"trails", TrailInputKeys> {
 
   cpu(): CPUDescriptor<TrailInputKeys> {
     return {
+      composition: CanvasComposition.HandlesBackground,
       setup: ({ context, input, clearColor }) => {
-        // Simple trail effect: draw semi-transparent background to fade previous frame
+        // Trail effect with decay and blur
+        const canvas = context.canvas;
         const decay = Math.max(0, Math.min(1, input.trailDecay));
+        const diffuse = Math.max(0, Math.min(12, Math.round(input.trailDiffuse)));
+
+        // Apply decay (fade effect)
         if (decay > 0.001) {
           context.fillStyle = `rgba(${clearColor.r * 255}, ${
             clearColor.g * 255
           }, ${clearColor.b * 255}, ${decay})`;
-          context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+          context.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Apply blur effect if diffuse > 0
+        if (diffuse > 0) {
+          // Use canvas filter for blur - more performant than manual pixel manipulation
+          const tempCanvas = document.createElement('canvas');
+          const tempCtx = tempCanvas.getContext('2d')!;
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = canvas.height;
+
+          // Copy current canvas to temp canvas
+          tempCtx.drawImage(canvas, 0, 0);
+
+          // Apply blur filter and draw back
+          context.filter = `blur(${diffuse * 0.5}px)`;
+          context.drawImage(tempCanvas, 0, 0);
+          context.filter = 'none';
         }
       },
     };

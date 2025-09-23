@@ -122,7 +122,11 @@ export abstract class AbstractEngine implements IEngine {
     const settings: Record<string, Record<string, number>> = {};
     for (const module of this.modules) {
       const moduleData = module.read();
-      settings[module.name] = moduleData as Record<string, number>;
+      // Include the enabled state in the exported data
+      settings[module.name] = {
+        ...moduleData as Record<string, number>,
+        enabled: module.isEnabled() ? 1 : 0
+      };
     }
     return settings;
   }
@@ -130,7 +134,15 @@ export abstract class AbstractEngine implements IEngine {
   import(settings: Record<string, Record<string, number>>): void {
     for (const module of this.modules) {
       if (settings[module.name]) {
-        module.write(settings[module.name]);
+        const moduleSettings = settings[module.name];
+        
+        // Restore enabled state if present
+        if ('enabled' in moduleSettings) {
+          module.setEnabled(moduleSettings.enabled === 1);
+        }
+        
+        // Restore other settings
+        module.write(moduleSettings);
       }
     }
     this.onModuleSettingsChanged();

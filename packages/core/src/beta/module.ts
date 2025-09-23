@@ -264,8 +264,20 @@ export interface CPURenderUtils {
   ): void;
 }
 
+export enum CanvasComposition {
+  // Module needs a clear canvas to work properly (default for most render modules)
+  RequiresClear = "requiresClear",
+  // Module handles its own background/clearing (e.g. trails with fade)
+  HandlesBackground = "handlesBackground", 
+  // Module renders on top of whatever is there (additive effects)
+  Additive = "additive"
+}
+
 export interface CPURenderDescriptor<InputKeys extends string = string>
   extends BaseDescriptor {
+  // How this module composes with the canvas background
+  composition?: CanvasComposition;
+  
   // Optional setup phase (called once per frame before particles)
   setup?: (args: {
     context: CanvasRenderingContext2D;
