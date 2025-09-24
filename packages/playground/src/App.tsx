@@ -1,6 +1,5 @@
-import { useParty } from "./hooks/useParty";
+import { usePlayground } from "./hooks/usePlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
-import { useToolMode } from "./hooks/useToolMode";
 import { useEffect, useRef, useState } from "react";
 import { TopBar } from "./components/TopBar";
 import { InitControls, InitControlsRef } from "./components/InitControls";
@@ -20,7 +19,6 @@ const TOPBAR_HEIGHT = 60;
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const initControlsRef = useRef<InitControlsRef>(null);
-  const { toolMode, setToolMode } = useToolMode();
   const [particleCount, setParticleCount] = useState(0);
   const [fps, setFPS] = useState(0);
   const [constrainIterations, setConstrainIterations] = useState(0); // Will be set from engine
@@ -51,7 +49,9 @@ function App() {
     toggleEngineType,
     engineType,
     isSupported,
-  } = useParty(canvasRef, toolMode);
+    toolMode,
+    setToolMode,
+  } = usePlayground({ canvasRef });
 
   const size = useWindowSize();
 

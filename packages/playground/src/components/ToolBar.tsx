@@ -1,5 +1,5 @@
 import { MousePointer, Plus } from "lucide-react";
-import { ToolMode } from "../hooks/useToolMode";
+import { ToolMode } from "../hooks/useTools";
 
 import "./Toolbar.css";
 

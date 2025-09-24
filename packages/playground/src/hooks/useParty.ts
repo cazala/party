@@ -12,13 +12,11 @@ import {
   WebGPUSpawner,
 } from "@cazala/party";
 import { Particle as ParticleRenderer } from "@cazala/party";
-import { ToolMode } from "./useToolMode";
 
 const zoomSensitivity = 0.01;
 
 export function useParty(
-  canvasRef: React.RefObject<HTMLCanvasElement>,
-  toolMode: ToolMode = "cursor"
+  canvasRef: React.RefObject<HTMLCanvasElement>
 ) {
   const engineRef = useRef<Engine | null>(null);
   const environmentRef = useRef<Environment | null>(null);
@@ -158,6 +156,46 @@ export function useParty(
       }
     },
     [animateZoom]
+  );
+
+  // Screen to world coordinate conversion utility
+  const screenToWorld = useCallback(
+    (sx: number, sy: number) => {
+      const canvas = canvasRef.current;
+      const engine = engineRef.current;
+      if (!canvas || !engine) return { x: 0, y: 0 };
+
+      const size = engine.getSize();
+      const cam = engine.getCamera();
+      const zoom = engine.getZoom();
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = size.width / Math.max(rect.width, 1e-6);
+      const scaleY = size.height / Math.max(rect.height, 1e-6);
+      const px = sx * scaleX;
+      const py = sy * scaleY;
+      const dx = px - size.width / 2;
+      const dy = py - size.height / 2;
+      const wx = cam.x + dx / Math.max(zoom, 1e-6);
+      const wy = cam.y + dy / Math.max(zoom, 1e-6);
+      return { x: wx, y: wy };
+    },
+    [canvasRef, engineRef]
+  );
+
+  // Add single particle utility
+  const addParticle = useCallback(
+    (particle: {
+      position: { x: number; y: number };
+      velocity: { x: number; y: number };
+      size: number;
+      mass: number;
+      color: { r: number; g: number; b: number; a: number };
+    }) => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      engine.addParticle(particle);
+    },
+    [engineRef]
   );
 
   // Initialize WebGPU renderer
@@ -463,97 +501,6 @@ export function useParty(
     };
   }, [useWebGPU, isAutoMode]); // Re-initialize when engine type changes
 
-  // Wire mouse input to WebGPU Interaction module
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const interaction = interactionRef.current;
-    if (!canvas || !interaction) return;
-
-    const screenToWorld = (sx: number, sy: number) => {
-      const size = engineRef.current?.getSize() || { width: 800, height: 600 };
-      const engine = engineRef.current;
-      const cam = engine?.getCamera() || { x: 0, y: 0 };
-      const zoom = engine?.getZoom() || 1;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = size.width / Math.max(rect.width, 1e-6);
-      const scaleY = size.height / Math.max(rect.height, 1e-6);
-      const px = sx * scaleX;
-      const py = sy * scaleY;
-      const dx = px - size.width / 2;
-      const dy = py - size.height / 2;
-      const wx = cam.x + dx / Math.max(zoom, 1e-6);
-      const wy = cam.y + dy / Math.max(zoom, 1e-6);
-      return { x: wx, y: wy };
-    };
-
-    const updateMousePos = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const sx = e.clientX - rect.left;
-      const sy = e.clientY - rect.top;
-      const { x, y } = screenToWorld(sx, sy);
-      interaction.setPosition(x, y);
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      updateMousePos(e);
-    };
-
-    const onMouseDown = (e: MouseEvent) => {
-      updateMousePos(e);
-      // Spawn tool should not trigger interaction
-      if (toolMode === "spawn") {
-        // Translate to world coords and append a particle
-        const rect = canvas.getBoundingClientRect();
-        const sx = e.clientX - rect.left;
-        const sy = e.clientY - rect.top;
-        const size = 5;
-        const mass = 1;
-        const { x, y } = screenToWorld(sx, sy);
-        const engine = engineRef.current;
-        if (engine) {
-          engine.addParticle({
-            position: { x, y },
-            velocity: { x: 0, y: 0 },
-            size,
-            mass,
-            color: { r: 255, g: 255, b: 255, a: 255 },
-          });
-        }
-        return;
-      }
-      interaction.setActive(true);
-    };
-
-    const onMouseUp = () => {
-      interaction.setActive(false);
-    };
-
-    const onContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-
-    canvas.addEventListener("mousemove", onMouseMove);
-    canvas.addEventListener("mousedown", onMouseDown);
-    canvas.addEventListener("mouseup", onMouseUp);
-    canvas.addEventListener("mouseleave", onMouseUp);
-    canvas.addEventListener("contextmenu", onContextMenu);
-
-    return () => {
-      canvas.removeEventListener("mousemove", onMouseMove);
-      canvas.removeEventListener("mousedown", onMouseDown);
-      canvas.removeEventListener("mouseup", onMouseUp);
-      canvas.removeEventListener("mouseleave", onMouseUp);
-      canvas.removeEventListener("contextmenu", onContextMenu);
-    };
-  }, [
-    canvasRef.current,
-    interactionRef.current,
-    isInitialized,
-    useWebGPU,
-    isInitializing,
-    toolMode,
-  ]);
-
   const spawnParticles = useCallback(
     (
       numParticles: number,
@@ -738,5 +685,8 @@ export function useParty(
     toggleEngineType,
     engineType: useWebGPU ? "webgpu" : "cpu", // For canvas key
     isSupported,
+    // Utility functions for tools
+    screenToWorld,
+    addParticle,
   };
 }
