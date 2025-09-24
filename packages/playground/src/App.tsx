@@ -125,28 +125,6 @@ function App() {
 
   let content = null;
 
-  if (error) {
-    content = (
-      <div className="app" style={{ padding: "20px", textAlign: "center" }}>
-        <h2>WebGPU Not Available</h2>
-        <p>{error}</p>
-        <p>
-          WebGPU requires a modern browser with WebGPU support enabled. Try
-          Chrome Canary or Firefox Nightly with WebGPU flags enabled.
-        </p>
-      </div>
-    );
-  }
-
-  if (!isInitialized) {
-    content = (
-      <div className="app" style={{ padding: "20px", textAlign: "center" }}>
-        <h2>Initializing WebGPU...</h2>
-        <p>Setting up GPU particle system...</p>
-      </div>
-    );
-  }
-
   const handleRestart = () => {
     // Re-spawn particles using current INIT panel config
     const cfg = initControlsRef.current?.getState();
