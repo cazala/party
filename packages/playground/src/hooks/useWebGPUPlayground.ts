@@ -491,7 +491,7 @@ export function useWebGPUPlayground(
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
       const { x, y } = screenToWorld(sx, sy);
-      interaction.setMousePosition(x, y);
+      interaction.setPosition(x, y);
     };
 
     const onMouseMove = (e: MouseEvent) => {
@@ -520,15 +520,11 @@ export function useWebGPUPlayground(
         engineRef.current?.play();
         return;
       }
-      if (e.button === 0) {
-        interaction.setInputButton(0);
-      } else if (e.button === 2) {
-        interaction.setInputButton(1);
-      }
+      interaction.setActive(true);
     };
 
     const onMouseUp = () => {
-      interaction.setInputButton(2); // none
+      interaction.setActive(false);
     };
 
     const onContextMenu = (e: MouseEvent) => {
@@ -548,7 +544,13 @@ export function useWebGPUPlayground(
       canvas.removeEventListener("mouseleave", onMouseUp);
       canvas.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [canvasRef.current, interactionRef.current]);
+  }, [
+    canvasRef.current,
+    interactionRef.current,
+    isInitialized,
+    useWebGPU,
+    isInitializing,
+  ]);
 
   const spawnParticles = useCallback(
     (
@@ -702,9 +704,12 @@ export function useWebGPUPlayground(
   }, [useWebGPU]);
 
   // Helper to check if a module is supported by the current engine
-  const isSupported = useCallback((module: any) => {
-    return engineRef.current?.isSupported(module) ?? false;
-  }, [isInitialized, useWebGPU]); // React to engine type changes
+  const isSupported = useCallback(
+    (module: any) => {
+      return engineRef.current?.isSupported(module) ?? false;
+    },
+    [isInitialized, useWebGPU]
+  ); // React to engine type changes
 
   return {
     system: engineRef.current,

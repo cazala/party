@@ -12,13 +12,12 @@ import {
 } from "../../module";
 
 type InteractionInputKeys =
-  | "action"
   | "mode"
   | "strength"
   | "radius"
-  | "mouseX"
-  | "mouseY"
-  | "inputButton";
+  | "positionX"
+  | "positionY"
+  | "active";
 
 export const DEFAULT_INTERACTION_ACTION: "click" | "right_click" = "click";
 export const DEFAULT_INTERACTION_MODE: "attract" | "repel" = "attract";
@@ -32,13 +31,12 @@ export class Interaction extends Module<"interaction", InteractionInputKeys> {
   readonly name = "interaction" as const;
   readonly role = ModuleRole.Force;
   readonly keys = [
-    "action",
     "mode",
     "strength",
     "radius",
-    "mouseX",
-    "mouseY",
-    "inputButton",
+    "positionX",
+    "positionY",
+    "active",
   ] as const;
 
   constructor(opts?: {
@@ -47,28 +45,24 @@ export class Interaction extends Module<"interaction", InteractionInputKeys> {
     mode?: "attract" | "repel";
     strength?: number;
     radius?: number;
+    position?: { x: number; y: number };
+    active?: boolean;
   }) {
     super();
-    const action =
-      (opts?.action ?? DEFAULT_INTERACTION_ACTION) === "right_click" ? 1 : 0;
     const mode = (opts?.mode ?? DEFAULT_INTERACTION_MODE) === "repel" ? 1 : 0;
     this.write({
-      action,
       mode,
       strength: opts?.strength ?? DEFAULT_INTERACTION_STRENGTH,
       radius: opts?.radius ?? DEFAULT_INTERACTION_RADIUS,
-      mouseX: 0,
-      mouseY: 0,
-      inputButton: 2,
+      positionX: opts?.position?.x ?? 0,
+      positionY: opts?.position?.y ?? 0,
+      active: opts?.active ? 1 : 0,
     });
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
     }
   }
 
-  setAction(v: "click" | "right_click"): void {
-    this.write({ action: v === "right_click" ? 1 : 0 });
-  }
   setMode(v: "attract" | "repel"): void {
     this.write({ mode: v === "repel" ? 1 : 0 });
   }
@@ -78,16 +72,13 @@ export class Interaction extends Module<"interaction", InteractionInputKeys> {
   setRadius(v: number): void {
     this.write({ radius: v });
   }
-  setMousePosition(x: number, y: number): void {
-    this.write({ mouseX: x, mouseY: y });
+  setPosition(x: number, y: number): void {
+    this.write({ positionX: x, positionY: y });
   }
-  setInputButton(button: number): void {
-    this.write({ inputButton: button });
+  setActive(active: boolean): void {
+    this.write({ active: active ? 1 : 0 });
   }
 
-  getAction(): number {
-    return this.readValue("action");
-  }
   getMode(): number {
     return this.readValue("mode");
   }
@@ -97,23 +88,23 @@ export class Interaction extends Module<"interaction", InteractionInputKeys> {
   getRadius(): number {
     return this.readValue("radius");
   }
-  getMouseX(): number {
-    return this.readValue("mouseX");
+  getPosition(): { x: number; y: number } {
+    return {
+      x: this.readValue("positionX"),
+      y: this.readValue("positionY"),
+    };
   }
-  getMouseY(): number {
-    return this.readValue("mouseY");
-  }
-  getInputButton(): number {
-    return this.readValue("inputButton");
+  isActive(): boolean {
+    return this.readValue("active") === 1;
   }
 
   webgpu(): WebGPUDescriptor<InteractionInputKeys> {
     return {
       apply: ({ particleVar, getUniform }) => `{
-  if (${getUniform("inputButton")} != ${getUniform("action")} ) { return; }
-  // Compute vector from particle to mouse
-  let dx = ${getUniform("mouseX")} - ${particleVar}.position.x;
-  let dy = ${getUniform("mouseY")} - ${particleVar}.position.y;
+  if (${getUniform("active")} == 0.0 ) { return; }
+  // Compute vector from particle to position
+  let dx = ${getUniform("positionX")} - ${particleVar}.position.x;
+  let dy = ${getUniform("positionY")} - ${particleVar}.position.y;
   let dist2 = dx*dx + dy*dy;
   let rad = ${getUniform("radius")};
   let r2 = rad * rad;
@@ -130,6 +121,33 @@ export class Interaction extends Module<"interaction", InteractionInputKeys> {
   }
 
   cpu(): CPUDescriptor<InteractionInputKeys> {
-    throw new Error("Not implemented");
+    return {
+      apply: ({ particle, input }) => {
+        if (!input.active) return;
+
+        // Compute vector from particle to position
+        const dx = input.positionX - particle.position.x;
+        const dy = input.positionY - particle.position.y;
+        const dist2 = dx * dx + dy * dy;
+        const rad = input.radius;
+        const r2 = rad * rad;
+
+        if (dist2 <= 0 || dist2 > r2) return;
+
+        const dist = Math.sqrt(dist2);
+        const dirX = dx / dist;
+        const dirY = dy / dist;
+        const falloff = 1.0 - dist / rad;
+        const f = input.strength * falloff;
+        const mode = input.mode;
+
+        // mode 0 = attract, mode 1 = repel
+        const forceX = mode === 1 ? -dirX * f : dirX * f;
+        const forceY = mode === 1 ? -dirY * f : dirY * f;
+
+        particle.acceleration.x += forceX;
+        particle.acceleration.y += forceY;
+      },
+    };
   }
 }

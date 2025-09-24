@@ -53,25 +53,6 @@ export function WebGPUInteractionControls({
 
       <div className="control-group">
         <label>
-          Action
-          <select
-            value={action}
-            onChange={(e) => {
-              const v = e.target.value as "click" | "right_click";
-              setAction(v);
-              interaction?.setAction(v);
-            }}
-            disabled={!enabled}
-            className="form-select"
-          >
-            <option value="click">Click</option>
-            <option value="right_click">Right Click</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
           Mode
           <select
             value={mode}
