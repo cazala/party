@@ -5,7 +5,7 @@ import {
   forwardRef,
   useRef,
 } from "react";
-import { ColorSelector } from "./ui/ColorSelector";
+import { MultiColorPicker } from "./ui/MultiColorPicker";
 import { calculateMassFromSize } from "../utils/particle";
 import { Slider } from "./ui/Slider";
 import { Dropdown } from "./ui/Dropdown";
@@ -372,7 +372,7 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
             />
           </>
         )}
-        <ColorSelector colors={colors} onColorsChange={handleColorsChange} />
+        <MultiColorPicker colors={colors} onColorsChange={handleColorsChange} />
         <Slider
           label="Velocity Speed"
           value={velocityConfig.speed}

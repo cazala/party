@@ -12,6 +12,7 @@ import "./styles/index.css";
 import "./App.css";
 import { Slider } from "./components/ui/Slider";
 import { Field } from "./components/ui/Field";
+import { ColorPicker } from "./components/ui/ColorPicker";
 
 const LEFT_SIDEBAR_WIDTH = 280;
 const RIGHT_SIDEBAR_WIDTH = 280;
@@ -292,50 +293,12 @@ function App() {
           </CollapsibleSection>
 
           <CollapsibleSection title="RENDER" defaultOpen={true}>
-            <Field>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <label style={{ marginBottom: 0 }}>Clear Color:</label>
-                <div style={{ position: "relative" }}>
-                  <div
-                    className="color-square"
-                    style={{
-                      backgroundColor: rgbaToHex(clearColor),
-                      cursor:
-                        !isInitialized || isInitializing
-                          ? "not-allowed"
-                          : "pointer",
-                    }}
-                    onClick={() => {
-                      if (!isInitialized || isInitializing) return;
-                      document.getElementById("clear-color-picker")?.click();
-                    }}
-                    title={`Clear color: ${rgbaToHex(clearColor)}`}
-                  />
-                  <input
-                    id="clear-color-picker"
-                    type="color"
-                    value={rgbaToHex(clearColor)}
-                    onChange={(e) => handleColorPickerChange(e.target.value)}
-                    disabled={!isInitialized || isInitializing}
-                    style={{
-                      position: "absolute",
-                      top: "0",
-                      left: "0",
-                      width: "24px",
-                      height: "24px",
-                      opacity: 0,
-                      cursor: "pointer",
-                    }}
-                  />
-                </div>
-              </div>
-            </Field>
+            <ColorPicker
+              label="Clear Color"
+              value={rgbaToHex(clearColor)}
+              onChange={handleColorPickerChange}
+              disabled={!isInitialized || isInitializing}
+            />
           </CollapsibleSection>
         </div>
         <div className="canvas-container">

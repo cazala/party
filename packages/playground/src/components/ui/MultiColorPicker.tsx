@@ -1,19 +1,19 @@
 import { useRef, useState } from "react";
 import { DEFAULT_COLOR_PALETTE } from "@cazala/party/legacy";
 import { Field } from "./Field";
-import "./ColorSelector.css";
+import "./MultiColorPicker.css";
 
-interface ColorSelectorProps {
+interface MultiColorPickerProps {
   colors: string[];
   onColorsChange: (colors: string[]) => void;
   label?: string;
 }
 
-export function ColorSelector({
+export function MultiColorPicker({
   colors,
   onColorsChange,
   label = "Colors",
-}: ColorSelectorProps) {
+}: MultiColorPickerProps) {
   const colorPickerRef = useRef<HTMLInputElement>(null);
   const [pickingIndex, setPickingIndex] = useState<number | null>(null); // Index of square being picked
   const [tempColor, setTempColor] = useState("#ffffff");
@@ -58,8 +58,8 @@ export function ColorSelector({
   };
 
   return (
-    <Field className="color-selector-field">
-      <label className="color-selector-label">
+    <Field className="multi-color-picker-field">
+      <label className="color-picker-label">
         {label}
         {colors.length > 0 && (
           <button onClick={handleClearAll} className="clear-colors-btn">
