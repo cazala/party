@@ -12,6 +12,7 @@ import {
   Sensors,
   type SensorBehavior,
   radToDeg,
+  degToRad,
 } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
@@ -65,6 +66,9 @@ export function SensorsModule({
     <>
       <Slider
         label="Distance"
+        min={0}
+        max={1000}
+        step={1}
         value={sensorDistance}
         onChange={(v) => {
           setSensorDistance(v);
@@ -75,9 +79,12 @@ export function SensorsModule({
       <Slider
         label="Angle"
         value={sensorAngle}
+        min={2}
+        max={90}
+        step={1}
         onChange={(v) => {
           setSensorAngle(v);
-          sensors?.setSensorAngle(v);
+          sensors?.setSensorAngle(degToRad(v));
         }}
         formatValue={(v) => `${v.toFixed(0)}°`}
         disabled={!enabled}
@@ -103,6 +110,9 @@ export function SensorsModule({
       <Slider
         label="Strength"
         value={sensorStrength}
+        min={0}
+        max={3000}
+        step={1}
         onChange={(v) => {
           setSensorStrength(v);
           sensors?.setSensorStrength(v);
@@ -156,7 +166,7 @@ export function SensorsModule({
           value={fleeAngle}
           onChange={(v) => {
             setFleeAngle(v);
-            sensors?.setFleeAngle(v);
+            sensors?.setFleeAngle(degToRad(v));
           }}
           disabled={!enabled}
         />
