@@ -51,25 +51,7 @@ export function ModuleWrapper({
     setEnabled?.(checked);
   };
 
-  const renderHeader = () => (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <label
-        style={{ display: "flex", alignItems: "center", gap: "4px", margin: 0 }}
-      >
-        <input
-          type="checkbox"
-          checked={internalEnabled}
-          onChange={(e) => handleEnabledChange(e.target.checked)}
-          onClick={(e) => e.stopPropagation()}
-        />
-        <span
-          style={{ fontSize: "14px", fontWeight: "normal", cursor: "pointer" }}
-        >
-          Enabled
-        </span>
-      </label>
-    </div>
-  );
+  const isDisabled = !isSupported || isInitializing;
 
   return (
     <CollapsibleSection
@@ -77,25 +59,56 @@ export function ModuleWrapper({
       defaultOpen={defaultOpen}
       tooltip={tooltip}
     >
-      {!isSupported ? (
-        <div style={{ padding: "8px 0", opacity: 0.7 }}>
-          <span
-            style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}
+      <div style={{ marginBottom: "12px", opacity: isDisabled ? 0.5 : 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              margin: 0,
+            }}
           >
-            Not supported in current runtime
-          </span>
+            <input
+              type="checkbox"
+              checked={internalEnabled}
+              onChange={(e) => handleEnabledChange(e.target.checked)}
+              onClick={(e) => e.stopPropagation()}
+              disabled={isDisabled}
+            />
+            <span
+              style={{
+                fontSize: "14px",
+                fontWeight: "normal",
+                cursor: "pointer",
+              }}
+            >
+              Enabled
+            </span>
+          </label>
+          {!isSupported && isInitialized && !isInitializing && (
+            <span
+              style={{
+                fontSize: "12px",
+                color: "#999",
+                fontStyle: "italic",
+                marginLeft: "8px",
+              }}
+            >
+              (Not supported)
+            </span>
+          )}
         </div>
-      ) : (
-        <>
-          <div style={{ marginBottom: "12px" }}>{renderHeader()}</div>
-          <div className="control-section">
-            {React.cloneElement(children as React.ReactElement, {
-              enabled: internalEnabled,
-              hideEnabled: true,
-            })}
-          </div>
-        </>
-      )}
+      </div>
+      <div
+        className="control-section"
+        style={{ opacity: isDisabled ? 0.5 : 1 }}
+      >
+        {React.cloneElement(children as React.ReactElement, {
+          enabled: internalEnabled && !isDisabled,
+          hideEnabled: true,
+        })}
+      </div>
     </CollapsibleSection>
   );
 }
