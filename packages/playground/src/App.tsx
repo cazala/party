@@ -2,17 +2,13 @@ import { usePlayground } from "./hooks/usePlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useEffect, useRef, useState } from "react";
 import { TopBar } from "./components/TopBar";
-import { InitControls, InitControlsRef } from "./components/InitControls";
+import { InitControlsRef } from "./components/InitControls";
 import { ModulesSidebar } from "./components/ModulesSidebar";
-import { CollapsibleSection } from "./components/ui/CollapsibleSection";
 import { Toolbar } from "./components/ToolBar";
-import { Checkbox } from "./components/ui/Checkbox";
+import { SystemSidebar } from "./components/SystemSidebar";
 
 import "./styles/index.css";
 import "./App.css";
-import { Slider } from "./components/ui/Slider";
-import { Field } from "./components/ui/Field";
-import { ColorPicker } from "./components/ui/ColorPicker";
 
 const LEFT_SIDEBAR_WIDTH = 280;
 const RIGHT_SIDEBAR_WIDTH = 280;
@@ -239,68 +235,23 @@ function App() {
           height: "calc(100vh - 60px)",
         }}
       >
-        <div
-          className="left-sidebar controls-panel"
-          style={{
-            display: "block",
-          }}
-        >
-          {content}
-
-          <div className="controls-header">
-            <h3>System</h3>
-          </div>
-
-          <CollapsibleSection title="INIT" defaultOpen={true}>
-            <InitControls
-              ref={initControlsRef}
-              onInitParticles={isInitialized ? spawnParticles : undefined}
-            />
-          </CollapsibleSection>
-
-          <CollapsibleSection title="PERFORMANCE" defaultOpen={true}>
-            <Checkbox
-              checked={useWebGPU}
-              onChange={() => toggleEngineType()}
-              label="Use WebGPU"
-            />
-
-            <Slider
-              label="Constrain Iterations"
-              value={constrainIterations}
-              onChange={(value) => handleConstrainIterationsChange(value)}
-            />
-            <Slider
-              label="Grid Cell Size"
-              value={cellSize}
-              onChange={(value) => handleCellSizeChange(value)}
-            />
-
-            <Field>
-              <div className="metric-display">
-                <span className="metric-label">Particles:</span>
-                <span className="metric-value">
-                  {particleCount.toLocaleString()}
-                </span>
-              </div>
-            </Field>
-            <Field>
-              <div className="metric-display">
-                <span className="metric-label">FPS:</span>
-                <span className="metric-value">{fps.toFixed(1)}</span>
-              </div>
-            </Field>
-          </CollapsibleSection>
-
-          <CollapsibleSection title="RENDER" defaultOpen={true}>
-            <ColorPicker
-              label="Clear Color"
-              value={rgbaToHex(clearColor)}
-              onChange={handleColorPickerChange}
-              disabled={!isInitialized || isInitializing}
-            />
-          </CollapsibleSection>
-        </div>
+        <SystemSidebar
+          content={content}
+          initControlsRef={initControlsRef}
+          isInitialized={isInitialized}
+          spawnParticles={spawnParticles}
+          useWebGPU={useWebGPU}
+          onToggleEngineType={toggleEngineType}
+          constrainIterations={constrainIterations}
+          onConstrainIterationsChange={handleConstrainIterationsChange}
+          cellSize={cellSize}
+          onCellSizeChange={handleCellSizeChange}
+          particleCount={particleCount}
+          fps={fps}
+          clearColor={rgbaToHex(clearColor)}
+          onClearColorChange={handleColorPickerChange}
+          isInitializing={isInitializing}
+        />
         <div className="canvas-container">
           <Toolbar
             tool={toolMode}

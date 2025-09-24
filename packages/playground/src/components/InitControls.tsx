@@ -274,6 +274,9 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
         <Slider
           label="Number of Particles"
           value={numParticles}
+          min={100}
+          max={10000}
+          step={100}
           onChange={(value) => handleSpawnChange({ newNumParticles: value })}
         />
 

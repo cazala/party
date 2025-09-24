@@ -108,29 +108,3 @@ body {
   width: 100%;
   height: 100%;
 }
-
-/* Metric display for performance stats */
-
-.metric-display {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  margin-top: 4px;
-}
-
-.metric-label {
-  font-size: 14px;
-  color: #ccc;
-  font-weight: 500;
-}
-
-.metric-value {
-  font-size: 14px;
-  color: #fff;
-  font-weight: 600;
-  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-}
