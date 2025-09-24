@@ -94,9 +94,6 @@ export function ModulesSidebar({
         setEnabled={setFluidEnabled}
         isInitialized={isInitialized}
         isInitializing={isInitializing}
-        syncValues={() => {
-          // This will be called by ModuleWrapper to sync values
-        }}
       >
         <FluidModule fluid={fluid} />
       </ModuleWrapper>
@@ -109,9 +106,6 @@ export function ModulesSidebar({
         setEnabled={setBehaviorEnabled}
         isInitialized={isInitialized}
         isInitializing={isInitializing}
-        syncValues={() => {
-          // This will be called by ModuleWrapper to sync values
-        }}
       >
         <BehaviorModule behavior={behavior} />
       </ModuleWrapper>
@@ -133,9 +127,6 @@ export function ModulesSidebar({
         setEnabled={setSensorsEnabled}
         isInitialized={isInitialized}
         isInitializing={isInitializing}
-        syncValues={() => {
-          // This will be called by ModuleWrapper to sync values
-        }}
       >
         <SensorsModule sensors={sensors} />
       </ModuleWrapper>

@@ -9,7 +9,6 @@ interface ModuleWrapperProps {
   tooltip?: string;
   enabled?: boolean;
   setEnabled?: (enabled: boolean) => void;
-  syncValues?: () => void;
   isInitialized?: boolean;
   isInitializing?: boolean;
   children: React.ReactNode;
@@ -23,7 +22,6 @@ export function ModuleWrapper({
   tooltip,
   enabled = true,
   setEnabled,
-  syncValues,
   isInitialized = true,
   isInitializing = false,
   children,
@@ -32,13 +30,12 @@ export function ModuleWrapper({
 
   // Sync UI state with actual module values when module is initialized
   useEffect(() => {
-    if (module && isInitialized && !isInitializing && syncValues) {
-      syncValues();
+    if (module && isInitialized && !isInitializing) {
       if (module.isEnabled) {
         setInternalEnabled(module.isEnabled());
       }
     }
-  }, [module, isInitialized, isInitializing, syncValues]);
+  }, [module, isInitialized, isInitializing]);
 
   // Update internal state when enabled prop changes
   useEffect(() => {
