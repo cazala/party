@@ -50,6 +50,7 @@ export class Sensors extends Module<"sensors", SensorInputKeys> {
     "followBehavior",
     "fleeBehavior",
     "fleeAngle",
+    "enabled",
   ] as const;
 
   constructor(opts?: {
@@ -408,6 +409,319 @@ if (length(totalForce) > 0.0) {
   }
 
   cpu(): CPUDescriptor<SensorInputKeys> {
-    throw new Error("Not implemented");
+    return {
+      apply: ({ particle, input, getImageData, view }) => {
+        const sensorDist = input.sensorDistance;
+        const sensorAngle = input.sensorAngle;
+        const sensorRadius = input.sensorRadius;
+        const sensorThreshold = input.sensorThreshold;
+        const sensorStrength = input.sensorStrength;
+        const colorThreshold = input.colorSimilarityThreshold;
+        const followBehavior = input.followBehavior;
+        const fleeBehavior = input.fleeBehavior;
+        const fleeAngleOffset = input.fleeAngle;
+
+        // Get particle color for color-based behaviors
+        const particleColor = {
+          r: particle.color.r,
+          g: particle.color.g,
+          b: particle.color.b,
+        };
+
+        // Calculate particle velocity direction (normalized)
+        const velocityMag = Math.sqrt(
+          particle.velocity.x * particle.velocity.x +
+            particle.velocity.y * particle.velocity.y
+        );
+        let velocityDir = { x: 1, y: 0 }; // default direction
+
+        if (velocityMag > 0.01) {
+          velocityDir = {
+            x: particle.velocity.x / velocityMag,
+            y: particle.velocity.y / velocityMag,
+          };
+        } else {
+          // Use pseudo-random direction when particle has no velocity
+          const h =
+            particle.position.x * 12.9898 + particle.position.y * 78.233;
+          const r = ((Math.sin(h) * 43758.5453) % 1) * 2 * Math.PI;
+          velocityDir = { x: Math.cos(r), y: Math.sin(r) };
+        }
+
+        // Calculate sensor positions
+        // Left sensor: rotate velocity direction by -sensorAngle
+        const cosLeft = Math.cos(-sensorAngle);
+        const sinLeft = Math.sin(-sensorAngle);
+        const leftDir = {
+          x: velocityDir.x * cosLeft - velocityDir.y * sinLeft,
+          y: velocityDir.x * sinLeft + velocityDir.y * cosLeft,
+        };
+        const leftSensorPos = {
+          x: particle.position.x + leftDir.x * sensorDist,
+          y: particle.position.y + leftDir.y * sensorDist,
+        };
+
+        // Right sensor: rotate velocity direction by +sensorAngle
+        const cosRight = Math.cos(sensorAngle);
+        const sinRight = Math.sin(sensorAngle);
+        const rightDir = {
+          x: velocityDir.x * cosRight - velocityDir.y * sinRight,
+          y: velocityDir.x * sinRight + velocityDir.y * cosRight,
+        };
+        const rightSensorPos = {
+          x: particle.position.x + rightDir.x * sensorDist,
+          y: particle.position.y + rightDir.y * sensorDist,
+        };
+
+        // Helper function to sample canvas at a position with radius
+        const sampleCanvas = (
+          position: { x: number; y: number },
+          radius: number
+        ): {
+          intensity: number;
+          color: { r: number; g: number; b: number };
+        } => {
+          const camera = view.getCamera();
+          const zoom = view.getZoom();
+          const size = view.getSize();
+          const centerX = size.width / 2;
+          const centerY = size.height / 2;
+
+          // Transform world position to screen position
+          const worldX = (position.x - camera.x) * zoom;
+          const worldY = (position.y - camera.y) * zoom;
+          const screenX = centerX + worldX;
+          const screenY = centerY + worldY;
+          const screenRadius = Math.max(1, radius * zoom);
+
+          // Calculate sample area bounds
+          const left = Math.floor(screenX - screenRadius);
+          const top = Math.floor(screenY - screenRadius);
+          const right = Math.ceil(screenX + screenRadius);
+          const bottom = Math.ceil(screenY + screenRadius);
+          const width = right - left;
+          const height = bottom - top;
+
+          if (width <= 0 || height <= 0) {
+            return { intensity: 0, color: { r: 0, g: 0, b: 0 } };
+          }
+
+          const imageData = getImageData(left, top, width, height);
+          if (!imageData) {
+            return { intensity: 0, color: { r: 0, g: 0, b: 0 } };
+          }
+
+          const data = imageData.data;
+          let totalR = 0,
+            totalG = 0,
+            totalB = 0,
+            totalIntensity = 0;
+          let sampleCount = 0;
+
+          // Sample pixels in a circular area
+          const centerSampleX = screenX - left;
+          const centerSampleY = screenY - top;
+
+          for (let y = 0; y < imageData.height; y++) {
+            for (let x = 0; x < imageData.width; x++) {
+              const dx = x - centerSampleX;
+              const dy = y - centerSampleY;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+
+              if (distance <= screenRadius) {
+                const i = (y * imageData.width + x) * 4;
+                const r = data[i] / 255;
+                const g = data[i + 1] / 255;
+                const b = data[i + 2] / 255;
+                const intensity = 0.2126 * r + 0.7152 * g + 0.0722 * b; // Luminance
+
+                totalR += r;
+                totalG += g;
+                totalB += b;
+                totalIntensity += intensity;
+                sampleCount++;
+              }
+            }
+          }
+
+          if (sampleCount === 0) {
+            return { intensity: 0, color: { r: 0, g: 0, b: 0 } };
+          }
+
+          return {
+            intensity: Math.min(1, Math.max(0, totalIntensity / sampleCount)),
+            color: {
+              r: Math.min(1, Math.max(0, totalR / sampleCount)),
+              g: Math.min(1, Math.max(0, totalG / sampleCount)),
+              b: Math.min(1, Math.max(0, totalB / sampleCount)),
+            },
+          };
+        };
+
+        const leftSample = sampleCanvas(leftSensorPos, sensorRadius);
+        const rightSample = sampleCanvas(rightSensorPos, sensorRadius);
+
+        // Helper function to check sensor activation
+        const isSensorActivated = (
+          intensity: number,
+          sensorColor: { r: number; g: number; b: number },
+          behavior: number
+        ): boolean => {
+          // Check intensity threshold first
+          if (intensity <= sensorThreshold) {
+            return false;
+          }
+
+          if (behavior === 0) {
+            // "any"
+            return true;
+          } else if (behavior === 1) {
+            // "same"
+            const colorDiff = {
+              r: sensorColor.r - particleColor.r,
+              g: sensorColor.g - particleColor.g,
+              b: sensorColor.b - particleColor.b,
+            };
+            const distance = Math.sqrt(
+              colorDiff.r * colorDiff.r +
+                colorDiff.g * colorDiff.g +
+                colorDiff.b * colorDiff.b
+            );
+            const maxDistance = Math.sqrt(3); // max distance in RGB space (0-1 range)
+            const similarity = 1 - distance / maxDistance;
+            return similarity > colorThreshold;
+          } else if (behavior === 2) {
+            // "different"
+            const colorDiff = {
+              r: sensorColor.r - particleColor.r,
+              g: sensorColor.g - particleColor.g,
+              b: sensorColor.b - particleColor.b,
+            };
+            const distance = Math.sqrt(
+              colorDiff.r * colorDiff.r +
+                colorDiff.g * colorDiff.g +
+                colorDiff.b * colorDiff.b
+            );
+            const maxDistance = Math.sqrt(3);
+            const similarity = 1 - distance / maxDistance;
+            return similarity <= colorThreshold;
+          } else {
+            // "none" (behavior === 3)
+            return false;
+          }
+        };
+
+        // Evaluate sensor activation for follow behavior
+        let followForce = { x: 0, y: 0 };
+        if (followBehavior === 0) {
+          // "any" (ignore color, compare intensities)
+          if (
+            leftSample.intensity > rightSample.intensity &&
+            leftSample.intensity > sensorThreshold
+          ) {
+            followForce = leftDir;
+          } else if (
+            rightSample.intensity > leftSample.intensity &&
+            rightSample.intensity > sensorThreshold
+          ) {
+            followForce = rightDir;
+          }
+        } else if (followBehavior === 1 || followBehavior === 2) {
+          // "same" or "different"
+          const leftActive = isSensorActivated(
+            leftSample.intensity,
+            leftSample.color,
+            followBehavior
+          );
+          const rightActive = isSensorActivated(
+            rightSample.intensity,
+            rightSample.color,
+            followBehavior
+          );
+          if (leftActive && !rightActive) {
+            followForce = leftDir;
+          } else if (rightActive && !leftActive) {
+            followForce = rightDir;
+          }
+        } // else "none" -> no follow force
+
+        // Evaluate sensor activation for flee behavior
+        let fleeForce = { x: 0, y: 0 };
+        if (fleeBehavior === 0) {
+          // "any" (ignore color, compare intensities)
+          if (
+            leftSample.intensity > rightSample.intensity &&
+            leftSample.intensity > sensorThreshold
+          ) {
+            // Flee from left sensor: rotate left direction by -fleeAngle (turn right)
+            const cosFleeLeft = Math.cos(-fleeAngleOffset);
+            const sinFleeLeft = Math.sin(-fleeAngleOffset);
+            fleeForce = {
+              x: leftDir.x * cosFleeLeft - leftDir.y * sinFleeLeft,
+              y: leftDir.x * sinFleeLeft + leftDir.y * cosFleeLeft,
+            };
+          } else if (
+            rightSample.intensity > leftSample.intensity &&
+            rightSample.intensity > sensorThreshold
+          ) {
+            // Flee from right sensor: rotate right direction by +fleeAngle (turn left)
+            const cosFleeRight = Math.cos(fleeAngleOffset);
+            const sinFleeRight = Math.sin(fleeAngleOffset);
+            fleeForce = {
+              x: rightDir.x * cosFleeRight - rightDir.y * sinFleeRight,
+              y: rightDir.x * sinFleeRight + rightDir.y * cosFleeRight,
+            };
+          }
+        } else if (fleeBehavior === 1 || fleeBehavior === 2) {
+          // "same" or "different"
+          const leftActive = isSensorActivated(
+            leftSample.intensity,
+            leftSample.color,
+            fleeBehavior
+          );
+          const rightActive = isSensorActivated(
+            rightSample.intensity,
+            rightSample.color,
+            fleeBehavior
+          );
+          if (leftActive && !rightActive) {
+            // Flee from left sensor: rotate left direction by -fleeAngle (turn right)
+            const cosFleeLeft = Math.cos(-fleeAngleOffset);
+            const sinFleeLeft = Math.sin(-fleeAngleOffset);
+            fleeForce = {
+              x: leftDir.x * cosFleeLeft - leftDir.y * sinFleeLeft,
+              y: leftDir.x * sinFleeLeft + leftDir.y * cosFleeLeft,
+            };
+          } else if (rightActive && !leftActive) {
+            // Flee from right sensor: rotate right direction by +fleeAngle (turn left)
+            const cosFleeRight = Math.cos(fleeAngleOffset);
+            const sinFleeRight = Math.sin(fleeAngleOffset);
+            fleeForce = {
+              x: rightDir.x * cosFleeRight - rightDir.y * sinFleeRight,
+              y: rightDir.x * sinFleeRight + rightDir.y * cosFleeRight,
+            };
+          }
+        }
+
+        // Combine and apply forces
+        const totalForce = {
+          x: followForce.x + fleeForce.x,
+          y: followForce.y + fleeForce.y,
+        };
+
+        const forceMag = Math.sqrt(
+          totalForce.x * totalForce.x + totalForce.y * totalForce.y
+        );
+        if (forceMag > 0) {
+          const dir = {
+            x: totalForce.x / forceMag,
+            y: totalForce.y / forceMag,
+          };
+          // Match WebGPU: set velocity to direction scaled by sensorStrength/5
+          particle.velocity.x = dir.x * (sensorStrength / 5);
+          particle.velocity.y = dir.y * (sensorStrength / 5);
+        }
+      },
+    };
   }
 }

@@ -201,6 +201,8 @@ export function WebGPUForceControls({
             sensors={sensors}
             hideEnabled
             enabled={sensorsEnabled}
+            isInitialized={isInitialized}
+            isInitializing={isInitializing}
           />
         </CollapsibleSection>
       )}

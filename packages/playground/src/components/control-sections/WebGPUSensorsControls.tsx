@@ -21,10 +21,14 @@ export function WebGPUSensorsControls({
   sensors,
   hideEnabled = false,
   enabled = true,
+  isInitialized = true,
+  isInitializing = false,
 }: {
   sensors: Sensors | null;
   hideEnabled?: boolean;
   enabled?: boolean;
+  isInitialized?: boolean;
+  isInitializing?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(true);
 
@@ -49,8 +53,16 @@ export function WebGPUSensorsControls({
   // Particle color control removed; particle color is inherent per particle
 
   useEffect(() => {
-    // Could hydrate from module if getters existed
-  }, [sensors]);
+    // Sync UI state with actual module values when sensors module changes
+    if (sensors && isInitialized && !isInitializing) {
+      setSensorDistance(sensors.getSensorDistance());
+      setSensorAngle(radToDeg(sensors.getSensorAngle()));
+      setSensorRadius(sensors.getSensorRadius());
+      setSensorThreshold(sensors.getSensorThreshold());
+      setSensorStrength(sensors.getSensorStrength());
+      setInternalEnabled(sensors.isEnabled());
+    }
+  }, [sensors, isInitialized, isInitializing]);
 
   // no dependency between trails and sensors now
 

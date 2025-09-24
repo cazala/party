@@ -209,6 +209,12 @@ export interface CPUForceDescriptor<
     input: Record<InputKeys, number>;
     setState: (name: StateKeys, value: number) => void;
     view: View;
+    getImageData: (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ) => ImageData | null;
   }) => void;
   apply?: (args: {
     particle: Particle;
@@ -220,6 +226,12 @@ export interface CPUForceDescriptor<
     input: Record<InputKeys, number>;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
+    getImageData: (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ) => ImageData | null;
   }) => void;
   constrain?: (args: {
     particle: Particle;
@@ -268,16 +280,16 @@ export enum CanvasComposition {
   // Module needs a clear canvas to work properly (default for most render modules)
   RequiresClear = "requiresClear",
   // Module handles its own background/clearing (e.g. trails with fade)
-  HandlesBackground = "handlesBackground", 
+  HandlesBackground = "handlesBackground",
   // Module renders on top of whatever is there (additive effects)
-  Additive = "additive"
+  Additive = "additive",
 }
 
 export interface CPURenderDescriptor<InputKeys extends string = string>
   extends BaseDescriptor {
   // How this module composes with the canvas background
   composition?: CanvasComposition;
-  
+
   // Optional setup phase (called once per frame before particles)
   setup?: (args: {
     context: CanvasRenderingContext2D;

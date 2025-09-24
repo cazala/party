@@ -177,6 +177,31 @@ export class CPUEngine extends AbstractEngine {
     return this.grid.getParticles(new Vector(position.x, position.y), radius);
   }
 
+  private getImageData(
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): ImageData | null {
+    try {
+      const context = this.canvas.getContext("2d")!;
+      
+      // Clamp to canvas bounds
+      const clampedX = Math.max(0, Math.min(x, this.canvas.width));
+      const clampedY = Math.max(0, Math.min(y, this.canvas.height));
+      const clampedWidth = Math.max(0, Math.min(width, this.canvas.width - clampedX));
+      const clampedHeight = Math.max(0, Math.min(height, this.canvas.height - clampedY));
+      
+      if (clampedWidth <= 0 || clampedHeight <= 0) {
+        return null;
+      }
+
+      return context.getImageData(clampedX, clampedY, clampedWidth, clampedHeight);
+    } catch (error) {
+      return null;
+    }
+  }
+
   private update(dt: number): void {
     // Update spatial grid with current particle positions and camera
     this.grid.setCamera(
@@ -201,6 +226,10 @@ export class CPUEngine extends AbstractEngine {
     // Get neighbors function
     const getNeighbors = (position: { x: number; y: number }, radius: number) =>
       this.getNeighbors(position, radius);
+
+    // Image data access function
+    const getImageData = (x: number, y: number, width: number, height: number) =>
+      this.getImageData(x, y, width, height);
 
     // First pass: state computation for all modules
     for (const module of this.modules) {
@@ -231,6 +260,7 @@ export class CPUEngine extends AbstractEngine {
               input,
               setState,
               view: this.view,
+              getImageData,
             });
           }
         }
@@ -263,6 +293,7 @@ export class CPUEngine extends AbstractEngine {
               input,
               getState,
               view: this.view,
+              getImageData,
             });
           }
         }
