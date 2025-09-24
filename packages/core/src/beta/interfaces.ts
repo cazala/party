@@ -36,7 +36,7 @@ export interface IEngine {
   getFPS(): number;
   export(): Record<string, Record<string, number>>;
   import(settings: Record<string, Record<string, number>>): void;
-  
+
   // Configuration getters and setters
   getClearColor(): { r: number; g: number; b: number; a: number };
   setClearColor(color: { r: number; g: number; b: number; a: number }): void;
@@ -140,8 +140,8 @@ export abstract class AbstractEngine implements IEngine {
       const moduleData = module.read();
       // Include the enabled state in the exported data
       settings[module.name] = {
-        ...moduleData as Record<string, number>,
-        enabled: module.isEnabled() ? 1 : 0
+        ...(moduleData as Record<string, number>),
+        enabled: module.isEnabled() ? 1 : 0,
       };
     }
     return settings;
@@ -151,12 +151,12 @@ export abstract class AbstractEngine implements IEngine {
     for (const module of this.modules) {
       if (settings[module.name]) {
         const moduleSettings = settings[module.name];
-        
+
         // Restore enabled state if present
-        if ('enabled' in moduleSettings) {
+        if ("enabled" in moduleSettings) {
           module.setEnabled(moduleSettings.enabled === 1);
         }
-        
+
         // Restore other settings
         module.write(moduleSettings);
       }
@@ -176,7 +176,7 @@ export abstract class AbstractEngine implements IEngine {
 
   protected getTimeDelta(): number {
     const now = performance.now();
-    const dt = (now - this.lastTime) / 1000;
+    const dt = Math.min(now - this.lastTime, 100) / 1000; // clamp to 100ms
     this.lastTime = now;
     return dt;
   }

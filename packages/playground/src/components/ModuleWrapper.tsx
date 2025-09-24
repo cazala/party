@@ -64,7 +64,7 @@ export function ModuleWrapper({
         disabled={isNotSupported}
         label={isNotSupported ? `${title} (Not supported)` : title}
       />
-      <Section title={title} style={{ opacity: isNotSupported ? 0.5 : 1 }}>
+      <Section style={{ opacity: isNotSupported ? 0.5 : 1 }}>
         {React.cloneElement(children as React.ReactElement, {
           enabled: internalEnabled && !isNotSupported,
           hideEnabled: true,
