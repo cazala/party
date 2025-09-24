@@ -14,23 +14,23 @@ import {
 } from "../../module";
 
 type BehaviorInputKeys =
-  | "wanderWeight"
-  | "cohesionWeight"
-  | "alignmentWeight"
-  | "separationWeight"
-  | "chaseWeight"
-  | "avoidWeight"
-  | "separationRange"
+  | "wander"
+  | "cohesion"
+  | "alignment"
+  | "repulsion"
+  | "chase"
+  | "avoid"
+  | "separation"
   | "viewRadius"
   | "viewAngle";
 
-export const DEFAULT_BEHAVIOR_WANDER_WEIGHT = 0;
-export const DEFAULT_BEHAVIOR_COHESION_WEIGHT = 0;
-export const DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT = 0;
-export const DEFAULT_BEHAVIOR_SEPARATION_WEIGHT = 0;
-export const DEFAULT_BEHAVIOR_CHASE_WEIGHT = 0;
-export const DEFAULT_BEHAVIOR_AVOID_WEIGHT = 0;
-export const DEFAULT_BEHAVIOR_SEPARATION_RANGE = 30;
+export const DEFAULT_BEHAVIOR_WANDER = 0;
+export const DEFAULT_BEHAVIOR_COHESION = 0;
+export const DEFAULT_BEHAVIOR_ALIGNMENT = 0;
+export const DEFAULT_BEHAVIOR_REPULSION = 0;
+export const DEFAULT_BEHAVIOR_CHASE = 0;
+export const DEFAULT_BEHAVIOR_AVOID = 0;
+export const DEFAULT_BEHAVIOR_SEPARATION = 30;
 export const DEFAULT_BEHAVIOR_VIEW_RADIUS = 100;
 export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 2 * Math.PI;
 
@@ -38,67 +38,64 @@ export class Behavior extends Module<"behavior", BehaviorInputKeys> {
   readonly name = "behavior" as const;
   readonly role = ModuleRole.Force;
   readonly keys = [
-    "wanderWeight",
-    "cohesionWeight",
-    "alignmentWeight",
-    "separationWeight",
-    "chaseWeight",
-    "avoidWeight",
-    "separationRange",
+    "wander",
+    "cohesion",
+    "alignment",
+    "repulsion",
+    "chase",
+    "avoid",
+    "separation",
     "viewRadius",
     "viewAngle",
   ] as const;
 
   constructor(opts?: {
-    wanderWeight?: number;
-    cohesionWeight?: number;
-    alignmentWeight?: number;
-    separationWeight?: number;
-    chaseWeight?: number;
-    avoidWeight?: number;
-    separationRange?: number;
+    wander?: number;
+    cohesion?: number;
+    alignment?: number;
+    repulsion?: number;
+    chase?: number;
+    avoid?: number;
+    separation?: number;
     viewRadius?: number;
     viewAngle?: number;
     enabled?: boolean;
   }) {
     super();
     this.write({
-      wanderWeight: opts?.wanderWeight ?? DEFAULT_BEHAVIOR_WANDER_WEIGHT,
-      cohesionWeight: opts?.cohesionWeight ?? DEFAULT_BEHAVIOR_COHESION_WEIGHT,
-      alignmentWeight:
-        opts?.alignmentWeight ?? DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT,
-      separationWeight:
-        opts?.separationWeight ?? DEFAULT_BEHAVIOR_SEPARATION_WEIGHT,
-      chaseWeight: opts?.chaseWeight ?? DEFAULT_BEHAVIOR_CHASE_WEIGHT,
-      avoidWeight: opts?.avoidWeight ?? DEFAULT_BEHAVIOR_AVOID_WEIGHT,
-      separationRange:
-        opts?.separationRange ?? DEFAULT_BEHAVIOR_SEPARATION_RANGE,
+      wander: opts?.wander ?? DEFAULT_BEHAVIOR_WANDER,
+      cohesion: opts?.cohesion ?? DEFAULT_BEHAVIOR_COHESION,
+      alignment: opts?.alignment ?? DEFAULT_BEHAVIOR_ALIGNMENT,
+      repulsion: opts?.repulsion ?? DEFAULT_BEHAVIOR_REPULSION,
+      chase: opts?.chase ?? DEFAULT_BEHAVIOR_CHASE,
+      avoid: opts?.avoid ?? DEFAULT_BEHAVIOR_AVOID,
+      separation: opts?.separation ?? DEFAULT_BEHAVIOR_SEPARATION,
       viewRadius: opts?.viewRadius ?? DEFAULT_BEHAVIOR_VIEW_RADIUS,
       viewAngle: opts?.viewAngle ?? DEFAULT_BEHAVIOR_VIEW_ANGLE,
     });
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
 
-  setWanderWeight(v: number): void {
-    this.write({ wanderWeight: v });
+  setWander(v: number): void {
+    this.write({ wander: v });
   }
-  setCohesionWeight(v: number): void {
-    this.write({ cohesionWeight: v });
+  setCohesion(v: number): void {
+    this.write({ cohesion: v });
   }
-  setAlignmentWeight(v: number): void {
-    this.write({ alignmentWeight: v });
+  setAlignment(v: number): void {
+    this.write({ alignment: v });
   }
-  setSeparationWeight(v: number): void {
-    this.write({ separationWeight: v });
+  setRepulsion(v: number): void {
+    this.write({ repulsion: v });
   }
-  setChaseWeight(v: number): void {
-    this.write({ chaseWeight: v });
+  setChase(v: number): void {
+    this.write({ chase: v });
   }
-  setAvoidWeight(v: number): void {
-    this.write({ avoidWeight: v });
+  setAvoid(v: number): void {
+    this.write({ avoid: v });
   }
-  setSeparationRange(v: number): void {
-    this.write({ separationRange: v });
+  setSeparation(v: number): void {
+    this.write({ separation: v });
   }
   setViewRadius(v: number): void {
     this.write({ viewRadius: v });
@@ -107,26 +104,26 @@ export class Behavior extends Module<"behavior", BehaviorInputKeys> {
     this.write({ viewAngle: v });
   }
 
-  getWanderWeight(): number {
-    return this.readValue("wanderWeight");
+  getWander(): number {
+    return this.readValue("wander");
   }
-  getCohesionWeight(): number {
-    return this.readValue("cohesionWeight");
+  getCohesion(): number {
+    return this.readValue("cohesion");
   }
-  getAlignmentWeight(): number {
-    return this.readValue("alignmentWeight");
+  getAlignment(): number {
+    return this.readValue("alignment");
   }
-  getSeparationWeight(): number {
-    return this.readValue("separationWeight");
+  getRepulsion(): number {
+    return this.readValue("repulsion");
   }
-  getChaseWeight(): number {
-    return this.readValue("chaseWeight");
+  getChase(): number {
+    return this.readValue("chase");
   }
-  getAvoidWeight(): number {
-    return this.readValue("avoidWeight");
+  getAvoid(): number {
+    return this.readValue("avoid");
   }
-  getSeparationRange(): number {
-    return this.readValue("separationRange");
+  getSeparation(): number {
+    return this.readValue("separation");
   }
   getViewRadius(): number {
     return this.readValue("viewRadius");
@@ -140,13 +137,13 @@ export class Behavior extends Module<"behavior", BehaviorInputKeys> {
       apply: ({ particleVar, getUniform }) => `
   // Neighbor loop within view radius
   let viewR = ${getUniform("viewRadius")};
-  let sepRange = ${getUniform("separationRange")};
-  let wSep = ${getUniform("separationWeight")};
-  let wAli = ${getUniform("alignmentWeight")};
-  let wCoh = ${getUniform("cohesionWeight")};
-  let wChase = ${getUniform("chaseWeight")};
-  let wAvoid = ${getUniform("avoidWeight")};
-  let wWander = ${getUniform("wanderWeight")};
+  let sepRange = ${getUniform("separation")};
+  let wSep = ${getUniform("repulsion")};
+  let wAli = ${getUniform("alignment")};
+  let wCoh = ${getUniform("cohesion")};
+  let wChase = ${getUniform("chase")};
+  let wAvoid = ${getUniform("avoid")};
+  let wWander = ${getUniform("wander")};
   let halfAngle = ${getUniform("viewAngle")} * 0.5;
   let cosHalf = cos(halfAngle);
 
@@ -264,13 +261,13 @@ export class Behavior extends Module<"behavior", BehaviorInputKeys> {
       apply: ({ particle, getNeighbors }) => {
         // Get behavior parameters
         const viewR = this.readValue("viewRadius");
-        const sepRange = this.readValue("separationRange");
-        const wSep = this.readValue("separationWeight");
-        const wAli = this.readValue("alignmentWeight");
-        const wCoh = this.readValue("cohesionWeight");
-        const wChase = this.readValue("chaseWeight");
-        const wAvoid = this.readValue("avoidWeight");
-        const wWander = this.readValue("wanderWeight");
+        const sepRange = this.readValue("separation");
+        const wSep = this.readValue("repulsion");
+        const wAli = this.readValue("alignment");
+        const wCoh = this.readValue("cohesion");
+        const wChase = this.readValue("chase");
+        const wAvoid = this.readValue("avoid");
+        const wWander = this.readValue("wander");
         const halfAngle = this.readValue("viewAngle") * 0.5;
         const cosHalf = Math.cos(halfAngle);
 

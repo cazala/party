@@ -1,12 +1,12 @@
 import { useState } from "react";
 import {
-  DEFAULT_BEHAVIOR_WANDER_WEIGHT,
-  DEFAULT_BEHAVIOR_COHESION_WEIGHT,
-  DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT,
-  DEFAULT_BEHAVIOR_SEPARATION_WEIGHT,
-  DEFAULT_BEHAVIOR_CHASE_WEIGHT,
-  DEFAULT_BEHAVIOR_AVOID_WEIGHT,
-  DEFAULT_BEHAVIOR_SEPARATION_RANGE,
+  DEFAULT_BEHAVIOR_WANDER,
+  DEFAULT_BEHAVIOR_COHESION,
+  DEFAULT_BEHAVIOR_ALIGNMENT,
+  DEFAULT_BEHAVIOR_REPULSION,
+  DEFAULT_BEHAVIOR_CHASE,
+  DEFAULT_BEHAVIOR_AVOID,
+  DEFAULT_BEHAVIOR_SEPARATION,
   DEFAULT_BEHAVIOR_VIEW_RADIUS,
   DEFAULT_BEHAVIOR_VIEW_ANGLE,
   Behavior,
@@ -20,26 +20,27 @@ export function BehaviorModule({
   behavior: Behavior | null;
   enabled?: boolean;
 }) {
-  const [wander, setWander] = useState(DEFAULT_BEHAVIOR_WANDER_WEIGHT);
-  const [cohesion, setCohesion] = useState(DEFAULT_BEHAVIOR_COHESION_WEIGHT);
-  const [alignment, setAlignment] = useState(DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT);
-  const [separation, setSeparation] = useState(
-    DEFAULT_BEHAVIOR_SEPARATION_WEIGHT
-  );
-  const [chase, setChase] = useState(DEFAULT_BEHAVIOR_CHASE_WEIGHT);
-  const [avoid, setAvoid] = useState(DEFAULT_BEHAVIOR_AVOID_WEIGHT);
-  const [sepRange, setSepRange] = useState(DEFAULT_BEHAVIOR_SEPARATION_RANGE);
-  const [viewRadius, setVR] = useState(DEFAULT_BEHAVIOR_VIEW_RADIUS);
-  const [viewAngle, setVA] = useState(DEFAULT_BEHAVIOR_VIEW_ANGLE);
+  const [wander, setWander] = useState(DEFAULT_BEHAVIOR_WANDER);
+  const [cohesion, setCohesion] = useState(DEFAULT_BEHAVIOR_COHESION);
+  const [alignment, setAlignment] = useState(DEFAULT_BEHAVIOR_ALIGNMENT);
+  const [repulsion, setRepulsion] = useState(DEFAULT_BEHAVIOR_REPULSION);
+  const [chase, setChase] = useState(DEFAULT_BEHAVIOR_CHASE);
+  const [avoid, setAvoid] = useState(DEFAULT_BEHAVIOR_AVOID);
+  const [separation, setSeparation] = useState(DEFAULT_BEHAVIOR_SEPARATION);
+  const [viewRadius, setViewRadius] = useState(DEFAULT_BEHAVIOR_VIEW_RADIUS);
+  const [viewAngle, setViewAngle] = useState(DEFAULT_BEHAVIOR_VIEW_ANGLE);
 
   return (
     <>
       <Slider
         label="Wander"
         value={wander}
+        min={0}
+        max={100}
+        step={0.1}
         onChange={(v) => {
           setWander(v);
-          behavior?.setWanderWeight(v);
+          behavior?.setWander(v);
         }}
         disabled={!enabled}
       />
@@ -47,9 +48,12 @@ export function BehaviorModule({
       <Slider
         label="Cohesion"
         value={cohesion}
+        min={0}
+        max={10}
+        step={0.1}
         onChange={(v) => {
           setCohesion(v);
-          behavior?.setCohesionWeight(v);
+          behavior?.setCohesion(v);
         }}
         disabled={!enabled}
       />
@@ -57,19 +61,35 @@ export function BehaviorModule({
       <Slider
         label="Alignment"
         value={alignment}
+        min={0}
+        max={10}
+        step={0.1}
         onChange={(v) => {
           setAlignment(v);
-          behavior?.setAlignmentWeight(v);
+          behavior?.setAlignment(v);
         }}
         disabled={!enabled}
       />
 
       <Slider
         label="Repulsion"
+        value={repulsion}
+        min={0}
+        max={10}
+        step={0.1}
+        onChange={(v) => {
+          setRepulsion(v);
+          behavior?.setRepulsion(v);
+        }}
+        disabled={!enabled}
+      />
+
+      <Slider
+        label="Separation"
         value={separation}
         onChange={(v) => {
           setSeparation(v);
-          behavior?.setSeparationWeight(v);
+          behavior?.setSeparation(v);
         }}
         disabled={!enabled}
       />
@@ -77,9 +97,12 @@ export function BehaviorModule({
       <Slider
         label="Chase"
         value={chase}
+        min={0}
+        max={10}
+        step={0.1}
         onChange={(v) => {
           setChase(v);
-          behavior?.setChaseWeight(v);
+          behavior?.setChase(v);
         }}
         disabled={!enabled}
       />
@@ -87,19 +110,12 @@ export function BehaviorModule({
       <Slider
         label="Avoid"
         value={avoid}
+        min={0}
+        max={10}
+        step={0.1}
         onChange={(v) => {
           setAvoid(v);
-          behavior?.setAvoidWeight(v);
-        }}
-        disabled={!enabled}
-      />
-
-      <Slider
-        label="Separation"
-        value={sepRange}
-        onChange={(v) => {
-          setSepRange(v);
-          behavior?.setSeparationRange(v);
+          behavior?.setAvoid(v);
         }}
         disabled={!enabled}
       />
@@ -108,7 +124,7 @@ export function BehaviorModule({
         label="View Radius"
         value={viewRadius}
         onChange={(v) => {
-          setVR(v);
+          setViewRadius(v);
           behavior?.setViewRadius(v);
         }}
       />
@@ -118,7 +134,7 @@ export function BehaviorModule({
         value={viewAngle}
         formatValue={(v) => `${v.toFixed(0)}°`}
         onChange={(v) => {
-          setVA(v);
+          setViewAngle(v);
           behavior?.setViewAngle(v);
         }}
         disabled={!enabled}
