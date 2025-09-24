@@ -47,7 +47,7 @@ export function PerformanceControls({
         <Metrics label="Particles" value={particleCount.toLocaleString()} />
       </Field>
       <Field>
-        <Metrics label="FPS" value={fps.toFixed(1)} />
+        <Metrics label="FPS" value={Math.min(fps | 0, 120).toLocaleString()} />
       </Field>
     </>
   );
