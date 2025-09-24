@@ -16,9 +16,9 @@ import { ToolMode } from "./useToolMode";
 
 const zoomSensitivity = 0.01;
 
-export function useWebGPUPlayground(
+export function useParty(
   canvasRef: React.RefObject<HTMLCanvasElement>,
-  _toolMode: ToolMode = "spawn"
+  toolMode: ToolMode = "cursor"
 ) {
   const engineRef = useRef<Engine | null>(null);
   const environmentRef = useRef<Environment | null>(null);
@@ -501,11 +501,7 @@ export function useWebGPUPlayground(
     const onMouseDown = (e: MouseEvent) => {
       updateMousePos(e);
       // Spawn tool should not trigger interaction
-      const tool = (window as any).__webgpu_tool as
-        | "cursor"
-        | "spawn"
-        | undefined;
-      if (tool === "spawn") {
+      if (toolMode === "spawn") {
         // Translate to world coords and append a particle
         const rect = canvas.getBoundingClientRect();
         const sx = e.clientX - rect.left;
@@ -513,11 +509,16 @@ export function useWebGPUPlayground(
         const size = 5;
         const mass = 1;
         const { x, y } = screenToWorld(sx, sy);
-        const sys = engineRef.current as any;
-        if (sys?.addParticle) {
-          sys.addParticle({ position: [x, y], velocity: [0, 0], size, mass });
+        const engine = engineRef.current;
+        if (engine) {
+          engine.addParticle({
+            position: { x, y },
+            velocity: { x: 0, y: 0 },
+            size,
+            mass,
+            color: { r: 255, g: 255, b: 255, a: 255 },
+          });
         }
-        engineRef.current?.play();
         return;
       }
       interaction.setActive(true);
@@ -550,6 +551,7 @@ export function useWebGPUPlayground(
     isInitialized,
     useWebGPU,
     isInitializing,
+    toolMode,
   ]);
 
   const spawnParticles = useCallback(

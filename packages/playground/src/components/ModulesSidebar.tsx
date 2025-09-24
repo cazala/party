@@ -9,17 +9,17 @@ import {
   Trails,
   Interaction,
 } from "@cazala/party";
-import { WebGPUEnvironmentControls } from "./control-sections/WebGPUEnvironmentControls";
-import { WebGPUBoundaryControls } from "./control-sections/WebGPUBoundaryControls";
-import { WebGPUCollisionsControls } from "./control-sections/WebGPUCollisionsControls";
-import { WebGPUFluidControls } from "./control-sections/WebGPUFluidControls";
-import { WebGPUBehaviorControls } from "./control-sections/WebGPUBehaviorControls";
-import { WebGPUSensorsControls } from "./control-sections/WebGPUSensorsControls";
-import { WebGPUTrailsControls } from "./control-sections/WebGPUTrailsControls";
-import { WebGPUInteractionControls } from "./control-sections/WebGPUInteractionControls";
+import { EnvironmentModule } from "./modules/EnvironmentModule";
+import { BoundaryModule } from "./modules/BoundaryModule";
+import { CollisionsModule } from "./modules/CollisionsModule";
+import { FluidModule } from "./modules/FluidModule";
+import { BehaviorModule } from "./modules/BehaviorModule";
+import { SensorsModule } from "./modules/SensorsModule";
+import { TrailsModule } from "./modules/TrailsModule";
+import { WebGPUInteractionControls } from "./modules/InteractionModule";
 import { CollapsibleSection } from "./CollapsibleSection";
 
-export function WebGPUForceControls({
+export function ModulesSidebar({
   environment,
   boundary,
   collisions,
@@ -94,7 +94,7 @@ export function WebGPUForceControls({
             environment
           )}
         </div>
-        <WebGPUEnvironmentControls
+        <EnvironmentModule
           environment={environment}
           hideEnabled
           enabled={environmentEnabled}
@@ -105,7 +105,7 @@ export function WebGPUForceControls({
         <div style={{ marginBottom: "12px" }}>
           {createEnabledHeader(boundaryEnabled, setBoundaryEnabled, boundary)}
         </div>
-        <WebGPUBoundaryControls
+        <BoundaryModule
           boundary={boundary}
           hideEnabled
           enabled={boundaryEnabled}
@@ -121,7 +121,7 @@ export function WebGPUForceControls({
               collisions
             )}
           </div>
-          <WebGPUCollisionsControls
+          <CollisionsModule
             collisions={collisions}
             hideEnabled
             enabled={collisionsEnabled}
@@ -134,7 +134,7 @@ export function WebGPUForceControls({
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(fluidEnabled, setFluidEnabled, fluid)}
           </div>
-          <WebGPUFluidControls
+          <FluidModule
             fluid={fluid}
             hideEnabled
             enabled={fluidEnabled}
@@ -147,7 +147,9 @@ export function WebGPUForceControls({
       {fluid && !isSupported?.(fluid) && (
         <CollapsibleSection title="Fluids">
           <div style={{ padding: "8px 0", opacity: 0.7 }}>
-            <span style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}>
+            <span
+              style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}
+            >
               Not supported in current runtime
             </span>
           </div>
@@ -159,7 +161,7 @@ export function WebGPUForceControls({
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(behaviorEnabled, setBehaviorEnabled, behavior)}
           </div>
-          <WebGPUBehaviorControls
+          <BehaviorModule
             behavior={behavior}
             hideEnabled
             enabled={behaviorEnabled}
@@ -172,7 +174,9 @@ export function WebGPUForceControls({
       {behavior && !isSupported?.(behavior) && (
         <CollapsibleSection title="Behavior">
           <div style={{ padding: "8px 0", opacity: 0.7 }}>
-            <span style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}>
+            <span
+              style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}
+            >
               Not supported in current runtime
             </span>
           </div>
@@ -184,11 +188,7 @@ export function WebGPUForceControls({
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(trailsEnabled, setTrailsEnabled, trails)}
           </div>
-          <WebGPUTrailsControls
-            trails={trails}
-            hideEnabled
-            enabled={trailsEnabled}
-          />
+          <TrailsModule trails={trails} hideEnabled enabled={trailsEnabled} />
         </CollapsibleSection>
       )}
 
@@ -197,7 +197,7 @@ export function WebGPUForceControls({
           <div style={{ marginBottom: "12px" }}>
             {createEnabledHeader(sensorsEnabled, setSensorsEnabled, sensors)}
           </div>
-          <WebGPUSensorsControls
+          <SensorsModule
             sensors={sensors}
             hideEnabled
             enabled={sensorsEnabled}
@@ -210,7 +210,9 @@ export function WebGPUForceControls({
       {sensors && !isSupported?.(sensors) && (
         <CollapsibleSection title="Sensors">
           <div style={{ padding: "8px 0", opacity: 0.7 }}>
-            <span style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}>
+            <span
+              style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}
+            >
               Not supported in current runtime
             </span>
           </div>
@@ -237,7 +239,9 @@ export function WebGPUForceControls({
       {interaction && !isSupported?.(interaction) && (
         <CollapsibleSection title="Interaction">
           <div style={{ padding: "8px 0", opacity: 0.7 }}>
-            <span style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}>
+            <span
+              style={{ fontSize: "14px", color: "#999", fontStyle: "italic" }}
+            >
               Not supported in current runtime
             </span>
           </div>

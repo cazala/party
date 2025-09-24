@@ -17,7 +17,7 @@ import {
 const radToDeg = (rad: number): number => (rad * 180) / Math.PI;
 const degToRad = (deg: number): number => (deg * Math.PI) / 180;
 
-export function WebGPUSensorsControls({
+export function SensorsModule({
   sensors,
   hideEnabled = false,
   enabled = true,

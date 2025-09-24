@@ -11,7 +11,7 @@ import {
   Fluid,
 } from "@cazala/party";
 
-export function WebGPUFluidControls({
+export function FluidModule({
   fluid,
   hideEnabled = false,
   enabled = true,

@@ -133,7 +133,8 @@ export class WebGPUEngine extends AbstractEngine {
     this.particles.syncToGPU(this.resources);
   }
 
-  addParticle(p: IParticle): void {
+  async addParticle(p: IParticle): Promise<void> {
+    await this.particles.syncFromGPU(this.resources);
     this.particles.addParticle(p);
     this.particles.syncToGPU(this.resources);
   }
@@ -235,7 +236,7 @@ export class WebGPUEngine extends AbstractEngine {
   protected onCellSizeChanged(): void {
     // Update spatial grid with new cell size
     this.grid.setCellSize(this.cellSize);
-    
+
     // If initialized, reconfigure the grid with current view
     if (this.resources && this.view) {
       try {

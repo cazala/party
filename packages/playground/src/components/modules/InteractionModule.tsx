@@ -4,29 +4,19 @@ import {
   DEFAULT_INTERACTION_MODE,
   DEFAULT_INTERACTION_STRENGTH,
   DEFAULT_INTERACTION_RADIUS,
+  Interaction,
 } from "@cazala/party";
-
-interface WebGPUInteractionLike {
-  setEnabled?: (v: boolean) => void;
-  setAction: (v: "click" | "right_click") => void;
-  setMode: (v: "attract" | "repel") => void;
-  setStrength: (v: number) => void;
-  setRadius: (v: number) => void;
-}
 
 export function WebGPUInteractionControls({
   interaction,
   hideEnabled = false,
   enabled = true,
 }: {
-  interaction: WebGPUInteractionLike | null;
+  interaction: Interaction | null;
   hideEnabled?: boolean;
   enabled?: boolean;
 }) {
   const [internalEnabled, setInternalEnabled] = useState(true);
-  const [action, setAction] = useState<"click" | "right_click">(
-    DEFAULT_INTERACTION_ACTION
-  );
   const [mode, setMode] = useState<"attract" | "repel">(
     DEFAULT_INTERACTION_MODE
   );

@@ -5,8 +5,8 @@ import {
   forwardRef,
   useRef,
 } from "react";
-import { ColorSelector } from "../ColorSelector";
-import { calculateMassFromSize } from "../../utils/particle";
+import { ColorSelector } from "./ColorSelector";
+import { calculateMassFromSize } from "../utils/particle";
 
 const DEFAULT_SPAWN_NUM_PARTICLES = 100;
 const DEFAULT_SPAWN_SHAPE = "grid";
@@ -83,10 +83,7 @@ export interface InitControlsRef {
 }
 
 export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
-  (
-    { onInitParticles, onParticleSizeChange, onColorsChange, getCurrentCamera },
-    ref
-  ) => {
+  ({ onInitParticles, onParticleSizeChange, onColorsChange }, ref) => {
     const [numParticles, setNumParticles] = useState(
       DEFAULT_SPAWN_NUM_PARTICLES
     );

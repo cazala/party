@@ -12,7 +12,7 @@ import {
   Behavior,
 } from "@cazala/party";
 
-export function WebGPUBehaviorControls({
+export function BehaviorModule({
   behavior,
   hideEnabled = false,
   enabled = true,

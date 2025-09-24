@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_COLLISIONS_RESTITUTION, Collisions } from "@cazala/party";
 
-export function WebGPUCollisionsControls({
+export function CollisionsModule({
   collisions,
   hideEnabled = false,
   enabled = true,

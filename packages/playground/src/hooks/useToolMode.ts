@@ -1,6 +1,13 @@
 import { useState, useCallback } from "react";
 
-export type ToolMode = "spawn" | "remove" | "joint" | "grab" | "pin" | "emitter";
+export type ToolMode =
+  | "cursor"
+  | "spawn"
+  | "remove"
+  | "joint"
+  | "grab"
+  | "pin"
+  | "emitter";
 
 export interface UseToolModeReturn {
   toolMode: ToolMode;
@@ -15,7 +22,7 @@ export interface UseToolModeReturn {
 }
 
 export function useToolMode(
-  initialMode: ToolMode = "spawn"
+  initialMode: ToolMode = "cursor"
 ): UseToolModeReturn {
   const [toolMode, setToolMode] = useState<ToolMode>(initialMode);
 

@@ -5,7 +5,7 @@ import {
   Trails,
 } from "@cazala/party";
 
-export function WebGPUTrailsControls({
+export function TrailsModule({
   trails,
   hideEnabled = false,
   enabled = true,

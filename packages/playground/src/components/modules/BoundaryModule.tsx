@@ -8,7 +8,7 @@ import {
   Boundary,
 } from "@cazala/party";
 
-export function WebGPUBoundaryControls({
+export function BoundaryModule({
   boundary,
   hideEnabled = false,
   enabled = true,

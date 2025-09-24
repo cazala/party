@@ -7,7 +7,7 @@ import {
   Environment,
 } from "@cazala/party";
 
-export function WebGPUEnvironmentControls({
+export function EnvironmentModule({
   environment,
   hideEnabled = false,
   enabled = true,
