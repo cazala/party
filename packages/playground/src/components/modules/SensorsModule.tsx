@@ -11,13 +11,10 @@ import {
   DEFAULT_SENSORS_FLEE_ANGLE,
   Sensors,
   type SensorBehavior,
+  radToDeg,
 } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
-
-// Helper functions
-const radToDeg = (rad: number): number => (rad * 180) / Math.PI;
-const degToRad = (deg: number): number => (deg * Math.PI) / 180;
 
 export function SensorsModule({
   sensors,

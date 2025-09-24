@@ -413,10 +413,14 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           <Slider
             label="Velocity Angle"
             value={velocityConfig.angle}
+            min={0}
+            max={360}
+            step={1}
             onChange={(value) => {
               velocityConfig.angle = value;
               handleSpawnChange();
             }}
+            formatValue={(v) => `${v}°`}
           />
         )}
       </div>

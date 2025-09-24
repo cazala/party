@@ -10,6 +10,8 @@ import {
   DEFAULT_BEHAVIOR_VIEW_RADIUS,
   DEFAULT_BEHAVIOR_VIEW_ANGLE,
   Behavior,
+  radToDeg,
+  degToRad,
 } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 
@@ -28,7 +30,9 @@ export function BehaviorModule({
   const [avoid, setAvoid] = useState(DEFAULT_BEHAVIOR_AVOID);
   const [separation, setSeparation] = useState(DEFAULT_BEHAVIOR_SEPARATION);
   const [viewRadius, setViewRadius] = useState(DEFAULT_BEHAVIOR_VIEW_RADIUS);
-  const [viewAngle, setViewAngle] = useState(DEFAULT_BEHAVIOR_VIEW_ANGLE);
+  const [viewAngle, setViewAngle] = useState(
+    radToDeg(DEFAULT_BEHAVIOR_VIEW_ANGLE)
+  );
 
   return (
     <>
@@ -123,19 +127,26 @@ export function BehaviorModule({
       <Slider
         label="View Radius"
         value={viewRadius}
+        min={0}
+        max={500}
+        step={1}
         onChange={(v) => {
           setViewRadius(v);
           behavior?.setViewRadius(v);
         }}
+        disabled={!enabled}
       />
 
       <Slider
         label="View Angle"
         value={viewAngle}
-        formatValue={(v) => `${v.toFixed(0)}°`}
+        min={0}
+        max={360}
+        step={1}
+        formatValue={(v) => `${v}°`}
         onChange={(v) => {
           setViewAngle(v);
-          behavior?.setViewAngle(v);
+          behavior?.setViewAngle(degToRad(v));
         }}
         disabled={!enabled}
       />
