@@ -17,7 +17,7 @@ import {
 
 type TrailInputKeys = "trailDecay" | "trailDiffuse";
 
-export const DEFAULT_TRAILS_TRAIL_DECAY = 0.03;
+export const DEFAULT_TRAILS_TRAIL_DECAY = 3;
 export const DEFAULT_TRAILS_TRAIL_DIFFUSE = 0.0;
 
 export class Trails extends Module<"trails", TrailInputKeys> {
@@ -64,7 +64,7 @@ export class Trails extends Module<"trails", TrailInputKeys> {
           kernel: ({ getUniform, readScene, writeScene }) => `{
   let coords = vec2<i32>(i32(gid.x), i32(gid.y));
   let current = ${readScene("coords")};
-  let d = clamp(${getUniform("trailDecay")} * 0.5, 0.0, 1.0);
+  let d = clamp(${getUniform("trailDecay")} * 0.005, 0.0, 1.0);
   if (d <= 0.00001) { ${writeScene("coords", "current")}; return; }
   let bg = vec3<f32>(${getUniform("clearColorR")}, ${getUniform(
             "clearColorG"
@@ -128,7 +128,7 @@ export class Trails extends Module<"trails", TrailInputKeys> {
       setup: ({ context, input, clearColor }) => {
         // Trail effect with decay and blur - match WebGPU behavior
         const canvas = context.canvas;
-        const decay = Math.max(0, Math.min(1, input.trailDecay));
+        const decay = Math.max(0, Math.min(100, input.trailDecay));
         const diffuse = Math.max(
           0,
           Math.min(12, Math.round(input.trailDiffuse))
@@ -137,7 +137,7 @@ export class Trails extends Module<"trails", TrailInputKeys> {
         // Apply decay (fade effect) - simple overlay approach with factor to match WebGPU speed
         if (decay > 0.00001) {
           // Multiply decay by factor to match WebGPU behavior (WebGPU now uses 0.5x, so CPU uses 2.0x)
-          const adjustedDecay = Math.min(1.0, decay * 2.0);
+          const adjustedDecay = Math.min(1.0, (decay * 1.5) / 100);
           context.save();
           context.globalCompositeOperation = "source-over";
           context.fillStyle = `rgba(${clearColor.r * 255}, ${

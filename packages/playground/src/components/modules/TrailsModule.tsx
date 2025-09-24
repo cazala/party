@@ -23,18 +23,27 @@ export function TrailsModule({
       <Slider
         label="Trail Decay"
         value={trailDecay}
+        min={2}
+        max={20}
+        step={1}
         onChange={(v) => {
           setTrailDecay(v);
           trails?.setTrailDecay(v);
         }}
+        disabled={!enabled}
       />
       <Slider
         label="Trail Diffuse"
         value={trailDiffuse}
+        min={0}
+        max={5}
+        step={1}
         onChange={(v) => {
           setTrailDiffuse(v);
           trails?.setTrailDiffuse(v);
         }}
+        formatValue={(v) => `${v.toFixed(0)}px`}
+        disabled={!enabled}
       />
     </>
   );
