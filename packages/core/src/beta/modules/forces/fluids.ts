@@ -13,7 +13,7 @@ import {
   CPUDescriptor,
 } from "../../module";
 
-type FluidInputKeys =
+type FluidsInputKeys =
   | "influenceRadius"
   | "targetDensity"
   | "pressureMultiplier"
@@ -23,19 +23,19 @@ type FluidInputKeys =
   | "enableNearPressure"
   | "maxAcceleration";
 
-export const DEFAULT_FLUID_INFLUENCE_RADIUS = 100;
-export const DEFAULT_FLUID_TARGET_DENSITY = 1;
-export const DEFAULT_FLUID_PRESSURE_MULTIPLIER = 15;
-export const DEFAULT_FLUID_VISCOSITY = 0.6;
-export const DEFAULT_FLUID_NEAR_PRESSURE_MULTIPLIER = 30;
-export const DEFAULT_FLUID_NEAR_THRESHOLD = 50;
-export const DEFAULT_FLUID_ENABLE_NEAR_PRESSURE = true;
-export const DEFAULT_FLUID_MAX_ACCELERATION = 80;
+export const DEFAULT_FLUIDS_INFLUENCE_RADIUS = 100;
+export const DEFAULT_FLUIDs_TARGET_DENSITY = 1;
+export const DEFAULT_FLUIDS_PRESSURE_MULTIPLIER = 15;
+export const DEFAULT_FLUIDS_VISCOSITY = 0.6;
+export const DEFAULT_FLUIDS_NEAR_PRESSURE_MULTIPLIER = 30;
+export const DEFAULT_FLUIDS_NEAR_THRESHOLD = 50;
+export const DEFAULT_FLUIDS_ENABLE_NEAR_PRESSURE = true;
+export const DEFAULT_FLUIDS_MAX_ACCELERATION = 80;
 
 type FluidStateKeys = "density" | "nearDensity";
 
-export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
-  readonly name = "fluid" as const;
+export class Fluids extends Module<"fluids", FluidsInputKeys, FluidStateKeys> {
+  readonly name = "fluids" as const;
   readonly role = ModuleRole.Force;
   readonly keys = [
     "influenceRadius",
@@ -61,17 +61,17 @@ export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
   }) {
     super();
     this.write({
-      influenceRadius: opts?.influenceRadius ?? DEFAULT_FLUID_INFLUENCE_RADIUS,
-      targetDensity: opts?.targetDensity ?? DEFAULT_FLUID_TARGET_DENSITY,
+      influenceRadius: opts?.influenceRadius ?? DEFAULT_FLUIDS_INFLUENCE_RADIUS,
+      targetDensity: opts?.targetDensity ?? DEFAULT_FLUIDs_TARGET_DENSITY,
       pressureMultiplier:
-        opts?.pressureMultiplier ?? DEFAULT_FLUID_PRESSURE_MULTIPLIER,
-      viscosity: opts?.viscosity ?? DEFAULT_FLUID_VISCOSITY,
+        opts?.pressureMultiplier ?? DEFAULT_FLUIDS_PRESSURE_MULTIPLIER,
+      viscosity: opts?.viscosity ?? DEFAULT_FLUIDS_VISCOSITY,
       nearPressureMultiplier:
-        opts?.nearPressureMultiplier ?? DEFAULT_FLUID_NEAR_PRESSURE_MULTIPLIER,
-      nearThreshold: opts?.nearThreshold ?? DEFAULT_FLUID_NEAR_THRESHOLD,
+        opts?.nearPressureMultiplier ?? DEFAULT_FLUIDS_NEAR_PRESSURE_MULTIPLIER,
+      nearThreshold: opts?.nearThreshold ?? DEFAULT_FLUIDS_NEAR_THRESHOLD,
       enableNearPressure:
-        opts?.enableNearPressure ?? DEFAULT_FLUID_ENABLE_NEAR_PRESSURE ? 1 : 0,
-      maxAcceleration: opts?.maxAcceleration ?? DEFAULT_FLUID_MAX_ACCELERATION,
+        opts?.enableNearPressure ?? DEFAULT_FLUIDS_ENABLE_NEAR_PRESSURE ? 1 : 0,
+      maxAcceleration: opts?.maxAcceleration ?? DEFAULT_FLUIDS_MAX_ACCELERATION,
     });
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
@@ -129,7 +129,7 @@ export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
     return this.readValue("maxAcceleration");
   }
 
-  webgpu(): WebGPUDescriptor<FluidInputKeys, FluidStateKeys> {
+  webgpu(): WebGPUDescriptor<FluidsInputKeys, FluidStateKeys> {
     return {
       states: ["density", "nearDensity"],
       // State pass: precompute density and near-density per particle
@@ -267,10 +267,10 @@ export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<FluidInputKeys, FluidStateKeys> {
+  cpu(): CPUDescriptor<FluidsInputKeys, FluidStateKeys> {
     return {
       states: ["density", "nearDensity"],
-      
+
       // State pass: precompute density and near-density per particle
       state: ({ particle, getNeighbors, dt, setState }) => {
         // Get fluid parameters
@@ -297,9 +297,9 @@ export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
           const dX = posPredX - other.position.x;
           const dY = posPredY - other.position.y;
           const dist2 = dX * dX + dY * dY;
-          
+
           if (dist2 <= 0.0) continue;
-          
+
           const dist = Math.sqrt(dist2);
           const factor = Math.max(rad - dist, 0.0);
           if (factor <= 0.0) continue;
@@ -352,30 +352,32 @@ export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
           const deltaX = other.position.x - particle.position.x;
           const deltaY = other.position.y - particle.position.y;
           const dist2 = deltaX * deltaX + deltaY * deltaY;
-          
+
           if (dist2 <= 0.0) continue;
-          
+
           const dist = Math.sqrt(dist2);
           if (dist <= 0.0 || dist >= rad) continue;
-          
+
           const dirX = deltaX / dist;
           const dirY = deltaY / dist;
 
           // Derivative kernel: scale * (dist - rad), scale = (-12/pi)/r^4
-          const scale = (-12.0 / Math.PI) / r4;
+          const scale = -12.0 / Math.PI / r4;
           const slope = (dist - rad) * scale;
 
           // Neighbor pressures from precomputed densities
           const dN = Math.max(getState("density", other.id), 1e-6);
-          const nearN = useNear !== 0.0 ? getState("nearDensity", other.id) : 0.0;
+          const nearN =
+            useNear !== 0.0 ? getState("nearDensity", other.id) : 0.0;
           const densityDiff = dN - targetDensity;
           const pressure = densityDiff * pressureMul;
           const nearPressure = nearN * nearMul;
-          const effectivePressure = dist < nearThreshold ? nearPressure : pressure;
+          const effectivePressure =
+            dist < nearThreshold ? nearPressure : pressure;
 
           // Gradient contribution
-          const gradContribX = dirX * (effectivePressure * slope) / dN;
-          const gradContribY = dirY * (effectivePressure * slope) / dN;
+          const gradContribX = (dirX * (effectivePressure * slope)) / dN;
+          const gradContribY = (dirY * (effectivePressure * slope)) / dN;
           gradSumX += gradContribX;
           gradSumY += gradContribY;
         }
@@ -395,20 +397,20 @@ export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
             const deltaX = other.position.x - particle.position.x;
             const deltaY = other.position.y - particle.position.y;
             const dist2 = deltaX * deltaX + deltaY * deltaY;
-            
+
             if (dist2 <= 0.0) continue;
-            
+
             const dist = Math.sqrt(dist2);
             if (dist >= rad) continue;
 
             // Viscosity kernel: (max(0, r^2 - d^2)^3) / (pi/4 * r^8)
             const val = Math.max(0.0, r2 - dist2);
             const kVisc = (val * val * val) / ((Math.PI / 4.0) * r8);
-            
+
             viscosityForceX += (other.velocity.x - particle.velocity.x) * kVisc;
             viscosityForceY += (other.velocity.y - particle.velocity.y) * kVisc;
           }
-          
+
           viscosityForceX *= visc;
           viscosityForceY *= visc;
         }
@@ -416,7 +418,7 @@ export class Fluid extends Module<"fluid", FluidInputKeys, FluidStateKeys> {
         // Convert to acceleration-like effect: a = F / density
         let forceX = (pressureForceX / myDensity) * 1000000.0;
         let forceY = (pressureForceY / myDensity) * 1000000.0;
-        
+
         if (visc !== 0.0) {
           forceX += (viscosityForceX * 1000.0) / myDensity;
           forceY += (viscosityForceY * 1000.0) / myDensity;

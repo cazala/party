@@ -3,7 +3,7 @@ import {
   Environment,
   Boundary,
   Collisions,
-  Fluid,
+  Fluids,
   Behavior,
   Sensors,
   Trails,
@@ -12,7 +12,7 @@ import {
 import { EnvironmentModule } from "./modules/EnvironmentModule";
 import { BoundaryModule } from "./modules/BoundaryModule";
 import { CollisionsModule } from "./modules/CollisionsModule";
-import { FluidModule } from "./modules/FluidModule";
+import { FluidsModule } from "./modules/FluidsModule";
 import { BehaviorModule } from "./modules/BehaviorModule";
 import { SensorsModule } from "./modules/SensorsModule";
 import { TrailsModule } from "./modules/TrailsModule";
@@ -24,7 +24,7 @@ export function ModulesSidebar({
   environment,
   boundary,
   collisions,
-  fluid,
+  fluids,
   behavior,
   sensors,
   trails,
@@ -36,7 +36,7 @@ export function ModulesSidebar({
   environment: Environment | null;
   boundary: Boundary | null;
   collisions: Collisions | null;
-  fluid: Fluid | null;
+  fluids: Fluids | null;
   behavior: Behavior | null;
   sensors: Sensors | null;
   trails: Trails | null;
@@ -48,7 +48,7 @@ export function ModulesSidebar({
   const [environmentEnabled, setEnvironmentEnabled] = useState(true);
   const [boundaryEnabled, setBoundaryEnabled] = useState(true);
   const [collisionsEnabled, setCollisionsEnabled] = useState(true);
-  const [fluidEnabled, setFluidEnabled] = useState(false);
+  const [fluidsEnabled, setFluidsEnabled] = useState(false);
   const [behaviorEnabled, setBehaviorEnabled] = useState(false);
   const [sensorsEnabled, setSensorsEnabled] = useState(false);
   const [trailsEnabled, setTrailsEnabled] = useState(false);
@@ -89,14 +89,14 @@ export function ModulesSidebar({
 
       <ModuleWrapper
         title="Fluids"
-        module={fluid}
-        isSupported={isSupported(fluid)}
-        enabled={fluidEnabled}
-        setEnabled={setFluidEnabled}
+        module={fluids}
+        isSupported={isSupported(fluids)}
+        enabled={fluidsEnabled}
+        setEnabled={setFluidsEnabled}
         isInitialized={isInitialized}
         isInitializing={isInitializing}
       >
-        <FluidModule fluid={fluid} />
+        <FluidsModule fluids={fluids} />
       </ModuleWrapper>
 
       <ModuleWrapper

@@ -32,7 +32,7 @@ function App() {
     environment,
     boundary,
     collisions,
-    fluid,
+    fluids,
     behavior,
     sensors,
     trails,
@@ -250,7 +250,7 @@ function App() {
             environment={environment}
             boundary={boundary}
             collisions={collisions}
-            fluid={fluid}
+            fluids={fluids}
             behavior={behavior}
             sensors={sensors}
             trails={trails}

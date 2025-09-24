@@ -3,7 +3,7 @@ import {
   Environment,
   Boundary,
   Collisions,
-  Fluid,
+  Fluids,
   Behavior,
   Sensors,
   Trails,
@@ -15,14 +15,12 @@ import { Particle as ParticleRenderer } from "@cazala/party";
 
 const zoomSensitivity = 0.01;
 
-export function useParty(
-  canvasRef: React.RefObject<HTMLCanvasElement>
-) {
+export function useParty(canvasRef: React.RefObject<HTMLCanvasElement>) {
   const engineRef = useRef<Engine | null>(null);
   const environmentRef = useRef<Environment | null>(null);
   const boundaryRef = useRef<Boundary | null>(null);
   const collisionsRef = useRef<Collisions | null>(null);
-  const fluidRef = useRef<Fluid | null>(null);
+  const fluidsRef = useRef<Fluids | null>(null);
   const behaviorRef = useRef<Behavior | null>(null);
   const sensorsRef = useRef<Sensors | null>(null);
   const trailsRef = useRef<Trails | null>(null);
@@ -40,7 +38,7 @@ export function useParty(
       environment?: any;
       boundary?: any;
       collisions?: any;
-      fluid?: any;
+      fluids?: any;
       behavior?: any;
       sensors?: any;
       trails?: any;
@@ -209,7 +207,7 @@ export function useParty(
       environmentRef.current = null;
       boundaryRef.current = null;
       collisionsRef.current = null;
-      fluidRef.current = null;
+      fluidsRef.current = null;
       behaviorRef.current = null;
       sensorsRef.current = null;
       trailsRef.current = null;
@@ -270,7 +268,7 @@ export function useParty(
             mode: "bounce",
           });
           const collisions = new Collisions({ restitution: 0.8 });
-          const fluid = new Fluid({ enabled: false });
+          const fluids = new Fluids({ enabled: false });
           const behavior = new Behavior({ enabled: false });
           const sensors = new Sensors({ enabled: false });
           const interaction = new Interaction({
@@ -288,7 +286,7 @@ export function useParty(
             boundary,
             collisions,
             behavior,
-            fluid,
+            fluids,
             sensors,
             interaction,
           ];
@@ -348,7 +346,7 @@ export function useParty(
           environmentRef.current = environment;
           boundaryRef.current = boundary;
           collisionsRef.current = collisions;
-          fluidRef.current = fluid;
+          fluidsRef.current = fluids;
           behaviorRef.current = behavior;
           sensorsRef.current = sensors;
           trailsRef.current = trails;
@@ -487,7 +485,7 @@ export function useParty(
       environmentRef.current = null;
       boundaryRef.current = null;
       collisionsRef.current = null;
-      fluidRef.current = null;
+      fluidsRef.current = null;
       behaviorRef.current = null;
       sensorsRef.current = null;
 
@@ -665,7 +663,7 @@ export function useParty(
     environment: environmentRef.current,
     boundary: boundaryRef.current,
     collisions: collisionsRef.current,
-    fluid: fluidRef.current,
+    fluids: fluidsRef.current,
     behavior: behaviorRef.current,
     sensors: sensorsRef.current,
     trails: trailsRef.current,
