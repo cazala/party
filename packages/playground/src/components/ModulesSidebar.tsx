@@ -18,6 +18,7 @@ import { SensorsModule } from "./modules/SensorsModule";
 import { TrailsModule } from "./modules/TrailsModule";
 import { WebGPUInteractionControls } from "./modules/InteractionModule";
 import { ModuleWrapper } from "./ModuleWrapper";
+import "./ModulesSidebar.css";
 
 export function ModulesSidebar({
   environment,

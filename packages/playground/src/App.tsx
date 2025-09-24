@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { TopBar } from "./components/TopBar";
 import { InitControls, InitControlsRef } from "./components/InitControls";
 import { ModulesSidebar } from "./components/ModulesSidebar";
-import { CollapsibleSection } from "./components/CollapsibleSection";
+import { CollapsibleSection } from "./components/ui/CollapsibleSection";
 import { Toolbar } from "./components/ToolBar";
+import { Checkbox } from "./components/ui/Checkbox";
 
 import "./styles/index.css";
-import "./components/Controls.css";
-import "./components/TopBar.css";
 import "./App.css";
+import { Slider } from "./components/ui/Slider";
+import { Field } from "./components/ui/Field";
 
 const LEFT_SIDEBAR_WIDTH = 280;
 const RIGHT_SIDEBAR_WIDTH = 280;
@@ -257,71 +258,41 @@ function App() {
           </CollapsibleSection>
 
           <CollapsibleSection title="PERFORMANCE" defaultOpen={true}>
-            <div className="control-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={useWebGPU}
-                  onChange={() => toggleEngineType()}
-                />
-                Use WebGPU
-              </label>
-            </div>
+            <Checkbox
+              checked={useWebGPU}
+              onChange={() => toggleEngineType()}
+              label="Use WebGPU"
+            />
 
-            <div className="control-group">
-              <label>
-                Constrain Iterations: {constrainIterations}
-                <input
-                  type="range"
-                  min="1"
-                  max="100"
-                  step="1"
-                  value={constrainIterations || 1}
-                  onChange={(e) =>
-                    handleConstrainIterationsChange(parseInt(e.target.value))
-                  }
-                  className="slider"
-                  disabled={!isInitialized || isInitializing}
-                />
-              </label>
-            </div>
+            <Slider
+              label="Constrain Iterations"
+              value={constrainIterations}
+              onChange={(value) => handleConstrainIterationsChange(value)}
+            />
+            <Slider
+              label="Grid Cell Size"
+              value={cellSize}
+              onChange={(value) => handleCellSizeChange(value)}
+            />
 
-            <div className="control-group">
-              <label>
-                Grid Cell Size: {cellSize}px
-                <input
-                  type="range"
-                  min="4"
-                  max="64"
-                  step="2"
-                  value={cellSize || 4}
-                  onChange={(e) =>
-                    handleCellSizeChange(parseInt(e.target.value))
-                  }
-                  className="slider"
-                  disabled={!isInitialized || isInitializing}
-                />
-              </label>
-            </div>
-
-            <div className="control-group">
+            <Field>
               <div className="metric-display">
                 <span className="metric-label">Particles:</span>
                 <span className="metric-value">
                   {particleCount.toLocaleString()}
                 </span>
               </div>
-            </div>
-            <div className="control-group">
+            </Field>
+            <Field>
               <div className="metric-display">
                 <span className="metric-label">FPS:</span>
                 <span className="metric-value">{fps.toFixed(1)}</span>
               </div>
-            </div>
+            </Field>
           </CollapsibleSection>
 
           <CollapsibleSection title="RENDER" defaultOpen={true}>
-            <div className="control-group">
+            <Field>
               <div
                 style={{
                   display: "flex",
@@ -364,7 +335,7 @@ function App() {
                   />
                 </div>
               </div>
-            </div>
+            </Field>
           </CollapsibleSection>
         </div>
         <div className="canvas-container">

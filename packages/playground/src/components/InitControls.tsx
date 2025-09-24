@@ -5,8 +5,11 @@ import {
   forwardRef,
   useRef,
 } from "react";
-import { ColorSelector } from "./ColorSelector";
+import { ColorSelector } from "./ui/ColorSelector";
 import { calculateMassFromSize } from "../utils/particle";
+import { Slider } from "./ui/Slider";
+import { Dropdown } from "./ui/Dropdown";
+import "./InitControls.css";
 
 const DEFAULT_SPAWN_NUM_PARTICLES = 900;
 const DEFAULT_SPAWN_SHAPE = "grid";
@@ -83,7 +86,7 @@ export interface InitControlsRef {
 }
 
 export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
-  ({ onInitParticles, onParticleSizeChange, onColorsChange }, ref) => {
+  ({ onInitParticles, onColorsChange }, ref) => {
     const [numParticles, setNumParticles] = useState(
       DEFAULT_SPAWN_NUM_PARTICLES
     );
@@ -207,35 +210,47 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
     ]);
 
     const handleSpawnChange = (
-      newNumParticles?: number,
-      newShape?: "grid" | "random" | "circle" | "donut" | "square",
-      newSpacing?: number,
-      newParticleSize?: number,
-      newRadius?: number,
-      newInnerRadius?: number,
-      newSquareSize?: number,
-      newCornerRadius?: number,
-      newParticleMass?: number
+      optiosn: {
+        newNumParticles?: number;
+        newShape?: "grid" | "random" | "circle" | "donut" | "square";
+        newSpacing?: number;
+        newParticleSize?: number;
+        newRadius?: number;
+        newInnerRadius?: number;
+        newSquareSize?: number;
+        newCornerRadius?: number;
+        newParticleMass?: number;
+      } = {}
     ) => {
-      const particles = newNumParticles ?? numParticles;
-      const shape = newShape ?? spawnShape;
-      const size = newParticleSize ?? particleSize;
-      const mass = newParticleMass ?? particleMass;
-      const space = Math.max(newSpacing ?? spacing, size * 2);
-      const rad = newRadius ?? radius;
-      const innerRad = newInnerRadius ?? innerRadius;
-      const sqSize = newSquareSize ?? squareSize;
-      const cornRad = newCornerRadius ?? cornerRadius;
+      const particles = optiosn.newNumParticles ?? numParticles;
+      const shape = optiosn.newShape ?? spawnShape;
+      const size = optiosn.newParticleSize ?? particleSize;
+      const mass = optiosn.newParticleSize
+        ? calculateMassFromSize(optiosn.newParticleSize)
+        : optiosn.newParticleMass ?? particleMass;
+      const space = Math.max(optiosn.newSpacing ?? spacing, size * 2);
+      const rad = optiosn.newRadius ?? radius;
+      const innerRad = optiosn.newInnerRadius ?? innerRadius;
+      const sqSize = optiosn.newSquareSize ?? squareSize;
+      const cornRad = optiosn.newCornerRadius ?? cornerRadius;
 
-      if (newNumParticles !== undefined) setNumParticles(newNumParticles);
-      if (newShape !== undefined) setSpawnShape(newShape);
-      if (newSpacing !== undefined) setSpacing(space);
-      if (newParticleSize !== undefined) setParticleSize(newParticleSize);
-      if (newParticleMass !== undefined) setParticleMass(newParticleMass);
-      if (newRadius !== undefined) setRadius(newRadius);
-      if (newInnerRadius !== undefined) setInnerRadius(newInnerRadius);
-      if (newSquareSize !== undefined) setSquareSize(newSquareSize);
-      if (newCornerRadius !== undefined) setCornerRadius(newCornerRadius);
+      if (optiosn.newNumParticles !== undefined)
+        setNumParticles(optiosn.newNumParticles);
+      if (optiosn.newShape !== undefined) setSpawnShape(optiosn.newShape);
+      if (optiosn.newSpacing !== undefined) setSpacing(space);
+      if (optiosn.newParticleSize !== undefined) {
+        setParticleSize(optiosn.newParticleSize);
+        setParticleMass(calculateMassFromSize(optiosn.newParticleSize));
+      }
+      if (optiosn.newParticleMass !== undefined)
+        setParticleMass(optiosn.newParticleMass);
+      if (optiosn.newRadius !== undefined) setRadius(optiosn.newRadius);
+      if (optiosn.newInnerRadius !== undefined)
+        setInnerRadius(optiosn.newInnerRadius);
+      if (optiosn.newSquareSize !== undefined)
+        setSquareSize(optiosn.newSquareSize);
+      if (optiosn.newCornerRadius !== undefined)
+        setCornerRadius(optiosn.newCornerRadius);
 
       if (onInitParticles) {
         onInitParticles(
@@ -256,354 +271,150 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
 
     return (
       <div>
-        <div className="control-group">
-          <label>
-            Number of Particles: {numParticles}
-            <input
-              type="range"
-              min="100"
-              max="100000"
-              step="100"
-              value={numParticles}
-              onChange={(e) => handleSpawnChange(parseInt(e.target.value))}
-              className="slider"
-            />
-          </label>
-        </div>
+        <Slider
+          label="Number of Particles"
+          value={numParticles}
+          onChange={(value) => handleSpawnChange({ newNumParticles: value })}
+        />
 
-        <div className="control-group">
-          <label>
-            Particle Size: {particleSize}
-            <input
-              type="range"
-              min="3"
-              max="30"
-              step="1"
-              value={particleSize}
-              onChange={(e) => {
-                const newSize = parseInt(e.target.value);
-                const newSpacing = Math.max(spacing, newSize * 2);
-                const newMass = calculateMassFromSize(newSize);
-                handleSpawnChange(
-                  undefined,
-                  undefined,
-                  newSpacing !== spacing ? newSpacing : undefined,
-                  newSize,
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  newMass
-                );
-                // Notify parent component about particle size change
-                onParticleSizeChange?.(newSize);
-              }}
-              className="slider"
-            />
-          </label>
-        </div>
-
-        <div className="control-group">
-          <label>
-            Particle Mass: {particleMass.toFixed(1)}
-            <input
-              type="range"
-              min="0.1"
-              max="100"
-              step="0.1"
-              value={particleMass}
-              onChange={(e) => {
-                const newMass = parseFloat(e.target.value);
-                handleSpawnChange(
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  newMass
-                );
-              }}
-              className="slider"
-            />
-          </label>
-        </div>
-
-        <div className="control-group">
-          <label>
-            Shape
-            <select
-              value={spawnShape}
-              onChange={(e) =>
-                handleSpawnChange(
-                  undefined,
-                  e.target.value as
-                    | "grid"
-                    | "random"
-                    | "circle"
-                    | "donut"
-                    | "square"
-                )
-              }
-              className="form-select"
-            >
-              <option value="grid">Grid</option>
-              <option value="circle">Circle</option>
-              <option value="donut">Donut</option>
-              <option value="square">Square</option>
-              <option value="random">Random</option>
-            </select>
-          </label>
-        </div>
-
+        <Slider
+          label="Particle Size"
+          value={particleSize}
+          onChange={(value) => handleSpawnChange({ newParticleSize: value })}
+        />
+        <Slider
+          label="Particle Mass"
+          value={particleMass}
+          onChange={(value) => handleSpawnChange({ newParticleMass: value })}
+          formatValue={(v) => v.toFixed(2)}
+        />
+        <Dropdown
+          label="Shape"
+          value={spawnShape}
+          onChange={(value) =>
+            handleSpawnChange({
+              newShape: value as
+                | "grid"
+                | "random"
+                | "circle"
+                | "donut"
+                | "square",
+            })
+          }
+          options={[
+            { value: "grid", label: "Grid" },
+            { value: "circle", label: "Circle" },
+            { value: "donut", label: "Donut" },
+            { value: "square", label: "Square" },
+            { value: "random", label: "Random" },
+          ]}
+        />
         {spawnShape === "grid" && (
-          <>
-            <div className="control-group">
-              <label>
-                Spacing: {spacing}
-                <input
-                  type="range"
-                  min={particleSize * 2 + 2}
-                  max="150"
-                  step="5"
-                  value={spacing}
-                  onChange={(e) =>
-                    handleSpawnChange(
-                      undefined,
-                      undefined,
-                      parseInt(e.target.value)
-                    )
-                  }
-                  className="slider"
-                />
-              </label>
-            </div>
-          </>
-        )}
-
-        {spawnShape === "circle" && (
-          <div className="control-group">
-            <label>
-              Radius: {radius}
-              <input
-                type="range"
-                min="20"
-                max="1000"
-                step="10"
-                value={radius}
-                onChange={(e) =>
-                  handleSpawnChange(
-                    undefined,
-                    undefined,
-                    undefined,
-                    undefined,
-                    parseInt(e.target.value)
-                  )
-                }
-                className="slider"
-              />
-            </label>
-          </div>
+          <Slider
+            label="Spacing"
+            value={spacing}
+            onChange={(value) => handleSpawnChange({ newSpacing: value })}
+          />
         )}
 
         {spawnShape === "donut" && (
-          <>
-            <div className="control-group">
-              <label>
-                Outer Radius: {radius}
-                <input
-                  type="range"
-                  min="30"
-                  max="1000"
-                  step="10"
-                  value={radius}
-                  onChange={(e) => {
-                    const newOuterRadius = parseInt(e.target.value);
-                    // Ensure inner radius is smaller than outer radius
-                    const adjustedInnerRadius = Math.min(
-                      innerRadius,
-                      newOuterRadius - 20
-                    );
-                    handleSpawnChange(
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      newOuterRadius,
-                      adjustedInnerRadius !== innerRadius
-                        ? adjustedInnerRadius
-                        : undefined
-                    );
-                  }}
-                  className="slider"
-                />
-              </label>
-            </div>
-            <div className="control-group">
-              <label>
-                Inner Radius: {innerRadius}
-                <input
-                  type="range"
-                  min="10"
-                  max={Math.max(10, radius - 20)}
-                  step="5"
-                  value={innerRadius}
-                  onChange={(e) =>
-                    handleSpawnChange(
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      parseInt(e.target.value)
-                    )
-                  }
-                  className="slider"
-                />
-              </label>
-            </div>
-          </>
+          <Slider
+            label="Inner Radius"
+            value={innerRadius}
+            min={10}
+            max={1000}
+            step={1}
+            onChange={(value) =>
+              handleSpawnChange({
+                newInnerRadius: value,
+                newRadius: value > radius ? value : radius,
+              })
+            }
+          />
+        )}
+
+        {(spawnShape === "circle" || spawnShape === "donut") && (
+          <Slider
+            label={spawnShape === "circle" ? "Radius" : "Outer Radius"}
+            value={radius}
+            min={spawnShape === "circle" ? 10 : innerRadius}
+            max={1000}
+            step={1}
+            onChange={(value) => handleSpawnChange({ newRadius: value })}
+          />
         )}
 
         {spawnShape === "square" && (
           <>
-            <div className="control-group">
-              <label>
-                Size: {squareSize}
-                <input
-                  type="range"
-                  min="50"
-                  max="10000"
-                  step="10"
-                  value={squareSize}
-                  onChange={(e) => {
-                    const newSize = parseInt(e.target.value);
-                    // Ensure corner radius doesn't exceed half the size
-                    const adjustedCornerRadius = Math.min(
-                      cornerRadius,
-                      newSize / 2
-                    );
-                    handleSpawnChange(
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      newSize,
-                      adjustedCornerRadius !== cornerRadius
-                        ? adjustedCornerRadius
-                        : undefined
-                    );
-                  }}
-                  className="slider"
-                />
-              </label>
-            </div>
-            <div className="control-group">
-              <label>
-                Corner Radius: {cornerRadius}
-                <input
-                  type="range"
-                  min="0"
-                  max={Math.max(0, squareSize / 2)}
-                  step="5"
-                  value={cornerRadius}
-                  onChange={(e) =>
-                    handleSpawnChange(
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      parseInt(e.target.value)
-                    )
-                  }
-                  className="slider"
-                />
-              </label>
-            </div>
+            <Slider
+              label="Square Size"
+              value={squareSize}
+              min={10}
+              max={1000}
+              step={1}
+              onChange={(value) =>
+                handleSpawnChange({
+                  newSquareSize: value,
+                })
+              }
+            />
+            <Slider
+              min={0}
+              max={1000}
+              step={1}
+              label="Corner Radius"
+              value={cornerRadius}
+              onChange={(value) =>
+                handleSpawnChange({
+                  newCornerRadius: value,
+                })
+              }
+            />
           </>
         )}
-
         <ColorSelector colors={colors} onColorsChange={handleColorsChange} />
-
-        <div className="control-group">
-          <label>
-            Velocity Speed: {velocityConfig.speed}
-            <input
-              type="range"
-              min="0"
-              max="500"
-              step="1"
-              value={velocityConfig.speed}
-              onChange={(e) => {
-                const newVelocityConfig = {
-                  ...velocityConfig,
-                  speed: parseInt(e.target.value),
-                };
-                setVelocityConfig(newVelocityConfig);
-              }}
-              className="slider"
-            />
-          </label>
-        </div>
-
-        <div className="control-group">
-          <label>
-            Velocity Direction
-            <select
-              value={velocityConfig.direction}
-              onChange={(e) => {
-                const newVelocityConfig = {
-                  ...velocityConfig,
-                  direction: e.target.value as
-                    | "random"
-                    | "in"
-                    | "out"
-                    | "custom"
-                    | "clockwise"
-                    | "counter-clockwise",
-                };
-                setVelocityConfig(newVelocityConfig);
-              }}
-              className="form-select"
-            >
-              <option value="random">Random</option>
-              <option value="in">In (towards center)</option>
-              <option value="out">Out (from center)</option>
-              <option value="clockwise">Clockwise</option>
-              <option value="counter-clockwise">Counter-Clockwise</option>
-              <option value="custom">Custom</option>
-            </select>
-          </label>
-        </div>
-
+        <Slider
+          label="Velocity Speed"
+          value={velocityConfig.speed}
+          onChange={(value) => {
+            velocityConfig.speed = value;
+            handleSpawnChange();
+          }}
+          min={0}
+          max={500}
+          step={1}
+        />
+        <Dropdown
+          label="Velocity Direction"
+          value={velocityConfig.direction}
+          onChange={(value) => {
+            velocityConfig.direction = value as
+              | "random"
+              | "in"
+              | "out"
+              | "custom"
+              | "clockwise"
+              | "counter-clockwise";
+            handleSpawnChange();
+          }}
+          options={[
+            { value: "random", label: "Random" },
+            { value: "in", label: "In (towards center)" },
+            { value: "out", label: "Out (from center)" },
+            { value: "clockwise", label: "Clockwise" },
+            { value: "counter-clockwise", label: "Counter-Clockwise" },
+            { value: "custom", label: "Custom" },
+          ]}
+        />
         {velocityConfig.direction === "custom" && (
-          <div className="control-group">
-            <label>
-              Angle: {velocityConfig.angle}°
-              <input
-                type="range"
-                min="0"
-                max="360"
-                step="1"
-                value={velocityConfig.angle}
-                onChange={(e) => {
-                  const newVelocityConfig = {
-                    ...velocityConfig,
-                    angle: parseInt(e.target.value),
-                  };
-                  setVelocityConfig(newVelocityConfig);
-                }}
-                className="slider"
-              />
-            </label>
-          </div>
+          <Slider
+            label="Velocity Angle"
+            value={velocityConfig.angle}
+            onChange={(value) => {
+              velocityConfig.angle = value;
+              handleSpawnChange();
+            }}
+          />
         )}
       </div>
     );

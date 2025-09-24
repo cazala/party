@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { CollapsibleSection } from "./CollapsibleSection";
+import { CollapsibleSection } from "./ui/CollapsibleSection";
+import { Checkbox } from "./ui/Checkbox";
+import { Section } from "./ui/Section";
 
 interface ModuleWrapperProps {
   title: string;
@@ -48,7 +50,7 @@ export function ModuleWrapper({
     setEnabled?.(checked);
   };
 
-  const isDisabled = !isSupported || isInitializing;
+  const isNotSupported = !isSupported && isInitialized && !isInitializing;
 
   return (
     <CollapsibleSection
@@ -56,56 +58,18 @@ export function ModuleWrapper({
       defaultOpen={defaultOpen}
       tooltip={tooltip}
     >
-      <div style={{ marginBottom: "12px", opacity: isDisabled ? 0.5 : 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              margin: 0,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={internalEnabled}
-              onChange={(e) => handleEnabledChange(e.target.checked)}
-              onClick={(e) => e.stopPropagation()}
-              disabled={isDisabled}
-            />
-            <span
-              style={{
-                fontSize: "14px",
-                fontWeight: "normal",
-                cursor: "pointer",
-              }}
-            >
-              Enabled
-            </span>
-          </label>
-          {!isSupported && isInitialized && !isInitializing && (
-            <span
-              style={{
-                fontSize: "12px",
-                color: "#999",
-                fontStyle: "italic",
-                marginLeft: "8px",
-              }}
-            >
-              (Not supported)
-            </span>
-          )}
-        </div>
-      </div>
-      <div
-        className="control-section"
-        style={{ opacity: isDisabled ? 0.5 : 1 }}
-      >
+      <Checkbox
+        checked={internalEnabled}
+        onChange={(checked) => handleEnabledChange(checked)}
+        disabled={isNotSupported}
+        label={isNotSupported ? `${title} (Not supported)` : title}
+      />
+      <Section title={title} style={{ opacity: isNotSupported ? 0.5 : 1 }}>
         {React.cloneElement(children as React.ReactElement, {
-          enabled: internalEnabled && !isDisabled,
+          enabled: internalEnabled && !isNotSupported,
           hideEnabled: true,
         })}
-      </div>
+      </Section>
     </CollapsibleSection>
   );
 }

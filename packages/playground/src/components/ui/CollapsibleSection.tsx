@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Tooltip } from './Tooltip';
+import React, { useState } from "react";
+import { Tooltip } from "../Tooltip";
+import "./CollapsibleSection.css";
 
 interface CollapsibleSectionProps {
   title: string;
@@ -8,11 +9,11 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
 }
 
-export function CollapsibleSection({ 
-  title, 
-  defaultOpen = true, 
+export function CollapsibleSection({
+  title,
+  defaultOpen = true,
   tooltip,
-  children 
+  children,
 }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -27,9 +28,12 @@ export function CollapsibleSection({
           <h4>{title}</h4>
           {tooltip && <Tooltip content={tooltip} />}
         </div>
-        <span className={`collapsible-arrow ${isOpen ? 'open' : ''}`}>▼</span>
+        <span className={`collapsible-arrow ${isOpen ? "open" : ""}`}>▼</span>
       </div>
-      <div className="collapsible-content" style={{ display: isOpen ? 'block' : 'none' }}>
+      <div
+        className="collapsible-content"
+        style={{ display: isOpen ? "block" : "none" }}
+      >
         {children}
       </div>
     </div>

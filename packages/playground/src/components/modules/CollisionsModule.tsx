@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DEFAULT_COLLISIONS_RESTITUTION, Collisions } from "@cazala/party";
+import { Slider } from "../ui/Slider";
 
 export function CollisionsModule({
   collisions,
@@ -14,25 +15,15 @@ export function CollisionsModule({
 
   return (
     <>
-      <div className="control-group">
-        <label>
-          Restitution: {restitution.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={restitution}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setRestitution(v);
-              collisions?.setRestitution(v);
-            }}
-            disabled={!enabled}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Restitution"
+        value={restitution}
+        onChange={(v) => {
+          setRestitution(v);
+          collisions?.setRestitution(v);
+        }}
+        disabled={!enabled}
+      />
     </>
   );
 }

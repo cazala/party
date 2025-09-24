@@ -10,6 +10,8 @@ import {
   DEFAULT_FLUID_MAX_ACCELERATION,
   Fluid,
 } from "@cazala/party";
+import { Slider } from "../ui/Slider";
+import { Checkbox } from "../ui/Checkbox";
 
 export function FluidModule({
   fluid,
@@ -43,166 +45,78 @@ export function FluidModule({
 
   return (
     <>
-
-      <div className="control-group">
-        <label>
-          Influence: {influenceRadius.toFixed(0)}px
-          <input
-            type="range"
-            min="10"
-            max="200"
-            step="1"
-            value={influenceRadius}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setInfluenceRadius(v);
-              fluid?.setInfluenceRadius(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Max Accel: {maxAcceleration.toFixed(0)}
-          <input
-            type="range"
-            min="10"
-            max="500"
-            step="1"
-            value={maxAcceleration}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setMaxAcceleration(v);
-              fluid?.setMaxAcceleration?.(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Density: {targetDensity.toFixed(3)}
-          <input
-            type="range"
-            min="0.001"
-            max="2"
-            step="0.001"
-            value={targetDensity}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setTargetDensity(v);
-              fluid?.setTargetDensity(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Pressure: {pressureMultiplier.toFixed(1)}
-          <input
-            type="range"
-            min="0.1"
-            max="100"
-            step="0.1"
-            value={pressureMultiplier}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setPressureMultiplier(v);
-              fluid?.setPressureMultiplier(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Viscosity: {viscosity.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.1"
-            value={viscosity}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setViscosity(v);
-              fluid?.setViscosity(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={enableNearPressure}
-            disabled={!enabled}
-            onChange={(e) => {
-              setEnableNearPressure(e.target.checked);
-              fluid?.setEnableNearPressure(e.target.checked);
-            }}
-            className="checkbox"
-          />
-          Enable Near Pressure
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Near Threshold: {nearThreshold.toFixed(0)}px
-          <input
-            type="range"
-            min="0"
-            max="200"
-            step="1"
-            value={nearThreshold}
-            disabled={!enabled || !enableNearPressure}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setNearThreshold(v);
-              fluid?.setNearThreshold(v);
-            }}
-            className={`slider ${
-              !enabled || !enableNearPressure ? "disabled" : ""
-            }`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Near Pressure: {nearPressureMultiplier.toFixed(1)}
-          <input
-            type="range"
-            min="0"
-            max="50"
-            step="0.5"
-            value={nearPressureMultiplier}
-            disabled={!enabled || !enableNearPressure}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setNearPressureMultiplier(v);
-              fluid?.setNearPressureMultiplier(v);
-            }}
-            className={`slider ${
-              !enabled || !enableNearPressure ? "disabled" : ""
-            }`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Influence Radius"
+        value={influenceRadius}
+        onChange={(v) => {
+          setInfluenceRadius(v);
+          fluid?.setInfluenceRadius(v);
+        }}
+        disabled={!enabled}
+      />
+      <Slider
+        label="Max Acceleration"
+        value={maxAcceleration}
+        onChange={(v) => {
+          setMaxAcceleration(v);
+          fluid?.setMaxAcceleration(v);
+        }}
+        disabled={!enabled}
+      />
+      <Slider
+        label="Density"
+        value={targetDensity}
+        onChange={(v) => {
+          setTargetDensity(v);
+          fluid?.setTargetDensity(v);
+        }}
+        disabled={!enabled}
+      />
+      <Slider
+        label="Pressure"
+        value={pressureMultiplier}
+        onChange={(v) => {
+          setPressureMultiplier(v);
+          fluid?.setPressureMultiplier(v);
+        }}
+        disabled={!enabled}
+      />
+      <Slider
+        label="Viscosity"
+        value={viscosity}
+        onChange={(v) => {
+          setViscosity(v);
+          fluid?.setViscosity(v);
+        }}
+        disabled={!enabled}
+      />
+      <Checkbox
+        label="Enable Near Pressure"
+        checked={enableNearPressure}
+        onChange={(v) => {
+          setEnableNearPressure(v);
+          fluid?.setEnableNearPressure(v);
+        }}
+        disabled={!enabled}
+      />
+      <Slider
+        label="Near Pressure"
+        value={nearPressureMultiplier}
+        onChange={(v) => {
+          setNearPressureMultiplier(v);
+          fluid?.setNearPressureMultiplier(v);
+        }}
+        disabled={!enabled || !enableNearPressure}
+      />
+      <Slider
+        label="Near Threshold"
+        value={nearThreshold}
+        onChange={(v) => {
+          setNearThreshold(v);
+          fluid?.setNearThreshold(v);
+        }}
+        disabled={!enabled || !enableNearPressure}
+      />
     </>
   );
 }

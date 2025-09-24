@@ -6,6 +6,8 @@ import {
   DEFAULT_ENVIRONMENT_DAMPING,
   Environment,
 } from "@cazala/party";
+import { Slider } from "../ui/Slider";
+import { Dropdown } from "../ui/Dropdown";
 
 export function EnvironmentModule({
   environment,
@@ -27,131 +29,97 @@ export function EnvironmentModule({
 
   return (
     <>
-      <div className="control-group">
-        <label>
-          Gravity Strength: {strength}
-          <input
-            type="range"
-            min="0"
-            max="3000"
-            step="1"
-            value={strength}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setStrength(v);
-              environment?.setGravityStrength(v);
-            }}
-            disabled={!enabled}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Gravity Strength"
+        value={strength}
+        onChange={(v) => {
+          setStrength(v);
+          environment?.setGravityStrength(v);
+        }}
+        min={0}
+        max={3000}
+        step={1}
+        disabled={!enabled}
+      />
 
-      <div className="control-group">
-        <label>
-          Gravity Direction
-          <select
-            value={direction}
-            onChange={(e) => {
-              const dir = e.target.value as typeof direction;
-              setDirection(dir);
-              environment?.setGravityDirection?.(dir);
-            }}
-            disabled={!enabled}
-            className="form-select"
-          >
-            <option value="down">Down</option>
-            <option value="up">Up</option>
-            <option value="left">Left</option>
-            <option value="right">Right</option>
-            <option value="inwards">Inwards</option>
-            <option value="outwards">Outwards</option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-      </div>
+      <Dropdown
+        label="Gravity Direction"
+        value={direction}
+        onChange={(dir) => {
+          const newDir = dir as typeof direction;
+          setDirection(newDir);
+          environment?.setGravityDirection?.(newDir);
+        }}
+        options={[
+          { value: "down", label: "Down" },
+          { value: "up", label: "Up" },
+          { value: "left", label: "Left" },
+          { value: "right", label: "Right" },
+          { value: "inwards", label: "Inwards" },
+          { value: "outwards", label: "Outwards" },
+          { value: "custom", label: "Custom" },
+        ]}
+        disabled={!enabled}
+      />
+
       {direction === "custom" && (
-        <div className="control-group">
-          <label>
-            Gravity Angle: {angle}°
-            <input
-              type="range"
-              min="0"
-              max="360"
-              step="1"
-              value={angle}
-              onChange={(e) => {
-                const deg = parseInt(e.target.value);
-                setAngle(deg);
-                const rad = (deg * Math.PI) / 180;
-                environment?.setGravityAngle?.(rad);
-              }}
-              disabled={!enabled}
-              className={`slider ${!enabled ? "disabled" : ""}`}
-            />
-          </label>
-        </div>
+        <Slider
+          label="Gravity Angle"
+          value={angle}
+          onChange={(deg) => {
+            setAngle(deg);
+            const rad = (deg * Math.PI) / 180;
+            environment?.setGravityAngle?.(rad);
+          }}
+          min={0}
+          max={360}
+          step={1}
+          disabled={!enabled}
+          formatValue={(v) => `${v}°`}
+        />
       )}
 
-      <div className="control-group">
-        <label>
-          Inertia: {inertia.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.01"
-            value={inertia}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setInertia(v);
-              environment?.setInertia?.(v);
-            }}
-            disabled={!enabled}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Inertia"
+        value={inertia}
+        onChange={(v) => {
+          setInertia(v);
+          environment?.setInertia?.(v);
+        }}
+        min={0}
+        max={10}
+        step={0.01}
+        disabled={!enabled}
+        formatValue={(v) => v.toFixed(2)}
+      />
 
-      <div className="control-group">
-        <label>
-          Friction: {friction.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.01"
-            value={friction}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setFriction(v);
-              environment?.setFriction?.(v);
-            }}
-            disabled={!enabled}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Friction"
+        value={friction}
+        onChange={(v) => {
+          setFriction(v);
+          environment?.setFriction?.(v);
+        }}
+        min={0}
+        max={10}
+        step={0.01}
+        disabled={!enabled}
+        formatValue={(v) => v.toFixed(2)}
+      />
 
-      <div className="control-group">
-        <label>
-          Damping: {damping.toFixed(2)}
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={damping}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setDamping(v);
-              environment?.setDamping?.(v);
-            }}
-            disabled={!enabled}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Damping"
+        value={damping}
+        onChange={(v) => {
+          setDamping(v);
+          environment?.setDamping?.(v);
+        }}
+        min={0}
+        max={1}
+        step={0.01}
+        disabled={!enabled}
+        formatValue={(v) => v.toFixed(2)}
+      />
     </>
   );
 }

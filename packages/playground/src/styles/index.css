@@ -1,14 +1,14 @@
 :root {
-  --color-canvas: #0D0D12;
-  --color-panel: #1A1A22;
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A3A3B3;
-  --color-accent-red: #FF3C3C;
-  --color-accent-white: #F8F8F8;
-  --color-active-pause: #FFB020;
-  --color-status-running: #00FF88;
-  --color-slider-track: #2E2E3A;
-  --color-slider-thumb: #C8D8FF;
+  --color-canvas: #0d0d12;
+  --color-panel: #1a1a22;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a3a3b3;
+  --color-accent-red: #ff3c3c;
+  --color-accent-white: #f8f8f8;
+  --color-active-pause: #ffb020;
+  --color-status-running: #00ff88;
+  --color-slider-track: #2e2e3a;
+  --color-slider-thumb: #c8d8ff;
 }
 
 * {
@@ -109,121 +109,28 @@ body {
   height: 100%;
 }
 
-.collapsible-section {
-  border-bottom: 1px solid #333;
-}
+/* Metric display for performance stats */
 
-.collapsible-header {
-  background-color: #2a2a2a;
-  padding: 15px 20px;
-  cursor: pointer;
+.metric-display {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  user-select: none;
-  transition: background-color 0.2s;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  margin-top: 4px;
 }
 
-.collapsible-header:hover {
-  background-color: #333;
-}
-
-.collapsible-header h3 {
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.collapsible-arrow {
-  transition: transform 0.2s;
-  font-size: 0.8rem;
-}
-
-.collapsible-arrow.expanded {
-  transform: rotate(90deg);
-}
-
-.collapsible-content {
-  padding: 20px;
-  background-color: #1a1a1a;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group:last-child {
-  margin-bottom: 0;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
+.metric-label {
+  font-size: 14px;
   color: #ccc;
+  font-weight: 500;
 }
 
-.form-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #444;
-  border-radius: 4px;
-  background-color: #333;
+.metric-value {
+  font-size: 14px;
   color: #fff;
-  font-size: 0.9rem;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #4caf50;
-}
-
-.form-select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #444;
-  border-radius: 4px;
-  background-color: #333;
-  color: #fff;
-  font-size: 0.9rem;
-}
-
-.form-select:focus {
-  outline: none;
-  border-color: #4caf50;
-}
-
-.form-range {
-  width: 100%;
-  margin: 10px 0;
-}
-
-.range-value {
-  font-size: 0.8rem;
-  color: #999;
-  text-align: center;
-  margin-top: 5px;
-}
-
-.button {
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  font-size: 0.9rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.button:hover {
-  background-color: #45a049;
-}
-
-.button.secondary {
-  background-color: #666;
-}
-
-.button.secondary:hover {
-  background-color: #777;
+  font-weight: 600;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
 }

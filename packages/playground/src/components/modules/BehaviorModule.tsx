@@ -11,6 +11,7 @@ import {
   DEFAULT_BEHAVIOR_VIEW_ANGLE,
   Behavior,
 } from "@cazala/party";
+import { Slider } from "../ui/Slider";
 
 export function BehaviorModule({
   behavior,
@@ -33,186 +34,95 @@ export function BehaviorModule({
 
   return (
     <>
+      <Slider
+        label="Wander"
+        value={wander}
+        onChange={(v) => {
+          setWander(v);
+          behavior?.setWanderWeight(v);
+        }}
+        disabled={!enabled}
+      />
 
-      <div className="control-group">
-        <label>
-          Wander: {wander.toFixed(1)}
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.1"
-            value={wander}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setWander(v);
-              behavior?.setWanderWeight(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Cohesion"
+        value={cohesion}
+        onChange={(v) => {
+          setCohesion(v);
+          behavior?.setCohesionWeight(v);
+        }}
+        disabled={!enabled}
+      />
 
-      <div className="control-group">
-        <label>
-          Cohesion: {cohesion.toFixed(1)}
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.1"
-            value={cohesion}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setCohesion(v);
-              behavior?.setCohesionWeight(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Alignment"
+        value={alignment}
+        onChange={(v) => {
+          setAlignment(v);
+          behavior?.setAlignmentWeight(v);
+        }}
+        disabled={!enabled}
+      />
 
-      <div className="control-group">
-        <label>
-          Alignment: {alignment.toFixed(1)}
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.1"
-            value={alignment}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setAlignment(v);
-              behavior?.setAlignmentWeight(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Repulsion"
+        value={separation}
+        onChange={(v) => {
+          setSeparation(v);
+          behavior?.setSeparationWeight(v);
+        }}
+        disabled={!enabled}
+      />
 
-      <div className="control-group">
-        <label>
-          Repulsion: {separation.toFixed(1)}
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.1"
-            value={separation}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setSeparation(v);
-              behavior?.setSeparationWeight(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Chase"
+        value={chase}
+        onChange={(v) => {
+          setChase(v);
+          behavior?.setChaseWeight(v);
+        }}
+        disabled={!enabled}
+      />
 
-      <div className="control-group">
-        <label>
-          Separation: {sepRange.toFixed(0)}
-          <input
-            type="range"
-            min="0"
-            max="150"
-            step="1"
-            value={sepRange}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setSepRange(v);
-              behavior?.setSeparationRange(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Avoid"
+        value={avoid}
+        onChange={(v) => {
+          setAvoid(v);
+          behavior?.setAvoidWeight(v);
+        }}
+        disabled={!enabled}
+      />
 
-      <div className="control-group">
-        <label>
-          Chase: {chase.toFixed(1)}
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.1"
-            value={chase}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setChase(v);
-              behavior?.setChaseWeight(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="Separation"
+        value={sepRange}
+        onChange={(v) => {
+          setSepRange(v);
+          behavior?.setSeparationRange(v);
+        }}
+        disabled={!enabled}
+      />
 
-      <div className="control-group">
-        <label>
-          Avoid: {avoid.toFixed(1)}
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.1"
-            value={avoid}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setAvoid(v);
-              behavior?.setAvoidWeight(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="View Radius"
+        value={viewRadius}
+        onChange={(v) => {
+          setVR(v);
+          behavior?.setViewRadius(v);
+        }}
+      />
 
-      <div className="control-group">
-        <label>
-          View Radius: {viewRadius.toFixed(0)}
-          <input
-            type="range"
-            min="0"
-            max="500"
-            step="1"
-            value={viewRadius}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setVR(v);
-              behavior?.setViewRadius(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          View Angle: {Math.round((viewAngle * 180) / Math.PI)}°
-          <input
-            type="range"
-            min="0"
-            max={2 * Math.PI}
-            step="0.017"
-            value={viewAngle}
-            disabled={!enabled}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setVA(v);
-              behavior?.setViewAngle(v);
-            }}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Slider
+        label="View Angle"
+        value={viewAngle}
+        formatValue={(v) => `${v.toFixed(0)}°`}
+        onChange={(v) => {
+          setVA(v);
+          behavior?.setViewAngle(v);
+        }}
+        disabled={!enabled}
+      />
     </>
   );
 }

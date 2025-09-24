@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, Trash2 } from "lucide-react";
-import { System } from "@cazala/party/legacy";
+import { Engine } from "@cazala/party";
+import "./TopBar.css";
 
 interface TopBarProps {
-  system: System | null;
+  system: Engine | null;
   onPlay: () => void;
   onPause: () => void;
   onClear: () => void;

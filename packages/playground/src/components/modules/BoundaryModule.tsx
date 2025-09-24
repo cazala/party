@@ -6,7 +6,10 @@ import {
   DEFAULT_BOUNDARY_REPEL_DISTANCE,
   DEFAULT_BOUNDARY_REPEL_STRENGTH,
   Boundary,
+  BoundaryMode,
 } from "@cazala/party";
+import { Slider } from "../ui/Slider";
+import { Dropdown } from "../ui/Dropdown";
 
 export function BoundaryModule({
   boundary,
@@ -17,9 +20,7 @@ export function BoundaryModule({
 }) {
   const [restitution, setRestitution] = useState(DEFAULT_BOUNDARY_RESTITUTION);
   const [friction, setFriction] = useState(DEFAULT_BOUNDARY_FRICTION);
-  const [mode, setMode] = useState<"bounce" | "warp" | "kill" | "none">(
-    DEFAULT_BOUNDARY_MODE
-  );
+  const [mode, setMode] = useState<BoundaryMode>(DEFAULT_BOUNDARY_MODE);
   const [repelDistance, setRepelDistance] = useState(
     DEFAULT_BOUNDARY_REPEL_DISTANCE
   );
@@ -29,110 +30,57 @@ export function BoundaryModule({
 
   return (
     <>
-      <div className="control-group">
-        <label>
-          Mode
-          <select
-            value={mode}
-            onChange={(e) => {
-              const m = e.target.value as "bounce" | "warp" | "kill" | "none";
-              setMode(m);
-              boundary?.setMode?.(m);
-            }}
-            disabled={!enabled}
-            className="form-select"
-          >
-            <option value="bounce">Bounce</option>
-            <option value="warp">Warp</option>
-            <option value="kill">Kill</option>
-            <option value="none">None</option>
-          </select>
-        </label>
-      </div>
-
-      {mode === "bounce" && (
-        <div className="control-group">
-          <label>
-            Restitution: {restitution.toFixed(2)}
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={restitution}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setRestitution(v);
-                boundary?.setRestitution(v);
-              }}
-              disabled={!enabled}
-              className={`slider ${!enabled ? "disabled" : ""}`}
-            />
-          </label>
-        </div>
-      )}
-
-      {mode === "bounce" && (
-        <div className="control-group">
-          <label>
-            Friction: {friction.toFixed(2)}
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={friction}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setFriction(v);
-                boundary?.setFriction?.(v);
-              }}
-              disabled={!enabled}
-              className={`slider ${!enabled ? "disabled" : ""}`}
-            />
-          </label>
-        </div>
-      )}
-      {/* Repel controls - visible in all modes */}
-      <div className="control-group">
-        <label>
-          Repel Distance: {repelDistance}
-          <input
-            type="range"
-            min="0"
-            max="200"
-            step="1"
-            value={repelDistance}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setRepelDistance(v);
-              boundary?.setRepelDistance?.(v);
-            }}
-            disabled={!enabled}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
-
-      <div className="control-group">
-        <label>
-          Repel Strength: {repelStrength}
-          <input
-            type="range"
-            min="0"
-            max="500"
-            step="1"
-            value={repelStrength}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setRepelStrength(v);
-              boundary?.setRepelStrength?.(v);
-            }}
-            disabled={!enabled}
-            className={`slider ${!enabled ? "disabled" : ""}`}
-          />
-        </label>
-      </div>
+      <Dropdown
+        label="Mode"
+        value={mode}
+        onChange={(v) => {
+          setMode(v as BoundaryMode);
+          boundary?.setMode(v as BoundaryMode);
+        }}
+        disabled={!enabled}
+        options={[
+          { value: "bounce", label: "Bounce" },
+          { value: "warp", label: "Warp" },
+          { value: "kill", label: "Kill" },
+          { value: "none", label: "None" },
+        ]}
+      />
+      <Slider
+        label="Restitution"
+        value={restitution}
+        onChange={(v) => {
+          setRestitution(v);
+          boundary?.setRestitution(v);
+        }}
+        disabled={!enabled}
+      />
+      <Slider
+        label="Friction"
+        value={friction}
+        onChange={(v) => {
+          setFriction(v);
+          boundary?.setFriction(v);
+        }}
+        disabled={!enabled}
+      />
+      <Slider
+        label="Repel Distance"
+        value={repelDistance}
+        onChange={(v) => {
+          setRepelDistance(v);
+          boundary?.setRepelDistance(v);
+        }}
+        disabled={!enabled}
+      />
+      <Slider
+        label="Repel Strength"
+        value={repelStrength}
+        onChange={(v) => {
+          setRepelStrength(v);
+          boundary?.setRepelStrength(v);
+        }}
+        disabled={!enabled}
+      />
     </>
   );
 }

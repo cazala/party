@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { DEFAULT_COLOR_PALETTE } from "@cazala/party/legacy";
+import { Field } from "./Field";
+import "./ColorSelector.css";
 
 interface ColorSelectorProps {
   colors: string[];
@@ -56,7 +58,7 @@ export function ColorSelector({
   };
 
   return (
-    <div className="control-group">
+    <Field className="color-selector-field">
       <label className="color-selector-label">
         {label}
         {colors.length > 0 && (
@@ -106,6 +108,6 @@ export function ColorSelector({
           Using default palette ({DEFAULT_COLOR_PALETTE.length} colors)
         </div>
       ) : null}
-    </div>
+    </Field>
   );
 }
