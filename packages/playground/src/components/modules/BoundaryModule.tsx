@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DEFAULT_BOUNDARY_RESTITUTION,
   DEFAULT_BOUNDARY_FRICTION,
@@ -10,11 +10,9 @@ import {
 
 export function BoundaryModule({
   boundary,
-  hideEnabled = false,
   enabled = true,
 }: {
   boundary: Boundary | null;
-  hideEnabled?: boolean;
   enabled?: boolean;
 }) {
   const [restitution, setRestitution] = useState(DEFAULT_BOUNDARY_RESTITUTION);
@@ -22,7 +20,6 @@ export function BoundaryModule({
   const [mode, setMode] = useState<"bounce" | "warp" | "kill" | "none">(
     DEFAULT_BOUNDARY_MODE
   );
-  const [internalEnabled, setInternalEnabled] = useState(true);
   const [repelDistance, setRepelDistance] = useState(
     DEFAULT_BOUNDARY_REPEL_DISTANCE
   );
@@ -30,27 +27,8 @@ export function BoundaryModule({
     DEFAULT_BOUNDARY_REPEL_STRENGTH
   );
 
-  useEffect(() => {
-    // no-op: could hydrate from module if it exposed getters
-  }, [boundary]);
-
   return (
-    <div className="control-section">
-      {!hideEnabled && (
-        <div className="control-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={internalEnabled}
-              onChange={(e) => {
-                setInternalEnabled(e.target.checked);
-                boundary?.setEnabled?.(e.target.checked);
-              }}
-            />
-            Enabled
-          </label>
-        </div>
-      )}
+    <>
       <div className="control-group">
         <label>
           Mode
@@ -155,6 +133,6 @@ export function BoundaryModule({
           />
         </label>
       </div>
-    </div>
+    </>
   );
 }

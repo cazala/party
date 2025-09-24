@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DEFAULT_BEHAVIOR_WANDER_WEIGHT,
   DEFAULT_BEHAVIOR_COHESION_WEIGHT,
@@ -14,18 +14,11 @@ import {
 
 export function BehaviorModule({
   behavior,
-  hideEnabled = false,
   enabled = true,
-  isInitialized = true,
-  isInitializing = false,
 }: {
   behavior: Behavior | null;
-  hideEnabled?: boolean;
   enabled?: boolean;
-  isInitialized?: boolean;
-  isInitializing?: boolean;
 }) {
-  const [internalEnabled, setInternalEnabled] = useState(true);
   const [wander, setWander] = useState(DEFAULT_BEHAVIOR_WANDER_WEIGHT);
   const [cohesion, setCohesion] = useState(DEFAULT_BEHAVIOR_COHESION_WEIGHT);
   const [alignment, setAlignment] = useState(DEFAULT_BEHAVIOR_ALIGNMENT_WEIGHT);
@@ -38,39 +31,8 @@ export function BehaviorModule({
   const [viewRadius, setVR] = useState(DEFAULT_BEHAVIOR_VIEW_RADIUS);
   const [viewAngle, setVA] = useState(DEFAULT_BEHAVIOR_VIEW_ANGLE);
 
-  useEffect(() => {
-    // Sync UI state with actual module values when behavior module changes
-    if (behavior && isInitialized && !isInitializing) {
-      setWander(behavior.getWanderWeight());
-      setCohesion(behavior.getCohesionWeight());
-      setAlignment(behavior.getAlignmentWeight());
-      setSeparation(behavior.getSeparationWeight());
-      setChase(behavior.getChaseWeight());
-      setAvoid(behavior.getAvoidWeight());
-      setSepRange(behavior.getSeparationRange());
-      setVR(behavior.getViewRadius());
-      setVA(behavior.getViewAngle());
-      setInternalEnabled(behavior.isEnabled());
-    }
-  }, [behavior, isInitialized, isInitializing]);
-
   return (
-    <div className="control-section">
-      {!hideEnabled && (
-        <div className="control-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={internalEnabled}
-              onChange={(e) => {
-                setInternalEnabled(e.target.checked);
-                behavior?.setEnabled?.(e.target.checked);
-              }}
-            />
-            Enabled
-          </label>
-        </div>
-      )}
+    <>
 
       <div className="control-group">
         <label>
@@ -251,6 +213,6 @@ export function BehaviorModule({
           />
         </label>
       </div>
-    </div>
+    </>
   );
 }

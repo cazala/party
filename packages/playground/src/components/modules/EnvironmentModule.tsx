@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH,
   DEFAULT_ENVIRONMENT_INERTIA,
@@ -9,11 +9,9 @@ import {
 
 export function EnvironmentModule({
   environment,
-  hideEnabled = false,
   enabled = true,
 }: {
   environment: Environment | null;
-  hideEnabled?: boolean;
   enabled?: boolean;
 }) {
   const [strength, setStrength] = useState(
@@ -26,29 +24,9 @@ export function EnvironmentModule({
   const [inertia, setInertia] = useState(DEFAULT_ENVIRONMENT_INERTIA);
   const [friction, setFriction] = useState(DEFAULT_ENVIRONMENT_FRICTION);
   const [damping, setDamping] = useState(DEFAULT_ENVIRONMENT_DAMPING);
-  const [internalEnabled, setInternalEnabled] = useState(true);
-
-  useEffect(() => {
-    // no-op: could hydrate from module if it exposed getters
-  }, [environment]);
 
   return (
-    <div className="control-section">
-      {!hideEnabled && (
-        <div className="control-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={internalEnabled}
-              onChange={(e) => {
-                setInternalEnabled(e.target.checked);
-                environment?.setEnabled?.(e.target.checked);
-              }}
-            />
-            Enabled
-          </label>
-        </div>
-      )}
+    <>
       <div className="control-group">
         <label>
           Gravity Strength: {strength}
@@ -174,6 +152,6 @@ export function EnvironmentModule({
           />
         </label>
       </div>
-    </div>
+    </>
   );
 }

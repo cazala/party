@@ -19,7 +19,6 @@ type InteractionInputKeys =
   | "positionY"
   | "active";
 
-export const DEFAULT_INTERACTION_ACTION: "click" | "right_click" = "click";
 export const DEFAULT_INTERACTION_MODE: "attract" | "repel" = "attract";
 export const DEFAULT_INTERACTION_STRENGTH = 10000;
 export const DEFAULT_INTERACTION_RADIUS = 500;

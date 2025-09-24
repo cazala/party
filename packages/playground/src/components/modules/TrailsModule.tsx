@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DEFAULT_TRAILS_TRAIL_DECAY,
   DEFAULT_TRAILS_TRAIL_DIFFUSE,
@@ -7,30 +7,19 @@ import {
 
 export function TrailsModule({
   trails,
-  hideEnabled = false,
   enabled = true,
 }: {
   trails: Trails | null;
-  hideEnabled?: boolean;
   enabled?: boolean;
 }) {
-  const [internalEnabled, setInternalEnabled] = useState(true);
   const [trailDecay, setTrailDecay] = useState(DEFAULT_TRAILS_TRAIL_DECAY);
   const [trailDiffuse, setTrailDiffuse] = useState(
     DEFAULT_TRAILS_TRAIL_DIFFUSE
   );
 
-  useEffect(() => {
-    // hydrate if getters exist in future
-  }, [trails]);
-
   const handleChange = (property: string, value: number | boolean) => {
     if (!trails || !enabled) return;
     switch (property) {
-      case "enable":
-        setInternalEnabled(value as boolean);
-        trails.setEnabled?.(value as boolean);
-        break;
       case "trailDecay":
         setTrailDecay(value as number);
         trails.setTrailDecay(value as number);
@@ -43,23 +32,7 @@ export function TrailsModule({
   };
 
   return (
-    <div className="control-section">
-      {!hideEnabled && (
-        <div className="control-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={internalEnabled}
-              onChange={(e) => {
-                setInternalEnabled(e.target.checked);
-                trails?.setEnabled?.(e.target.checked);
-              }}
-            />
-            Enabled
-          </label>
-        </div>
-      )}
-
+    <>
       {/* Only top-level Enabled is kept; this toggle removed */}
 
       <div className="control-group">
@@ -97,6 +70,6 @@ export function TrailsModule({
           />
         </label>
       </div>
-    </div>
+    </>
   );
 }

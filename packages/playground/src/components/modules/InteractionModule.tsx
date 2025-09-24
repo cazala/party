@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  DEFAULT_INTERACTION_ACTION,
   DEFAULT_INTERACTION_MODE,
   DEFAULT_INTERACTION_STRENGTH,
   DEFAULT_INTERACTION_RADIUS,
@@ -9,14 +8,11 @@ import {
 
 export function WebGPUInteractionControls({
   interaction,
-  hideEnabled = false,
   enabled = true,
 }: {
   interaction: Interaction | null;
-  hideEnabled?: boolean;
   enabled?: boolean;
 }) {
-  const [internalEnabled, setInternalEnabled] = useState(true);
   const [mode, setMode] = useState<"attract" | "repel">(
     DEFAULT_INTERACTION_MODE
   );
@@ -24,22 +20,7 @@ export function WebGPUInteractionControls({
   const [radius, setRadius] = useState(DEFAULT_INTERACTION_RADIUS);
 
   return (
-    <div className="control-section">
-      {!hideEnabled && (
-        <div className="control-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={internalEnabled}
-              onChange={(e) => {
-                setInternalEnabled(e.target.checked);
-                interaction?.setEnabled?.(e.target.checked);
-              }}
-            />
-            Enabled
-          </label>
-        </div>
-      )}
+    <>
 
       <div className="control-group">
         <label>
@@ -99,6 +80,6 @@ export function WebGPUInteractionControls({
           />
         </label>
       </div>
-    </div>
+    </>
   );
 }

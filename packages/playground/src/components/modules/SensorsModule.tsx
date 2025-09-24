@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DEFAULT_SENSORS_SENSOR_DISTANCE,
   DEFAULT_SENSORS_SENSOR_ANGLE,
@@ -19,19 +19,11 @@ const degToRad = (deg: number): number => (deg * Math.PI) / 180;
 
 export function SensorsModule({
   sensors,
-  hideEnabled = false,
   enabled = true,
-  isInitialized = true,
-  isInitializing = false,
 }: {
   sensors: Sensors | null;
-  hideEnabled?: boolean;
   enabled?: boolean;
-  isInitialized?: boolean;
-  isInitializing?: boolean;
 }) {
-  const [internalEnabled, setInternalEnabled] = useState(true);
-
   // Sensor state
   // Using only the top-level Enabled
   const [sensorDistance, setSensorDistance] = useState(
@@ -51,18 +43,6 @@ export function SensorsModule({
   );
 
   // Particle color control removed; particle color is inherent per particle
-
-  useEffect(() => {
-    // Sync UI state with actual module values when sensors module changes
-    if (sensors && isInitialized && !isInitializing) {
-      setSensorDistance(sensors.getSensorDistance());
-      setSensorAngle(radToDeg(sensors.getSensorAngle()));
-      setSensorRadius(sensors.getSensorRadius());
-      setSensorThreshold(sensors.getSensorThreshold());
-      setSensorStrength(sensors.getSensorStrength());
-      setInternalEnabled(sensors.isEnabled());
-    }
-  }, [sensors, isInitialized, isInitializing]);
 
   // no dependency between trails and sensors now
 
@@ -125,23 +105,7 @@ export function SensorsModule({
   const showFleeAngle = fleeValue !== "none";
 
   return (
-    <div className="control-section">
-      {!hideEnabled && (
-        <div className="control-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={internalEnabled}
-              onChange={(e) => {
-                setInternalEnabled(e.target.checked);
-                sensors?.setEnabled?.(e.target.checked);
-              }}
-            />
-            Enabled
-          </label>
-        </div>
-      )}
-
+    <>
       {/* No inner Enabled checkbox; only top-level */}
 
       <div className="control-group">
@@ -315,6 +279,6 @@ export function SensorsModule({
           </label>
         </div>
       )}
-    </div>
+    </>
   );
 }

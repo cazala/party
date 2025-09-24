@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DEFAULT_FLUID_INFLUENCE_RADIUS,
   DEFAULT_FLUID_TARGET_DENSITY,
@@ -13,18 +13,11 @@ import {
 
 export function FluidModule({
   fluid,
-  hideEnabled = false,
   enabled = true,
-  isInitialized = true,
-  isInitializing = false,
 }: {
   fluid: Fluid | null;
-  hideEnabled?: boolean;
   enabled?: boolean;
-  isInitialized?: boolean;
-  isInitializing?: boolean;
 }) {
-  const [internalEnabled, setInternalEnabled] = useState(false);
   const [influenceRadius, setInfluenceRadius] = useState(
     DEFAULT_FLUID_INFLUENCE_RADIUS
   );
@@ -48,38 +41,8 @@ export function FluidModule({
     DEFAULT_FLUID_MAX_ACCELERATION
   );
 
-  useEffect(() => {
-    // Sync UI state with actual module values when fluid module changes
-    if (fluid && isInitialized && !isInitializing) {
-      setInfluenceRadius(fluid.getInfluenceRadius());
-      setTargetDensity(fluid.getTargetDensity());
-      setPressureMultiplier(fluid.getPressureMultiplier());
-      setViscosity(fluid.getViscosity());
-      setNearPressureMultiplier(fluid.getNearPressureMultiplier());
-      setNearThreshold(fluid.getNearThreshold());
-      setEnableNearPressure(fluid.getEnableNearPressure() !== 0);
-      setMaxAcceleration(fluid.getMaxAcceleration());
-      setInternalEnabled(fluid.isEnabled());
-    }
-  }, [fluid, isInitialized, isInitializing]);
-
   return (
-    <div className="control-section">
-      {!hideEnabled && (
-        <div className="control-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={internalEnabled}
-              onChange={(e) => {
-                setInternalEnabled(e.target.checked);
-                fluid?.setEnabled(e.target.checked);
-              }}
-            />
-            Enabled
-          </label>
-        </div>
-      )}
+    <>
 
       <div className="control-group">
         <label>
@@ -240,6 +203,6 @@ export function FluidModule({
           />
         </label>
       </div>
-    </div>
+    </>
   );
 }
