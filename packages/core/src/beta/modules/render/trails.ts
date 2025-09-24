@@ -17,7 +17,7 @@ import {
 
 type TrailInputKeys = "trailDecay" | "trailDiffuse";
 
-export const DEFAULT_TRAILS_TRAIL_DECAY = 0.01;
+export const DEFAULT_TRAILS_TRAIL_DECAY = 0.03;
 export const DEFAULT_TRAILS_TRAIL_DIFFUSE = 0.0;
 
 export class Trails extends Module<"trails", TrailInputKeys> {
@@ -64,7 +64,7 @@ export class Trails extends Module<"trails", TrailInputKeys> {
           kernel: ({ getUniform, readScene, writeScene }) => `{
   let coords = vec2<i32>(i32(gid.x), i32(gid.y));
   let current = ${readScene("coords")};
-  let d = clamp(${getUniform("trailDecay")}, 0.0, 1.0);
+  let d = clamp(${getUniform("trailDecay")} * 0.5, 0.0, 1.0);
   if (d <= 0.00001) { ${writeScene("coords", "current")}; return; }
   let bg = vec3<f32>(${getUniform("clearColorR")}, ${getUniform(
             "clearColorG"
@@ -126,24 +126,32 @@ export class Trails extends Module<"trails", TrailInputKeys> {
     return {
       composition: CanvasComposition.HandlesBackground,
       setup: ({ context, input, clearColor }) => {
-        // Trail effect with decay and blur
+        // Trail effect with decay and blur - match WebGPU behavior
         const canvas = context.canvas;
         const decay = Math.max(0, Math.min(1, input.trailDecay));
-        const diffuse = Math.max(0, Math.min(12, Math.round(input.trailDiffuse)));
+        const diffuse = Math.max(
+          0,
+          Math.min(12, Math.round(input.trailDiffuse))
+        );
 
-        // Apply decay (fade effect)
-        if (decay > 0.001) {
+        // Apply decay (fade effect) - simple overlay approach with factor to match WebGPU speed
+        if (decay > 0.00001) {
+          // Multiply decay by factor to match WebGPU behavior (WebGPU now uses 0.5x, so CPU uses 2.0x)
+          const adjustedDecay = Math.min(1.0, decay * 2.0);
+          context.save();
+          context.globalCompositeOperation = "source-over";
           context.fillStyle = `rgba(${clearColor.r * 255}, ${
             clearColor.g * 255
-          }, ${clearColor.b * 255}, ${decay})`;
+          }, ${clearColor.b * 255}, ${adjustedDecay})`;
           context.fillRect(0, 0, canvas.width, canvas.height);
+          context.restore();
         }
 
         // Apply blur effect if diffuse > 0
         if (diffuse > 0) {
           // Use canvas filter for blur - more performant than manual pixel manipulation
-          const tempCanvas = document.createElement('canvas');
-          const tempCtx = tempCanvas.getContext('2d')!;
+          const tempCanvas = document.createElement("canvas");
+          const tempCtx = tempCanvas.getContext("2d")!;
           tempCanvas.width = canvas.width;
           tempCanvas.height = canvas.height;
 
@@ -153,7 +161,7 @@ export class Trails extends Module<"trails", TrailInputKeys> {
           // Apply blur filter and draw back
           context.filter = `blur(${diffuse * 0.5}px)`;
           context.drawImage(tempCanvas, 0, 0);
-          context.filter = 'none';
+          context.filter = "none";
         }
       },
     };

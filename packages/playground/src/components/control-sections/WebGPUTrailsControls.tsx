@@ -67,7 +67,7 @@ export function WebGPUTrailsControls({
           Trail Decay: {trailDecay.toFixed(2)}
           <input
             type="range"
-            min="0.01"
+            min="0.02"
             max="0.2"
             step="0.01"
             value={trailDecay}
