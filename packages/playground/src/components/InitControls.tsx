@@ -3,28 +3,12 @@ import { MultiColorPicker } from "./ui/MultiColorPicker";
 import { calculateMassFromSize } from "../utils/particle";
 import { Slider } from "./ui/Slider";
 import { Dropdown } from "./ui/Dropdown";
-import { useAppDispatch, useAppSelector } from "../modules/hooks";
 import { useEngine } from "../contexts/EngineContext";
-import {
-  setNumParticles,
-  setSpawnShape,
-  setSpacing,
-  setParticleSize,
-  setParticleMass,
-  setRadius,
-  setInnerRadius,
-  setSquareSize,
-  setCornerRadius,
-  setColors,
-  updateVelocityConfig,
-  selectInitState,
-  InitVelocityConfig as InitVelocityConfigType,
-} from "../modules/init/slice";
+import { useInit } from "../hooks/useInit";
+import { InitVelocityConfig as InitVelocityConfigType } from "../modules/init/slice";
 import "./InitControls.css";
 
 export function InitControls() {
-  const dispatch = useAppDispatch();
-  const initState = useAppSelector(selectInitState);
   const { spawnParticles } = useEngine();
   const {
     numParticles,
@@ -38,13 +22,24 @@ export function InitControls() {
     cornerRadius,
     colors,
     velocityConfig,
-  } = initState;
+    setNumParticles,
+    setSpawnShape,
+    setSpacing,
+    setParticleSize,
+    setParticleMass,
+    setRadius,
+    setInnerRadius,
+    setSquareSize,
+    setCornerRadius,
+    setColors,
+    updateVelocityConfig,
+  } = useInit();
 
   const skipResetRef = useRef(false);
 
   // Color management handler
   const handleColorsChange = (newColors: string[]) => {
-    dispatch(setColors(newColors));
+    setColors(newColors);
   };
 
   // Auto-spawn particles when any setting changes
@@ -99,26 +94,26 @@ export function InitControls() {
     const space = Math.max(options.newSpacing ?? spacing, size * 2);
 
     if (options.newNumParticles !== undefined)
-      dispatch(setNumParticles(options.newNumParticles));
+      setNumParticles(options.newNumParticles);
     if (options.newShape !== undefined)
-      dispatch(setSpawnShape(options.newShape));
-    if (options.newSpacing !== undefined) dispatch(setSpacing(space));
+      setSpawnShape(options.newShape);
+    if (options.newSpacing !== undefined) setSpacing(space);
     if (options.newParticleSize !== undefined) {
-      dispatch(setParticleSize(options.newParticleSize));
-      dispatch(setParticleMass(calculateMassFromSize(options.newParticleSize)));
+      setParticleSize(options.newParticleSize);
+      setParticleMass(calculateMassFromSize(options.newParticleSize));
       if (spacing < options.newParticleSize * 2) {
-        dispatch(setSpacing(options.newParticleSize * 2));
+        setSpacing(options.newParticleSize * 2);
       }
     }
     if (options.newParticleMass !== undefined)
-      dispatch(setParticleMass(options.newParticleMass));
-    if (options.newRadius !== undefined) dispatch(setRadius(options.newRadius));
+      setParticleMass(options.newParticleMass);
+    if (options.newRadius !== undefined) setRadius(options.newRadius);
     if (options.newInnerRadius !== undefined)
-      dispatch(setInnerRadius(options.newInnerRadius));
+      setInnerRadius(options.newInnerRadius);
     if (options.newSquareSize !== undefined)
-      dispatch(setSquareSize(options.newSquareSize));
+      setSquareSize(options.newSquareSize);
     if (options.newCornerRadius !== undefined)
-      dispatch(setCornerRadius(options.newCornerRadius));
+      setCornerRadius(options.newCornerRadius);
 
     // The useEffect will automatically trigger particle spawning when Redux state changes
   };
@@ -238,7 +233,7 @@ export function InitControls() {
         label="Velocity Speed"
         value={velocityConfig.speed}
         onChange={(value) => {
-          dispatch(updateVelocityConfig({ speed: value }));
+          updateVelocityConfig({ speed: value });
         }}
         min={0}
         max={500}
@@ -248,11 +243,9 @@ export function InitControls() {
         label="Velocity Direction"
         value={velocityConfig.direction}
         onChange={(value) => {
-          dispatch(
-            updateVelocityConfig({
-              direction: value as InitVelocityConfigType["direction"],
-            })
-          );
+          updateVelocityConfig({
+            direction: value as InitVelocityConfigType["direction"],
+          });
         }}
         options={[
           { value: "random", label: "Random" },
@@ -271,7 +264,7 @@ export function InitControls() {
           max={360}
           step={1}
           onChange={(value) => {
-            dispatch(updateVelocityConfig({ angle: value }));
+            updateVelocityConfig({ angle: value });
           }}
           formatValue={(v) => `${v}°`}
         />

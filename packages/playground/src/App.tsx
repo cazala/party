@@ -11,16 +11,16 @@ import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
 import { Provider } from "react-redux";
 import { store } from "./modules/store";
-import { useAppDispatch, useAppSelector } from "./modules/hooks";
+import { useAppDispatch } from "./modules/hooks";
 import { setParticleCount, setFPS, playThunk } from "./modules/engine/slice";
-import { selectInitState } from "./modules/init/slice";
+import { useInit } from "./hooks/useInit";
 
 import "./styles/index.css";
 import "./App.css";
 
 function AppContent() {
   const dispatch = useAppDispatch();
-  const initState = useAppSelector(selectInitState);
+  const { initState } = useInit();
 
   // Get engine state and actions from context
   const {
