@@ -1,6 +1,9 @@
-import { useEngine } from "./hooks/useEngine";
+import {
+  useEngine,
+  EngineProvider,
+  EngineCanvas,
+} from "./contexts/EngineContext";
 import { useTools } from "./hooks/useTools";
-import { useWindowSize } from "./hooks/useWindowSize";
 import { useEffect, useRef } from "react";
 import { TopBar } from "./components/TopBar";
 import { InitControlsRef } from "./components/InitControls";
@@ -10,65 +13,31 @@ import { SystemSidebar } from "./components/SystemSidebar";
 import { Provider } from "react-redux";
 import { store } from "./modules/store";
 import { useAppDispatch } from "./modules/hooks";
-import {
-  setParticleCount,
-  setFPS,
-  playThunk,
-  pauseThunk,
-  clearThunk,
-  setSizeThunk,
-  setConstrainIterationsThunk,
-  setCellSizeThunk,
-  setClearColorThunk,
-  registerEngine,
-} from "./modules/engine/slice";
+import { setParticleCount, setFPS, playThunk } from "./modules/engine/slice";
 
 import "./styles/index.css";
 import "./App.css";
 
-const LEFT_SIDEBAR_WIDTH = 280;
-const RIGHT_SIDEBAR_WIDTH = 280;
-const TOPBAR_HEIGHT = 60;
-
 function AppContent() {
   const dispatch = useAppDispatch();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const initControlsRef = useRef<InitControlsRef>(null);
 
-  const size = useWindowSize();
-
-  // Calculate canvas size
-  const canvasWidth = size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
-  const canvasHeight = size.height - TOPBAR_HEIGHT;
-  
-  // Initialize engine
-  const engine = useEngine({ 
-    canvasRef, 
-    initialSize: { width: canvasWidth, height: canvasHeight } 
-  });
+  // Get engine state and actions from context
   const {
+    canvasRef,
     system,
     isInitialized,
     isInitializing,
     error,
     spawnParticles,
-    environment,
-    boundary,
-    collisions,
-    fluids,
-    behavior,
-    sensors,
-    trails,
     interaction,
     handleZoom,
     useWebGPU,
     engineType,
-    isSupported,
-    toggleEngineType,
     addParticle,
     screenToWorld,
-  } = engine;
-  
+  } = useEngine();
+
   // Initialize tools
   const tools = useTools({
     canvasRef,
@@ -77,11 +46,6 @@ function AppContent() {
     isInitialized,
     initialMode: "cursor",
   });
-
-  // Register engine instance for thunks
-  useEffect(() => {
-    registerEngine(system);
-  }, [system]);
 
   // Wire mouse input to Interaction module and Tools
   useEffect(() => {
@@ -103,10 +67,10 @@ function AppContent() {
 
     const onMouseDown = (e: MouseEvent) => {
       updateMousePos(e);
-      
+
       // Handle tools first - if a tool handles the event, don't activate interaction
       tools.handleMouseDown(e);
-      
+
       // Only activate interaction for cursor mode (when no tool is active)
       if (tools.toolMode === "cursor") {
         interaction.setActive(true);
@@ -145,15 +109,6 @@ function AppContent() {
     screenToWorld,
   ]);
 
-  // Update canvas size when window size changes
-  useEffect(() => {
-    if (system && isInitialized) {
-      const targetWidth = size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
-      const targetHeight = size.height - TOPBAR_HEIGHT;
-      dispatch(setSizeThunk({ width: targetWidth, height: targetHeight }));
-    }
-  }, [system, isInitialized, size, useWebGPU, dispatch]);
-
   // Trigger initial particle spawn when engine is initialized
   useEffect(() => {
     if (isInitialized && system && initControlsRef.current) {
@@ -173,7 +128,6 @@ function AppContent() {
       );
     }
   }, [isInitialized, system, spawnParticles]);
-
 
   // Add wheel event listener for zoom
   useEffect(() => {
@@ -215,15 +169,13 @@ function AppContent() {
     const interval = setInterval(() => {
       const particleCount = system.getCount();
       const fps = system.getFPS();
-      
+
       dispatch(setParticleCount(particleCount));
       dispatch(setFPS(fps));
     }, 100); // Update every 100ms
 
     return () => clearInterval(interval);
   }, [system, isInitialized, dispatch]);
-
-  let content = null;
 
   const handleRestart = () => {
     // Re-spawn particles using current INIT panel config
@@ -245,55 +197,9 @@ function AppContent() {
     dispatch(playThunk());
   };
 
-  const handleConstrainIterationsChange = (value: number) => {
-    dispatch(setConstrainIterationsThunk(value));
-  };
-
-  const handleCellSizeChange = (value: number) => {
-    dispatch(setCellSizeThunk(value));
-  };
-
-  const handleClearColorChange = (color: {
-    r: number;
-    g: number;
-    b: number;
-    a: number;
-  }) => {
-    dispatch(setClearColorThunk(color));
-  };
-
-  const handleToggleEngineType = async () => {
-    // Use the simple toggle from useEngine
-    await toggleEngineType();
-  };
-
-  const handleColorPickerChange = (hex: string) => {
-    const newColor = hexToRgba(hex, 1); // Always use alpha = 1
-    handleClearColorChange(newColor);
-  };
-
-  // Utility function for color conversion
-  const hexToRgba = (hex: string, alpha: number = 1) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result
-      ? {
-          r: parseInt(result[1], 16) / 255,
-          g: parseInt(result[2], 16) / 255,
-          b: parseInt(result[3], 16) / 255,
-          a: alpha,
-        }
-      : { r: 0, g: 0, b: 0, a: 1 };
-  };
-
   return (
     <div className="app">
-      <TopBar
-        system={null}
-        onPlay={() => dispatch(playThunk())}
-        onPause={() => dispatch(pauseThunk())}
-        onClear={() => dispatch(clearThunk())}
-        onReset={handleRestart}
-      />
+      <TopBar onReset={handleRestart} />
       <div
         className="app-content"
         style={{
@@ -301,38 +207,13 @@ function AppContent() {
           height: "calc(100vh - 60px)",
         }}
       >
-        <SystemSidebar
-          content={content}
-          initControlsRef={initControlsRef}
-          spawnParticles={spawnParticles}
-          onConstrainIterationsChange={handleConstrainIterationsChange}
-          onCellSizeChange={handleCellSizeChange}
-          onClearColorChange={handleColorPickerChange}
-          onToggleEngineType={handleToggleEngineType}
-        />
+        <SystemSidebar initControlsRef={initControlsRef} />
         <div className="canvas-container">
           <Toolbar style={{ display: "block" }} />
-          <canvas
-            key={engineType} // Force canvas recreation when engine type changes
-            ref={canvasRef}
-            id="canvas"
-            className={""}
-            width={size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH}
-            height={size.height - TOPBAR_HEIGHT}
-          />
+          <EngineCanvas className="" />
         </div>
         <div className="right-sidebar" style={{ display: "block" }}>
-          <ModulesSidebar
-            environment={environment}
-            boundary={boundary}
-            collisions={collisions}
-            fluids={fluids}
-            behavior={behavior}
-            sensors={sensors}
-            trails={trails}
-            interaction={interaction}
-            isSupported={isSupported}
-          />
+          <ModulesSidebar />
         </div>
       </div>
     </div>
@@ -342,7 +223,9 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <AppContent />
+      <EngineProvider>
+        <AppContent />
+      </EngineProvider>
     </Provider>
   );
 }

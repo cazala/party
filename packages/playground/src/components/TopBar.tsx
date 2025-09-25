@@ -1,50 +1,24 @@
-import { useState, useEffect } from "react";
 import { RefreshCw, Trash2 } from "lucide-react";
-import { Engine } from "@cazala/party";
+import { useEngine } from "../contexts/EngineContext";
 import "./TopBar.css";
 
 interface TopBarProps {
-  system: Engine | null;
-  onPlay: () => void;
-  onPause: () => void;
-  onClear: () => void;
   onReset: () => void;
 }
 
-export function TopBar({
-  system,
-  onPlay,
-  onPause,
-  onClear,
-  onReset,
-}: TopBarProps) {
-  const [isPlaying, setIsPlaying] = useState(true);
-
-  useEffect(() => {
-    if (system) {
-      setIsPlaying(system.isPlaying);
-
-      // Poll the system's playing state to keep the button in sync
-      const interval = setInterval(() => {
-        setIsPlaying(system.isPlaying);
-      }, 100); // Check every 100ms
-
-      return () => clearInterval(interval);
-    }
-  }, [system]);
+export function TopBar({ onReset }: TopBarProps) {
+  const { isPlaying, play, pause, clear } = useEngine();
 
   const handlePlayPause = () => {
     if (isPlaying) {
-      onPause();
-      setIsPlaying(false);
+      pause();
     } else {
-      onPlay();
-      setIsPlaying(true);
+      play();
     }
   };
 
   const handleClear = () => {
-    onClear();
+    clear();
   };
 
   const handleReset = () => {

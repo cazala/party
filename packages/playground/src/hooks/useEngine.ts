@@ -57,7 +57,8 @@ export interface UseEngineProps {
   initialSize?: { width: number; height: number };
 }
 
-export function useEngine({ canvasRef, initialSize }: UseEngineProps) {
+// Internal version used by EngineProvider
+export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const dispatch = useAppDispatch();
   
   // All state from Redux

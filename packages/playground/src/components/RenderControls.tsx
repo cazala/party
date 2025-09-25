@@ -1,18 +1,18 @@
 import { ColorPicker } from "./ui/ColorPicker";
+import { useEngine } from "../contexts/EngineContext";
 import { useAppDispatch, useAppSelector } from "../modules/hooks";
 import { selectClearColor, setClearColor } from "../modules/engine/slice";
 
 interface RenderControlsProps {
-  onClearColorChange?: (hex: string) => void;
   disabled?: boolean;
 }
 
 export function RenderControls({
-  onClearColorChange,
   disabled = false,
 }: RenderControlsProps = {}) {
   const dispatch = useAppDispatch();
   const clearColorRgba = useAppSelector(selectClearColor);
+  const { setClearColor: setClearColorThunk } = useEngine();
   
   // Convert RGBA to hex
   const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
@@ -44,7 +44,7 @@ export function RenderControls({
       onChange={(hex) => {
         const rgba = hexToRgba(hex, 1);
         dispatch(setClearColor(rgba));
-        onClearColorChange?.(hex);
+        setClearColorThunk(rgba);
       }}
       disabled={disabled}
     />

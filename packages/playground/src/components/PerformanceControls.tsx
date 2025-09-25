@@ -2,6 +2,7 @@ import { Checkbox } from "./ui/Checkbox";
 import { Slider } from "./ui/Slider";
 import { Field } from "./ui/Field";
 import { Metrics } from "./ui/Metrics";
+import { useEngine } from "../contexts/EngineContext";
 import { useAppDispatch, useAppSelector } from "../modules/hooks";
 import {
   selectEngineState,
@@ -9,19 +10,10 @@ import {
   setGridCellSize,
 } from "../modules/engine/slice";
 
-interface PerformanceControlsProps {
-  onConstrainIterationsChange?: (value: number) => void;
-  onCellSizeChange?: (value: number) => void;
-  onToggleEngineType?: () => void;
-}
-
-export function PerformanceControls({
-  onConstrainIterationsChange,
-  onCellSizeChange,
-  onToggleEngineType,
-}: PerformanceControlsProps = {}) {
+export function PerformanceControls() {
   const dispatch = useAppDispatch();
   const engineState = useAppSelector(selectEngineState);
+  const { setConstrainIterations: setConstrainIterationsThunk, setCellSize, toggleEngineType } = useEngine();
   const {
     isWebGPU,
     constrainIterations,
@@ -33,7 +25,7 @@ export function PerformanceControls({
     <>
       <Checkbox
         checked={isWebGPU}
-        onChange={() => onToggleEngineType?.()}
+        onChange={() => toggleEngineType()}
         label="Use WebGPU"
       />
 
@@ -45,7 +37,7 @@ export function PerformanceControls({
         step={1}
         onChange={(value) => {
           dispatch(setConstrainIterations(value));
-          onConstrainIterationsChange?.(value);
+          setConstrainIterationsThunk(value);
         }}
       />
       <Slider
@@ -56,7 +48,7 @@ export function PerformanceControls({
         step={8}
         onChange={(value) => {
           dispatch(setGridCellSize(value));
-          onCellSizeChange?.(value);
+          setCellSize(value);
         }}
       />
 

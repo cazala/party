@@ -1,13 +1,3 @@
-import {
-  Environment,
-  Boundary,
-  Collisions,
-  Fluids,
-  Behavior,
-  Sensors,
-  Trails,
-  Interaction,
-} from "@cazala/party";
 import { EnvironmentModule } from "./modules/EnvironmentModule";
 import { BoundaryModule } from "./modules/BoundaryModule";
 import { CollisionsModule } from "./modules/CollisionsModule";
@@ -19,34 +9,25 @@ import { InteractionModule } from "./modules/InteractionModule";
 import { ModuleWrapper } from "./ModuleWrapper";
 import { useAppDispatch, useAppSelector } from "../modules/hooks";
 import { selectModulesState, setModuleEnabled } from "../modules/modules/slice";
-import { selectEngineState } from "../modules/engine/slice";
+import { useEngine } from "../contexts/EngineContext";
 import "./ModulesSidebar.css";
 
-export function ModulesSidebar({
-  environment,
-  boundary,
-  collisions,
-  fluids,
-  behavior,
-  sensors,
-  trails,
-  interaction,
-  isSupported,
-}: {
-  environment: Environment | null;
-  boundary: Boundary | null;
-  collisions: Collisions | null;
-  fluids: Fluids | null;
-  behavior: Behavior | null;
-  sensors: Sensors | null;
-  trails: Trails | null;
-  interaction: Interaction | null;
-  isSupported: (module: any) => boolean;
-}) {
+export function ModulesSidebar() {
   const dispatch = useAppDispatch();
   const modulesState = useAppSelector(selectModulesState);
-  const engineState = useAppSelector(selectEngineState);
-  const { isInitialized, isInitializing } = engineState;
+  const {
+    environment,
+    boundary,
+    collisions,
+    fluids,
+    behavior,
+    sensors,
+    trails,
+    interaction,
+    isSupported,
+    isInitialized,
+    isInitializing,
+  } = useEngine();
   
   // Get enabled states from Redux
   const environmentEnabled = modulesState.environment.enabled;
