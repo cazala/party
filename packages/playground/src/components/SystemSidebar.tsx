@@ -1,14 +1,10 @@
-import { InitControls, InitControlsRef } from "./InitControls";
+import { InitControls } from "./InitControls";
 import { CollapsibleSection } from "./ui/CollapsibleSection";
 import { PerformanceControls } from "./PerformanceControls";
 import { RenderControls } from "./RenderControls";
 import { useEngine } from "../contexts/EngineContext";
 
-interface SystemSidebarProps {
-  initControlsRef: React.RefObject<InitControlsRef>;
-}
-
-export function SystemSidebar({ initControlsRef }: SystemSidebarProps) {
+export function SystemSidebar() {
   const { isInitialized, isInitializing } = useEngine();
   return (
     <div
@@ -22,7 +18,7 @@ export function SystemSidebar({ initControlsRef }: SystemSidebarProps) {
       </div>
 
       <CollapsibleSection title="INIT" defaultOpen={true}>
-        <InitControls ref={initControlsRef} />
+        <InitControls />
       </CollapsibleSection>
 
       <CollapsibleSection title="PERFORMANCE" defaultOpen={true}>

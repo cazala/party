@@ -4,23 +4,23 @@ import {
   EngineCanvas,
 } from "./contexts/EngineContext";
 import { useTools } from "./hooks/useTools";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { TopBar } from "./components/TopBar";
-import { InitControlsRef } from "./components/InitControls";
 import { ModulesSidebar } from "./components/ModulesSidebar";
 import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
 import { Provider } from "react-redux";
 import { store } from "./modules/store";
-import { useAppDispatch } from "./modules/hooks";
+import { useAppDispatch, useAppSelector } from "./modules/hooks";
 import { setParticleCount, setFPS, playThunk } from "./modules/engine/slice";
+import { selectInitState } from "./modules/init/slice";
 
 import "./styles/index.css";
 import "./App.css";
 
 function AppContent() {
   const dispatch = useAppDispatch();
-  const initControlsRef = useRef<InitControlsRef>(null);
+  const initState = useAppSelector(selectInitState);
 
   // Get engine state and actions from context
   const {
@@ -111,23 +111,22 @@ function AppContent() {
 
   // Trigger initial particle spawn when engine is initialized
   useEffect(() => {
-    if (isInitialized && system && initControlsRef.current) {
-      const cfg = initControlsRef.current.getState();
+    if (isInitialized && system) {
       spawnParticles(
-        cfg.numParticles,
-        cfg.spawnShape,
-        cfg.spacing,
-        cfg.particleSize,
-        cfg.radius,
-        cfg.colors.length > 0 ? cfg.colors : undefined,
-        cfg.velocityConfig,
-        cfg.innerRadius,
-        cfg.squareSize,
-        cfg.cornerRadius,
-        cfg.particleMass
+        initState.numParticles,
+        initState.spawnShape,
+        initState.spacing,
+        initState.particleSize,
+        initState.radius,
+        initState.colors.length > 0 ? initState.colors : undefined,
+        initState.velocityConfig,
+        initState.innerRadius,
+        initState.squareSize,
+        initState.cornerRadius,
+        initState.particleMass
       );
     }
-  }, [isInitialized, system, spawnParticles]);
+  }, [isInitialized, system, spawnParticles, initState]);
 
   // Add wheel event listener for zoom
   useEffect(() => {
@@ -178,21 +177,19 @@ function AppContent() {
   }, [system, isInitialized, dispatch]);
 
   const handleRestart = () => {
-    // Re-spawn particles using current INIT panel config
-    const cfg = initControlsRef.current?.getState();
-    if (!cfg) return;
+    // Re-spawn particles using current INIT panel config from Redux
     spawnParticles(
-      cfg.numParticles,
-      cfg.spawnShape,
-      cfg.spacing,
-      cfg.particleSize,
-      cfg.radius,
-      cfg.colors,
-      cfg.velocityConfig,
-      cfg.innerRadius,
-      cfg.squareSize,
-      cfg.cornerRadius,
-      cfg.particleMass
+      initState.numParticles,
+      initState.spawnShape,
+      initState.spacing,
+      initState.particleSize,
+      initState.radius,
+      initState.colors.length > 0 ? initState.colors : undefined,
+      initState.velocityConfig,
+      initState.innerRadius,
+      initState.squareSize,
+      initState.cornerRadius,
+      initState.particleMass
     );
     dispatch(playThunk());
   };
@@ -207,10 +204,10 @@ function AppContent() {
           height: "calc(100vh - 60px)",
         }}
       >
-        <SystemSidebar initControlsRef={initControlsRef} />
+        <SystemSidebar />
         <div className="canvas-container">
           <Toolbar style={{ display: "block" }} />
-          <EngineCanvas className="" />
+          <EngineCanvas />
         </div>
         <div className="right-sidebar" style={{ display: "block" }}>
           <ModulesSidebar />
