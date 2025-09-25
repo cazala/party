@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
+import type { Engine } from "@cazala/party";
 
 export interface EngineState {
   isWebGPU: boolean;
@@ -16,6 +17,15 @@ export interface EngineState {
   camera: { x: number; y: number };
   zoom: number;
 }
+
+// Engine registry for thunks to access the engine instance
+let engineInstance: Engine | null = null;
+
+export const registerEngine = (engine: Engine | null) => {
+  engineInstance = engine;
+};
+
+const getEngine = (): Engine | null => engineInstance;
 
 const initialState: EngineState = {
   isWebGPU: false,
@@ -35,7 +45,7 @@ const initialState: EngineState = {
 };
 
 export const engineSlice = createSlice({
-  name: 'engine',
+  name: "engine",
   initialState,
   reducers: {
     setWebGPU: (state, action: PayloadAction<boolean>) => {
@@ -74,10 +84,16 @@ export const engineSlice = createSlice({
     setFPS: (state, action: PayloadAction<number>) => {
       state.fps = action.payload;
     },
-    setClearColor: (state, action: PayloadAction<{ r: number; g: number; b: number; a: number }>) => {
+    setClearColor: (
+      state,
+      action: PayloadAction<{ r: number; g: number; b: number; a: number }>
+    ) => {
       state.clearColor = action.payload;
     },
-    setSize: (state, action: PayloadAction<{ width: number; height: number }>) => {
+    setSize: (
+      state,
+      action: PayloadAction<{ width: number; height: number }>
+    ) => {
       state.size = action.payload;
     },
     setCamera: (state, action: PayloadAction<{ x: number; y: number }>) => {
@@ -89,8 +105,6 @@ export const engineSlice = createSlice({
     toggleEngineType: (state) => {
       state.isAutoMode = false;
       state.isWebGPU = !state.isWebGPU;
-      // Set default constraint iterations based on engine type
-      state.constrainIterations = state.isWebGPU ? 50 : 5;
     },
     updateEngineState: (state, action: PayloadAction<Partial<EngineState>>) => {
       Object.assign(state, action.payload);
@@ -98,6 +112,163 @@ export const engineSlice = createSlice({
     resetEngine: () => initialState,
   },
 });
+
+// Async thunks for engine actions
+export const playThunk = createAsyncThunk(
+  "engine/play",
+  async (_, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.play();
+      dispatch(engineSlice.actions.setPlaying(true));
+    }
+  }
+);
+
+export const pauseThunk = createAsyncThunk(
+  "engine/pause",
+  async (_, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.pause();
+      dispatch(engineSlice.actions.setPlaying(false));
+    }
+  }
+);
+
+export const clearThunk = createAsyncThunk(
+  "engine/clear",
+  async (_, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.clear();
+      // Ensure the loop continues so the cleared scene is presented
+      engine.play();
+      dispatch(engineSlice.actions.setPlaying(true));
+      dispatch(engineSlice.actions.setParticleCount(0));
+    }
+  }
+);
+
+export const setSizeThunk = createAsyncThunk(
+  "engine/setSize",
+  async (size: { width: number; height: number }, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.setSize(size.width, size.height);
+      dispatch(engineSlice.actions.setSize(size));
+    }
+  }
+);
+
+export const setCameraThunk = createAsyncThunk(
+  "engine/setCamera",
+  async (camera: { x: number; y: number }, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.setCamera(camera.x, camera.y);
+      dispatch(engineSlice.actions.setCamera(camera));
+    }
+  }
+);
+
+export const setZoomThunk = createAsyncThunk(
+  "engine/setZoom",
+  async (zoom: number, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.setZoom(zoom);
+      dispatch(engineSlice.actions.setZoom(zoom));
+    }
+  }
+);
+
+export const setConstrainIterationsThunk = createAsyncThunk(
+  "engine/setConstrainIterations",
+  async (iterations: number, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.setConstrainIterations(iterations);
+      dispatch(engineSlice.actions.setConstrainIterations(iterations));
+    }
+  }
+);
+
+export const setCellSizeThunk = createAsyncThunk(
+  "engine/setCellSize",
+  async (cellSize: number, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.setCellSize(cellSize);
+      dispatch(engineSlice.actions.setGridCellSize(cellSize));
+    }
+  }
+);
+
+export const setClearColorThunk = createAsyncThunk(
+  "engine/setClearColor",
+  async (
+    color: { r: number; g: number; b: number; a: number },
+    { dispatch }
+  ) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.setClearColor(color);
+      dispatch(engineSlice.actions.setClearColor(color));
+    }
+  }
+);
+
+export const toggleEngineTypeThunk = createAsyncThunk(
+  "engine/toggleEngineType",
+  async (recreateEngine: () => Promise<void>, { dispatch }) => {
+    const currentEngine = getEngine();
+
+    try {
+      // Capture current state if engine exists
+      let capturedState = null;
+      if (currentEngine) {
+        const particles = await currentEngine.getParticles();
+        capturedState = {
+          particles,
+          constrainIterations: currentEngine.getConstrainIterations(),
+          cellSize: currentEngine.getCellSize(),
+          clearColor: currentEngine.getClearColor(),
+          camera: currentEngine.getCamera(),
+          zoom: currentEngine.getZoom(),
+          size: currentEngine.getSize(),
+        };
+      }
+
+      // Toggle engine type in Redux
+      dispatch(engineSlice.actions.toggleEngineType());
+
+      // Recreate the engine with new type
+      await recreateEngine();
+
+      // Restore state if we had captured it
+      const newEngine = getEngine();
+      if (newEngine && capturedState) {
+        if (capturedState.particles && capturedState.particles.length > 0) {
+          newEngine.setParticles(capturedState.particles);
+        }
+        newEngine.setConstrainIterations(capturedState.constrainIterations);
+        newEngine.setCellSize(capturedState.cellSize);
+        newEngine.setClearColor(capturedState.clearColor);
+        newEngine.setCamera(capturedState.camera.x, capturedState.camera.y);
+        newEngine.setZoom(capturedState.zoom);
+        newEngine.setSize(capturedState.size.width, capturedState.size.height);
+      }
+    } catch (error) {
+      console.error("Error during engine type toggle:", error);
+      dispatch(
+        engineSlice.actions.setError(
+          error instanceof Error ? error.message : "Unknown error"
+        )
+      );
+    }
+  }
+);
 
 export const {
   setWebGPU,
@@ -124,15 +295,24 @@ export const {
 export const engineReducer = engineSlice.reducer;
 
 // Selectors
-export const selectEngineState = (state: { engine: EngineState }) => state.engine;
-export const selectIsWebGPU = (state: { engine: EngineState }) => state.engine.isWebGPU;
-export const selectIsPlaying = (state: { engine: EngineState }) => state.engine.isPlaying;
-export const selectIsInitialized = (state: { engine: EngineState }) => state.engine.isInitialized;
-export const selectIsInitializing = (state: { engine: EngineState }) => state.engine.isInitializing;
-export const selectError = (state: { engine: EngineState }) => state.engine.error;
-export const selectParticleCount = (state: { engine: EngineState }) => state.engine.particleCount;
+export const selectEngineState = (state: { engine: EngineState }) =>
+  state.engine;
+export const selectIsWebGPU = (state: { engine: EngineState }) =>
+  state.engine.isWebGPU;
+export const selectIsPlaying = (state: { engine: EngineState }) =>
+  state.engine.isPlaying;
+export const selectIsInitialized = (state: { engine: EngineState }) =>
+  state.engine.isInitialized;
+export const selectIsInitializing = (state: { engine: EngineState }) =>
+  state.engine.isInitializing;
+export const selectError = (state: { engine: EngineState }) =>
+  state.engine.error;
+export const selectParticleCount = (state: { engine: EngineState }) =>
+  state.engine.particleCount;
 export const selectFPS = (state: { engine: EngineState }) => state.engine.fps;
-export const selectCamera = (state: { engine: EngineState }) => state.engine.camera;
+export const selectCamera = (state: { engine: EngineState }) =>
+  state.engine.camera;
 export const selectZoom = (state: { engine: EngineState }) => state.engine.zoom;
 export const selectSize = (state: { engine: EngineState }) => state.engine.size;
-export const selectClearColor = (state: { engine: EngineState }) => state.engine.clearColor;
+export const selectClearColor = (state: { engine: EngineState }) =>
+  state.engine.clearColor;

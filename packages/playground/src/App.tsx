@@ -16,8 +16,16 @@ import {
   setParticleCount,
   setFPS,
   setWebGPU,
-  toggleEngineType as toggleEngineTypeAction,
   selectEngineState,
+  playThunk,
+  pauseThunk,
+  clearThunk,
+  setSizeThunk,
+  setConstrainIterationsThunk,
+  setCellSizeThunk,
+  setClearColorThunk,
+  toggleEngineTypeThunk,
+  registerEngine,
 } from "./modules/engine/slice";
 
 import "./styles/index.css";
@@ -47,9 +55,6 @@ function AppContent() {
     sensors,
     trails,
     interaction,
-    play,
-    pause,
-    clear,
     handleZoom,
     useWebGPU,
     engineType,
@@ -59,21 +64,26 @@ function AppContent() {
 
   const size = useWindowSize();
 
+  // Register engine instance for thunks
+  useEffect(() => {
+    registerEngine(system);
+  }, [system]);
+
   // Update canvas size when window size changes
   useEffect(() => {
     if (system && isInitialized) {
       const targetWidth = size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
       const targetHeight = size.height - TOPBAR_HEIGHT;
-      system.setSize(targetWidth, targetHeight);
+      dispatch(setSizeThunk({ width: targetWidth, height: targetHeight }));
     }
-  }, [system, isInitialized, size, useWebGPU]);
+  }, [system, isInitialized, size, useWebGPU, dispatch]);
 
   // Spawn initial particles when initialized
   useEffect(() => {
     if (isInitialized && system) {
-      play();
+      dispatch(playThunk());
     }
-  }, [isInitialized, system, play]);
+  }, [isInitialized, system, dispatch]);
 
   // Add wheel event listener for zoom
   useEffect(() => {
@@ -167,21 +177,15 @@ function AppContent() {
       cfg.cornerRadius,
       cfg.particleMass
     );
-    play();
+    dispatch(playThunk());
   };
 
   const handleConstrainIterationsChange = (value: number) => {
-    dispatch(setConstrainIterations(value));
-    if (system && isInitialized) {
-      system.setConstrainIterations(value);
-    }
+    dispatch(setConstrainIterationsThunk(value));
   };
 
   const handleCellSizeChange = (value: number) => {
-    dispatch(setGridCellSize(value));
-    if (system && isInitialized) {
-      system.setCellSize(value);
-    }
+    dispatch(setCellSizeThunk(value));
   };
 
   const handleClearColorChange = (color: {
@@ -190,17 +194,14 @@ function AppContent() {
     b: number;
     a: number;
   }) => {
-    dispatch(setClearColor(color));
-    if (system && isInitialized) {
-      system.setClearColor(color);
-    }
+    dispatch(setClearColorThunk(color));
   };
 
   const handleToggleEngineType = async () => {
-    // First dispatch the Redux action to update state and set default constraint iterations
-    dispatch(toggleEngineTypeAction());
-    // Then call the engine toggle which will reinitialize with the new values
-    await toggleEngineType();
+    // Use the thunk which will handle state capture and engine recreation
+    dispatch(toggleEngineTypeThunk(async () => {
+      await toggleEngineType();
+    }));
   };
 
   const handleColorPickerChange = (hex: string) => {
@@ -225,9 +226,9 @@ function AppContent() {
     <div className="app">
       <TopBar
         system={null}
-        onPlay={play}
-        onPause={pause}
-        onClear={clear}
+        onPlay={() => dispatch(playThunk())}
+        onPause={() => dispatch(pauseThunk())}
+        onClear={() => dispatch(clearThunk())}
         onReset={handleRestart}
       />
       <div
