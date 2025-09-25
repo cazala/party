@@ -66,8 +66,8 @@ export function SensorsModule({
     <>
       <Slider
         label="Distance"
-        min={0}
-        max={1000}
+        min={3}
+        max={100}
         step={1}
         value={sensorDistance}
         onChange={(v) => {
@@ -92,6 +92,9 @@ export function SensorsModule({
       <Slider
         label="Radius"
         value={sensorRadius}
+        min={0}
+        max={10}
+        step={1}
         onChange={(v) => {
           setSensorRadius(v);
           sensors?.setSensorRadius(v);
@@ -101,6 +104,9 @@ export function SensorsModule({
       <Slider
         label="Threshold"
         value={sensorThreshold}
+        min={0.01}
+        max={0.2}
+        step={0.01}
         onChange={(v) => {
           setSensorThreshold(v);
           sensors?.setSensorThreshold(v);
