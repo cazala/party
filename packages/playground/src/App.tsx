@@ -112,19 +112,7 @@ function AppContent() {
   // Trigger initial particle spawn when engine is initialized
   useEffect(() => {
     if (isInitialized && system) {
-      spawnParticles(
-        initState.numParticles,
-        initState.spawnShape,
-        initState.spacing,
-        initState.particleSize,
-        initState.radius,
-        initState.colors.length > 0 ? initState.colors : undefined,
-        initState.velocityConfig,
-        initState.innerRadius,
-        initState.squareSize,
-        initState.cornerRadius,
-        initState.particleMass
-      );
+      spawnParticles(initState);
     }
   }, [isInitialized, system, spawnParticles, initState]);
 
@@ -178,19 +166,7 @@ function AppContent() {
 
   const handleRestart = () => {
     // Re-spawn particles using current INIT panel config from Redux
-    spawnParticles(
-      initState.numParticles,
-      initState.spawnShape,
-      initState.spacing,
-      initState.particleSize,
-      initState.radius,
-      initState.colors.length > 0 ? initState.colors : undefined,
-      initState.velocityConfig,
-      initState.innerRadius,
-      initState.squareSize,
-      initState.cornerRadius,
-      initState.particleMass
-    );
+    spawnParticles(initState);
     dispatch(playThunk());
   };
 

@@ -34,10 +34,11 @@ import {
   setInitializing,
   setError,
   setConstrainIterations as setConstrainIterationsAction,
-  setGridCellSize as setGridCellSizeAction, 
+  setGridCellSize as setGridCellSizeAction,
   setClearColor,
   setCamera as setCameraAction,
   setZoom as setZoomAction,
+  SpawnParticlesConfig,
 } from "../modules/engine/slice";
 import {
   Environment,
@@ -60,7 +61,7 @@ export interface UseEngineProps {
 // Internal version used by EngineProvider
 export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const dispatch = useAppDispatch();
-  
+
   // All state from Redux
   const engineState = useAppSelector(selectEngineState);
   const isWebGPU = useAppSelector(selectIsWebGPU);
@@ -74,7 +75,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const zoom = useAppSelector(selectZoom);
   const size = useAppSelector(selectSize);
   const clearColor = useAppSelector(selectClearColor);
-  
+
   // Engine and module references
   const engineRef = useRef<Engine | null>(null);
   const environmentRef = useRef<Environment | null>(null);
@@ -85,25 +86,28 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const sensorsRef = useRef<Sensors | null>(null);
   const trailsRef = useRef<Trails | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
-  
+
   // Local state for engine initialization
   const [isAutoMode, setIsAutoMode] = useState(true);
-  
+
   // Engine type string for canvas key
   const engineType = isWebGPU ? "webgpu" : "cpu";
-  
+
   // Initialize engine
   useEffect(() => {
     let cleanup: (() => void) | null = null;
-    
+
     const initEngine = async () => {
-      console.log('🔄 useEngine: initEngine called', { isWebGPU, canvasRef: !!canvasRef.current });
-      
+      console.log("🔄 useEngine: initEngine called", {
+        isWebGPU,
+        canvasRef: !!canvasRef.current,
+      });
+
       // Cleanup any existing engine first
       if (engineRef.current) {
         dispatch(setInitialized(false));
         dispatch(setInitializing(true));
-        
+
         try {
           engineRef.current.destroy();
           engineRef.current = null;
@@ -119,49 +123,51 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         } catch (err) {
           console.warn("Error cleaning up previous engine:", err);
         }
-        
+
         // Give a small delay for WebGPU context cleanup
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
       if (!canvasRef.current) return;
-      
+
       const canvas = canvasRef.current;
-      
+
       // Ensure the canvas is properly mounted and has the correct attributes
       if (!canvas.isConnected || !canvas.parentElement) {
         // Canvas not properly mounted yet, wait a bit
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         if (!canvasRef.current || !canvasRef.current.isConnected) {
           return; // Canvas still not ready
         }
       }
-      
+
       // Get canvas dimensions - use explicit size if provided, otherwise canvas attributes
-      let canvasWidth = initialSize?.width || canvas.width || canvas.offsetWidth;
-      let canvasHeight = initialSize?.height || canvas.height || canvas.offsetHeight;
-      
+      let canvasWidth =
+        initialSize?.width || canvas.width || canvas.offsetWidth;
+      let canvasHeight =
+        initialSize?.height || canvas.height || canvas.offsetHeight;
+
       // If canvas doesn't have dimensions yet, use defaults
       if (canvasWidth === 0 || canvasHeight === 0) {
         canvasWidth = 800;
         canvasHeight = 600;
       }
-      
+
       dispatch(setInitializing(true));
       dispatch(setError(null));
-      
+
       try {
         // Determine engine type
         let shouldUseWebGPU = isAutoMode ? false : isWebGPU;
-        
+
         if (isAutoMode) {
           // Auto-detect WebGPU support
-          if (navigator.gpu && await navigator.gpu.requestAdapter()) {
+          if (navigator.gpu && (await navigator.gpu.requestAdapter())) {
             shouldUseWebGPU = true;
           }
         }
-        
+
         dispatch(setWebGPU(shouldUseWebGPU));
-        
+
         // Create modules first
         const environment = new Environment({
           gravityStrength: 0,
@@ -186,10 +192,10 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           radius: 500,
         });
         const trails = new Trails({ enabled: false });
-        
+
         // Create particle renderer
         const particle = new Particle();
-        
+
         const forces = [
           environment,
           boundary,
@@ -200,7 +206,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           interaction,
         ];
         const render = [trails, particle];
-        
+
         // Create engine
         const engine = new Engine({
           canvas,
@@ -208,9 +214,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           render,
           runtime: isAutoMode ? "auto" : shouldUseWebGPU ? "webgpu" : "cpu",
         });
-        
+
         await engine.initialize();
-        
+
         // Set references
         engineRef.current = engine;
         environmentRef.current = environment;
@@ -221,14 +227,14 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         sensorsRef.current = sensors;
         trailsRef.current = trails;
         interactionRef.current = interaction;
-        
+
         // Register engine for thunks
         registerEngine(engine);
-        
+
         // Set initial size using the dimensions we calculated earlier
         engine.setSize(canvasWidth, canvasHeight);
         dispatch(setSizeThunk({ width: canvasWidth, height: canvasHeight }));
-        
+
         // Sync initial engine defaults to Redux state
         const actualConstrainIterations = engine.getConstrainIterations();
         const actualCellSize = engine.getCellSize();
@@ -237,7 +243,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const actualZoom = engine.getZoom();
         const actualParticleCount = engine.getCount();
         const actualFPS = engine.getFPS();
-        
+
         // Update Redux with actual engine defaults (sync only, don't call engine methods)
         dispatch(setConstrainIterationsAction(actualConstrainIterations));
         dispatch(setGridCellSizeAction(actualCellSize));
@@ -247,11 +253,11 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         dispatch(setParticleCount(actualParticleCount));
         dispatch(setFPS(actualFPS));
         dispatch(setWebGPU(shouldUseWebGPU));
-        
+
         // Mark as initialized
         dispatch(setInitialized(true));
         dispatch(setInitializing(false));
-        
+
         // Setup cleanup
         cleanup = () => {
           engine.destroy();
@@ -266,23 +272,24 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           interactionRef.current = null;
           registerEngine(null);
         };
-        
       } catch (err) {
-        dispatch(setError(err instanceof Error ? err.message : "Unknown error"));
+        dispatch(
+          setError(err instanceof Error ? err.message : "Unknown error")
+        );
         dispatch(setInitializing(false));
       }
     };
-    
+
     initEngine();
-    
+
     return cleanup || undefined;
   }, [canvasRef, isWebGPU, dispatch]);
-  
+
   // Apply configuration changes to existing engine (without recreating it)
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine || !isInitialized) return;
-    
+
     // Apply current Redux settings to the engine
     try {
       engine.setConstrainIterations(engineState.constrainIterations);
@@ -291,8 +298,13 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     } catch (err) {
       console.warn("Error applying engine configuration:", err);
     }
-  }, [isInitialized, engineState.constrainIterations, engineState.gridCellSize, clearColor]);
-  
+  }, [
+    isInitialized,
+    engineState.constrainIterations,
+    engineState.gridCellSize,
+    clearColor,
+  ]);
+
   // Periodic updates for particle count and FPS
   useEffect(() => {
     if (!engineRef.current || !isInitialized) return;
@@ -302,7 +314,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       if (engine) {
         const currentParticleCount = engine.getCount();
         const currentFPS = engine.getFPS();
-        
+
         dispatch(setParticleCount(currentParticleCount));
         dispatch(setFPS(currentFPS));
       }
@@ -310,130 +322,133 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
     return () => clearInterval(interval);
   }, [isInitialized, dispatch]);
-  
+
   // Action functions (wrapped thunks)
   const play = useCallback(() => {
     dispatch(playThunk());
   }, [dispatch]);
-  
+
   const pause = useCallback(() => {
     dispatch(pauseThunk());
   }, [dispatch]);
-  
+
   const clear = useCallback(() => {
     dispatch(clearThunk());
   }, [dispatch]);
-  
-  const setSize = useCallback((newSize: { width: number; height: number }) => {
-    dispatch(setSizeThunk(newSize));
-  }, [dispatch]);
-  
-  const setCamera = useCallback((newCamera: { x: number; y: number }) => {
-    dispatch(setCameraThunk(newCamera));
-  }, [dispatch]);
-  
-  const setZoom = useCallback((newZoom: number) => {
-    dispatch(setZoomThunk(newZoom));
-  }, [dispatch]);
-  
-  const setConstrainIterations = useCallback((iterations: number) => {
-    dispatch(setConstrainIterationsThunk(iterations));
-  }, [dispatch]);
-  
-  const setCellSize = useCallback((cellSize: number) => {
-    dispatch(setCellSizeThunk(cellSize));
-  }, [dispatch]);
-  
-  const setClearColorAction = useCallback((color: { r: number; g: number; b: number; a: number }) => {
-    dispatch(setClearColorThunk(color));
-  }, [dispatch]);
-  
-  const addParticle = useCallback((particle: {
-    position: { x: number; y: number };
-    velocity: { x: number; y: number };
-    size: number;
-    mass: number;
-    color: { r: number; g: number; b: number; a: number };
-  }) => {
-    dispatch(addParticleThunk(particle));
-  }, [dispatch]);
-  
-  const spawnParticles = useCallback((
-    numParticles: number,
-    shape: "grid" | "random" | "circle" | "donut" | "square",
-    spacing: number,
-    particleSize: number,
-    radius?: number,
-    colors?: string[],
-    velocityConfig?: {
-      speed: number;
-      direction: "random" | "in" | "out" | "custom" | "clockwise" | "counter-clockwise";
-      angle: number;
+
+  const setSize = useCallback(
+    (newSize: { width: number; height: number }) => {
+      dispatch(setSizeThunk(newSize));
     },
-    innerRadius?: number,
-    squareSize?: number,
-    cornerRadius?: number,
-    particleMass?: number
-  ) => {
-    dispatch(spawnParticlesThunk({
-      numParticles,
-      shape,
-      spacing,
-      particleSize,
-      radius,
-      colors,
-      velocityConfig,
-      innerRadius,
-      squareSize,
-      cornerRadius,
-      particleMass,
-    }));
-  }, [dispatch]);
-  
+    [dispatch]
+  );
+
+  const setCamera = useCallback(
+    (newCamera: { x: number; y: number }) => {
+      dispatch(setCameraThunk(newCamera));
+    },
+    [dispatch]
+  );
+
+  const setZoom = useCallback(
+    (newZoom: number) => {
+      dispatch(setZoomThunk(newZoom));
+    },
+    [dispatch]
+  );
+
+  const setConstrainIterations = useCallback(
+    (iterations: number) => {
+      dispatch(setConstrainIterationsThunk(iterations));
+    },
+    [dispatch]
+  );
+
+  const setCellSize = useCallback(
+    (cellSize: number) => {
+      dispatch(setCellSizeThunk(cellSize));
+    },
+    [dispatch]
+  );
+
+  const setClearColorAction = useCallback(
+    (color: { r: number; g: number; b: number; a: number }) => {
+      dispatch(setClearColorThunk(color));
+    },
+    [dispatch]
+  );
+
+  const addParticle = useCallback(
+    (particle: {
+      position: { x: number; y: number };
+      velocity: { x: number; y: number };
+      size: number;
+      mass: number;
+      color: { r: number; g: number; b: number; a: number };
+    }) => {
+      dispatch(addParticleThunk(particle));
+    },
+    [dispatch]
+  );
+
+  const spawnParticles = useCallback(
+    (config: SpawnParticlesConfig) => {
+      dispatch(spawnParticlesThunk(config));
+    },
+    [dispatch]
+  );
+
   const toggleEngineType = useCallback(async () => {
     // Simply toggle the Redux state and let useEffect handle engine recreation
     setIsAutoMode(false);
     dispatch(toggleEngineTypeAction());
   }, [dispatch]);
-  
+
   // Utility functions
-  const screenToWorld = useCallback((sx: number, sy: number) => {
-    const engine = engineRef.current;
-    if (!engine) return { x: sx, y: sy };
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: sx, y: sy };
-    
-    const rect = canvas.getBoundingClientRect();
-    const zoom = engine.getZoom();
-    const camera = engine.getCamera();
-    
-    // Convert screen coordinates to world coordinates
-    const worldX = camera.x + (sx - rect.width / 2) / zoom;
-    const worldY = camera.y + (sy - rect.height / 2) / zoom;
-    
-    return { x: worldX, y: worldY };
-  }, [canvasRef]);
-  
-  const handleZoom = useCallback((deltaY: number, centerX: number, centerY: number) => {
-    dispatch(handleZoomThunk({
-      deltaY,
-      centerX,
-      centerY,
-      screenToWorld,
-    }));
-  }, [dispatch, screenToWorld]);
-  
+  const screenToWorld = useCallback(
+    (sx: number, sy: number) => {
+      const engine = engineRef.current;
+      if (!engine) return { x: sx, y: sy };
+
+      const canvas = canvasRef.current;
+      if (!canvas) return { x: sx, y: sy };
+
+      const rect = canvas.getBoundingClientRect();
+      const zoom = engine.getZoom();
+      const camera = engine.getCamera();
+
+      // Convert screen coordinates to world coordinates
+      const worldX = camera.x + (sx - rect.width / 2) / zoom;
+      const worldY = camera.y + (sy - rect.height / 2) / zoom;
+
+      return { x: worldX, y: worldY };
+    },
+    [canvasRef]
+  );
+
+  const handleZoom = useCallback(
+    (deltaY: number, centerX: number, centerY: number) => {
+      dispatch(
+        handleZoomThunk({
+          deltaY,
+          centerX,
+          centerY,
+          screenToWorld,
+        })
+      );
+    },
+    [dispatch, screenToWorld]
+  );
+
   const isSupported = useCallback((module: any) => {
     // Module compatibility check
     return module !== null;
   }, []);
-  
+
   // Getter functions that return current values
   const getParticleCount = useCallback(() => particleCount, [particleCount]);
   const getFPS = useCallback(() => fps, [fps]);
-  
-  
+
   return {
     // State values (from Redux selectors)
     isWebGPU,
@@ -449,7 +464,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     zoom,
     engineType,
     useWebGPU: isWebGPU, // Alias for consistency
-    
+
     // Action functions (wrapped thunks)
     play,
     pause,
@@ -463,14 +478,14 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     addParticle,
     spawnParticles,
     toggleEngineType,
-    
+
     // Utility functions
     handleZoom,
     screenToWorld,
     isSupported,
     getParticleCount,
     getFPS,
-    
+
     // Module references (direct access to engine instances)
     system: engineRef.current,
     environment: environmentRef.current,

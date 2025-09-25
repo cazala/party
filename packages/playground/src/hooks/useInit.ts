@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../modules/hooks';
+import { useCallback } from "react";
+import { useAppDispatch, useAppSelector } from "../modules/hooks";
 import {
   setNumParticles,
   setSpawnShape,
@@ -15,7 +15,7 @@ import {
   selectInitState,
   InitState,
   InitVelocityConfig,
-} from '../modules/init/slice';
+} from "../modules/init/slice";
 
 export function useInit() {
   const dispatch = useAppDispatch();
@@ -24,7 +24,7 @@ export function useInit() {
   // Getters - destructure all state values
   const {
     numParticles,
-    spawnShape,
+    shape,
     spacing,
     particleSize,
     particleMass,
@@ -37,54 +37,87 @@ export function useInit() {
   } = initState;
 
   // Setters - wrapped dispatch functions
-  const setNumParticlesValue = useCallback((value: number) => {
-    dispatch(setNumParticles(value));
-  }, [dispatch]);
+  const setNumParticlesValue = useCallback(
+    (value: number) => {
+      dispatch(setNumParticles(value));
+    },
+    [dispatch]
+  );
 
-  const setSpawnShapeValue = useCallback((value: InitState['spawnShape']) => {
-    dispatch(setSpawnShape(value));
-  }, [dispatch]);
+  const setSpawnShapeValue = useCallback(
+    (value: InitState["spawnShape"]) => {
+      dispatch(setSpawnShape(value));
+    },
+    [dispatch]
+  );
 
-  const setSpacingValue = useCallback((value: number) => {
-    dispatch(setSpacing(value));
-  }, [dispatch]);
+  const setSpacingValue = useCallback(
+    (value: number) => {
+      dispatch(setSpacing(value));
+    },
+    [dispatch]
+  );
 
-  const setParticleSizeValue = useCallback((value: number) => {
-    dispatch(setParticleSize(value));
-  }, [dispatch]);
+  const setParticleSizeValue = useCallback(
+    (value: number) => {
+      dispatch(setParticleSize(value));
+    },
+    [dispatch]
+  );
 
-  const setParticleMassValue = useCallback((value: number) => {
-    dispatch(setParticleMass(value));
-  }, [dispatch]);
+  const setParticleMassValue = useCallback(
+    (value: number) => {
+      dispatch(setParticleMass(value));
+    },
+    [dispatch]
+  );
 
-  const setRadiusValue = useCallback((value: number) => {
-    dispatch(setRadius(value));
-  }, [dispatch]);
+  const setRadiusValue = useCallback(
+    (value: number) => {
+      dispatch(setRadius(value));
+    },
+    [dispatch]
+  );
 
-  const setInnerRadiusValue = useCallback((value: number) => {
-    dispatch(setInnerRadius(value));
-  }, [dispatch]);
+  const setInnerRadiusValue = useCallback(
+    (value: number) => {
+      dispatch(setInnerRadius(value));
+    },
+    [dispatch]
+  );
 
-  const setSquareSizeValue = useCallback((value: number) => {
-    dispatch(setSquareSize(value));
-  }, [dispatch]);
+  const setSquareSizeValue = useCallback(
+    (value: number) => {
+      dispatch(setSquareSize(value));
+    },
+    [dispatch]
+  );
 
-  const setCornerRadiusValue = useCallback((value: number) => {
-    dispatch(setCornerRadius(value));
-  }, [dispatch]);
+  const setCornerRadiusValue = useCallback(
+    (value: number) => {
+      dispatch(setCornerRadius(value));
+    },
+    [dispatch]
+  );
 
-  const setColorsValue = useCallback((value: string[]) => {
-    dispatch(setColors(value));
-  }, [dispatch]);
+  const setColorsValue = useCallback(
+    (value: string[]) => {
+      dispatch(setColors(value));
+    },
+    [dispatch]
+  );
 
-  const updateVelocityConfigValue = useCallback((value: Partial<InitVelocityConfig>) => {
-    dispatch(updateVelocityConfig(value));
-  }, [dispatch]);
+  const updateVelocityConfigValue = useCallback(
+    (value: Partial<InitVelocityConfig>) => {
+      dispatch(updateVelocityConfig(value));
+    },
+    [dispatch]
+  );
 
   return {
     // State values (getters)
     numParticles,
-    spawnShape,
+    shape,
     spacing,
     particleSize,
     particleMass,
@@ -94,10 +127,10 @@ export function useInit() {
     cornerRadius,
     colors,
     velocityConfig,
-    
+
     // Full state object for convenience
     initState,
-    
+
     // Action functions (setters)
     setNumParticles: setNumParticlesValue,
     setSpawnShape: setSpawnShapeValue,

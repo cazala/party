@@ -12,7 +12,7 @@ export function InitControls() {
   const { spawnParticles } = useEngine();
   const {
     numParticles,
-    spawnShape,
+    shape,
     spacing,
     particleSize,
     particleMass,
@@ -49,23 +49,23 @@ export function InitControls() {
       return;
     }
 
-    spawnParticles(
+    spawnParticles({
       numParticles,
-      spawnShape,
+      shape,
       spacing,
       particleSize,
       radius,
-      colors.length > 0 ? colors : undefined, // Use undefined to trigger default palette
+      colors: colors && colors.length > 0 ? colors : undefined, // Use undefined to trigger default palette
       velocityConfig,
       innerRadius,
       squareSize,
       cornerRadius,
-      particleMass
-    );
+      particleMass,
+    });
   }, [
     spawnParticles,
     numParticles,
-    spawnShape,
+    shape,
     spacing,
     particleSize,
     particleMass,
@@ -95,8 +95,7 @@ export function InitControls() {
 
     if (options.newNumParticles !== undefined)
       setNumParticles(options.newNumParticles);
-    if (options.newShape !== undefined)
-      setSpawnShape(options.newShape);
+    if (options.newShape !== undefined) setSpawnShape(options.newShape);
     if (options.newSpacing !== undefined) setSpacing(space);
     if (options.newParticleSize !== undefined) {
       setParticleSize(options.newParticleSize);
@@ -145,7 +144,7 @@ export function InitControls() {
       />
       <Dropdown
         label="Shape"
-        value={spawnShape}
+        value={shape}
         onChange={(value) =>
           handleSpawnChange({
             newShape: value as
@@ -164,7 +163,7 @@ export function InitControls() {
           { value: "random", label: "Random" },
         ]}
       />
-      {spawnShape === "grid" && (
+      {shape === "grid" && (
         <Slider
           label="Spacing"
           value={spacing}
@@ -173,7 +172,7 @@ export function InitControls() {
         />
       )}
 
-      {spawnShape === "donut" && (
+      {shape === "donut" && (
         <Slider
           label="Inner Radius"
           value={innerRadius}
@@ -189,18 +188,18 @@ export function InitControls() {
         />
       )}
 
-      {(spawnShape === "circle" || spawnShape === "donut") && (
+      {(shape === "circle" || shape === "donut") && (
         <Slider
-          label={spawnShape === "circle" ? "Radius" : "Outer Radius"}
+          label={shape === "circle" ? "Radius" : "Outer Radius"}
           value={radius}
-          min={spawnShape === "circle" ? 10 : innerRadius}
+          min={shape === "circle" ? 10 : innerRadius}
           max={1000}
           step={1}
           onChange={(value) => handleSpawnChange({ newRadius: value })}
         />
       )}
 
-      {spawnShape === "square" && (
+      {shape === "square" && (
         <>
           <Slider
             label="Square Size"

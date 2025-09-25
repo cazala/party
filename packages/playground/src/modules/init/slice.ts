@@ -1,8 +1,9 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { SpawnParticlesConfig } from "../engine/slice";
 
 export interface InitVelocityConfig {
   speed: number;
-  direction: 
+  direction:
     | "random"
     | "in"
     | "out"
@@ -12,19 +13,7 @@ export interface InitVelocityConfig {
   angle: number;
 }
 
-export interface InitState {
-  numParticles: number;
-  spawnShape: "grid" | "random" | "circle" | "donut" | "square";
-  spacing: number;
-  particleSize: number;
-  particleMass: number;
-  radius: number;
-  innerRadius: number;
-  squareSize: number;
-  cornerRadius: number;
-  colors: string[];
-  velocityConfig: InitVelocityConfig;
-}
+export interface InitState extends Required<SpawnParticlesConfig> {}
 
 const DEFAULT_SPAWN_NUM_PARTICLES = 900;
 const DEFAULT_SPAWN_SHAPE = "grid" as const;
@@ -40,7 +29,7 @@ const DEFAULT_VELOCITY_ANGLE = 0;
 
 const initialState: InitState = {
   numParticles: DEFAULT_SPAWN_NUM_PARTICLES,
-  spawnShape: DEFAULT_SPAWN_SHAPE,
+  shape: DEFAULT_SPAWN_SHAPE,
   spacing: DEFAULT_SPAWN_SPACING,
   particleSize: DEFAULT_SPAWN_PARTICLE_SIZE,
   particleMass: 1, // Will be calculated from size
@@ -57,14 +46,14 @@ const initialState: InitState = {
 };
 
 export const initSlice = createSlice({
-  name: 'init',
+  name: "init",
   initialState,
   reducers: {
     setNumParticles: (state, action: PayloadAction<number>) => {
       state.numParticles = action.payload;
     },
-    setSpawnShape: (state, action: PayloadAction<InitState['spawnShape']>) => {
-      state.spawnShape = action.payload;
+    setSpawnShape: (state, action: PayloadAction<InitState["shape"]>) => {
+      state.shape = action.payload;
     },
     setSpacing: (state, action: PayloadAction<number>) => {
       state.spacing = action.payload;
@@ -93,8 +82,14 @@ export const initSlice = createSlice({
     setVelocityConfig: (state, action: PayloadAction<InitVelocityConfig>) => {
       state.velocityConfig = action.payload;
     },
-    updateVelocityConfig: (state, action: PayloadAction<Partial<InitVelocityConfig>>) => {
-      state.velocityConfig = { ...state.velocityConfig, ...action.payload };
+    updateVelocityConfig: (
+      state,
+      action: PayloadAction<Partial<InitVelocityConfig>>
+    ) => {
+      state.velocityConfig = {
+        ...state.velocityConfig,
+        ...action.payload,
+      };
     },
     setState: (state, action: PayloadAction<Partial<InitState>>) => {
       Object.assign(state, action.payload);
@@ -124,9 +119,14 @@ export const initReducer = initSlice.reducer;
 
 // Selectors
 export const selectInitState = (state: { init: InitState }) => state.init;
-export const selectNumParticles = (state: { init: InitState }) => state.init.numParticles;
-export const selectSpawnShape = (state: { init: InitState }) => state.init.spawnShape;
-export const selectParticleSize = (state: { init: InitState }) => state.init.particleSize;
-export const selectParticleMass = (state: { init: InitState }) => state.init.particleMass;
+export const selectNumParticles = (state: { init: InitState }) =>
+  state.init.numParticles;
+export const selectSpawnShape = (state: { init: InitState }) =>
+  state.init.shape;
+export const selectParticleSize = (state: { init: InitState }) =>
+  state.init.particleSize;
+export const selectParticleMass = (state: { init: InitState }) =>
+  state.init.particleMass;
 export const selectColors = (state: { init: InitState }) => state.init.colors;
-export const selectVelocityConfig = (state: { init: InitState }) => state.init.velocityConfig;
+export const selectVelocityConfig = (state: { init: InitState }) =>
+  state.init.velocityConfig;

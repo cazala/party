@@ -2,6 +2,30 @@ import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import type { Engine } from "@cazala/party";
 import { WebGPUSpawner } from "@cazala/party";
 
+export type SpawnParticlesConfig = {
+  numParticles: number;
+  shape: "grid" | "random" | "circle" | "donut" | "square";
+  spacing: number;
+  particleSize: number;
+  radius?: number;
+  colors?: string[];
+  velocityConfig?: {
+    speed: number;
+    direction:
+      | "random"
+      | "in"
+      | "out"
+      | "custom"
+      | "clockwise"
+      | "counter-clockwise";
+    angle: number;
+  };
+  innerRadius?: number;
+  squareSize?: number;
+  cornerRadius?: number;
+  particleMass?: number;
+};
+
 export interface EngineState {
   isWebGPU: boolean;
   isAutoMode: boolean;
@@ -297,32 +321,7 @@ export const addParticleThunk = createAsyncThunk(
 
 export const spawnParticlesThunk = createAsyncThunk(
   "engine/spawnParticles",
-  async (
-    config: {
-      numParticles: number;
-      shape: "grid" | "random" | "circle" | "donut" | "square";
-      spacing: number;
-      particleSize: number;
-      radius?: number;
-      colors?: string[];
-      velocityConfig?: {
-        speed: number;
-        direction:
-          | "random"
-          | "in"
-          | "out"
-          | "custom"
-          | "clockwise"
-          | "counter-clockwise";
-        angle: number;
-      };
-      innerRadius?: number;
-      squareSize?: number;
-      cornerRadius?: number;
-      particleMass?: number;
-    },
-    { dispatch }
-  ) => {
+  async (config: SpawnParticlesConfig, { dispatch }) => {
     const engine = getEngine();
     if (!engine) return;
 
