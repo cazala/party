@@ -9,6 +9,7 @@ import { calculateMassFromSize } from "../utils/particle";
 import { Slider } from "./ui/Slider";
 import { Dropdown } from "./ui/Dropdown";
 import { useAppDispatch, useAppSelector } from "../modules/hooks";
+import { useEngine } from "../contexts/EngineContext";
 import {
   setNumParticles,
   setSpawnShape,
@@ -41,22 +42,7 @@ interface InitVelocityConfig {
 }
 
 interface InitControlsProps {
-  onInitParticles?: (
-    numParticles: number,
-    shape: "grid" | "random" | "circle" | "donut" | "square",
-    spacing: number,
-    particleSize: number,
-    radius?: number,
-    colors?: string[],
-    velocityConfig?: InitVelocityConfig,
-    innerRadius?: number,
-    squareSize?: number,
-    cornerRadius?: number,
-    particleMass?: number
-  ) => void;
-  onParticleSizeChange?: (size: number) => void;
-  onColorsChange?: (colors: string[]) => void;
-  getCurrentCamera?: () => { x: number; y: number; zoom: number };
+  // No more callback props needed!
 }
 
 export interface InitControlsRef {
@@ -91,9 +77,10 @@ export interface InitControlsRef {
 }
 
 export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
-  ({ onInitParticles, onColorsChange }, ref) => {
+  (_props, ref) => {
     const dispatch = useAppDispatch();
     const initState = useAppSelector(selectInitState);
+    const { spawnParticles } = useEngine();
     const {
       numParticles,
       spawnShape,
@@ -151,31 +138,30 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
     // Color management handler
     const handleColorsChange = (newColors: string[]) => {
       dispatch(setColors(newColors));
-      onColorsChange?.(newColors);
     };
 
+    // Auto-spawn particles when any setting changes
     useEffect(() => {
       if (skipResetRef.current) {
         skipResetRef.current = false;
         return;
       }
-      if (onInitParticles) {
-        onInitParticles(
-          numParticles,
-          spawnShape,
-          spacing,
-          particleSize,
-          radius,
-          colors.length > 0 ? colors : undefined, // Use undefined to trigger default palette
-          velocityConfig,
-          innerRadius,
-          squareSize,
-          cornerRadius,
-          particleMass
-        );
-      }
+      
+      spawnParticles(
+        numParticles,
+        spawnShape,
+        spacing,
+        particleSize,
+        radius,
+        colors.length > 0 ? colors : undefined, // Use undefined to trigger default palette
+        velocityConfig,
+        innerRadius,
+        squareSize,
+        cornerRadius,
+        particleMass
+      );
     }, [
-      onInitParticles,
+      spawnParticles,
       numParticles,
       spawnShape,
       spacing,
@@ -187,11 +173,10 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
       cornerRadius,
       colors,
       velocityConfig,
-      skipResetRef,
     ]);
 
     const handleSpawnChange = (
-      optiosn: {
+      options: {
         newNumParticles?: number;
         newShape?: "grid" | "random" | "circle" | "donut" | "square";
         newSpacing?: number;
@@ -203,51 +188,28 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
         newParticleMass?: number;
       } = {}
     ) => {
-      const particles = optiosn.newNumParticles ?? numParticles;
-      const shape = optiosn.newShape ?? spawnShape;
-      const size = optiosn.newParticleSize ?? particleSize;
-      const mass = optiosn.newParticleSize
-        ? calculateMassFromSize(optiosn.newParticleSize)
-        : optiosn.newParticleMass ?? particleMass;
-      const space = Math.max(optiosn.newSpacing ?? spacing, size * 2);
-      const rad = optiosn.newRadius ?? radius;
-      const innerRad = optiosn.newInnerRadius ?? innerRadius;
-      const sqSize = optiosn.newSquareSize ?? squareSize;
-      const cornRad = optiosn.newCornerRadius ?? cornerRadius;
+      const size = options.newParticleSize ?? particleSize;
+      const space = Math.max(options.newSpacing ?? spacing, size * 2);
 
-      if (optiosn.newNumParticles !== undefined)
-        dispatch(setNumParticles(optiosn.newNumParticles));
-      if (optiosn.newShape !== undefined) dispatch(setSpawnShape(optiosn.newShape));
-      if (optiosn.newSpacing !== undefined) dispatch(setSpacing(space));
-      if (optiosn.newParticleSize !== undefined) {
-        dispatch(setParticleSize(optiosn.newParticleSize));
-        dispatch(setParticleMass(calculateMassFromSize(optiosn.newParticleSize)));
+      if (options.newNumParticles !== undefined)
+        dispatch(setNumParticles(options.newNumParticles));
+      if (options.newShape !== undefined) dispatch(setSpawnShape(options.newShape));
+      if (options.newSpacing !== undefined) dispatch(setSpacing(space));
+      if (options.newParticleSize !== undefined) {
+        dispatch(setParticleSize(options.newParticleSize));
+        dispatch(setParticleMass(calculateMassFromSize(options.newParticleSize)));
       }
-      if (optiosn.newParticleMass !== undefined)
-        dispatch(setParticleMass(optiosn.newParticleMass));
-      if (optiosn.newRadius !== undefined) dispatch(setRadius(optiosn.newRadius));
-      if (optiosn.newInnerRadius !== undefined)
-        dispatch(setInnerRadius(optiosn.newInnerRadius));
-      if (optiosn.newSquareSize !== undefined)
-        dispatch(setSquareSize(optiosn.newSquareSize));
-      if (optiosn.newCornerRadius !== undefined)
-        dispatch(setCornerRadius(optiosn.newCornerRadius));
+      if (options.newParticleMass !== undefined)
+        dispatch(setParticleMass(options.newParticleMass));
+      if (options.newRadius !== undefined) dispatch(setRadius(options.newRadius));
+      if (options.newInnerRadius !== undefined)
+        dispatch(setInnerRadius(options.newInnerRadius));
+      if (options.newSquareSize !== undefined)
+        dispatch(setSquareSize(options.newSquareSize));
+      if (options.newCornerRadius !== undefined)
+        dispatch(setCornerRadius(options.newCornerRadius));
 
-      if (onInitParticles) {
-        onInitParticles(
-          particles,
-          shape,
-          space,
-          size,
-          rad,
-          colors,
-          velocityConfig,
-          innerRad,
-          sqSize,
-          cornRad,
-          mass
-        );
-      }
+      // The useEffect will automatically trigger particle spawning when Redux state changes
     };
 
     return (
@@ -365,7 +327,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
           value={velocityConfig.speed}
           onChange={(value) => {
             dispatch(updateVelocityConfig({ speed: value }));
-            handleSpawnChange();
           }}
           min={0}
           max={500}
@@ -378,7 +339,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
             dispatch(updateVelocityConfig({ 
               direction: value as InitVelocityConfigType['direction'] 
             }));
-            handleSpawnChange();
           }}
           options={[
             { value: "random", label: "Random" },
@@ -398,7 +358,6 @@ export const InitControls = forwardRef<InitControlsRef, InitControlsProps>(
             step={1}
             onChange={(value) => {
               dispatch(updateVelocityConfig({ angle: value }));
-              handleSpawnChange();
             }}
             formatValue={(v) => `${v}°`}
           />

@@ -9,7 +9,7 @@ interface SystemSidebarProps {
 }
 
 export function SystemSidebar({ initControlsRef }: SystemSidebarProps) {
-  const { isInitialized, isInitializing, spawnParticles } = useEngine();
+  const { isInitialized, isInitializing } = useEngine();
   return (
     <div
       className="left-sidebar controls-panel"
@@ -22,7 +22,7 @@ export function SystemSidebar({ initControlsRef }: SystemSidebarProps) {
       </div>
 
       <CollapsibleSection title="INIT" defaultOpen={true}>
-        <InitControls ref={initControlsRef} onInitParticles={spawnParticles} />
+        <InitControls ref={initControlsRef} />
       </CollapsibleSection>
 
       <CollapsibleSection title="PERFORMANCE" defaultOpen={true}>
