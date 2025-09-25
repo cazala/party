@@ -2,42 +2,30 @@ import { InitControls, InitControlsRef } from "./InitControls";
 import { CollapsibleSection } from "./ui/CollapsibleSection";
 import { PerformanceControls } from "./PerformanceControls";
 import { RenderControls } from "./RenderControls";
+import { useAppSelector } from "../modules/hooks";
+import { selectEngineState } from "../modules/engine/slice";
 
 interface SystemSidebarProps {
   content: React.ReactNode;
   initControlsRef: React.RefObject<InitControlsRef>;
-  isInitialized: boolean;
   spawnParticles?: (...args: any[]) => void;
-  useWebGPU: boolean;
-  onToggleEngineType: () => void;
-  constrainIterations: number;
-  onConstrainIterationsChange: (value: number) => void;
-  cellSize: number;
-  onCellSizeChange: (value: number) => void;
-  particleCount: number;
-  fps: number;
-  clearColor: string;
-  onClearColorChange: (hex: string) => void;
-  isInitializing: boolean;
+  onConstrainIterationsChange?: (value: number) => void;
+  onCellSizeChange?: (value: number) => void;
+  onClearColorChange?: (hex: string) => void;
+  onToggleEngineType?: () => void;
 }
 
 export function SystemSidebar({
   content,
   initControlsRef,
-  isInitialized,
   spawnParticles,
-  useWebGPU,
-  onToggleEngineType,
-  constrainIterations,
   onConstrainIterationsChange,
-  cellSize,
   onCellSizeChange,
-  particleCount,
-  fps,
-  clearColor,
   onClearColorChange,
-  isInitializing,
+  onToggleEngineType,
 }: SystemSidebarProps) {
+  const engineState = useAppSelector(selectEngineState);
+  const { isInitialized, isInitializing } = engineState;
   return (
     <div
       className="left-sidebar controls-panel"
@@ -54,26 +42,20 @@ export function SystemSidebar({
       <CollapsibleSection title="INIT" defaultOpen={true}>
         <InitControls
           ref={initControlsRef}
-          onInitParticles={isInitialized ? spawnParticles : undefined}
+          onInitParticles={spawnParticles}
         />
       </CollapsibleSection>
 
       <CollapsibleSection title="PERFORMANCE" defaultOpen={true}>
         <PerformanceControls
-          useWebGPU={useWebGPU}
-          onToggleEngineType={onToggleEngineType}
-          constrainIterations={constrainIterations}
           onConstrainIterationsChange={onConstrainIterationsChange}
-          cellSize={cellSize}
           onCellSizeChange={onCellSizeChange}
-          particleCount={particleCount}
-          fps={fps}
+          onToggleEngineType={onToggleEngineType}
         />
       </CollapsibleSection>
 
       <CollapsibleSection title="RENDER" defaultOpen={true}>
         <RenderControls
-          clearColor={clearColor}
           onClearColorChange={onClearColorChange}
           disabled={!isInitialized || isInitializing}
         />

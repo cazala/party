@@ -1,13 +1,16 @@
-import { useState } from "react";
-import {
-  DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH,
-  DEFAULT_ENVIRONMENT_INERTIA,
-  DEFAULT_ENVIRONMENT_FRICTION,
-  DEFAULT_ENVIRONMENT_DAMPING,
-  Environment,
-} from "@cazala/party";
+import { useEffect } from "react";
+import { Environment } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
+import { useAppDispatch, useAppSelector } from "../../modules/hooks";
+import {
+  selectEnvironmentModule,
+  setEnvironmentGravityStrength,
+  setEnvironmentInertia,
+  setEnvironmentFriction,
+  setEnvironmentDamping,
+  setEnvironmentDirection,
+} from "../../modules/modules/slice";
 
 export function EnvironmentModule({
   environment,
@@ -16,24 +19,42 @@ export function EnvironmentModule({
   environment: Environment | null;
   enabled?: boolean;
 }) {
-  const [strength, setStrength] = useState(
-    DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH
-  );
-  const [direction, setDirection] = useState<
-    "up" | "down" | "left" | "right" | "inwards" | "outwards" | "custom"
-  >("down");
-  const [angle, setAngle] = useState(90); // degrees, for custom only
-  const [inertia, setInertia] = useState(DEFAULT_ENVIRONMENT_INERTIA);
-  const [friction, setFriction] = useState(DEFAULT_ENVIRONMENT_FRICTION);
-  const [damping, setDamping] = useState(DEFAULT_ENVIRONMENT_DAMPING);
+  const dispatch = useAppDispatch();
+  const environmentState = useAppSelector(selectEnvironmentModule);
+  const { gravityStrength, dirX, dirY, inertia, friction, damping } = environmentState;
+  
+  // Calculate direction and angle from dirX, dirY
+  const getDirectionFromVector = (x: number, y: number): string => {
+    if (x === 0 && y === 1) return "down";
+    if (x === 0 && y === -1) return "up";
+    if (x === -1 && y === 0) return "left";
+    if (x === 1 && y === 0) return "right";
+    // For inwards/outwards we'd need center point logic, simplified for now
+    return "custom";
+  };
+  
+  const direction = getDirectionFromVector(dirX, dirY);
+  const angle = Math.atan2(dirY, dirX) * (180 / Math.PI) + 90; // Convert to degrees
+  
+  // Sync Redux state with environment module when environment is available
+  useEffect(() => {
+    if (environment && enabled) {
+      environment.setGravityStrength(gravityStrength);
+      environment.setInertia(inertia);
+      environment.setFriction(friction);
+      environment.setDamping(damping);
+      // Set direction vector
+      environment.setGravityDirection?.(direction as any);
+    }
+  }, [environment, enabled, gravityStrength, inertia, friction, damping, direction]);
 
   return (
     <>
       <Slider
         label="Gravity Strength"
-        value={strength}
+        value={gravityStrength}
         onChange={(v) => {
-          setStrength(v);
+          dispatch(setEnvironmentGravityStrength(v));
           environment?.setGravityStrength(v);
         }}
         min={0}
@@ -46,9 +67,16 @@ export function EnvironmentModule({
         label="Gravity Direction"
         value={direction}
         onChange={(dir) => {
-          const newDir = dir as typeof direction;
-          setDirection(newDir);
-          environment?.setGravityDirection?.(newDir);
+          let newDirX = 0, newDirY = 0;
+          switch (dir) {
+            case "down": newDirX = 0; newDirY = 1; break;
+            case "up": newDirX = 0; newDirY = -1; break;
+            case "left": newDirX = -1; newDirY = 0; break;
+            case "right": newDirX = 1; newDirY = 0; break;
+            default: newDirX = dirX; newDirY = dirY; break;
+          }
+          dispatch(setEnvironmentDirection({ dirX: newDirX, dirY: newDirY }));
+          environment?.setGravityDirection?.(dir as any);
         }}
         options={[
           { value: "down", label: "Down" },
@@ -67,8 +95,10 @@ export function EnvironmentModule({
           label="Gravity Angle"
           value={angle}
           onChange={(deg) => {
-            setAngle(deg);
-            const rad = (deg * Math.PI) / 180;
+            const rad = (deg - 90) * Math.PI / 180; // Convert from degrees, adjust for coordinate system
+            const newDirX = Math.cos(rad);
+            const newDirY = Math.sin(rad);
+            dispatch(setEnvironmentDirection({ dirX: newDirX, dirY: newDirY }));
             environment?.setGravityAngle?.(rad);
           }}
           min={0}
@@ -83,7 +113,7 @@ export function EnvironmentModule({
         label="Inertia"
         value={inertia}
         onChange={(v) => {
-          setInertia(v);
+          dispatch(setEnvironmentInertia(v));
           environment?.setInertia?.(v);
         }}
         min={0}
@@ -97,7 +127,7 @@ export function EnvironmentModule({
         label="Friction"
         value={friction}
         onChange={(v) => {
-          setFriction(v);
+          dispatch(setEnvironmentFriction(v));
           environment?.setFriction?.(v);
         }}
         min={0}
@@ -111,7 +141,7 @@ export function EnvironmentModule({
         label="Damping"
         value={damping}
         onChange={(v) => {
-          setDamping(v);
+          dispatch(setEnvironmentDamping(v));
           environment?.setDamping?.(v);
         }}
         min={0}

@@ -1,25 +1,25 @@
 import { MousePointer, Plus } from "lucide-react";
-import { ToolMode } from "../hooks/useTools";
+import { useAppDispatch, useAppSelector } from "../modules/hooks";
+import { selectActiveTool, setTool } from "../modules/tools/slice";
 
 import "./Toolbar.css";
 
 export function Toolbar({
-  tool,
-  onChange,
   style,
 }: {
-  tool: ToolMode;
-  onChange: (t: ToolMode) => void;
   style?: React.CSSProperties;
 }) {
+  const dispatch = useAppDispatch();
+  const activeTool = useAppSelector(selectActiveTool);
+
   return (
     <div className="toolbar" style={style}>
       <div className="toolbar-content">
         <div className="tool-mode-selector">
           <button
-            onClick={() => onChange("cursor")}
+            onClick={() => dispatch(setTool("cursor"))}
             className={`tool-mode-button tool-mode-first ${
-              tool === "cursor" ? "tool-mode-active" : ""
+              activeTool === "cursor" ? "tool-mode-active" : ""
             }`}
             title="Cursor"
           >
@@ -27,9 +27,9 @@ export function Toolbar({
             <span>Cursor</span>
           </button>
           <button
-            onClick={() => onChange("spawn")}
+            onClick={() => dispatch(setTool("spawn"))}
             className={`tool-mode-button tool-mode-second ${
-              tool === "spawn" ? "tool-mode-active" : ""
+              activeTool === "spawn" ? "tool-mode-active" : ""
             }`}
             title="Spawn"
           >

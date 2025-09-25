@@ -1,11 +1,24 @@
 import { usePlayground } from "./hooks/usePlayground";
 import { useWindowSize } from "./hooks/useWindowSize";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { TopBar } from "./components/TopBar";
 import { InitControlsRef } from "./components/InitControls";
 import { ModulesSidebar } from "./components/ModulesSidebar";
 import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
+import { Provider } from "react-redux";
+import { store } from "./modules/store";
+import { useAppDispatch, useAppSelector } from "./modules/hooks";
+import {
+  setConstrainIterations,
+  setGridCellSize,
+  setClearColor,
+  setParticleCount,
+  setFPS,
+  setWebGPU,
+  toggleEngineType as toggleEngineTypeAction,
+  selectEngineState,
+} from "./modules/engine/slice";
 
 import "./styles/index.css";
 import "./App.css";
@@ -14,14 +27,11 @@ const LEFT_SIDEBAR_WIDTH = 280;
 const RIGHT_SIDEBAR_WIDTH = 280;
 const TOPBAR_HEIGHT = 60;
 
-function App() {
+function AppContent() {
+  const dispatch = useAppDispatch();
+  const engineState = useAppSelector(selectEngineState);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const initControlsRef = useRef<InitControlsRef>(null);
-  const [particleCount, setParticleCount] = useState(0);
-  const [fps, setFPS] = useState(0);
-  const [constrainIterations, setConstrainIterations] = useState(0); // Will be set from engine
-  const [cellSize, setCellSize] = useState(0); // Will be set from engine
-  const [clearColor, setClearColor] = useState({ r: 0, g: 0, b: 0, a: 1 }); // Will be set from engine
 
   const {
     system,
@@ -41,14 +51,10 @@ function App() {
     pause,
     clear,
     handleZoom,
-    getParticleCount,
-    getFPS,
     useWebGPU,
-    toggleEngineType,
     engineType,
     isSupported,
-    toolMode,
-    setToolMode,
+    toggleEngineType,
   } = usePlayground({ canvasRef });
 
   const size = useWindowSize();
@@ -102,26 +108,45 @@ function App() {
     return () => clearTimeout(timeout);
   }, [isInitialized, error]);
 
-  // Update performance metrics periodically
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    const interval = setInterval(() => {
-      setParticleCount(getParticleCount());
-      setFPS(getFPS());
-    }, 100); // Update every 100ms
-
-    return () => clearInterval(interval);
-  }, [isInitialized, getParticleCount, getFPS]);
-
   // Sync slider values with actual engine values when initialized or engine type changes
   useEffect(() => {
     if (system && isInitialized && !isInitializing) {
-      setConstrainIterations(system.getConstrainIterations());
-      setCellSize(system.getCellSize());
-      setClearColor(system.getClearColor());
+      const newConstrainIterations = system.getConstrainIterations();
+      const newCellSize = system.getCellSize();
+      const newClearColor = system.getClearColor();
+
+      // Update Redux state with engine values
+      dispatch(setConstrainIterations(newConstrainIterations));
+      dispatch(setGridCellSize(newCellSize));
+      dispatch(setClearColor(newClearColor));
+      dispatch(setWebGPU(useWebGPU));
     }
-  }, [system, isInitialized, isInitializing, useWebGPU]);
+  }, [system, isInitialized, isInitializing, useWebGPU, dispatch]);
+
+  // Periodic updates for particle count and FPS
+  useEffect(() => {
+    if (!system || !isInitialized) return;
+
+    const interval = setInterval(() => {
+      const particleCount = system.getCount();
+      const fps = system.getFPS();
+      
+      dispatch(setParticleCount(particleCount));
+      dispatch(setFPS(fps));
+    }, 100); // Update every 100ms
+
+    return () => clearInterval(interval);
+  }, [system, isInitialized, dispatch]);
+
+  // Sync constraint iterations from Redux to engine when Redux state changes
+  useEffect(() => {
+    if (system && isInitialized && !isInitializing) {
+      const currentEngineValue = system.getConstrainIterations();
+      if (currentEngineValue !== engineState.constrainIterations) {
+        system.setConstrainIterations(engineState.constrainIterations);
+      }
+    }
+  }, [system, isInitialized, isInitializing, engineState.constrainIterations]);
 
   let content = null;
 
@@ -146,14 +171,14 @@ function App() {
   };
 
   const handleConstrainIterationsChange = (value: number) => {
-    setConstrainIterations(value);
+    dispatch(setConstrainIterations(value));
     if (system && isInitialized) {
       system.setConstrainIterations(value);
     }
   };
 
   const handleCellSizeChange = (value: number) => {
-    setCellSize(value);
+    dispatch(setGridCellSize(value));
     if (system && isInitialized) {
       system.setCellSize(value);
     }
@@ -165,10 +190,17 @@ function App() {
     b: number;
     a: number;
   }) => {
-    setClearColor(color);
+    dispatch(setClearColor(color));
     if (system && isInitialized) {
       system.setClearColor(color);
     }
+  };
+
+  const handleToggleEngineType = async () => {
+    // First dispatch the Redux action to update state and set default constraint iterations
+    dispatch(toggleEngineTypeAction());
+    // Then call the engine toggle which will reinitialize with the new values
+    await toggleEngineType();
   };
 
   const handleColorPickerChange = (hex: string) => {
@@ -176,15 +208,7 @@ function App() {
     handleClearColorChange(newColor);
   };
 
-  // Utility functions for color conversion
-  const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
-    const toHex = (value: number) =>
-      Math.round(value * 255)
-        .toString(16)
-        .padStart(2, "0");
-    return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
-  };
-
+  // Utility function for color conversion
   const hexToRgba = (hex: string, alpha: number = 1) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result
@@ -216,26 +240,14 @@ function App() {
         <SystemSidebar
           content={content}
           initControlsRef={initControlsRef}
-          isInitialized={isInitialized}
           spawnParticles={spawnParticles}
-          useWebGPU={useWebGPU}
-          onToggleEngineType={toggleEngineType}
-          constrainIterations={constrainIterations}
           onConstrainIterationsChange={handleConstrainIterationsChange}
-          cellSize={cellSize}
           onCellSizeChange={handleCellSizeChange}
-          particleCount={particleCount}
-          fps={fps}
-          clearColor={rgbaToHex(clearColor)}
           onClearColorChange={handleColorPickerChange}
-          isInitializing={isInitializing}
+          onToggleEngineType={handleToggleEngineType}
         />
         <div className="canvas-container">
-          <Toolbar
-            tool={toolMode}
-            onChange={(t) => setToolMode(t)}
-            style={{ display: "block" }}
-          />
+          <Toolbar style={{ display: "block" }} />
           <canvas
             key={engineType} // Force canvas recreation when engine type changes
             ref={canvasRef}
@@ -256,12 +268,18 @@ function App() {
             trails={trails}
             interaction={interaction}
             isSupported={isSupported}
-            isInitialized={isInitialized}
-            isInitializing={isInitializing}
           />
         </div>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Provider store={store}>
+      <AppContent />
+    </Provider>
   );
 }
 

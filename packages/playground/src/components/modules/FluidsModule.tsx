@@ -1,17 +1,19 @@
-import { useState } from "react";
-import {
-  DEFAULT_FLUIDS_INFLUENCE_RADIUS,
-  DEFAULT_FLUIDs_TARGET_DENSITY,
-  DEFAULT_FLUIDS_PRESSURE_MULTIPLIER,
-  DEFAULT_FLUIDS_VISCOSITY,
-  DEFAULT_FLUIDS_NEAR_PRESSURE_MULTIPLIER,
-  DEFAULT_FLUIDS_NEAR_THRESHOLD,
-  DEFAULT_FLUIDS_ENABLE_NEAR_PRESSURE,
-  DEFAULT_FLUIDS_MAX_ACCELERATION,
-  Fluids,
-} from "@cazala/party";
+import { useEffect } from "react";
+import { Fluids } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Checkbox } from "../ui/Checkbox";
+import { useAppDispatch, useAppSelector } from "../../modules/hooks";
+import {
+  selectFluidsModule,
+  setFluidsInfluenceRadius,
+  setFluidsTargetDensity,
+  setFluidsPressureMultiplier,
+  setFluidsViscosity,
+  setFluidsNearPressureMultiplier,
+  setFluidsNearThreshold,
+  setFluidsEnableNearPressure,
+  setFluidsMaxAcceleration,
+} from "../../modules/modules/slice";
 
 export function FluidsModule({
   fluids,
@@ -20,28 +22,32 @@ export function FluidsModule({
   fluids: Fluids | null;
   enabled?: boolean;
 }) {
-  const [influenceRadius, setInfluenceRadius] = useState(
-    DEFAULT_FLUIDS_INFLUENCE_RADIUS
-  );
-  const [targetDensity, setTargetDensity] = useState(
-    DEFAULT_FLUIDs_TARGET_DENSITY
-  );
-  const [pressureMultiplier, setPressureMultiplier] = useState(
-    DEFAULT_FLUIDS_PRESSURE_MULTIPLIER
-  );
-  const [viscosity, setViscosity] = useState(DEFAULT_FLUIDS_VISCOSITY);
-  const [nearPressureMultiplier, setNearPressureMultiplier] = useState(
-    DEFAULT_FLUIDS_NEAR_PRESSURE_MULTIPLIER
-  );
-  const [nearThreshold, setNearThreshold] = useState(
-    DEFAULT_FLUIDS_NEAR_THRESHOLD
-  );
-  const [enableNearPressure, setEnableNearPressure] = useState(
-    DEFAULT_FLUIDS_ENABLE_NEAR_PRESSURE
-  );
-  const [maxAcceleration, setMaxAcceleration] = useState(
-    DEFAULT_FLUIDS_MAX_ACCELERATION
-  );
+  const dispatch = useAppDispatch();
+  const fluidsState = useAppSelector(selectFluidsModule);
+  const {
+    influenceRadius,
+    targetDensity,
+    pressureMultiplier,
+    viscosity,
+    nearPressureMultiplier,
+    nearThreshold,
+    enableNearPressure,
+    maxAcceleration,
+  } = fluidsState;
+  
+  // Sync Redux state with fluids module when fluids is available
+  useEffect(() => {
+    if (fluids && enabled) {
+      fluids.setInfluenceRadius(influenceRadius);
+      fluids.setTargetDensity(targetDensity);
+      fluids.setPressureMultiplier(pressureMultiplier);
+      fluids.setViscosity(viscosity);
+      fluids.setNearPressureMultiplier(nearPressureMultiplier);
+      fluids.setNearThreshold(nearThreshold);
+      fluids.setEnableNearPressure(enableNearPressure);
+      fluids.setMaxAcceleration(maxAcceleration);
+    }
+  }, [fluids, enabled, influenceRadius, targetDensity, pressureMultiplier, viscosity, nearPressureMultiplier, nearThreshold, enableNearPressure, maxAcceleration]);
 
   return (
     <>
@@ -49,7 +55,7 @@ export function FluidsModule({
         label="Influence Radius"
         value={influenceRadius}
         onChange={(v) => {
-          setInfluenceRadius(v);
+          dispatch(setFluidsInfluenceRadius(v));
           fluids?.setInfluenceRadius(v);
         }}
         disabled={!enabled}
@@ -58,7 +64,7 @@ export function FluidsModule({
         label="Max Acceleration"
         value={maxAcceleration}
         onChange={(v) => {
-          setMaxAcceleration(v);
+          dispatch(setFluidsMaxAcceleration(v));
           fluids?.setMaxAcceleration(v);
         }}
         disabled={!enabled}
@@ -67,7 +73,7 @@ export function FluidsModule({
         label="Density"
         value={targetDensity}
         onChange={(v) => {
-          setTargetDensity(v);
+          dispatch(setFluidsTargetDensity(v));
           fluids?.setTargetDensity(v);
         }}
         disabled={!enabled}
@@ -76,7 +82,7 @@ export function FluidsModule({
         label="Pressure"
         value={pressureMultiplier}
         onChange={(v) => {
-          setPressureMultiplier(v);
+          dispatch(setFluidsPressureMultiplier(v));
           fluids?.setPressureMultiplier(v);
         }}
         disabled={!enabled}
@@ -85,7 +91,7 @@ export function FluidsModule({
         label="Viscosity"
         value={viscosity}
         onChange={(v) => {
-          setViscosity(v);
+          dispatch(setFluidsViscosity(v));
           fluids?.setViscosity(v);
         }}
         disabled={!enabled}
@@ -94,7 +100,7 @@ export function FluidsModule({
         label="Enable Near Pressure"
         checked={enableNearPressure}
         onChange={(v) => {
-          setEnableNearPressure(v);
+          dispatch(setFluidsEnableNearPressure(v));
           fluids?.setEnableNearPressure(v);
         }}
         disabled={!enabled}
@@ -103,7 +109,7 @@ export function FluidsModule({
         label="Near Pressure"
         value={nearPressureMultiplier}
         onChange={(v) => {
-          setNearPressureMultiplier(v);
+          dispatch(setFluidsNearPressureMultiplier(v));
           fluids?.setNearPressureMultiplier(v);
         }}
         disabled={!enabled || !enableNearPressure}
@@ -112,7 +118,7 @@ export function FluidsModule({
         label="Near Threshold"
         value={nearThreshold}
         onChange={(v) => {
-          setNearThreshold(v);
+          dispatch(setFluidsNearThreshold(v));
           fluids?.setNearThreshold(v);
         }}
         disabled={!enabled || !enableNearPressure}

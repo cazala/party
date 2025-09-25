@@ -1,10 +1,12 @@
-import { useState } from "react";
-import {
-  DEFAULT_TRAILS_TRAIL_DECAY,
-  DEFAULT_TRAILS_TRAIL_DIFFUSE,
-  Trails,
-} from "@cazala/party";
+import { useEffect } from "react";
+import { Trails } from "@cazala/party";
 import { Slider } from "../ui/Slider";
+import { useAppDispatch, useAppSelector } from "../../modules/hooks";
+import {
+  selectTrailsModule,
+  setTrailsDecay,
+  setTrailsDiffuse,
+} from "../../modules/modules/slice";
 
 export function TrailsModule({
   trails,
@@ -13,10 +15,17 @@ export function TrailsModule({
   trails: Trails | null;
   enabled?: boolean;
 }) {
-  const [trailDecay, setTrailDecay] = useState(DEFAULT_TRAILS_TRAIL_DECAY);
-  const [trailDiffuse, setTrailDiffuse] = useState(
-    DEFAULT_TRAILS_TRAIL_DIFFUSE
-  );
+  const dispatch = useAppDispatch();
+  const trailsState = useAppSelector(selectTrailsModule);
+  const { trailDecay, trailDiffuse } = trailsState;
+  
+  // Sync Redux state with trails module when trails is available
+  useEffect(() => {
+    if (trails && enabled) {
+      trails.setTrailDecay(trailDecay);
+      trails.setTrailDiffuse(trailDiffuse);
+    }
+  }, [trails, enabled, trailDecay, trailDiffuse]);
 
   return (
     <>
@@ -27,7 +36,7 @@ export function TrailsModule({
         max={20}
         step={1}
         onChange={(v) => {
-          setTrailDecay(v);
+          dispatch(setTrailsDecay(v));
           trails?.setTrailDecay(v);
         }}
         disabled={!enabled}
@@ -39,7 +48,7 @@ export function TrailsModule({
         max={5}
         step={1}
         onChange={(v) => {
-          setTrailDiffuse(v);
+          dispatch(setTrailsDiffuse(v));
           trails?.setTrailDiffuse(v);
         }}
         formatValue={(v) => `${v.toFixed(0)}px`}

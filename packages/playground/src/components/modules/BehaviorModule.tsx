@@ -1,19 +1,23 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import {
-  DEFAULT_BEHAVIOR_WANDER,
-  DEFAULT_BEHAVIOR_COHESION,
-  DEFAULT_BEHAVIOR_ALIGNMENT,
-  DEFAULT_BEHAVIOR_REPULSION,
-  DEFAULT_BEHAVIOR_CHASE,
-  DEFAULT_BEHAVIOR_AVOID,
-  DEFAULT_BEHAVIOR_SEPARATION,
-  DEFAULT_BEHAVIOR_VIEW_RADIUS,
-  DEFAULT_BEHAVIOR_VIEW_ANGLE,
   Behavior,
   radToDeg,
   degToRad,
 } from "@cazala/party";
 import { Slider } from "../ui/Slider";
+import { useAppDispatch, useAppSelector } from "../../modules/hooks";
+import {
+  selectBehaviorModule,
+  setBehaviorWander,
+  setBehaviorCohesion,
+  setBehaviorAlignment,
+  setBehaviorRepulsion,
+  setBehaviorChase,
+  setBehaviorAvoid,
+  setBehaviorSeparation,
+  setBehaviorViewRadius,
+  setBehaviorViewAngle,
+} from "../../modules/modules/slice";
 
 export function BehaviorModule({
   behavior,
@@ -22,17 +26,37 @@ export function BehaviorModule({
   behavior: Behavior | null;
   enabled?: boolean;
 }) {
-  const [wander, setWander] = useState(DEFAULT_BEHAVIOR_WANDER);
-  const [cohesion, setCohesion] = useState(DEFAULT_BEHAVIOR_COHESION);
-  const [alignment, setAlignment] = useState(DEFAULT_BEHAVIOR_ALIGNMENT);
-  const [repulsion, setRepulsion] = useState(DEFAULT_BEHAVIOR_REPULSION);
-  const [chase, setChase] = useState(DEFAULT_BEHAVIOR_CHASE);
-  const [avoid, setAvoid] = useState(DEFAULT_BEHAVIOR_AVOID);
-  const [separation, setSeparation] = useState(DEFAULT_BEHAVIOR_SEPARATION);
-  const [viewRadius, setViewRadius] = useState(DEFAULT_BEHAVIOR_VIEW_RADIUS);
-  const [viewAngle, setViewAngle] = useState(
-    radToDeg(DEFAULT_BEHAVIOR_VIEW_ANGLE)
-  );
+  const dispatch = useAppDispatch();
+  const behaviorState = useAppSelector(selectBehaviorModule);
+  const {
+    wander,
+    cohesion,
+    alignment,
+    repulsion,
+    chase,
+    avoid,
+    separation,
+    viewRadius,
+    viewAngle,
+  } = behaviorState;
+  
+  // Convert radians to degrees for display
+  const viewAngleDegrees = radToDeg(viewAngle);
+  
+  // Sync Redux state with behavior module when behavior is available
+  useEffect(() => {
+    if (behavior && enabled) {
+      behavior.setWander(wander);
+      behavior.setCohesion(cohesion);
+      behavior.setAlignment(alignment);
+      behavior.setRepulsion(repulsion);
+      behavior.setChase(chase);
+      behavior.setAvoid(avoid);
+      behavior.setSeparation(separation);
+      behavior.setViewRadius(viewRadius);
+      behavior.setViewAngle(viewAngle); // viewAngle is already in radians
+    }
+  }, [behavior, enabled, wander, cohesion, alignment, repulsion, chase, avoid, separation, viewRadius, viewAngle]);
 
   return (
     <>
@@ -43,7 +67,7 @@ export function BehaviorModule({
         max={100}
         step={0.1}
         onChange={(v) => {
-          setWander(v);
+          dispatch(setBehaviorWander(v));
           behavior?.setWander(v);
         }}
         disabled={!enabled}
@@ -56,7 +80,7 @@ export function BehaviorModule({
         max={10}
         step={0.1}
         onChange={(v) => {
-          setCohesion(v);
+          dispatch(setBehaviorCohesion(v));
           behavior?.setCohesion(v);
         }}
         disabled={!enabled}
@@ -69,7 +93,7 @@ export function BehaviorModule({
         max={10}
         step={0.1}
         onChange={(v) => {
-          setAlignment(v);
+          dispatch(setBehaviorAlignment(v));
           behavior?.setAlignment(v);
         }}
         disabled={!enabled}
@@ -82,7 +106,7 @@ export function BehaviorModule({
         max={10}
         step={0.1}
         onChange={(v) => {
-          setRepulsion(v);
+          dispatch(setBehaviorRepulsion(v));
           behavior?.setRepulsion(v);
         }}
         disabled={!enabled}
@@ -92,7 +116,7 @@ export function BehaviorModule({
         label="Separation"
         value={separation}
         onChange={(v) => {
-          setSeparation(v);
+          dispatch(setBehaviorSeparation(v));
           behavior?.setSeparation(v);
         }}
         disabled={!enabled}
@@ -105,7 +129,7 @@ export function BehaviorModule({
         max={10}
         step={0.1}
         onChange={(v) => {
-          setChase(v);
+          dispatch(setBehaviorChase(v));
           behavior?.setChase(v);
         }}
         disabled={!enabled}
@@ -118,7 +142,7 @@ export function BehaviorModule({
         max={10}
         step={0.1}
         onChange={(v) => {
-          setAvoid(v);
+          dispatch(setBehaviorAvoid(v));
           behavior?.setAvoid(v);
         }}
         disabled={!enabled}
@@ -131,7 +155,7 @@ export function BehaviorModule({
         max={500}
         step={1}
         onChange={(v) => {
-          setViewRadius(v);
+          dispatch(setBehaviorViewRadius(v));
           behavior?.setViewRadius(v);
         }}
         disabled={!enabled}
@@ -139,13 +163,13 @@ export function BehaviorModule({
 
       <Slider
         label="View Angle"
-        value={viewAngle}
+        value={viewAngleDegrees}
         min={0}
         max={360}
         step={1}
         formatValue={(v) => `${v}°`}
         onChange={(v) => {
-          setViewAngle(v);
+          dispatch(setBehaviorViewAngle(degToRad(v)));
           behavior?.setViewAngle(degToRad(v));
         }}
         disabled={!enabled}

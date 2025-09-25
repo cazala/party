@@ -1,15 +1,16 @@
-import { useState } from "react";
-import {
-  DEFAULT_BOUNDARY_RESTITUTION,
-  DEFAULT_BOUNDARY_FRICTION,
-  DEFAULT_BOUNDARY_MODE,
-  DEFAULT_BOUNDARY_REPEL_DISTANCE,
-  DEFAULT_BOUNDARY_REPEL_STRENGTH,
-  Boundary,
-  BoundaryMode,
-} from "@cazala/party";
+import { useEffect } from "react";
+import { Boundary, BoundaryMode } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
+import { useAppDispatch, useAppSelector } from "../../modules/hooks";
+import {
+  selectBoundaryModule,
+  setBoundaryMode,
+  setBoundaryRestitution,
+  setBoundaryFriction,
+  setBoundaryRepelDistance,
+  setBoundaryRepelStrength,
+} from "../../modules/modules/slice";
 
 export function BoundaryModule({
   boundary,
@@ -18,15 +19,29 @@ export function BoundaryModule({
   boundary: Boundary | null;
   enabled?: boolean;
 }) {
-  const [restitution, setRestitution] = useState(DEFAULT_BOUNDARY_RESTITUTION);
-  const [friction, setFriction] = useState(DEFAULT_BOUNDARY_FRICTION);
-  const [mode, setMode] = useState<BoundaryMode>(DEFAULT_BOUNDARY_MODE);
-  const [repelDistance, setRepelDistance] = useState(
-    DEFAULT_BOUNDARY_REPEL_DISTANCE
-  );
-  const [repelStrength, setRepelStrength] = useState(
-    DEFAULT_BOUNDARY_REPEL_STRENGTH
-  );
+  const dispatch = useAppDispatch();
+  const boundaryState = useAppSelector(selectBoundaryModule);
+  const { mode, restitution, friction, repelDistance, repelStrength } =
+    boundaryState;
+
+  // Sync Redux state with boundary module when boundary is available
+  useEffect(() => {
+    if (boundary && enabled) {
+      boundary.setMode(mode as BoundaryMode);
+      boundary.setRestitution(restitution);
+      boundary.setFriction(friction);
+      boundary.setRepelDistance(repelDistance);
+      boundary.setRepelStrength(repelStrength);
+    }
+  }, [
+    boundary,
+    enabled,
+    mode,
+    restitution,
+    friction,
+    repelDistance,
+    repelStrength,
+  ]);
 
   return (
     <>
@@ -34,7 +49,7 @@ export function BoundaryModule({
         label="Mode"
         value={mode}
         onChange={(v) => {
-          setMode(v as BoundaryMode);
+          dispatch(setBoundaryMode(v as BoundaryMode));
           boundary?.setMode(v as BoundaryMode);
         }}
         disabled={!enabled}
@@ -48,8 +63,11 @@ export function BoundaryModule({
       <Slider
         label="Restitution"
         value={restitution}
+        min={0}
+        max={1}
+        step={0.01}
         onChange={(v) => {
-          setRestitution(v);
+          dispatch(setBoundaryRestitution(v));
           boundary?.setRestitution(v);
         }}
         disabled={!enabled}
@@ -58,7 +76,7 @@ export function BoundaryModule({
         label="Friction"
         value={friction}
         onChange={(v) => {
-          setFriction(v);
+          dispatch(setBoundaryFriction(v));
           boundary?.setFriction(v);
         }}
         disabled={!enabled}
@@ -66,8 +84,11 @@ export function BoundaryModule({
       <Slider
         label="Repel Distance"
         value={repelDistance}
+        min={0}
+        max={1000}
+        step={1000}
         onChange={(v) => {
-          setRepelDistance(v);
+          dispatch(setBoundaryRepelDistance(v));
           boundary?.setRepelDistance(v);
         }}
         disabled={!enabled}
@@ -75,8 +96,11 @@ export function BoundaryModule({
       <Slider
         label="Repel Strength"
         value={repelStrength}
+        min={0}
+        max={1000}
+        step={1000}
         onChange={(v) => {
-          setRepelStrength(v);
+          dispatch(setBoundaryRepelStrength(v));
           boundary?.setRepelStrength(v);
         }}
         disabled={!enabled}

@@ -1,14 +1,5 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import {
-  DEFAULT_SENSORS_SENSOR_DISTANCE,
-  DEFAULT_SENSORS_SENSOR_ANGLE,
-  DEFAULT_SENSORS_SENSOR_RADIUS,
-  DEFAULT_SENSORS_SENSOR_THRESHOLD,
-  DEFAULT_SENSORS_SENSOR_STRENGTH,
-  DEFAULT_SENSORS_FOLLOW_BEHAVIOR,
-  DEFAULT_SENSORS_FLEE_BEHAVIOR,
-  DEFAULT_SENSORS_COLOR_SIMILARITY_THRESHOLD,
-  DEFAULT_SENSORS_FLEE_ANGLE,
   Sensors,
   type SensorBehavior,
   radToDeg,
@@ -16,6 +7,19 @@ import {
 } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
+import { useAppDispatch, useAppSelector } from "../../modules/hooks";
+import {
+  selectSensorsModule,
+  setSensorDistance,
+  setSensorAngle,
+  setSensorRadius,
+  setSensorThreshold,
+  setSensorStrength,
+  setSensorFollowValue,
+  setSensorFleeValue,
+  setSensorColorSimilarityThreshold,
+  setSensorFleeAngle,
+} from "../../modules/modules/slice";
 
 export function SensorsModule({
   sensors,
@@ -24,35 +28,23 @@ export function SensorsModule({
   sensors: Sensors | null;
   enabled?: boolean;
 }) {
-  // Sensor state
-  // Using only the top-level Enabled
-  const [sensorDistance, setSensorDistance] = useState(
-    DEFAULT_SENSORS_SENSOR_DISTANCE
-  );
-  const [sensorAngle, setSensorAngle] = useState(
-    radToDeg(DEFAULT_SENSORS_SENSOR_ANGLE)
-  );
-  const [sensorRadius, setSensorRadius] = useState(
-    DEFAULT_SENSORS_SENSOR_RADIUS
-  );
-  const [sensorThreshold, setSensorThreshold] = useState(
-    DEFAULT_SENSORS_SENSOR_THRESHOLD
-  );
-  const [sensorStrength, setSensorStrength] = useState(
-    DEFAULT_SENSORS_SENSOR_STRENGTH
-  );
-  const [followValue, setFollowValue] = useState<string>(
-    DEFAULT_SENSORS_FOLLOW_BEHAVIOR
-  );
-  const [fleeValue, setFleeValue] = useState<string>(
-    DEFAULT_SENSORS_FLEE_BEHAVIOR
-  );
-  const [colorSimilarityThreshold, setColorSimilarityThreshold] = useState(
-    DEFAULT_SENSORS_COLOR_SIMILARITY_THRESHOLD
-  );
-  const [fleeAngle, setFleeAngle] = useState(
-    radToDeg(DEFAULT_SENSORS_FLEE_ANGLE)
-  );
+  const dispatch = useAppDispatch();
+  const sensorsState = useAppSelector(selectSensorsModule);
+  const {
+    sensorDistance,
+    sensorAngle,
+    sensorRadius,
+    sensorThreshold,
+    sensorStrength,
+    followValue,
+    fleeValue,
+    colorSimilarityThreshold,
+    fleeAngle,
+  } = sensorsState;
+  
+  // Convert radians to degrees for display
+  const sensorAngleDegrees = radToDeg(sensorAngle);
+  const fleeAngleDegrees = radToDeg(fleeAngle);
 
   // Visibility helpers for conditional controls
   const showColorSimilarity =
@@ -61,6 +53,21 @@ export function SensorsModule({
     fleeValue === "same" ||
     fleeValue === "different";
   const showFleeAngle = fleeValue !== "none";
+  
+  // Sync Redux state with sensors module when sensors is available
+  useEffect(() => {
+    if (sensors && enabled) {
+      sensors.setSensorDistance(sensorDistance);
+      sensors.setSensorAngle(sensorAngle); // sensorAngle is already in radians
+      sensors.setSensorRadius(sensorRadius);
+      sensors.setSensorThreshold(sensorThreshold);
+      sensors.setSensorStrength(sensorStrength);
+      sensors.setFollowBehavior(followValue as SensorBehavior);
+      sensors.setFleeBehavior(fleeValue as SensorBehavior);
+      sensors.setColorSimilarityThreshold(colorSimilarityThreshold);
+      sensors.setFleeAngle(fleeAngle); // fleeAngle is already in radians
+    }
+  }, [sensors, enabled, sensorDistance, sensorAngle, sensorRadius, sensorThreshold, sensorStrength, followValue, fleeValue, colorSimilarityThreshold, fleeAngle]);
 
   return (
     <>
@@ -71,19 +78,19 @@ export function SensorsModule({
         step={1}
         value={sensorDistance}
         onChange={(v) => {
-          setSensorDistance(v);
+          dispatch(setSensorDistance(v));
           sensors?.setSensorDistance(v);
         }}
         disabled={!enabled}
       />
       <Slider
         label="Angle"
-        value={sensorAngle}
+        value={sensorAngleDegrees}
         min={2}
         max={90}
         step={1}
         onChange={(v) => {
-          setSensorAngle(v);
+          dispatch(setSensorAngle(degToRad(v)));
           sensors?.setSensorAngle(degToRad(v));
         }}
         formatValue={(v) => `${v.toFixed(0)}°`}
@@ -96,7 +103,7 @@ export function SensorsModule({
         max={10}
         step={1}
         onChange={(v) => {
-          setSensorRadius(v);
+          dispatch(setSensorRadius(v));
           sensors?.setSensorRadius(v);
         }}
         disabled={!enabled}
@@ -108,7 +115,7 @@ export function SensorsModule({
         max={0.2}
         step={0.01}
         onChange={(v) => {
-          setSensorThreshold(v);
+          dispatch(setSensorThreshold(v));
           sensors?.setSensorThreshold(v);
         }}
         disabled={!enabled}
@@ -120,7 +127,7 @@ export function SensorsModule({
         max={3000}
         step={1}
         onChange={(v) => {
-          setSensorStrength(v);
+          dispatch(setSensorStrength(v));
           sensors?.setSensorStrength(v);
         }}
         disabled={!enabled}
@@ -129,7 +136,7 @@ export function SensorsModule({
         label="Follow Behavior"
         value={followValue}
         onChange={(v) => {
-          setFollowValue(v);
+          dispatch(setSensorFollowValue(v));
           sensors?.setFollowBehavior(v as SensorBehavior);
         }}
         disabled={!enabled}
@@ -144,7 +151,7 @@ export function SensorsModule({
         label="Flee Behavior"
         value={fleeValue}
         onChange={(v) => {
-          setFleeValue(v);
+          dispatch(setSensorFleeValue(v));
           sensors?.setFleeBehavior(v as SensorBehavior);
         }}
         disabled={!enabled}
@@ -160,7 +167,7 @@ export function SensorsModule({
           label="Color Similarity Threshold"
           value={colorSimilarityThreshold}
           onChange={(v) => {
-            setColorSimilarityThreshold(v);
+            dispatch(setSensorColorSimilarityThreshold(v));
             sensors?.setColorSimilarityThreshold(v);
           }}
           disabled={!enabled}
@@ -169,9 +176,9 @@ export function SensorsModule({
       {showFleeAngle && (
         <Slider
           label="Flee Angle"
-          value={fleeAngle}
+          value={fleeAngleDegrees}
           onChange={(v) => {
-            setFleeAngle(v);
+            dispatch(setSensorFleeAngle(degToRad(v)));
             sensors?.setFleeAngle(degToRad(v));
           }}
           disabled={!enabled}

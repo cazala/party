@@ -1,4 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
+import { useAppSelector } from "../modules/hooks";
+import { selectActiveTool } from "../modules/tools/slice";
 
 export type ToolMode =
   | "cursor"
@@ -48,7 +50,15 @@ export function useTools({
   isInitialized,
   initialMode = "cursor",
 }: UseToolsProps): UseToolsReturn {
+  const reduxActiveTool = useAppSelector(selectActiveTool);
   const [toolMode, setToolMode] = useState<ToolMode>(initialMode);
+
+  // Sync local state with Redux state
+  useEffect(() => {
+    if (reduxActiveTool) {
+      setToolMode(reduxActiveTool);
+    }
+  }, [reduxActiveTool]);
 
   const toggleToolMode = useCallback(() => {
     setToolMode((current) => {
@@ -73,7 +83,7 @@ export function useTools({
       // Default spawn parameters
       const size = 5;
       const mass = 1;
-      const color = { r: 255, g: 255, b: 255, a: 255 };
+      const color = { r: 1, g: 1, b: 1, a: 1 }; // White color (normalized 0-1)
 
       addParticle({
         position: { x, y },

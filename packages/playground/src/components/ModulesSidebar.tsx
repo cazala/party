@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Environment,
   Boundary,
@@ -16,8 +15,11 @@ import { FluidsModule } from "./modules/FluidsModule";
 import { BehaviorModule } from "./modules/BehaviorModule";
 import { SensorsModule } from "./modules/SensorsModule";
 import { TrailsModule } from "./modules/TrailsModule";
-import { WebGPUInteractionControls } from "./modules/InteractionModule";
+import { InteractionModule } from "./modules/InteractionModule";
 import { ModuleWrapper } from "./ModuleWrapper";
+import { useAppDispatch, useAppSelector } from "../modules/hooks";
+import { selectModulesState, setModuleEnabled } from "../modules/modules/slice";
+import { selectEngineState } from "../modules/engine/slice";
 import "./ModulesSidebar.css";
 
 export function ModulesSidebar({
@@ -30,8 +32,6 @@ export function ModulesSidebar({
   trails,
   interaction,
   isSupported,
-  isInitialized,
-  isInitializing,
 }: {
   environment: Environment | null;
   boundary: Boundary | null;
@@ -42,17 +42,26 @@ export function ModulesSidebar({
   trails: Trails | null;
   interaction: Interaction | null;
   isSupported: (module: any) => boolean;
-  isInitialized: boolean;
-  isInitializing: boolean;
 }) {
-  const [environmentEnabled, setEnvironmentEnabled] = useState(true);
-  const [boundaryEnabled, setBoundaryEnabled] = useState(true);
-  const [collisionsEnabled, setCollisionsEnabled] = useState(true);
-  const [fluidsEnabled, setFluidsEnabled] = useState(false);
-  const [behaviorEnabled, setBehaviorEnabled] = useState(false);
-  const [sensorsEnabled, setSensorsEnabled] = useState(false);
-  const [trailsEnabled, setTrailsEnabled] = useState(false);
-  const [interactionEnabled, setInteractionEnabled] = useState(false);
+  const dispatch = useAppDispatch();
+  const modulesState = useAppSelector(selectModulesState);
+  const engineState = useAppSelector(selectEngineState);
+  const { isInitialized, isInitializing } = engineState;
+  
+  // Get enabled states from Redux
+  const environmentEnabled = modulesState.environment.enabled;
+  const boundaryEnabled = modulesState.boundary.enabled;
+  const collisionsEnabled = modulesState.collisions.enabled;
+  const fluidsEnabled = modulesState.fluids.enabled;
+  const behaviorEnabled = modulesState.behavior.enabled;
+  const sensorsEnabled = modulesState.sensors.enabled;
+  const trailsEnabled = modulesState.trails.enabled;
+  const interactionEnabled = modulesState.interaction.enabled;
+  
+  // Helper to handle module enabled/disabled
+  const handleModuleEnabledChange = (module: keyof typeof modulesState, enabled: boolean) => {
+    dispatch(setModuleEnabled({ module, enabled }));
+  };
 
   return (
     <div className="controls-panel">
@@ -64,7 +73,10 @@ export function ModulesSidebar({
         title="Environment"
         module={environment}
         enabled={environmentEnabled}
-        setEnabled={setEnvironmentEnabled}
+        setEnabled={(enabled) => handleModuleEnabledChange('environment', enabled)}
+        isSupported={isSupported(environment)}
+        isInitialized={isInitialized}
+        isInitializing={isInitializing}
       >
         <EnvironmentModule environment={environment} />
       </ModuleWrapper>
@@ -73,7 +85,10 @@ export function ModulesSidebar({
         title="Boundary"
         module={boundary}
         enabled={boundaryEnabled}
-        setEnabled={setBoundaryEnabled}
+        setEnabled={(enabled) => handleModuleEnabledChange('boundary', enabled)}
+        isSupported={isSupported(boundary)}
+        isInitialized={isInitialized}
+        isInitializing={isInitializing}
       >
         <BoundaryModule boundary={boundary} />
       </ModuleWrapper>
@@ -82,7 +97,10 @@ export function ModulesSidebar({
         title="Collisions"
         module={collisions}
         enabled={collisionsEnabled}
-        setEnabled={setCollisionsEnabled}
+        setEnabled={(enabled) => handleModuleEnabledChange('collisions', enabled)}
+        isSupported={isSupported(collisions)}
+        isInitialized={isInitialized}
+        isInitializing={isInitializing}
       >
         <CollisionsModule collisions={collisions} />
       </ModuleWrapper>
@@ -92,7 +110,7 @@ export function ModulesSidebar({
         module={fluids}
         isSupported={isSupported(fluids)}
         enabled={fluidsEnabled}
-        setEnabled={setFluidsEnabled}
+        setEnabled={(enabled) => handleModuleEnabledChange('fluids', enabled)}
         isInitialized={isInitialized}
         isInitializing={isInitializing}
       >
@@ -104,7 +122,7 @@ export function ModulesSidebar({
         module={behavior}
         isSupported={isSupported(behavior)}
         enabled={behaviorEnabled}
-        setEnabled={setBehaviorEnabled}
+        setEnabled={(enabled) => handleModuleEnabledChange('behavior', enabled)}
         isInitialized={isInitialized}
         isInitializing={isInitializing}
       >
@@ -115,7 +133,7 @@ export function ModulesSidebar({
         title="Trails"
         module={trails}
         enabled={trailsEnabled}
-        setEnabled={setTrailsEnabled}
+        setEnabled={(enabled) => handleModuleEnabledChange('trails', enabled)}
       >
         <TrailsModule trails={trails} />
       </ModuleWrapper>
@@ -125,7 +143,7 @@ export function ModulesSidebar({
         module={sensors}
         isSupported={isSupported(sensors)}
         enabled={sensorsEnabled}
-        setEnabled={setSensorsEnabled}
+        setEnabled={(enabled) => handleModuleEnabledChange('sensors', enabled)}
         isInitialized={isInitialized}
         isInitializing={isInitializing}
       >
@@ -137,9 +155,9 @@ export function ModulesSidebar({
         module={interaction}
         isSupported={isSupported(interaction)}
         enabled={interactionEnabled}
-        setEnabled={setInteractionEnabled}
+        setEnabled={(enabled) => handleModuleEnabledChange('interaction', enabled)}
       >
-        <WebGPUInteractionControls interaction={interaction} />
+        <InteractionModule interaction={interaction} />
       </ModuleWrapper>
     </div>
   );
