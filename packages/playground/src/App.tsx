@@ -4,7 +4,7 @@ import {
   EngineCanvas,
 } from "./contexts/EngineContext";
 import { useTools } from "./hooks/useTools";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { TopBar } from "./components/TopBar";
 import { ModulesSidebar } from "./components/ModulesSidebar";
 import { Toolbar } from "./components/ToolBar";
@@ -12,7 +12,7 @@ import { SystemSidebar } from "./components/SystemSidebar";
 import { Provider } from "react-redux";
 import { store } from "./modules/store";
 import { useAppDispatch } from "./modules/hooks";
-import { setParticleCount, setFPS, playThunk } from "./modules/engine/slice";
+import { setParticleCount, setFPS } from "./modules/engine/slice";
 import { useInit } from "./hooks/useInit";
 
 import "./styles/index.css";
@@ -36,6 +36,7 @@ function AppContent() {
     engineType,
     addParticle,
     screenToWorld,
+    play,
   } = useEngine();
 
   // Initialize tools
@@ -164,11 +165,11 @@ function AppContent() {
     return () => clearInterval(interval);
   }, [system, isInitialized, dispatch]);
 
-  const handleRestart = () => {
+  const handleRestart = useCallback(() => {
     // Re-spawn particles using current INIT panel config from Redux
     spawnParticles(initState);
-    dispatch(playThunk());
-  };
+    play();
+  }, [spawnParticles, play, initState]);
 
   return (
     <div className="app">
