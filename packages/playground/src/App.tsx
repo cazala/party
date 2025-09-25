@@ -1,4 +1,5 @@
-import { usePlayground } from "./hooks/usePlayground";
+import { useEngine } from "./hooks/useEngine";
+import { useTools } from "./hooks/useTools";
 import { useWindowSize } from "./hooks/useWindowSize";
 import { useEffect, useRef } from "react";
 import { TopBar } from "./components/TopBar";
@@ -8,15 +9,10 @@ import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
 import { Provider } from "react-redux";
 import { store } from "./modules/store";
-import { useAppDispatch, useAppSelector } from "./modules/hooks";
+import { useAppDispatch } from "./modules/hooks";
 import {
-  setConstrainIterations,
-  setGridCellSize,
-  setClearColor,
   setParticleCount,
   setFPS,
-  setWebGPU,
-  selectEngineState,
   playThunk,
   pauseThunk,
   clearThunk,
@@ -24,7 +20,6 @@ import {
   setConstrainIterationsThunk,
   setCellSizeThunk,
   setClearColorThunk,
-  toggleEngineTypeThunk,
   registerEngine,
 } from "./modules/engine/slice";
 
@@ -37,10 +32,20 @@ const TOPBAR_HEIGHT = 60;
 
 function AppContent() {
   const dispatch = useAppDispatch();
-  const engineState = useAppSelector(selectEngineState);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const initControlsRef = useRef<InitControlsRef>(null);
 
+  const size = useWindowSize();
+
+  // Calculate canvas size
+  const canvasWidth = size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
+  const canvasHeight = size.height - TOPBAR_HEIGHT;
+  
+  // Initialize engine
+  const engine = useEngine({ 
+    canvasRef, 
+    initialSize: { width: canvasWidth, height: canvasHeight } 
+  });
   const {
     system,
     isInitialized,
@@ -60,14 +65,85 @@ function AppContent() {
     engineType,
     isSupported,
     toggleEngineType,
-  } = usePlayground({ canvasRef });
-
-  const size = useWindowSize();
+    addParticle,
+    screenToWorld,
+  } = engine;
+  
+  // Initialize tools
+  const tools = useTools({
+    canvasRef,
+    addParticle,
+    screenToWorld,
+    isInitialized,
+    initialMode: "cursor",
+  });
 
   // Register engine instance for thunks
   useEffect(() => {
     registerEngine(system);
   }, [system]);
+
+  // Wire mouse input to Interaction module and Tools
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !interaction || !isInitialized) return;
+
+    const updateMousePos = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const { x, y } = screenToWorld(sx, sy);
+      interaction.setPosition(x, y);
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      updateMousePos(e);
+      tools.handleMouseMove(e);
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      updateMousePos(e);
+      
+      // Handle tools first - if a tool handles the event, don't activate interaction
+      tools.handleMouseDown(e);
+      
+      // Only activate interaction for cursor mode (when no tool is active)
+      if (tools.toolMode === "cursor") {
+        interaction.setActive(true);
+      }
+    };
+
+    const onMouseUp = (e: MouseEvent) => {
+      tools.handleMouseUp(e);
+      interaction.setActive(false);
+    };
+
+    const onContextMenu = (e: MouseEvent) => {
+      tools.handleContextMenu(e);
+    };
+
+    canvas.addEventListener("mousemove", onMouseMove);
+    canvas.addEventListener("mousedown", onMouseDown);
+    canvas.addEventListener("mouseup", onMouseUp);
+    canvas.addEventListener("mouseleave", onMouseUp);
+    canvas.addEventListener("contextmenu", onContextMenu);
+
+    return () => {
+      canvas.removeEventListener("mousemove", onMouseMove);
+      canvas.removeEventListener("mousedown", onMouseDown);
+      canvas.removeEventListener("mouseup", onMouseUp);
+      canvas.removeEventListener("mouseleave", onMouseUp);
+      canvas.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [
+    canvasRef.current,
+    interaction,
+    isInitialized,
+    useWebGPU,
+    isInitializing,
+    tools,
+    screenToWorld,
+  ]);
 
   // Update canvas size when window size changes
   useEffect(() => {
@@ -78,12 +154,26 @@ function AppContent() {
     }
   }, [system, isInitialized, size, useWebGPU, dispatch]);
 
-  // Spawn initial particles when initialized
+  // Trigger initial particle spawn when engine is initialized
   useEffect(() => {
-    if (isInitialized && system) {
-      dispatch(playThunk());
+    if (isInitialized && system && initControlsRef.current) {
+      const cfg = initControlsRef.current.getState();
+      spawnParticles(
+        cfg.numParticles,
+        cfg.spawnShape,
+        cfg.spacing,
+        cfg.particleSize,
+        cfg.radius,
+        cfg.colors.length > 0 ? cfg.colors : undefined,
+        cfg.velocityConfig,
+        cfg.innerRadius,
+        cfg.squareSize,
+        cfg.cornerRadius,
+        cfg.particleMass
+      );
     }
-  }, [isInitialized, system, dispatch]);
+  }, [isInitialized, system, spawnParticles]);
+
 
   // Add wheel event listener for zoom
   useEffect(() => {
@@ -118,21 +208,6 @@ function AppContent() {
     return () => clearTimeout(timeout);
   }, [isInitialized, error]);
 
-  // Sync slider values with actual engine values when initialized or engine type changes
-  useEffect(() => {
-    if (system && isInitialized && !isInitializing) {
-      const newConstrainIterations = system.getConstrainIterations();
-      const newCellSize = system.getCellSize();
-      const newClearColor = system.getClearColor();
-
-      // Update Redux state with engine values
-      dispatch(setConstrainIterations(newConstrainIterations));
-      dispatch(setGridCellSize(newCellSize));
-      dispatch(setClearColor(newClearColor));
-      dispatch(setWebGPU(useWebGPU));
-    }
-  }, [system, isInitialized, isInitializing, useWebGPU, dispatch]);
-
   // Periodic updates for particle count and FPS
   useEffect(() => {
     if (!system || !isInitialized) return;
@@ -147,16 +222,6 @@ function AppContent() {
 
     return () => clearInterval(interval);
   }, [system, isInitialized, dispatch]);
-
-  // Sync constraint iterations from Redux to engine when Redux state changes
-  useEffect(() => {
-    if (system && isInitialized && !isInitializing) {
-      const currentEngineValue = system.getConstrainIterations();
-      if (currentEngineValue !== engineState.constrainIterations) {
-        system.setConstrainIterations(engineState.constrainIterations);
-      }
-    }
-  }, [system, isInitialized, isInitializing, engineState.constrainIterations]);
 
   let content = null;
 
@@ -198,10 +263,8 @@ function AppContent() {
   };
 
   const handleToggleEngineType = async () => {
-    // Use the thunk which will handle state capture and engine recreation
-    dispatch(toggleEngineTypeThunk(async () => {
-      await toggleEngineType();
-    }));
+    // Use the simple toggle from useEngine
+    await toggleEngineType();
   };
 
   const handleColorPickerChange = (hex: string) => {

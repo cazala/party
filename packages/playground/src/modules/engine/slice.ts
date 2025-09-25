@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import type { Engine } from "@cazala/party";
+import { WebGPUSpawner } from "@cazala/party";
 
 export interface EngineState {
   isWebGPU: boolean;
@@ -34,8 +35,8 @@ const initialState: EngineState = {
   isInitialized: false,
   isInitializing: false,
   error: null,
-  constrainIterations: 5,
-  gridCellSize: 32,
+  constrainIterations: 1,
+  gridCellSize: 16,
   particleCount: 0,
   fps: 0,
   clearColor: { r: 0, g: 0, b: 0, a: 1 },
@@ -105,6 +106,7 @@ export const engineSlice = createSlice({
     toggleEngineType: (state) => {
       state.isAutoMode = false;
       state.isWebGPU = !state.isWebGPU;
+      // Note: Constraint iterations will be synced from the actual engine after recreation
     },
     updateEngineState: (state, action: PayloadAction<Partial<EngineState>>) => {
       Object.assign(state, action.payload);
@@ -267,6 +269,162 @@ export const toggleEngineTypeThunk = createAsyncThunk(
         )
       );
     }
+  }
+);
+
+// Particle management thunks
+export const addParticleThunk = createAsyncThunk(
+  "engine/addParticle",
+  async (
+    particle: {
+      position: { x: number; y: number };
+      velocity: { x: number; y: number };
+      size: number;
+      mass: number;
+      color: { r: number; g: number; b: number; a: number };
+    },
+    { dispatch }
+  ) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.addParticle(particle);
+      // Update particle count
+      const newCount = engine.getCount();
+      dispatch(engineSlice.actions.setParticleCount(newCount));
+    }
+  }
+);
+
+export const spawnParticlesThunk = createAsyncThunk(
+  "engine/spawnParticles",
+  async (
+    config: {
+      numParticles: number;
+      shape: "grid" | "random" | "circle" | "donut" | "square";
+      spacing: number;
+      particleSize: number;
+      radius?: number;
+      colors?: string[];
+      velocityConfig?: {
+        speed: number;
+        direction:
+          | "random"
+          | "in"
+          | "out"
+          | "custom"
+          | "clockwise"
+          | "counter-clockwise";
+        angle: number;
+      };
+      innerRadius?: number;
+      squareSize?: number;
+      cornerRadius?: number;
+      particleMass?: number;
+    },
+    { dispatch }
+  ) => {
+    const engine = getEngine();
+    if (!engine) return;
+
+    const {
+      numParticles,
+      shape,
+      spacing,
+      particleSize,
+      radius = 200,
+      colors,
+      velocityConfig = { speed: 0, direction: "random", angle: 0 },
+      innerRadius = 50,
+      squareSize = 200,
+      cornerRadius = 0,
+      particleMass = 1,
+    } = config;
+
+    engine.clear();
+
+    const spawner = new WebGPUSpawner();
+
+    // Get camera and bounds info for spawning
+    const cam = engine.getCamera();
+    const size = engine.getSize();
+    const zoom = engine.getZoom();
+    const worldWidth = size.width / Math.max(zoom, 0.0001);
+    const worldHeight = size.height / Math.max(zoom, 0.0001);
+
+    const particles = spawner.initParticles({
+      count: numParticles,
+      colors: colors?.length ? colors : ["#ffffff"],
+      shape,
+      center: cam,
+      spacing,
+      radius,
+      innerRadius,
+      squareSize,
+      cornerRadius,
+      size: particleSize,
+      mass: particleMass,
+      bounds: { width: worldWidth, height: worldHeight },
+      velocity: velocityConfig
+        ? {
+            speed: velocityConfig.speed,
+            direction: velocityConfig.direction,
+            angle:
+              velocityConfig.direction === "custom"
+                ? (velocityConfig.angle * Math.PI) / 180
+                : undefined,
+          }
+        : undefined,
+    });
+
+    engine.setParticles(particles);
+    engine.play(); // Actually start the engine loop
+    dispatch(engineSlice.actions.setParticleCount(particles.length));
+    dispatch(engineSlice.actions.setPlaying(true));
+  }
+);
+
+// Zoom handling thunk
+export const handleZoomThunk = createAsyncThunk(
+  "engine/handleZoom",
+  async (
+    zoomData: {
+      deltaY: number;
+      centerX: number;
+      centerY: number;
+      screenToWorld: (sx: number, sy: number) => { x: number; y: number };
+    },
+    { dispatch }
+  ) => {
+    const engine = getEngine();
+    if (!engine) return;
+
+    const { deltaY, centerX, centerY, screenToWorld } = zoomData;
+    const zoomSensitivity = 0.01;
+
+    // Calculate zoom factor
+    const zoomFactor = Math.pow(0.95, deltaY * zoomSensitivity);
+    const currentZoom = engine.getZoom();
+    const newZoom = Math.max(0.1, Math.min(10, currentZoom * zoomFactor));
+
+    // Get world coordinates of cursor before zoom
+    const worldBeforeZoom = screenToWorld(centerX, centerY);
+
+    // Apply zoom
+    engine.setZoom(newZoom);
+
+    // Get world coordinates of cursor after zoom
+    const worldAfterZoom = screenToWorld(centerX, centerY);
+
+    // Calculate camera adjustment to keep cursor position fixed
+    const camera = engine.getCamera();
+    const newCameraX = camera.x + (worldBeforeZoom.x - worldAfterZoom.x);
+    const newCameraY = camera.y + (worldBeforeZoom.y - worldAfterZoom.y);
+
+    engine.setCamera(newCameraX, newCameraY);
+
+    // Update Redux state
+    dispatch(engineSlice.actions.setZoom(newZoom));
+    dispatch(engineSlice.actions.setCamera({ x: newCameraX, y: newCameraY }));
   }
 );
 
