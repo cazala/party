@@ -1,75 +1,67 @@
-import { useCallback, useState, useEffect } from "react";
-import { useAppSelector } from "../modules/hooks";
-import { selectActiveTool } from "../modules/tools/slice";
+import { useCallback, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "../modules/hooks";
+import {
+  setTool,
+  toggleTool,
+  resetTool,
+  selectActiveTool,
+  selectIsSpawnMode,
+  selectIsRemoveMode,
+  selectIsJointMode,
+  selectIsGrabMode,
+  selectIsPinMode,
+  selectIsEmitterMode,
+  selectIsCursorMode,
+  ToolMode,
+} from "../modules/tools/slice";
+import { useEngine } from "../contexts/EngineContext";
 
-export type ToolMode =
-  | "cursor"
-  | "spawn"
-  | "remove"
-  | "joint"
-  | "grab"
-  | "pin"
-  | "emitter";
 
-export interface UseToolsProps {
-  canvasRef: React.RefObject<HTMLCanvasElement>;
-  addParticle?: (particle: {
-    position: { x: number; y: number };
-    velocity: { x: number; y: number };
-    size: number;
-    mass: number;
-    color: { r: number; g: number; b: number; a: number };
-  }) => void;
-  screenToWorld?: (sx: number, sy: number) => { x: number; y: number };
-  isInitialized: boolean;
-  initialMode?: ToolMode;
-}
 
 export interface UseToolsReturn {
   // Tool mode management
   toolMode: ToolMode;
   setToolMode: (mode: ToolMode) => void;
   toggleToolMode: () => void;
+  resetToolMode: () => void;
   isSpawnMode: boolean;
   isRemoveMode: boolean;
   isJointMode: boolean;
   isGrabMode: boolean;
   isPinMode: boolean;
   isEmitterMode: boolean;
-  // Mouse event handlers
-  handleMouseDown: (e: MouseEvent) => void;
-  handleMouseMove: (e: MouseEvent) => void;
-  handleMouseUp: (e: MouseEvent) => void;
-  handleContextMenu: (e: MouseEvent) => void;
+  isCursorMode: boolean;
 }
 
-export function useTools({
-  canvasRef,
-  addParticle,
-  screenToWorld,
-  isInitialized,
-  initialMode = "cursor",
-}: UseToolsProps): UseToolsReturn {
-  const reduxActiveTool = useAppSelector(selectActiveTool);
-  const [toolMode, setToolMode] = useState<ToolMode>(initialMode);
+export function useTools(): UseToolsReturn {
+  const dispatch = useAppDispatch();
+  const { canvasRef, addParticle, screenToWorld, isInitialized, interaction } = useEngine();
+  
+  // Redux selectors
+  const toolMode = useAppSelector(selectActiveTool);
+  const isSpawnMode = useAppSelector(selectIsSpawnMode);
+  const isRemoveMode = useAppSelector(selectIsRemoveMode);
+  const isJointMode = useAppSelector(selectIsJointMode);
+  const isGrabMode = useAppSelector(selectIsGrabMode);
+  const isPinMode = useAppSelector(selectIsPinMode);
+  const isEmitterMode = useAppSelector(selectIsEmitterMode);
+  const isCursorMode = useAppSelector(selectIsCursorMode);
 
-  // Sync local state with Redux state
-  useEffect(() => {
-    if (reduxActiveTool) {
-      setToolMode(reduxActiveTool);
-    }
-  }, [reduxActiveTool]);
+  // Redux action dispatchers
+  const setToolMode = useCallback(
+    (mode: ToolMode) => {
+      dispatch(setTool(mode));
+    },
+    [dispatch]
+  );
 
   const toggleToolMode = useCallback(() => {
-    setToolMode((current) => {
-      if (current === "spawn") return "joint";
-      if (current === "joint") return "grab";
-      if (current === "grab") return "pin";
-      if (current === "pin") return "remove";
-      if (current === "remove") return "emitter";
-      return "spawn";
-    });
-  }, []);
+    dispatch(toggleTool());
+  }, [dispatch]);
+
+  const resetToolMode = useCallback(() => {
+    dispatch(resetTool());
+  }, [dispatch]);
   const handleSpawnTool = useCallback(
     (e: MouseEvent) => {
       if (!canvasRef.current || !addParticle || !screenToWorld) return;
@@ -170,21 +162,82 @@ export function useTools({
     e.preventDefault();
   }, []);
 
+  // Wire mouse input to Interaction module and Tools
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !interaction || !isInitialized) return;
+
+    const updateMousePos = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const { x, y } = screenToWorld(sx, sy);
+      interaction.setPosition(x, y);
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      updateMousePos(e);
+      handleMouseMove(e);
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      updateMousePos(e);
+
+      // Handle tools first - if a tool handles the event, don't activate interaction
+      handleMouseDown(e);
+
+      // Only activate interaction for cursor mode (when no tool is active)
+      if (toolMode === "cursor") {
+        interaction.setActive(true);
+      }
+    };
+
+    const onMouseUp = (e: MouseEvent) => {
+      handleMouseUp(e);
+      interaction.setActive(false);
+    };
+
+    const onContextMenu = (e: MouseEvent) => {
+      handleContextMenu(e);
+    };
+
+    canvas.addEventListener("mousemove", onMouseMove);
+    canvas.addEventListener("mousedown", onMouseDown);
+    canvas.addEventListener("mouseup", onMouseUp);
+    canvas.addEventListener("mouseleave", onMouseUp);
+    canvas.addEventListener("contextmenu", onContextMenu);
+
+    return () => {
+      canvas.removeEventListener("mousemove", onMouseMove);
+      canvas.removeEventListener("mousedown", onMouseDown);
+      canvas.removeEventListener("mouseup", onMouseUp);
+      canvas.removeEventListener("mouseleave", onMouseUp);
+      canvas.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [
+    canvasRef.current,
+    interaction,
+    isInitialized,
+    toolMode,
+    screenToWorld,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleContextMenu,
+  ]);
+
   return {
     // Tool mode management
     toolMode,
     setToolMode,
     toggleToolMode,
-    isSpawnMode: toolMode === "spawn",
-    isRemoveMode: toolMode === "remove",
-    isJointMode: toolMode === "joint",
-    isGrabMode: toolMode === "grab",
-    isPinMode: toolMode === "pin",
-    isEmitterMode: toolMode === "emitter",
-    // Mouse event handlers
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
-    handleContextMenu,
+    resetToolMode,
+    isSpawnMode,
+    isRemoveMode,
+    isJointMode,
+    isGrabMode,
+    isPinMode,
+    isEmitterMode,
+    isCursorMode,
   };
 }

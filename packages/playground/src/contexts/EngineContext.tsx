@@ -17,6 +17,7 @@ import {
 const LEFT_SIDEBAR_WIDTH = 280;
 const RIGHT_SIDEBAR_WIDTH = 280;
 const TOPBAR_HEIGHT = 60;
+const TOOLBAR_HEIGHT = 60;
 
 // Define the context interface - same as what useEngine returns
 interface EngineContextType {
@@ -94,7 +95,7 @@ export function EngineProvider({ children }: EngineProviderProps) {
 
   // Calculate canvas dimensions
   const canvasWidth = size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
-  const canvasHeight = size.height - TOPBAR_HEIGHT;
+  const canvasHeight = size.height - TOPBAR_HEIGHT - TOOLBAR_HEIGHT;
 
   // Initialize engine using the internal hook
   const engineState = useEngineInternal({
@@ -113,10 +114,21 @@ export function EngineProvider({ children }: EngineProviderProps) {
   useEffect(() => {
     if (system && isInitialized) {
       const targetWidth = size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
-      const targetHeight = size.height - TOPBAR_HEIGHT;
+      const targetHeight = size.height - TOPBAR_HEIGHT - TOOLBAR_HEIGHT;
       dispatch(setSizeThunk({ width: targetWidth, height: targetHeight }));
     }
   }, [system, isInitialized, size, dispatch]);
+
+  // Add a timeout for initialization
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!isInitialized) {
+        console.error("WebGPU initialization timeout");
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isInitialized]);
 
   // Create the context value
   const contextValue: EngineContextType = {
@@ -136,6 +148,7 @@ export function useEngine(): EngineContextType {
   if (!context) {
     throw new Error("useEngine must be used within an EngineProvider");
   }
+
   return context;
 }
 

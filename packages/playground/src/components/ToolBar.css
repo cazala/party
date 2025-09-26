@@ -1,5 +1,5 @@
 .toolbar {
-  position: absolute;
+  position: relative;
   top: 0;
   left: 0;
   right: 0;
@@ -99,7 +99,7 @@
     padding: 6px 8px;
     min-width: 36px;
   }
-  
+
   .tool-mode-selector {
     gap: 2px;
   }

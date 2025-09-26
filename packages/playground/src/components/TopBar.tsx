@@ -1,13 +1,12 @@
+import { useCallback } from "react";
 import { RefreshCw, Trash2 } from "lucide-react";
 import { useEngine } from "../contexts/EngineContext";
+import { useInit } from "../hooks/useInit";
 import "./TopBar.css";
 
-interface TopBarProps {
-  onReset: () => void;
-}
-
-export function TopBar({ onReset }: TopBarProps) {
-  const { isPlaying, play, pause, clear } = useEngine();
+export function TopBar() {
+  const { isPlaying, play, pause, clear, spawnParticles } = useEngine();
+  const { initState } = useInit();
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -21,9 +20,11 @@ export function TopBar({ onReset }: TopBarProps) {
     clear();
   };
 
-  const handleReset = () => {
-    onReset();
-  };
+  const handleReset = useCallback(() => {
+    // Re-spawn particles using current INIT panel config from Redux
+    spawnParticles(initState);
+    play();
+  }, [spawnParticles, play, initState]);
 
   return (
     <div className="top-bar">

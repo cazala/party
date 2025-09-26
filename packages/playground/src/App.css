@@ -28,9 +28,6 @@
 
 #canvas {
   display: block;
-  width: 100%;
-  height: calc(100% - 60px); /* Account for ToolBar height */
-  margin-top: 60px; /* Push canvas below ToolBar */
 }
 
 /* Fullscreen canvas styling - no margins/offsets when in fullscreen mode */

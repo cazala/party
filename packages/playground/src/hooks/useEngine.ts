@@ -39,6 +39,8 @@ import {
   setCamera as setCameraAction,
   setZoom as setZoomAction,
   SpawnParticlesConfig,
+  setParticleCount as setParticleCountAction,
+  setFPS as setFPSAction,
 } from "../modules/engine/slice";
 import {
   Environment,
@@ -448,6 +450,22 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   // Getter functions that return current values
   const getParticleCount = useCallback(() => particleCount, [particleCount]);
   const getFPS = useCallback(() => fps, [fps]);
+
+  // Periodic updates for particle count and FPS
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine || !isInitialized) return;
+
+    const interval = setInterval(() => {
+      const particleCount = engine.getCount();
+      const fps = engine.getFPS();
+
+      dispatch(setParticleCountAction(particleCount));
+      dispatch(setFPSAction(fps));
+    }, 100); // Update every 100ms
+
+    return () => clearInterval(interval);
+  }, [engineRef, isInitialized, dispatch]);
 
   return {
     // State values (from Redux selectors)
