@@ -1,5 +1,16 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { FluidsModuleState } from "./types";
+
+export interface FluidsModuleState {
+  enabled: boolean;
+  influenceRadius: number;
+  targetDensity: number;
+  pressureMultiplier: number;
+  viscosity: number;
+  nearPressureMultiplier: number;
+  nearThreshold: number;
+  enableNearPressure: boolean;
+  maxAcceleration: number;
+}
 
 const initialState: FluidsModuleState = {
   enabled: false,
@@ -71,7 +82,5 @@ export const {
 export const fluidsReducer = fluidsSlice.reducer;
 
 // Selectors
-export const selectFluidsModule = (state: { fluids: FluidsModuleState }) =>
+export const selectFluids = (state: { fluids: FluidsModuleState }) =>
   state.fluids;
-export const selectFluidsEnabled = (state: { fluids: FluidsModuleState }) =>
-  state.fluids.enabled;

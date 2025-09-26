@@ -5,16 +5,17 @@ import { useBoundary } from "../../hooks/modules/useBoundary";
 
 export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    state,
+    mode,
+    restitution,
+    friction,
+    repelDistance,
+    repelStrength,
     setMode,
     setRestitution,
     setFriction,
     setRepelDistance,
     setRepelStrength,
   } = useBoundary();
-
-  const { mode, restitution, friction, repelDistance, repelStrength } =
-    state;
 
   return (
     <>

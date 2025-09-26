@@ -1,5 +1,9 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { ParticleModuleState } from "./types";
+
+export interface ParticleModuleState {
+  enabled: boolean;
+  // Add specific particle rendering properties as needed
+}
 
 const initialState: ParticleModuleState = {
   enabled: true,
@@ -31,7 +35,5 @@ export const {
 export const particleReducer = particleSlice.reducer;
 
 // Selectors
-export const selectParticleModule = (state: { particle: ParticleModuleState }) =>
+export const selectParticle = (state: { particle: ParticleModuleState }) =>
   state.particle;
-export const selectParticleEnabled = (state: { particle: ParticleModuleState }) =>
-  state.particle.enabled;

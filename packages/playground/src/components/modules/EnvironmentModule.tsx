@@ -4,15 +4,18 @@ import { useEnvironment } from "../../hooks/modules/useEnvironment";
 
 export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    state,
+    gravityStrength,
+    dirX,
+    dirY,
+    inertia,
+    friction,
+    damping,
     setGravityStrength,
     setInertia,
     setFriction,
     setDamping,
     setDirection,
   } = useEnvironment();
-
-  const { gravityStrength, dirX, dirY, inertia, friction, damping } = state;
 
   // Calculate direction and angle from dirX, dirY
   const getDirectionFromVector = (x: number, y: number): string => {

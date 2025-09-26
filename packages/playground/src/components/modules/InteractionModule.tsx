@@ -4,13 +4,13 @@ import { useInteraction } from "../../hooks/modules/useInteraction";
 
 export function InteractionModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    state,
+    mode,
+    strength,
+    radius,
     setMode,
     setStrength,
     setRadius,
   } = useInteraction();
-
-  const { mode, strength, radius } = state;
 
   return (
     <>

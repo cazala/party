@@ -1,5 +1,17 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { SensorsModuleState } from "./types";
+
+export interface SensorsModuleState {
+  enabled: boolean;
+  sensorDistance: number;
+  sensorAngle: number; // stored in radians, displayed in degrees
+  sensorRadius: number;
+  sensorThreshold: number;
+  sensorStrength: number;
+  followValue: string;
+  fleeValue: string;
+  colorSimilarityThreshold: number;
+  fleeAngle: number; // stored in radians, displayed in degrees
+}
 
 const initialState: SensorsModuleState = {
   enabled: false,
@@ -79,7 +91,5 @@ export const {
 export const sensorsReducer = sensorsSlice.reducer;
 
 // Selectors
-export const selectSensorsModule = (state: { sensors: SensorsModuleState }) =>
+export const selectSensors = (state: { sensors: SensorsModuleState }) =>
   state.sensors;
-export const selectSensorsEnabled = (state: { sensors: SensorsModuleState }) =>
-  state.sensors.enabled;

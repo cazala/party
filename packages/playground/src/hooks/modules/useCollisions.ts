@@ -1,7 +1,9 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../redux";
 import { useEngine } from "../useEngine";
+import { selectModules } from "../../slices/modules";
 import {
+  selectCollisions,
   setCollisionsEnabled,
   setCollisionsRestitution,
 } from "../../slices/modules/collisions";
@@ -11,8 +13,14 @@ export function useCollisions() {
   const { collisions } = useEngine();
   
   // Get state
-  const state = useAppSelector((state) => state.modules.collisions);
-  const isEnabled = useAppSelector((state) => state.modules.collisions.enabled);
+  const modulesState = useAppSelector(selectModules);
+  const state = useMemo(() => selectCollisions(modulesState), [modulesState]);
+  
+  // Destructure individual properties
+  const {
+    restitution,
+  } = state;
+  const isEnabled = state.enabled;
   
   // Sync Redux state to engine module when they change
   useEffect(() => {
@@ -32,8 +40,10 @@ export function useCollisions() {
   }, [dispatch, collisions]);
   
   return {
-    state,
+    // Individual state properties
+    restitution,
     isEnabled,
+    // Actions
     setEnabled,
     setRestitution,
   };

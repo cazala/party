@@ -1,7 +1,9 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../redux";
 import { useEngine } from "../useEngine";
+import { selectModules } from "../../slices/modules";
 import {
+  selectSensors,
   setSensorsEnabled,
   setSensorDistance,
   setSensorAngle,
@@ -19,8 +21,22 @@ export function useSensors() {
   const { sensors } = useEngine();
   
   // Get state
-  const state = useAppSelector((state) => state.modules.sensors);
-  const isEnabled = useAppSelector((state) => state.modules.sensors.enabled);
+  const modulesState = useAppSelector(selectModules);
+  const state = useMemo(() => selectSensors(modulesState), [modulesState]);
+  
+  // Destructure individual properties
+  const {
+    sensorDistance,
+    sensorAngle,
+    sensorRadius,
+    sensorThreshold,
+    sensorStrength,
+    followValue,
+    fleeValue,
+    colorSimilarityThreshold,
+    fleeAngle,
+  } = state;
+  const isEnabled = state.enabled;
   
   // Sync Redux state to engine module when they change
   useEffect(() => {
@@ -88,8 +104,18 @@ export function useSensors() {
   }, [dispatch, sensors]);
   
   return {
-    state,
+    // Individual state properties
+    sensorDistance,
+    sensorAngle,
+    sensorRadius,
+    sensorThreshold,
+    sensorStrength,
+    followValue,
+    fleeValue,
+    colorSimilarityThreshold,
+    fleeAngle,
     isEnabled,
+    // Actions
     setEnabled,
     setDistance,
     setAngle,

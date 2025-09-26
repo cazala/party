@@ -1,5 +1,15 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { EnvironmentModuleState } from "./types";
+
+export interface EnvironmentModuleState {
+  enabled: boolean;
+  gravityStrength: number;
+  dirX: number;
+  dirY: number;
+  inertia: number;
+  friction: number;
+  damping: number;
+  mode: string;
+}
 
 const initialState: EnvironmentModuleState = {
   enabled: true,
@@ -62,7 +72,5 @@ export const {
 export const environmentReducer = environmentSlice.reducer;
 
 // Selectors
-export const selectEnvironmentModule = (state: { environment: EnvironmentModuleState }) =>
+export const selectEnvironment = (state: { environment: EnvironmentModuleState }) =>
   state.environment;
-export const selectEnvironmentEnabled = (state: { environment: EnvironmentModuleState }) =>
-  state.environment.enabled;

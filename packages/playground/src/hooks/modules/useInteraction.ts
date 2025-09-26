@@ -1,21 +1,31 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../redux";
 import { useEngine } from "../useEngine";
+import { selectModules } from "../../slices/modules";
 import {
+  selectInteraction,
   setInteractionEnabled,
   setInteractionMode,
   setInteractionStrength,
   setInteractionRadius,
+  InteractionModuleState,
 } from "../../slices/modules/interaction";
-import { InteractionModuleState } from "../../slices/modules/types";
 
 export function useInteraction() {
   const dispatch = useAppDispatch();
   const { interaction } = useEngine();
   
   // Get state
-  const state = useAppSelector((state) => state.modules.interaction);
-  const isEnabled = useAppSelector((state) => state.modules.interaction.enabled);
+  const modulesState = useAppSelector(selectModules);
+  const state = useMemo(() => selectInteraction(modulesState), [modulesState]);
+  
+  // Destructure individual properties
+  const {
+    mode,
+    strength,
+    radius,
+  } = state;
+  const isEnabled = state.enabled;
   
   // Sync Redux state to engine module when they change
   useEffect(() => {
@@ -47,8 +57,12 @@ export function useInteraction() {
   }, [dispatch, interaction]);
   
   return {
-    state,
+    // Individual state properties
+    mode,
+    strength,
+    radius,
     isEnabled,
+    // Actions
     setEnabled,
     setMode,
     setStrength,

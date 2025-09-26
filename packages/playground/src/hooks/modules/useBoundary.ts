@@ -1,23 +1,35 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../redux";
 import { useEngine } from "../useEngine";
+import { selectModules } from "../../slices/modules";
 import {
+  selectBoundary,
   setBoundaryEnabled,
   setBoundaryMode,
   setBoundaryRestitution,
   setBoundaryFriction,
   setBoundaryRepelDistance,
   setBoundaryRepelStrength,
+  BoundaryModuleState,
 } from "../../slices/modules/boundary";
-import { BoundaryModuleState } from "../../slices/modules/types";
 
 export function useBoundary() {
   const dispatch = useAppDispatch();
   const { boundary } = useEngine();
   
   // Get state
-  const state = useAppSelector((state) => state.modules.boundary);
-  const isEnabled = useAppSelector((state) => state.modules.boundary.enabled);
+  const modulesState = useAppSelector(selectModules);
+  const state = useMemo(() => selectBoundary(modulesState), [modulesState]);
+  
+  // Destructure individual properties
+  const {
+    mode,
+    restitution,
+    friction,
+    repelDistance,
+    repelStrength,
+  } = state;
+  const isEnabled = state.enabled;
   
   // Sync Redux state to engine module when they change
   useEffect(() => {
@@ -61,8 +73,14 @@ export function useBoundary() {
   }, [dispatch, boundary]);
   
   return {
-    state,
+    // Individual state properties
+    mode,
+    restitution,
+    friction,
+    repelDistance,
+    repelStrength,
     isEnabled,
+    // Actions
     setEnabled,
     setMode,
     setRestitution,

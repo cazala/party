@@ -1,7 +1,9 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../redux";
 import { useEngine } from "../useEngine";
+import { selectModules } from "../../slices/modules";
 import {
+  selectFluids,
   setFluidsEnabled,
   setFluidsInfluenceRadius,
   setFluidsTargetDensity,
@@ -18,8 +20,21 @@ export function useFluids() {
   const { fluids } = useEngine();
   
   // Get state
-  const state = useAppSelector((state) => state.modules.fluids);
-  const isEnabled = useAppSelector((state) => state.modules.fluids.enabled);
+  const modulesState = useAppSelector(selectModules);
+  const state = useMemo(() => selectFluids(modulesState), [modulesState]);
+  
+  // Destructure individual properties
+  const {
+    influenceRadius,
+    targetDensity,
+    pressureMultiplier,
+    viscosity,
+    nearPressureMultiplier,
+    nearThreshold,
+    enableNearPressure,
+    maxAcceleration,
+  } = state;
+  const isEnabled = state.enabled;
   
   // Sync Redux state to engine module when they change
   useEffect(() => {
@@ -81,8 +96,17 @@ export function useFluids() {
   }, [dispatch, fluids]);
   
   return {
-    state,
+    // Individual state properties
+    influenceRadius,
+    targetDensity,
+    pressureMultiplier,
+    viscosity,
+    nearPressureMultiplier,
+    nearThreshold,
+    enableNearPressure,
+    maxAcceleration,
     isEnabled,
+    // Actions
     setEnabled,
     setInfluenceRadius,
     setTargetDensity,

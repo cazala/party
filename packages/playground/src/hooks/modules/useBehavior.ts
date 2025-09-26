@@ -1,7 +1,9 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../redux";
 import { useEngine } from "../useEngine";
+import { selectModules } from "../../slices/modules";
 import {
+  selectBehavior,
   setBehaviorEnabled,
   setBehaviorWander,
   setBehaviorCohesion,
@@ -19,8 +21,22 @@ export function useBehavior() {
   const { behavior } = useEngine();
   
   // Get state
-  const state = useAppSelector((state) => state.modules.behavior);
-  const isEnabled = useAppSelector((state) => state.modules.behavior.enabled);
+  const modulesState = useAppSelector(selectModules);
+  const state = useMemo(() => selectBehavior(modulesState), [modulesState]);
+  
+  // Destructure individual properties
+  const {
+    wander,
+    cohesion,
+    alignment,
+    repulsion,
+    chase,
+    avoid,
+    separation,
+    viewRadius,
+    viewAngle,
+  } = state;
+  const isEnabled = state.enabled;
   
   // Sync Redux state to engine module when they change
   useEffect(() => {
@@ -88,8 +104,18 @@ export function useBehavior() {
   }, [dispatch, behavior]);
   
   return {
-    state,
+    // Individual state properties
+    wander,
+    cohesion,
+    alignment,
+    repulsion,
+    chase,
+    avoid,
+    separation,
+    viewRadius,
+    viewAngle,
     isEnabled,
+    // Actions
     setEnabled,
     setWander,
     setCohesion,

@@ -2,8 +2,7 @@ import { Slider } from "../ui/Slider";
 import { useCollisions } from "../../hooks/modules/useCollisions";
 
 export function CollisionsModule({ enabled = true }: { enabled?: boolean }) {
-  const { state, setRestitution } = useCollisions();
-  const { restitution } = state;
+  const { restitution, setRestitution } = useCollisions();
 
   return (
     <>

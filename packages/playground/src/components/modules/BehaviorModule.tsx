@@ -4,7 +4,15 @@ import { useBehavior } from "../../hooks/modules/useBehavior";
 
 export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    state,
+    wander,
+    cohesion,
+    alignment,
+    repulsion,
+    chase,
+    avoid,
+    separation,
+    viewRadius,
+    viewAngle,
     setWander,
     setCohesion,
     setAlignment,
@@ -15,18 +23,6 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
     setViewRadius,
     setViewAngle,
   } = useBehavior();
-
-  const {
-    wander,
-    cohesion,
-    alignment,
-    repulsion,
-    chase,
-    avoid,
-    separation,
-    viewRadius,
-    viewAngle,
-  } = state;
 
   // Convert radians to degrees for display
   const viewAngleDegrees = radToDeg(viewAngle);

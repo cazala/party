@@ -1,5 +1,26 @@
+import { combineReducers } from "@reduxjs/toolkit";
+import { environmentReducer, EnvironmentModuleState } from "./environment";
+import { boundaryReducer, BoundaryModuleState } from "./boundary";
+import { collisionsReducer, CollisionsModuleState } from "./collisions";
+import { fluidsReducer, FluidsModuleState } from "./fluids";
+import { behaviorReducer, BehaviorModuleState } from "./behavior";
+import { sensorsReducer, SensorsModuleState } from "./sensors";
+import { trailsReducer, TrailsModuleState } from "./trails";
+import { interactionReducer, InteractionModuleState } from "./interaction";
+import { particleReducer, ParticleModuleState } from "./particle";
+
 // Re-export all module types
-export * from "./types";
+export type {
+  EnvironmentModuleState,
+  BoundaryModuleState,
+  CollisionsModuleState,
+  FluidsModuleState,
+  BehaviorModuleState,
+  SensorsModuleState,
+  TrailsModuleState,
+  InteractionModuleState,
+  ParticleModuleState,
+};
 
 // Re-export all module actions and reducers
 export * from "./environment";
@@ -13,16 +34,17 @@ export * from "./interaction";
 export * from "./particle";
 
 // Re-export combinedReducer for easier imports
-import { combineReducers } from "@reduxjs/toolkit";
-import { environmentReducer } from "./environment";
-import { boundaryReducer } from "./boundary";
-import { collisionsReducer } from "./collisions";
-import { fluidsReducer } from "./fluids";
-import { behaviorReducer } from "./behavior";
-import { sensorsReducer } from "./sensors";
-import { trailsReducer } from "./trails";
-import { interactionReducer } from "./interaction";
-import { particleReducer } from "./particle";
+export interface ModulesState {
+  environment: EnvironmentModuleState;
+  boundary: BoundaryModuleState;
+  collisions: CollisionsModuleState;
+  fluids: FluidsModuleState;
+  behavior: BehaviorModuleState;
+  sensors: SensorsModuleState;
+  trails: TrailsModuleState;
+  interaction: InteractionModuleState;
+  particle: ParticleModuleState;
+}
 
 export const modulesReducer = combineReducers({
   environment: environmentReducer,
@@ -35,6 +57,9 @@ export const modulesReducer = combineReducers({
   interaction: interactionReducer,
   particle: particleReducer,
 });
+
+// Global selectors
+export const selectModules = (state: any) => state.modules;
 
 // Global actions for resetting and importing all modules
 export const resetAllModules = {

@@ -4,7 +4,14 @@ import { useFluids } from "../../hooks/modules/useFluids";
 
 export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    state,
+    influenceRadius,
+    targetDensity,
+    pressureMultiplier,
+    viscosity,
+    nearPressureMultiplier,
+    nearThreshold,
+    enableNearPressure,
+    maxAcceleration,
     setInfluenceRadius,
     setTargetDensity,
     setPressureMultiplier,
@@ -14,17 +21,6 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
     setEnableNearPressure,
     setMaxAcceleration,
   } = useFluids();
-
-  const {
-    influenceRadius,
-    targetDensity,
-    pressureMultiplier,
-    viscosity,
-    nearPressureMultiplier,
-    nearThreshold,
-    enableNearPressure,
-    maxAcceleration,
-  } = state;
 
   return (
     <>

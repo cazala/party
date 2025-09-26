@@ -1,5 +1,11 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { InteractionModuleState } from "./types";
+
+export interface InteractionModuleState {
+  enabled: boolean;
+  mode: "attract" | "repel";
+  strength: number;
+  radius: number;
+}
 
 const initialState: InteractionModuleState = {
   enabled: false,
@@ -49,7 +55,5 @@ export const {
 export const interactionReducer = interactionSlice.reducer;
 
 // Selectors
-export const selectInteractionModule = (state: { interaction: InteractionModuleState }) =>
+export const selectInteraction = (state: { interaction: InteractionModuleState }) =>
   state.interaction;
-export const selectInteractionEnabled = (state: { interaction: InteractionModuleState }) =>
-  state.interaction.enabled;

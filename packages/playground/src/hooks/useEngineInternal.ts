@@ -43,6 +43,7 @@ import {
   setFPS as setFPSAction,
 } from "../slices/engine";
 import {
+  selectModules,
   importEnvironmentSettings,
   importBoundarySettings,
   importCollisionsSettings,
@@ -88,7 +89,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const zoom = useAppSelector(selectZoom);
   const size = useAppSelector(selectSize);
   const clearColor = useAppSelector(selectClearColor);
-  const modulesState = useAppSelector((state) => state.modules);
+  const modulesState = useAppSelector(selectModules);
 
   // Engine and module references
   const engineRef = useRef<Engine | null>(null);

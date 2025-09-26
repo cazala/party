@@ -1,5 +1,10 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { TrailsModuleState } from "./types";
+
+export interface TrailsModuleState {
+  enabled: boolean;
+  trailDecay: number;
+  trailDiffuse: number;
+}
 
 const initialState: TrailsModuleState = {
   enabled: false,
@@ -41,7 +46,5 @@ export const {
 export const trailsReducer = trailsSlice.reducer;
 
 // Selectors
-export const selectTrailsModule = (state: { trails: TrailsModuleState }) =>
+export const selectTrails = (state: { trails: TrailsModuleState }) =>
   state.trails;
-export const selectTrailsEnabled = (state: { trails: TrailsModuleState }) =>
-  state.trails.enabled;

@@ -2,9 +2,7 @@ import { Slider } from "../ui/Slider";
 import { useTrails } from "../../hooks/modules/useTrails";
 
 export function TrailsModule({ enabled = true }: { enabled?: boolean }) {
-  const { state, setDecay, setDiffuse } = useTrails();
-
-  const { trailDecay, trailDiffuse } = state;
+  const { trailDecay, trailDiffuse, setDecay, setDiffuse } = useTrails();
 
   return (
     <>

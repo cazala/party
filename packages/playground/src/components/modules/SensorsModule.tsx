@@ -5,7 +5,15 @@ import { useSensors } from "../../hooks/modules/useSensors";
 
 export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    state,
+    sensorDistance,
+    sensorAngle,
+    sensorRadius,
+    sensorThreshold,
+    sensorStrength,
+    followValue,
+    fleeValue,
+    colorSimilarityThreshold,
+    fleeAngle,
     setDistance,
     setAngle,
     setRadius,
@@ -16,18 +24,6 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
     setColorSimilarityThreshold,
     setFleeAngle,
   } = useSensors();
-
-  const {
-    sensorDistance,
-    sensorAngle,
-    sensorRadius,
-    sensorThreshold,
-    sensorStrength,
-    followValue,
-    fleeValue,
-    colorSimilarityThreshold,
-    fleeAngle,
-  } = state;
 
   // Convert radians to degrees for display
   const sensorAngleDegrees = radToDeg(sensorAngle);

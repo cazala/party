@@ -1,5 +1,13 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { BoundaryModuleState } from "./types";
+
+export interface BoundaryModuleState {
+  enabled: boolean;
+  restitution: number;
+  friction: number;
+  mode: "bounce" | "warp" | "kill" | "none";
+  repelDistance: number;
+  repelStrength: number;
+}
 
 const initialState: BoundaryModuleState = {
   enabled: true,
@@ -59,7 +67,5 @@ export const {
 export const boundaryReducer = boundarySlice.reducer;
 
 // Selectors
-export const selectBoundaryModule = (state: { boundary: BoundaryModuleState }) =>
+export const selectBoundary = (state: { boundary: BoundaryModuleState }) =>
   state.boundary;
-export const selectBoundaryEnabled = (state: { boundary: BoundaryModuleState }) =>
-  state.boundary.enabled;

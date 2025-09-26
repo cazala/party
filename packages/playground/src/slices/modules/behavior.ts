@@ -1,5 +1,17 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { BehaviorModuleState } from "./types";
+
+export interface BehaviorModuleState {
+  enabled: boolean;
+  wander: number;
+  cohesion: number;
+  alignment: number;
+  repulsion: number;
+  chase: number;
+  avoid: number;
+  separation: number;
+  viewRadius: number;
+  viewAngle: number; // stored in radians, displayed in degrees
+}
 
 const initialState: BehaviorModuleState = {
   enabled: false,
@@ -76,7 +88,5 @@ export const {
 export const behaviorReducer = behaviorSlice.reducer;
 
 // Selectors
-export const selectBehaviorModule = (state: { behavior: BehaviorModuleState }) =>
+export const selectBehavior = (state: { behavior: BehaviorModuleState }) =>
   state.behavior;
-export const selectBehaviorEnabled = (state: { behavior: BehaviorModuleState }) =>
-  state.behavior.enabled;

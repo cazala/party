@@ -1,7 +1,9 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../redux";
 import { useEngine } from "../useEngine";
+import { selectModules } from "../../slices/modules";
 import {
+  selectEnvironment,
   setEnvironmentEnabled,
   setEnvironmentGravityStrength,
   setEnvironmentInertia,
@@ -13,10 +15,22 @@ import {
 export function useEnvironment() {
   const dispatch = useAppDispatch();
   const { environment } = useEngine();
-  
+
   // Get state
-  const state = useAppSelector((state) => state.modules.environment);
-  const isEnabled = useAppSelector((state) => state.modules.environment.enabled);
+  const modulesState = useAppSelector(selectModules);
+  const state = useMemo(() => selectEnvironment(modulesState), [modulesState]);
+
+  // Destructure individual properties
+  const {
+    gravityStrength,
+    dirX,
+    dirY,
+    inertia,
+    friction,
+    damping,
+    mode,
+  } = state;
+  const isEnabled = state.enabled;
   
   // Sync Redux state to engine module when they change
   useEffect(() => {
@@ -70,8 +84,16 @@ export function useEnvironment() {
   }, [dispatch, environment]);
   
   return {
-    state,
+    // Individual state properties
+    gravityStrength,
+    dirX,
+    dirY,
+    inertia,
+    friction,
+    damping,
+    mode,
     isEnabled,
+    // Actions
     setEnabled,
     setGravityStrength,
     setInertia,

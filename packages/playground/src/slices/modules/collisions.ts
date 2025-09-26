@@ -1,5 +1,9 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { CollisionsModuleState } from "./types";
+
+export interface CollisionsModuleState {
+  enabled: boolean;
+  restitution: number;
+}
 
 const initialState: CollisionsModuleState = {
   enabled: true,
@@ -36,7 +40,5 @@ export const {
 export const collisionsReducer = collisionsSlice.reducer;
 
 // Selectors
-export const selectCollisionsModule = (state: { collisions: CollisionsModuleState }) =>
+export const selectCollisions = (state: { collisions: CollisionsModuleState }) =>
   state.collisions;
-export const selectCollisionsEnabled = (state: { collisions: CollisionsModuleState }) =>
-  state.collisions.enabled;
