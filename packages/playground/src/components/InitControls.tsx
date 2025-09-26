@@ -9,7 +9,7 @@ import { InitVelocityConfig as InitVelocityConfigType } from "../modules/init/sl
 import "./InitControls.css";
 
 export function InitControls() {
-  const { spawnParticles } = useEngine();
+  const { spawnParticles, isInitialized } = useEngine();
   const {
     numParticles,
     shape,
@@ -33,6 +33,7 @@ export function InitControls() {
     setCornerRadius,
     setColors,
     updateVelocityConfig,
+    initState,
   } = useInit();
 
   const skipResetRef = useRef(false);
@@ -41,6 +42,13 @@ export function InitControls() {
   const handleColorsChange = (newColors: string[]) => {
     setColors(newColors);
   };
+
+  // Trigger initial particle spawn when engine is initialized
+  useEffect(() => {
+    if (isInitialized) {
+      spawnParticles(initState);
+    }
+  }, [isInitialized, spawnParticles, initState]);
 
   // Auto-spawn particles when any setting changes
   useEffect(() => {

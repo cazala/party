@@ -160,7 +160,30 @@ export function EngineCanvas({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const { canvasRef, size, engineType } = useEngine();
+  const { canvasRef, size, engineType, handleZoom, isInitialized } =
+    useEngine();
+
+  // Add wheel event listener for zoom
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !handleZoom || !isInitialized) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault(); // Prevent page scroll
+
+      const rect = canvas.getBoundingClientRect();
+      const centerX = e.clientX - rect.left;
+      const centerY = e.clientY - rect.top;
+
+      handleZoom(e.deltaY, centerX, centerY);
+    };
+
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      canvas.removeEventListener("wheel", onWheel);
+    };
+  }, [handleZoom, isInitialized, engineType]);
 
   return (
     <canvas
