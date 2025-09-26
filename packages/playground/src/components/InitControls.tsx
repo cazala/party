@@ -36,7 +36,7 @@ export function InitControls() {
     initState,
   } = useInit();
 
-  const skipResetRef = useRef(false);
+  const firstRenderRef = useRef(false);
 
   // Color management handler
   const handleColorsChange = (newColors: string[]) => {
@@ -45,18 +45,14 @@ export function InitControls() {
 
   // Trigger initial particle spawn when engine is initialized
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && !firstRenderRef.current) {
+      firstRenderRef.current = true;
       spawnParticles(initState);
     }
   }, [isInitialized, spawnParticles, initState]);
 
   // Auto-spawn particles when any setting changes
   useEffect(() => {
-    if (skipResetRef.current) {
-      skipResetRef.current = false;
-      return;
-    }
-
     spawnParticles({
       numParticles,
       shape,

@@ -105,13 +105,26 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         canvasRef: !!canvasRef.current,
       });
 
-      // Cleanup any existing engine first
+      // Preserve state from existing engine before cleanup
+      let preservedState: any = null;
       if (engineRef.current) {
         dispatch(setInitialized(false));
         dispatch(setInitializing(true));
 
         try {
-          engineRef.current.destroy();
+          // Capture current state for preservation during engine type toggle
+          const currentEngine = engineRef.current;
+          preservedState = {
+            particles: await currentEngine.getParticles(),
+            constrainIterations: currentEngine.getConstrainIterations(),
+            cellSize: currentEngine.getCellSize(),
+            clearColor: currentEngine.getClearColor(),
+            camera: currentEngine.getCamera(),
+            zoom: currentEngine.getZoom(),
+            size: currentEngine.getSize(),
+          };
+
+          currentEngine.destroy();
           engineRef.current = null;
           environmentRef.current = null;
           boundaryRef.current = null;
@@ -124,6 +137,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           registerEngine(null);
         } catch (err) {
           console.warn("Error cleaning up previous engine:", err);
+          preservedState = null; // Reset if there was an error
         }
 
         // Give a small delay for WebGPU context cleanup
@@ -256,9 +270,34 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         dispatch(setFPS(actualFPS));
         dispatch(setWebGPU(shouldUseWebGPU));
 
+        // Restore preserved state if we had one (during engine type toggle)
+        if (
+          preservedState &&
+          preservedState.particles &&
+          preservedState.particles.length > 0
+        ) {
+          console.log(
+            "🔄 Restoring",
+            preservedState.particles.length,
+            "particles from previous engine"
+          );
+          engine.setParticles(preservedState.particles);
+          engine.setConstrainIterations(preservedState.constrainIterations);
+          engine.setCellSize(preservedState.cellSize);
+          engine.setClearColor(preservedState.clearColor);
+          engine.setCamera(preservedState.camera.x, preservedState.camera.y);
+          engine.setZoom(preservedState.zoom);
+          engine.setSize(preservedState.size.width, preservedState.size.height);
+
+          // Update Redux state with preserved values
+          dispatch(setParticleCount(preservedState.particles.length));
+        }
+
         // Mark as initialized
         dispatch(setInitialized(true));
         dispatch(setInitializing(false));
+
+        dispatch(playThunk());
 
         // Setup cleanup
         cleanup = () => {
@@ -401,7 +440,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   );
 
   const toggleEngineType = useCallback(async () => {
-    // Simply toggle the Redux state and let useEffect handle engine recreation
+    // Preserve current state before toggling
     setIsAutoMode(false);
     dispatch(toggleEngineTypeAction());
   }, [dispatch]);
