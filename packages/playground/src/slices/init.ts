@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { SpawnParticlesConfig } from "../engine/slice";
+import { SpawnParticlesConfig } from "./engine";
 
 export interface InitVelocityConfig {
   speed: number;

@@ -2,7 +2,7 @@ import { InitControls } from "./InitControls";
 import { CollapsibleSection } from "./ui/CollapsibleSection";
 import { PerformanceControls } from "./PerformanceControls";
 import { RenderControls } from "./RenderControls";
-import { useEngine } from "../contexts/EngineContext";
+import { useEngine } from "../hooks/useEngine";
 
 export function SystemSidebar() {
   const { isInitialized, isInitializing } = useEngine();

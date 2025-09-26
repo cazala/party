@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { RefreshCw, Trash2 } from "lucide-react";
-import { useEngine } from "../contexts/EngineContext";
+import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
 import "./TopBar.css";
 

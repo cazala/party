@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "../modules/hooks";
-import { useEngine } from "../contexts/EngineContext";
+import { useAppDispatch, useAppSelector } from "./redux";
+import { useEngine } from "./useEngine";
 import {
   selectModulesState,
   selectEnvironmentModule,
@@ -63,7 +63,7 @@ import {
   type ModulesState,
   type BoundaryModuleState,
   type InteractionModuleState,
-} from "../modules/modules/slice";
+} from "../slices/modules";
 
 export function useModules() {
   const dispatch = useAppDispatch();

@@ -1,19 +1,17 @@
 import { ColorPicker } from "./ui/ColorPicker";
-import { useEngine } from "../contexts/EngineContext";
-import { useAppDispatch, useAppSelector } from "../modules/hooks";
-import { selectClearColor, setClearColor } from "../modules/engine/slice";
+import { useEngine } from "../hooks/useEngine";
+import { useAppDispatch, useAppSelector } from "../hooks/redux";
+import { selectClearColor, setClearColor } from "../slices/engine";
 
 interface RenderControlsProps {
   disabled?: boolean;
 }
 
-export function RenderControls({
-  disabled = false,
-}: RenderControlsProps = {}) {
+export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
   const dispatch = useAppDispatch();
   const clearColorRgba = useAppSelector(selectClearColor);
   const { setClearColor: setClearColorThunk } = useEngine();
-  
+
   // Convert RGBA to hex
   const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
     const toHex = (value: number) =>
@@ -22,7 +20,7 @@ export function RenderControls({
         .padStart(2, "0");
     return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
   };
-  
+
   // Convert hex to RGBA
   const hexToRgba = (hex: string, alpha: number = 1) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -35,7 +33,7 @@ export function RenderControls({
         }
       : { r: 0, g: 0, b: 0, a: 1 };
   };
-  
+
   const clearColorHex = rgbaToHex(clearColorRgba);
   return (
     <ColorPicker

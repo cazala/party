@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useRef,
-  ReactNode,
-  useEffect,
-} from "react";
+import React, { createContext, useRef, ReactNode, useEffect } from "react";
 import {
   Engine,
   Environment,
@@ -16,14 +10,14 @@ import {
   Trails,
   Interaction,
 } from "@cazala/party";
-import { useEngineInternal } from "../hooks/useEngine";
+import { useEngineInternal } from "../hooks/useEngineInternal";
 import { useWindowSize } from "../hooks/useWindowSize";
-import { useAppDispatch } from "../modules/hooks";
+import { useAppDispatch } from "../hooks/redux";
 import {
   setSizeThunk,
   registerEngine,
   SpawnParticlesConfig,
-} from "../modules/engine/slice";
+} from "../slices/engine";
 
 const LEFT_SIDEBAR_WIDTH = 280;
 const RIGHT_SIDEBAR_WIDTH = 320;
@@ -31,7 +25,7 @@ const TOPBAR_HEIGHT = 60;
 const TOOLBAR_HEIGHT = 60;
 
 // Define the context interface - same as what useEngine returns
-interface EngineContextType {
+export interface EngineContextType {
   // Canvas ref for direct access if needed
   canvasRef: React.RefObject<HTMLCanvasElement>;
 
@@ -93,7 +87,7 @@ interface EngineContextType {
   interaction: Interaction | null;
 }
 
-const EngineContext = createContext<EngineContextType | null>(null);
+export const EngineContext = createContext<EngineContextType | null>(null);
 
 interface EngineProviderProps {
   children: ReactNode;
@@ -151,59 +145,5 @@ export function EngineProvider({ children }: EngineProviderProps) {
     <EngineContext.Provider value={contextValue}>
       {children}
     </EngineContext.Provider>
-  );
-}
-
-export function useEngine(): EngineContextType {
-  const context = useContext(EngineContext);
-  if (!context) {
-    throw new Error("useEngine must be used within an EngineProvider");
-  }
-
-  return context;
-}
-
-// Export the canvas component that should be used in the app
-export function EngineCanvas({
-  className,
-  style,
-}: {
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  const { canvasRef, size, runtime, handleWheel, isInitialized } = useEngine();
-
-  // Add wheel event listener for zoom
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !handleWheel || !isInitialized) return;
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault(); // Prevent page scroll
-
-      const rect = canvas.getBoundingClientRect();
-      const centerX = e.clientX - rect.left;
-      const centerY = e.clientY - rect.top;
-
-      handleWheel(e.deltaY, centerX, centerY);
-    };
-
-    canvas.addEventListener("wheel", onWheel, { passive: false });
-
-    return () => {
-      canvas.removeEventListener("wheel", onWheel);
-    };
-  }, [handleWheel, isInitialized, runtime]);
-
-  return (
-    <canvas
-      key={runtime} // Force canvas recreation when engine type changes
-      ref={canvasRef}
-      id="canvas"
-      className={className}
-      style={style}
-      width={size.width}
-      height={size.height}
-    />
   );
 }

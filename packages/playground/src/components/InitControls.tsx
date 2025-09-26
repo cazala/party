@@ -3,9 +3,9 @@ import { MultiColorPicker } from "./ui/MultiColorPicker";
 import { calculateMassFromSize } from "../utils/particle";
 import { Slider } from "./ui/Slider";
 import { Dropdown } from "./ui/Dropdown";
-import { useEngine } from "../contexts/EngineContext";
+import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
-import { InitVelocityConfig as InitVelocityConfigType } from "../modules/init/slice";
+import { InitVelocityConfig as InitVelocityConfigType } from "../slices/init";
 import "./InitControls.css";
 
 export function InitControls() {

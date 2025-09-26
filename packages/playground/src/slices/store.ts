@@ -1,8 +1,8 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { initReducer } from "./init/slice";
-import { engineReducer } from "./engine/slice";
-import { toolsReducer } from "./tools/slice";
-import { modulesReducer } from "./modules/slice";
+import { initReducer } from "./init";
+import { engineReducer } from "./engine";
+import { toolsReducer } from "./tools";
+import { modulesReducer } from "./modules";
 
 export const store = configureStore({
   reducer: {

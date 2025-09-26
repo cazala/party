@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useAppDispatch, useAppSelector } from "../modules/hooks";
+import { useAppDispatch, useAppSelector } from "./redux";
 import {
   setNumParticles,
   setSpawnShape,
@@ -15,7 +15,7 @@ import {
   selectInitState,
   InitState,
   InitVelocityConfig,
-} from "../modules/init/slice";
+} from "../slices/init";
 
 export function useInit() {
   const dispatch = useAppDispatch();

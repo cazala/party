@@ -2,13 +2,13 @@ import { Checkbox } from "./ui/Checkbox";
 import { Slider } from "./ui/Slider";
 import { Field } from "./ui/Field";
 import { Metrics } from "./ui/Metrics";
-import { useEngine } from "../contexts/EngineContext";
-import { useAppDispatch, useAppSelector } from "../modules/hooks";
+import { useEngine } from "../hooks/useEngine";
+import { useAppDispatch, useAppSelector } from "../hooks/redux";
 import {
   selectEngineState,
   setConstrainIterations,
   setGridCellSize,
-} from "../modules/engine/slice";
+} from "../slices/engine";
 
 export function PerformanceControls() {
   const dispatch = useAppDispatch();

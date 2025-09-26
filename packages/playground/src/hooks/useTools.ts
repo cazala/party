@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "../modules/hooks";
+import { useAppDispatch, useAppSelector } from "./redux";
 import {
   setTool,
   toggleTool,
@@ -13,10 +13,8 @@ import {
   selectIsEmitterMode,
   selectIsCursorMode,
   ToolMode,
-} from "../modules/tools/slice";
-import { useEngine } from "../contexts/EngineContext";
-
-
+} from "../slices/tools";
+import { useEngine } from "../hooks/useEngine";
 
 export interface UseToolsReturn {
   // Tool mode management
@@ -35,8 +33,9 @@ export interface UseToolsReturn {
 
 export function useTools(): UseToolsReturn {
   const dispatch = useAppDispatch();
-  const { canvasRef, addParticle, screenToWorld, isInitialized, interaction } = useEngine();
-  
+  const { canvasRef, addParticle, screenToWorld, isInitialized, interaction } =
+    useEngine();
+
   // Redux selectors
   const toolMode = useAppSelector(selectActiveTool);
   const isSpawnMode = useAppSelector(selectIsSpawnMode);
