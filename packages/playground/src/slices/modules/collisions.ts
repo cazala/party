@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { DEFAULT_COLLISIONS_RESTITUTION } from "@cazala/party";
 
 export interface CollisionsModuleState {
   enabled: boolean;
@@ -7,7 +8,7 @@ export interface CollisionsModuleState {
 
 const initialState: CollisionsModuleState = {
   enabled: true,
-  restitution: 0.8,
+  restitution: DEFAULT_COLLISIONS_RESTITUTION,
 };
 
 export const collisionsSlice = createSlice({
@@ -40,5 +41,6 @@ export const {
 export const collisionsReducer = collisionsSlice.reducer;
 
 // Selectors
-export const selectCollisions = (state: { collisions: CollisionsModuleState }) =>
-  state.collisions;
+export const selectCollisions = (state: {
+  collisions: CollisionsModuleState;
+}) => state.collisions;

@@ -1,4 +1,11 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  DEFAULT_ENVIRONMENT_GRAVITY_DIRECTION,
+  DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH,
+  DEFAULT_ENVIRONMENT_INERTIA,
+  DEFAULT_ENVIRONMENT_FRICTION,
+  DEFAULT_ENVIRONMENT_DAMPING,
+} from "@cazala/party";
 
 export interface EnvironmentModuleState {
   enabled: boolean;
@@ -13,13 +20,13 @@ export interface EnvironmentModuleState {
 
 const initialState: EnvironmentModuleState = {
   enabled: true,
-  gravityStrength: 0,
+  gravityStrength: DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH,
   dirX: 0,
   dirY: 1,
-  inertia: 0,
-  friction: 0,
-  damping: 0,
-  mode: "normal",
+  inertia: DEFAULT_ENVIRONMENT_INERTIA,
+  friction: DEFAULT_ENVIRONMENT_FRICTION,
+  damping: DEFAULT_ENVIRONMENT_DAMPING,
+  mode: DEFAULT_ENVIRONMENT_GRAVITY_DIRECTION,
 };
 
 export const environmentSlice = createSlice({
@@ -72,5 +79,6 @@ export const {
 export const environmentReducer = environmentSlice.reducer;
 
 // Selectors
-export const selectEnvironment = (state: { environment: EnvironmentModuleState }) =>
-  state.environment;
+export const selectEnvironment = (state: {
+  environment: EnvironmentModuleState;
+}) => state.environment;

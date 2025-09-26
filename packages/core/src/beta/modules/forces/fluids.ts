@@ -24,13 +24,13 @@ type FluidsInputKeys =
   | "maxAcceleration";
 
 export const DEFAULT_FLUIDS_INFLUENCE_RADIUS = 100;
-export const DEFAULT_FLUIDs_TARGET_DENSITY = 1;
-export const DEFAULT_FLUIDS_PRESSURE_MULTIPLIER = 15;
-export const DEFAULT_FLUIDS_VISCOSITY = 0.6;
-export const DEFAULT_FLUIDS_NEAR_PRESSURE_MULTIPLIER = 30;
-export const DEFAULT_FLUIDS_NEAR_THRESHOLD = 50;
+export const DEFAULT_FLUIDS_TARGET_DENSITY = 1;
+export const DEFAULT_FLUIDS_PRESSURE_MULTIPLIER = 30;
+export const DEFAULT_FLUIDS_VISCOSITY = 1;
+export const DEFAULT_FLUIDS_NEAR_PRESSURE_MULTIPLIER = 50;
+export const DEFAULT_FLUIDS_NEAR_THRESHOLD = 20;
 export const DEFAULT_FLUIDS_ENABLE_NEAR_PRESSURE = true;
-export const DEFAULT_FLUIDS_MAX_ACCELERATION = 80;
+export const DEFAULT_FLUIDS_MAX_ACCELERATION = 75;
 
 type FluidStateKeys = "density" | "nearDensity";
 
@@ -62,7 +62,7 @@ export class Fluids extends Module<"fluids", FluidsInputKeys, FluidStateKeys> {
     super();
     this.write({
       influenceRadius: opts?.influenceRadius ?? DEFAULT_FLUIDS_INFLUENCE_RADIUS,
-      targetDensity: opts?.targetDensity ?? DEFAULT_FLUIDs_TARGET_DENSITY,
+      targetDensity: opts?.targetDensity ?? DEFAULT_FLUIDS_TARGET_DENSITY,
       pressureMultiplier:
         opts?.pressureMultiplier ?? DEFAULT_FLUIDS_PRESSURE_MULTIPLIER,
       viscosity: opts?.viscosity ?? DEFAULT_FLUIDS_VISCOSITY,

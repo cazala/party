@@ -24,15 +24,15 @@ type BehaviorInputKeys =
   | "viewRadius"
   | "viewAngle";
 
-export const DEFAULT_BEHAVIOR_WANDER = 0;
-export const DEFAULT_BEHAVIOR_COHESION = 0;
-export const DEFAULT_BEHAVIOR_ALIGNMENT = 0;
-export const DEFAULT_BEHAVIOR_REPULSION = 0;
+export const DEFAULT_BEHAVIOR_WANDER = 20;
+export const DEFAULT_BEHAVIOR_COHESION = 1.5;
+export const DEFAULT_BEHAVIOR_ALIGNMENT = 1.5;
+export const DEFAULT_BEHAVIOR_REPULSION = 2;
 export const DEFAULT_BEHAVIOR_CHASE = 0;
 export const DEFAULT_BEHAVIOR_AVOID = 0;
-export const DEFAULT_BEHAVIOR_SEPARATION = 30;
+export const DEFAULT_BEHAVIOR_SEPARATION = 10;
 export const DEFAULT_BEHAVIOR_VIEW_RADIUS = 100;
-export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 2 * Math.PI;
+export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 1.5 * Math.PI;
 
 export class Behavior extends Module<"behavior", BehaviorInputKeys> {
   readonly name = "behavior" as const;

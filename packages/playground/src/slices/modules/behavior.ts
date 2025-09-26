@@ -1,4 +1,15 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  DEFAULT_BEHAVIOR_AVOID,
+  DEFAULT_BEHAVIOR_CHASE,
+  DEFAULT_BEHAVIOR_COHESION,
+  DEFAULT_BEHAVIOR_REPULSION,
+  DEFAULT_BEHAVIOR_SEPARATION,
+  DEFAULT_BEHAVIOR_WANDER,
+  DEFAULT_BEHAVIOR_ALIGNMENT,
+  DEFAULT_BEHAVIOR_VIEW_RADIUS,
+  DEFAULT_BEHAVIOR_VIEW_ANGLE,
+} from "@cazala/party";
 
 export interface BehaviorModuleState {
   enabled: boolean;
@@ -15,15 +26,15 @@ export interface BehaviorModuleState {
 
 const initialState: BehaviorModuleState = {
   enabled: false,
-  wander: 5,
-  cohesion: 1,
-  alignment: 1,
-  repulsion: 2,
-  chase: 0,
-  avoid: 0,
-  separation: 25,
-  viewRadius: 50,
-  viewAngle: Math.PI / 3, // 60 degrees in radians
+  wander: DEFAULT_BEHAVIOR_WANDER,
+  cohesion: DEFAULT_BEHAVIOR_COHESION,
+  alignment: DEFAULT_BEHAVIOR_ALIGNMENT,
+  repulsion: DEFAULT_BEHAVIOR_REPULSION,
+  chase: DEFAULT_BEHAVIOR_CHASE,
+  avoid: DEFAULT_BEHAVIOR_AVOID,
+  separation: DEFAULT_BEHAVIOR_SEPARATION,
+  viewRadius: DEFAULT_BEHAVIOR_VIEW_RADIUS,
+  viewAngle: DEFAULT_BEHAVIOR_VIEW_ANGLE,
 };
 
 export const behaviorSlice = createSlice({

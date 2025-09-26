@@ -17,8 +17,12 @@ export function MultiColorPicker({
   const colorPickerRef = useRef<HTMLInputElement>(null);
   const [pickingIndex, setPickingIndex] = useState<number | null>(null); // Index of square being picked
   const [tempColor, setTempColor] = useState("#ffffff");
+  const [pickerPosition, setPickerPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
-  const handleAddColorClick = () => {
+  const handleAddColorClick = (e: React.MouseEvent) => {
     // Add a new color to the array and start picking it
     const newIndex = colors.length;
     const defaultColor = "#ffffff";
@@ -28,7 +32,18 @@ export function MultiColorPicker({
     // Start picking the newly added color
     setPickingIndex(newIndex);
     setTempColor(defaultColor);
-    colorPickerRef.current?.click();
+
+    // Position the color picker near the clicked element
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPickerPosition({
+      x: rect.left,
+      y: rect.top + 27, // Position slightly above the clicked square
+    });
+
+    // Small delay to ensure position is set before opening
+    setTimeout(() => {
+      colorPickerRef.current?.click();
+    }, 10);
   };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,6 +61,7 @@ export function MultiColorPicker({
   const handleColorCommit = () => {
     // When the picker closes, we're done picking
     setPickingIndex(null);
+    setPickerPosition(null);
   };
 
   const handleRemoveColor = (index: number) => {
@@ -97,7 +113,16 @@ export function MultiColorPicker({
       <input
         ref={colorPickerRef}
         type="color"
-        style={{ display: "none" }}
+        style={{
+          position: "fixed",
+          left: pickerPosition?.x ?? -9999,
+          top: pickerPosition?.y ?? -9999,
+          width: "1px",
+          height: "1px",
+          opacity: 0,
+          pointerEvents: "none",
+          zIndex: -1,
+        }}
         value={tempColor}
         onChange={handleColorChange}
         onBlur={handleColorCommit}

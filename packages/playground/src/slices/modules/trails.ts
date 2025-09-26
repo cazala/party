@@ -1,4 +1,8 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  DEFAULT_TRAILS_TRAIL_DECAY,
+  DEFAULT_TRAILS_TRAIL_DIFFUSE,
+} from "@cazala/party";
 
 export interface TrailsModuleState {
   enabled: boolean;
@@ -8,8 +12,8 @@ export interface TrailsModuleState {
 
 const initialState: TrailsModuleState = {
   enabled: false,
-  trailDecay: 10,
-  trailDiffuse: 1,
+  trailDecay: DEFAULT_TRAILS_TRAIL_DECAY,
+  trailDiffuse: DEFAULT_TRAILS_TRAIL_DIFFUSE,
 };
 
 export const trailsSlice = createSlice({

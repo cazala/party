@@ -17,7 +17,7 @@ import {
 
 type TrailInputKeys = "trailDecay" | "trailDiffuse";
 
-export const DEFAULT_TRAILS_TRAIL_DECAY = 3;
+export const DEFAULT_TRAILS_TRAIL_DECAY = 2;
 export const DEFAULT_TRAILS_TRAIL_DIFFUSE = 0.0;
 
 export class Trails extends Module<"trails", TrailInputKeys> {

@@ -1,4 +1,14 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  DEFAULT_SENSORS_COLOR_SIMILARITY_THRESHOLD,
+  DEFAULT_SENSORS_FLEE_ANGLE,
+  DEFAULT_SENSORS_FLEE_BEHAVIOR,
+  DEFAULT_SENSORS_FOLLOW_BEHAVIOR,
+  DEFAULT_SENSORS_SENSOR_DISTANCE,
+  DEFAULT_SENSORS_SENSOR_RADIUS,
+  DEFAULT_SENSORS_SENSOR_STRENGTH,
+  DEFAULT_SENSORS_SENSOR_THRESHOLD,
+} from "@cazala/party";
 
 export interface SensorsModuleState {
   enabled: boolean;
@@ -15,15 +25,15 @@ export interface SensorsModuleState {
 
 const initialState: SensorsModuleState = {
   enabled: false,
-  sensorDistance: 10,
+  sensorDistance: DEFAULT_SENSORS_SENSOR_DISTANCE,
   sensorAngle: Math.PI / 6, // 30 degrees in radians
-  sensorRadius: 3,
-  sensorThreshold: 0.1,
-  sensorStrength: 100,
-  followValue: "none",
-  fleeValue: "none",
-  colorSimilarityThreshold: 0.8,
-  fleeAngle: Math.PI, // 180 degrees in radians
+  sensorRadius: DEFAULT_SENSORS_SENSOR_RADIUS,
+  sensorThreshold: DEFAULT_SENSORS_SENSOR_THRESHOLD,
+  sensorStrength: DEFAULT_SENSORS_SENSOR_STRENGTH,
+  followValue: DEFAULT_SENSORS_FOLLOW_BEHAVIOR as string,
+  fleeValue: DEFAULT_SENSORS_FLEE_BEHAVIOR as string,
+  colorSimilarityThreshold: DEFAULT_SENSORS_COLOR_SIMILARITY_THRESHOLD,
+  fleeAngle: DEFAULT_SENSORS_FLEE_ANGLE, // 180 degrees in radians
 };
 
 export const sensorsSlice = createSlice({

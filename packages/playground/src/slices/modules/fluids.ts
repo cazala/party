@@ -1,4 +1,14 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  DEFAULT_FLUIDS_INFLUENCE_RADIUS,
+  DEFAULT_FLUIDS_TARGET_DENSITY,
+  DEFAULT_FLUIDS_PRESSURE_MULTIPLIER,
+  DEFAULT_FLUIDS_VISCOSITY,
+  DEFAULT_FLUIDS_NEAR_PRESSURE_MULTIPLIER,
+  DEFAULT_FLUIDS_NEAR_THRESHOLD,
+  DEFAULT_FLUIDS_ENABLE_NEAR_PRESSURE,
+  DEFAULT_FLUIDS_MAX_ACCELERATION,
+} from "@cazala/party";
 
 export interface FluidsModuleState {
   enabled: boolean;
@@ -14,14 +24,14 @@ export interface FluidsModuleState {
 
 const initialState: FluidsModuleState = {
   enabled: false,
-  influenceRadius: 100,
-  targetDensity: 1,
-  pressureMultiplier: 30,
-  viscosity: 1,
-  nearPressureMultiplier: 50,
-  nearThreshold: 20,
-  enableNearPressure: true,
-  maxAcceleration: 75,
+  influenceRadius: DEFAULT_FLUIDS_INFLUENCE_RADIUS,
+  targetDensity: DEFAULT_FLUIDS_TARGET_DENSITY,
+  pressureMultiplier: DEFAULT_FLUIDS_PRESSURE_MULTIPLIER,
+  viscosity: DEFAULT_FLUIDS_VISCOSITY,
+  nearPressureMultiplier: DEFAULT_FLUIDS_NEAR_PRESSURE_MULTIPLIER,
+  nearThreshold: DEFAULT_FLUIDS_NEAR_THRESHOLD,
+  enableNearPressure: DEFAULT_FLUIDS_ENABLE_NEAR_PRESSURE,
+  maxAcceleration: DEFAULT_FLUIDS_MAX_ACCELERATION,
 };
 
 export const fluidsSlice = createSlice({

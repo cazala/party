@@ -1,4 +1,11 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  DEFAULT_BOUNDARY_RESTITUTION,
+  DEFAULT_BOUNDARY_FRICTION,
+  DEFAULT_BOUNDARY_MODE,
+  DEFAULT_BOUNDARY_REPEL_DISTANCE,
+  DEFAULT_BOUNDARY_REPEL_STRENGTH,
+} from "@cazala/party";
 
 export interface BoundaryModuleState {
   enabled: boolean;
@@ -11,11 +18,11 @@ export interface BoundaryModuleState {
 
 const initialState: BoundaryModuleState = {
   enabled: true,
-  restitution: 0.6,
-  friction: 0.1,
-  mode: "bounce",
-  repelDistance: 0,
-  repelStrength: 0,
+  restitution: DEFAULT_BOUNDARY_RESTITUTION,
+  friction: DEFAULT_BOUNDARY_FRICTION,
+  mode: DEFAULT_BOUNDARY_MODE,
+  repelDistance: DEFAULT_BOUNDARY_REPEL_DISTANCE,
+  repelStrength: DEFAULT_BOUNDARY_REPEL_STRENGTH,
 };
 
 export const boundarySlice = createSlice({

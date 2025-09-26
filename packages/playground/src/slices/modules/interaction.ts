@@ -1,4 +1,9 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  DEFAULT_INTERACTION_MODE,
+  DEFAULT_INTERACTION_RADIUS,
+  DEFAULT_INTERACTION_STRENGTH,
+} from "@cazala/party";
 
 export interface InteractionModuleState {
   enabled: boolean;
@@ -9,9 +14,9 @@ export interface InteractionModuleState {
 
 const initialState: InteractionModuleState = {
   enabled: false,
-  mode: "attract",
-  strength: 10000,
-  radius: 500,
+  mode: DEFAULT_INTERACTION_MODE,
+  strength: DEFAULT_INTERACTION_STRENGTH,
+  radius: DEFAULT_INTERACTION_RADIUS,
 };
 
 export const interactionSlice = createSlice({
@@ -55,5 +60,6 @@ export const {
 export const interactionReducer = interactionSlice.reducer;
 
 // Selectors
-export const selectInteraction = (state: { interaction: InteractionModuleState }) =>
-  state.interaction;
+export const selectInteraction = (state: {
+  interaction: InteractionModuleState;
+}) => state.interaction;
