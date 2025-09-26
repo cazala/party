@@ -7,14 +7,11 @@ import { SensorsModule } from "./modules/SensorsModule";
 import { TrailsModule } from "./modules/TrailsModule";
 import { InteractionModule } from "./modules/InteractionModule";
 import { ModuleWrapper } from "./ModuleWrapper";
-import { useAppDispatch, useAppSelector } from "../modules/hooks";
-import { selectModulesState, setModuleEnabled } from "../modules/modules/slice";
 import { useEngine } from "../contexts/EngineContext";
+import { useModules } from "../hooks/useModules";
 import "./ModulesSidebar.css";
 
 export function ModulesSidebar() {
-  const dispatch = useAppDispatch();
-  const modulesState = useAppSelector(selectModulesState);
   const {
     environment,
     boundary,
@@ -27,20 +24,17 @@ export function ModulesSidebar() {
     isSupported,
   } = useEngine();
   
-  // Get enabled states from Redux
-  const environmentEnabled = modulesState.environment.enabled;
-  const boundaryEnabled = modulesState.boundary.enabled;
-  const collisionsEnabled = modulesState.collisions.enabled;
-  const fluidsEnabled = modulesState.fluids.enabled;
-  const behaviorEnabled = modulesState.behavior.enabled;
-  const sensorsEnabled = modulesState.sensors.enabled;
-  const trailsEnabled = modulesState.trails.enabled;
-  const interactionEnabled = modulesState.interaction.enabled;
-  
-  // Helper to handle module enabled/disabled
-  const handleModuleEnabledChange = (module: keyof typeof modulesState, enabled: boolean) => {
-    dispatch(setModuleEnabled({ module, enabled }));
-  };
+  const {
+    isEnvironmentEnabled,
+    isBoundaryEnabled,
+    isCollisionsEnabled,
+    isFluidsEnabled,
+    isBehaviorEnabled,
+    isSensorsEnabled,
+    isTrailsEnabled,
+    isInteractionEnabled,
+    setModuleEnabled,
+  } = useModules();
 
   return (
     <div className="controls-panel">
@@ -51,81 +45,81 @@ export function ModulesSidebar() {
       <ModuleWrapper
         title="Environment"
         module={environment}
-        enabled={environmentEnabled}
-        setEnabled={(enabled) => handleModuleEnabledChange('environment', enabled)}
+        enabled={isEnvironmentEnabled}
+        setEnabled={(enabled) => setModuleEnabled('environment', enabled)}
         isSupported={isSupported(environment)}
       >
-        <EnvironmentModule environment={environment} />
+        <EnvironmentModule />
       </ModuleWrapper>
 
       <ModuleWrapper
         title="Boundary"
         module={boundary}
-        enabled={boundaryEnabled}
-        setEnabled={(enabled) => handleModuleEnabledChange('boundary', enabled)}
+        enabled={isBoundaryEnabled}
+        setEnabled={(enabled) => setModuleEnabled('boundary', enabled)}
         isSupported={isSupported(boundary)}
       >
-        <BoundaryModule boundary={boundary} />
+        <BoundaryModule />
       </ModuleWrapper>
 
       <ModuleWrapper
         title="Collisions"
         module={collisions}
-        enabled={collisionsEnabled}
-        setEnabled={(enabled) => handleModuleEnabledChange('collisions', enabled)}
+        enabled={isCollisionsEnabled}
+        setEnabled={(enabled) => setModuleEnabled('collisions', enabled)}
         isSupported={isSupported(collisions)}
       >
-        <CollisionsModule collisions={collisions} />
+        <CollisionsModule />
       </ModuleWrapper>
 
       <ModuleWrapper
         title="Fluids"
         module={fluids}
         isSupported={isSupported(fluids)}
-        enabled={fluidsEnabled}
-        setEnabled={(enabled) => handleModuleEnabledChange('fluids', enabled)}
+        enabled={isFluidsEnabled}
+        setEnabled={(enabled) => setModuleEnabled('fluids', enabled)}
       >
-        <FluidsModule fluids={fluids} />
+        <FluidsModule />
       </ModuleWrapper>
 
       <ModuleWrapper
         title="Behavior"
         module={behavior}
         isSupported={isSupported(behavior)}
-        enabled={behaviorEnabled}
-        setEnabled={(enabled) => handleModuleEnabledChange('behavior', enabled)}
+        enabled={isBehaviorEnabled}
+        setEnabled={(enabled) => setModuleEnabled('behavior', enabled)}
       >
-        <BehaviorModule behavior={behavior} />
+        <BehaviorModule />
       </ModuleWrapper>
 
       <ModuleWrapper
         title="Trails"
         module={trails}
         isSupported={isSupported(trails)}
-        enabled={trailsEnabled}
-        setEnabled={(enabled) => handleModuleEnabledChange('trails', enabled)}
+        enabled={isTrailsEnabled}
+        setEnabled={(enabled) => setModuleEnabled('trails', enabled)}
       >
-        <TrailsModule trails={trails} />
+        <TrailsModule />
       </ModuleWrapper>
 
       <ModuleWrapper
         title="Sensors"
         module={sensors}
         isSupported={isSupported(sensors)}
-        enabled={sensorsEnabled}
-        setEnabled={(enabled) => handleModuleEnabledChange('sensors', enabled)}
+        enabled={isSensorsEnabled}
+        setEnabled={(enabled) => setModuleEnabled('sensors', enabled)}
       >
-        <SensorsModule sensors={sensors} />
+        <SensorsModule />
       </ModuleWrapper>
 
       <ModuleWrapper
         title="Interaction"
         module={interaction}
         isSupported={isSupported(interaction)}
-        enabled={interactionEnabled}
-        setEnabled={(enabled) => handleModuleEnabledChange('interaction', enabled)}
+        enabled={isInteractionEnabled}
+        setEnabled={(enabled) => setModuleEnabled('interaction', enabled)}
       >
-        <InteractionModule interaction={interaction} />
+        <InteractionModule />
       </ModuleWrapper>
     </div>
   );
