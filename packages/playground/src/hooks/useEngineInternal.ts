@@ -35,7 +35,7 @@ import {
   setError,
   setConstrainIterations as setConstrainIterationsAction,
   setGridCellSize as setGridCellSizeAction,
-  setClearColor,
+  setClearColor as setClearColorAction,
   setCamera as setCameraAction,
   setZoom as setZoomAction,
   SpawnParticlesConfig,
@@ -277,7 +277,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         // Update Redux with actual engine defaults (sync only, don't call engine methods)
         dispatch(setConstrainIterationsAction(actualConstrainIterations));
         dispatch(setGridCellSizeAction(actualCellSize));
-        dispatch(setClearColor(actualClearColor));
+        dispatch(setClearColorAction(actualClearColor));
         dispatch(setCameraAction({ x: actualCamera.x, y: actualCamera.y }));
         dispatch(setZoomAction(actualZoom));
         dispatch(setParticleCount(actualParticleCount));
@@ -514,7 +514,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     [dispatch]
   );
 
-  const setClearColorAction = useCallback(
+  const setClearColor = useCallback(
     (color: { r: number; g: number; b: number; a: number }) => {
       dispatch(setClearColorThunk(color));
     },
@@ -632,7 +632,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     setZoom,
     setConstrainIterations,
     setCellSize,
-    setClearColor: setClearColorAction,
+    setClearColor,
     addParticle,
     spawnParticles,
     toggleRuntime,
