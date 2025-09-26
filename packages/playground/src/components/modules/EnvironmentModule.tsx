@@ -1,20 +1,18 @@
-import { Environment } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
-import { useModules } from "../../hooks/useModules";
+import { useEnvironment } from "../../hooks/modules/useEnvironment";
 
 export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    environmentState,
-    setEnvironmentGravityStrength,
-    setEnvironmentInertia,
-    setEnvironmentFriction,
-    setEnvironmentDamping,
-    setEnvironmentDirection,
-  } = useModules();
+    state,
+    setGravityStrength,
+    setInertia,
+    setFriction,
+    setDamping,
+    setDirection,
+  } = useEnvironment();
 
-  const { gravityStrength, dirX, dirY, inertia, friction, damping } =
-    environmentState;
+  const { gravityStrength, dirX, dirY, inertia, friction, damping } = state;
 
   // Calculate direction and angle from dirX, dirY
   const getDirectionFromVector = (x: number, y: number): string => {
@@ -34,7 +32,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
       <Slider
         label="Gravity Strength"
         value={gravityStrength}
-        onChange={setEnvironmentGravityStrength}
+        onChange={setGravityStrength}
         min={0}
         max={3000}
         step={1}
@@ -69,7 +67,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
               newDirY = dirY;
               break;
           }
-          setEnvironmentDirection(newDirX, newDirY);
+          setDirection(newDirX, newDirY);
         }}
         options={[
           { value: "down", label: "Down" },
@@ -91,7 +89,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
             const rad = ((deg - 90) * Math.PI) / 180; // Convert from degrees, adjust for coordinate system
             const newDirX = Math.cos(rad);
             const newDirY = Math.sin(rad);
-            setEnvironmentDirection(newDirX, newDirY);
+            setDirection(newDirX, newDirY);
           }}
           min={0}
           max={360}
@@ -104,7 +102,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
       <Slider
         label="Inertia"
         value={inertia}
-        onChange={setEnvironmentInertia}
+        onChange={setInertia}
         min={0}
         max={10}
         step={0.01}
@@ -115,7 +113,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
       <Slider
         label="Friction"
         value={friction}
-        onChange={setEnvironmentFriction}
+        onChange={setFriction}
         min={0}
         max={10}
         step={0.01}
@@ -126,7 +124,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
       <Slider
         label="Damping"
         value={damping}
-        onChange={setEnvironmentDamping}
+        onChange={setDamping}
         min={0}
         max={1}
         step={0.01}

@@ -1,23 +1,23 @@
 import { Dropdown } from "../ui/Dropdown";
 import { Slider } from "../ui/Slider";
-import { useModules } from "../../hooks/useModules";
+import { useInteraction } from "../../hooks/modules/useInteraction";
 
 export function InteractionModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    interactionState,
-    setInteractionMode,
-    setInteractionStrength,
-    setInteractionRadius,
-  } = useModules();
+    state,
+    setMode,
+    setStrength,
+    setRadius,
+  } = useInteraction();
 
-  const { mode, strength, radius } = interactionState;
+  const { mode, strength, radius } = state;
 
   return (
     <>
       <Dropdown
         label="Mode"
         value={mode}
-        onChange={(v) => setInteractionMode(v as "attract" | "repel")}
+        onChange={(v) => setMode(v as "attract" | "repel")}
         disabled={!enabled}
         options={[
           { value: "attract", label: "Attract" },
@@ -30,7 +30,7 @@ export function InteractionModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={1000}
         step={1}
-        onChange={setInteractionStrength}
+        onChange={setStrength}
         disabled={!enabled}
       />
       <Slider
@@ -39,7 +39,7 @@ export function InteractionModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={1000}
         step={1}
-        onChange={setInteractionRadius}
+        onChange={setRadius}
         disabled={!enabled}
       />
     </>

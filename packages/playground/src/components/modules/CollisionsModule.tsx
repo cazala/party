@@ -1,9 +1,9 @@
 import { Slider } from "../ui/Slider";
-import { useModules } from "../../hooks/useModules";
+import { useCollisions } from "../../hooks/modules/useCollisions";
 
 export function CollisionsModule({ enabled = true }: { enabled?: boolean }) {
-  const { collisionsState, setCollisionsRestitution } = useModules();
-  const { restitution } = collisionsState;
+  const { state, setRestitution } = useCollisions();
+  const { restitution } = state;
 
   return (
     <>
@@ -13,7 +13,7 @@ export function CollisionsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={1}
         step={0.01}
-        onChange={setCollisionsRestitution}
+        onChange={setRestitution}
         disabled={!enabled}
       />
     </>

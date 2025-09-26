@@ -1,21 +1,21 @@
 import { radToDeg, degToRad } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
-import { useModules } from "../../hooks/useModules";
+import { useSensors } from "../../hooks/modules/useSensors";
 
 export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    sensorsState,
-    setSensorDistance,
-    setSensorAngle,
-    setSensorRadius,
-    setSensorThreshold,
-    setSensorStrength,
-    setSensorFollowValue,
-    setSensorFleeValue,
-    setSensorColorSimilarityThreshold,
-    setSensorFleeAngle,
-  } = useModules();
+    state,
+    setDistance,
+    setAngle,
+    setRadius,
+    setThreshold,
+    setStrength,
+    setFollowValue,
+    setFleeValue,
+    setColorSimilarityThreshold,
+    setFleeAngle,
+  } = useSensors();
 
   const {
     sensorDistance,
@@ -27,7 +27,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
     fleeValue,
     colorSimilarityThreshold,
     fleeAngle,
-  } = sensorsState;
+  } = state;
 
   // Convert radians to degrees for display
   const sensorAngleDegrees = radToDeg(sensorAngle);
@@ -49,7 +49,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         max={100}
         step={1}
         value={sensorDistance}
-        onChange={setSensorDistance}
+        onChange={setDistance}
         disabled={!enabled}
       />
       <Slider
@@ -58,7 +58,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         min={2}
         max={90}
         step={1}
-        onChange={(v) => setSensorAngle(degToRad(v))}
+        onChange={(v) => setAngle(degToRad(v))}
         formatValue={(v) => `${v.toFixed(0)}°`}
         disabled={!enabled}
       />
@@ -68,7 +68,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={1}
-        onChange={setSensorRadius}
+        onChange={setRadius}
         disabled={!enabled}
       />
       <Slider
@@ -77,7 +77,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         min={0.01}
         max={0.2}
         step={0.01}
-        onChange={setSensorThreshold}
+        onChange={setThreshold}
         disabled={!enabled}
       />
       <Slider
@@ -86,13 +86,13 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={3000}
         step={1}
-        onChange={setSensorStrength}
+        onChange={setStrength}
         disabled={!enabled}
       />
       <Dropdown
         label="Follow Behavior"
         value={followValue}
-        onChange={setSensorFollowValue}
+        onChange={setFollowValue}
         disabled={!enabled}
         options={[
           { value: "none", label: "None" },
@@ -104,7 +104,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
       <Dropdown
         label="Flee Behavior"
         value={fleeValue}
-        onChange={setSensorFleeValue}
+        onChange={setFleeValue}
         disabled={!enabled}
         options={[
           { value: "none", label: "None" },
@@ -117,7 +117,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         <Slider
           label="Color Similarity Threshold"
           value={colorSimilarityThreshold}
-          onChange={setSensorColorSimilarityThreshold}
+          onChange={setColorSimilarityThreshold}
           disabled={!enabled}
         />
       )}
@@ -125,7 +125,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         <Slider
           label="Flee Angle"
           value={fleeAngleDegrees}
-          onChange={(v) => setSensorFleeAngle(degToRad(v))}
+          onChange={(v) => setFleeAngle(degToRad(v))}
           disabled={!enabled}
         />
       )}

@@ -1,19 +1,19 @@
 import { Slider } from "../ui/Slider";
 import { Checkbox } from "../ui/Checkbox";
-import { useModules } from "../../hooks/useModules";
+import { useFluids } from "../../hooks/modules/useFluids";
 
 export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    fluidsState,
-    setFluidsInfluenceRadius,
-    setFluidsTargetDensity,
-    setFluidsPressureMultiplier,
-    setFluidsViscosity,
-    setFluidsNearPressureMultiplier,
-    setFluidsNearThreshold,
-    setFluidsEnableNearPressure,
-    setFluidsMaxAcceleration,
-  } = useModules();
+    state,
+    setInfluenceRadius,
+    setTargetDensity,
+    setPressureMultiplier,
+    setViscosity,
+    setNearPressureMultiplier,
+    setNearThreshold,
+    setEnableNearPressure,
+    setMaxAcceleration,
+  } = useFluids();
 
   const {
     influenceRadius,
@@ -24,7 +24,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
     nearThreshold,
     enableNearPressure,
     maxAcceleration,
-  } = fluidsState;
+  } = state;
 
   return (
     <>
@@ -34,7 +34,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         min={1}
         max={100}
         step={1}
-        onChange={setFluidsInfluenceRadius}
+        onChange={setInfluenceRadius}
         disabled={!enabled}
       />
       <Slider
@@ -43,7 +43,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={100}
         step={1}
-        onChange={setFluidsMaxAcceleration}
+        onChange={setMaxAcceleration}
         disabled={!enabled}
       />
       <Slider
@@ -52,7 +52,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={5}
         step={0.01}
-        onChange={setFluidsTargetDensity}
+        onChange={setTargetDensity}
         disabled={!enabled}
       />
       <Slider
@@ -61,7 +61,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={100}
         step={1}
-        onChange={setFluidsPressureMultiplier}
+        onChange={setPressureMultiplier}
         disabled={!enabled}
       />
       <Slider
@@ -70,13 +70,13 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.01}
-        onChange={setFluidsViscosity}
+        onChange={setViscosity}
         disabled={!enabled}
       />
       <Checkbox
         label="Enable Near Pressure"
         checked={enableNearPressure}
-        onChange={setFluidsEnableNearPressure}
+        onChange={setEnableNearPressure}
         disabled={!enabled}
       />
       <Slider
@@ -85,7 +85,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={100}
         step={1}
-        onChange={setFluidsNearPressureMultiplier}
+        onChange={setNearPressureMultiplier}
         disabled={!enabled || !enableNearPressure}
       />
       <Slider
@@ -94,7 +94,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={100}
         step={1}
-        onChange={setFluidsNearThreshold}
+        onChange={setNearThreshold}
         disabled={!enabled || !enableNearPressure}
       />
     </>

@@ -42,7 +42,17 @@ import {
   setParticleCount as setParticleCountAction,
   setFPS as setFPSAction,
 } from "../slices/engine";
-import { selectModulesState, importModuleSettings } from "../slices/modules";
+import {
+  importEnvironmentSettings,
+  importBoundarySettings,
+  importCollisionsSettings,
+  importFluidsSettings,
+  importBehaviorSettings,
+  importSensorsSettings,
+  importTrailsSettings,
+  importInteractionSettings,
+  importParticleSettings,
+} from "../slices/modules";
 import {
   Environment,
   Boundary,
@@ -78,7 +88,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const zoom = useAppSelector(selectZoom);
   const size = useAppSelector(selectSize);
   const clearColor = useAppSelector(selectClearColor);
-  const modulesState = useAppSelector(selectModulesState);
+  const modulesState = useAppSelector((state) => state.modules);
 
   // Engine and module references
   const engineRef = useRef<Engine | null>(null);
@@ -299,7 +309,16 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           // Restore module states in Redux
           if (preservedState.modulesState) {
             console.log("🔄 Restoring module states");
-            dispatch(importModuleSettings(preservedState.modulesState));
+            const modules = preservedState.modulesState;
+            dispatch(importEnvironmentSettings(modules.environment));
+            dispatch(importBoundarySettings(modules.boundary));
+            dispatch(importCollisionsSettings(modules.collisions));
+            dispatch(importFluidsSettings(modules.fluids));
+            dispatch(importBehaviorSettings(modules.behavior));
+            dispatch(importSensorsSettings(modules.sensors));
+            dispatch(importTrailsSettings(modules.trails));
+            dispatch(importInteractionSettings(modules.interaction));
+            dispatch(importParticleSettings(modules.particle));
           }
         }
 

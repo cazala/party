@@ -1,10 +1,10 @@
 import { Slider } from "../ui/Slider";
-import { useModules } from "../../hooks/useModules";
+import { useTrails } from "../../hooks/modules/useTrails";
 
 export function TrailsModule({ enabled = true }: { enabled?: boolean }) {
-  const { trailsState, setTrailsDecay, setTrailsDiffuse } = useModules();
+  const { state, setDecay, setDiffuse } = useTrails();
 
-  const { trailDecay, trailDiffuse } = trailsState;
+  const { trailDecay, trailDiffuse } = state;
 
   return (
     <>
@@ -14,7 +14,7 @@ export function TrailsModule({ enabled = true }: { enabled?: boolean }) {
         min={2}
         max={20}
         step={1}
-        onChange={setTrailsDecay}
+        onChange={setDecay}
         disabled={!enabled}
       />
       <Slider
@@ -23,7 +23,7 @@ export function TrailsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={5}
         step={1}
-        onChange={setTrailsDiffuse}
+        onChange={setDiffuse}
         formatValue={(v) => `${v.toFixed(0)}px`}
         disabled={!enabled}
       />

@@ -1,27 +1,27 @@
 import { BoundaryMode } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
-import { useModules } from "../../hooks/useModules";
+import { useBoundary } from "../../hooks/modules/useBoundary";
 
 export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    boundaryState,
-    setBoundaryMode,
-    setBoundaryRestitution,
-    setBoundaryFriction,
-    setBoundaryRepelDistance,
-    setBoundaryRepelStrength,
-  } = useModules();
+    state,
+    setMode,
+    setRestitution,
+    setFriction,
+    setRepelDistance,
+    setRepelStrength,
+  } = useBoundary();
 
   const { mode, restitution, friction, repelDistance, repelStrength } =
-    boundaryState;
+    state;
 
   return (
     <>
       <Dropdown
         label="Mode"
         value={mode}
-        onChange={(v) => setBoundaryMode(v as BoundaryMode)}
+        onChange={(v) => setMode(v as BoundaryMode)}
         disabled={!enabled}
         options={[
           { value: "bounce", label: "Bounce" },
@@ -36,13 +36,13 @@ export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={1}
         step={0.01}
-        onChange={setBoundaryRestitution}
+        onChange={setRestitution}
         disabled={!enabled}
       />
       <Slider
         label="Friction"
         value={friction}
-        onChange={setBoundaryFriction}
+        onChange={setFriction}
         disabled={!enabled}
       />
       <Slider
@@ -51,7 +51,7 @@ export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={1000}
         step={1000}
-        onChange={setBoundaryRepelDistance}
+        onChange={setRepelDistance}
         disabled={!enabled}
       />
       <Slider
@@ -60,7 +60,7 @@ export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={1000}
         step={1000}
-        onChange={setBoundaryRepelStrength}
+        onChange={setRepelStrength}
         disabled={!enabled}
       />
     </>

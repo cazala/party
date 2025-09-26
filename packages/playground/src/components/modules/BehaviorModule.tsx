@@ -1,20 +1,20 @@
 import { radToDeg, degToRad } from "@cazala/party";
 import { Slider } from "../ui/Slider";
-import { useModules } from "../../hooks/useModules";
+import { useBehavior } from "../../hooks/modules/useBehavior";
 
 export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
   const {
-    behaviorState,
-    setBehaviorWander,
-    setBehaviorCohesion,
-    setBehaviorAlignment,
-    setBehaviorRepulsion,
-    setBehaviorChase,
-    setBehaviorAvoid,
-    setBehaviorSeparation,
-    setBehaviorViewRadius,
-    setBehaviorViewAngle,
-  } = useModules();
+    state,
+    setWander,
+    setCohesion,
+    setAlignment,
+    setRepulsion,
+    setChase,
+    setAvoid,
+    setSeparation,
+    setViewRadius,
+    setViewAngle,
+  } = useBehavior();
 
   const {
     wander,
@@ -26,7 +26,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
     separation,
     viewRadius,
     viewAngle,
-  } = behaviorState;
+  } = state;
 
   // Convert radians to degrees for display
   const viewAngleDegrees = radToDeg(viewAngle);
@@ -39,7 +39,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={100}
         step={0.1}
-        onChange={setBehaviorWander}
+        onChange={setWander}
         disabled={!enabled}
       />
 
@@ -49,7 +49,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
-        onChange={setBehaviorCohesion}
+        onChange={setCohesion}
         disabled={!enabled}
       />
 
@@ -59,7 +59,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
-        onChange={setBehaviorAlignment}
+        onChange={setAlignment}
         disabled={!enabled}
       />
 
@@ -69,14 +69,14 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
-        onChange={setBehaviorRepulsion}
+        onChange={setRepulsion}
         disabled={!enabled}
       />
 
       <Slider
         label="Separation"
         value={separation}
-        onChange={setBehaviorSeparation}
+        onChange={setSeparation}
         disabled={!enabled}
       />
 
@@ -86,7 +86,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
-        onChange={setBehaviorChase}
+        onChange={setChase}
         disabled={!enabled}
       />
 
@@ -96,7 +96,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
-        onChange={setBehaviorAvoid}
+        onChange={setAvoid}
         disabled={!enabled}
       />
 
@@ -106,7 +106,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={500}
         step={1}
-        onChange={setBehaviorViewRadius}
+        onChange={setViewRadius}
         disabled={!enabled}
       />
 
@@ -117,7 +117,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         max={360}
         step={1}
         formatValue={(v) => `${v.toFixed(0)}°`}
-        onChange={(v) => setBehaviorViewAngle(degToRad(v))}
+        onChange={(v) => setViewAngle(degToRad(v))}
         disabled={!enabled}
       />
     </>

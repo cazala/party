@@ -8,7 +8,16 @@ import { TrailsModule } from "./modules/TrailsModule";
 import { InteractionModule } from "./modules/InteractionModule";
 import { ModuleWrapper } from "./ModuleWrapper";
 import { useEngine } from "../hooks/useEngine";
-import { useModules } from "../hooks/useModules";
+import {
+  useEnvironment,
+  useBoundary,
+  useCollisions,
+  useFluids,
+  useBehavior,
+  useSensors,
+  useTrails,
+  useInteraction,
+} from "../hooks/modules";
 import "./ModulesSidebar.css";
 
 export function ModulesSidebar() {
@@ -24,17 +33,14 @@ export function ModulesSidebar() {
     isSupported,
   } = useEngine();
 
-  const {
-    isEnvironmentEnabled,
-    isBoundaryEnabled,
-    isCollisionsEnabled,
-    isFluidsEnabled,
-    isBehaviorEnabled,
-    isSensorsEnabled,
-    isTrailsEnabled,
-    isInteractionEnabled,
-    setModuleEnabled,
-  } = useModules();
+  const { isEnabled: isEnvironmentEnabled, setEnabled: setEnvironmentEnabled } = useEnvironment();
+  const { isEnabled: isBoundaryEnabled, setEnabled: setBoundaryEnabled } = useBoundary();
+  const { isEnabled: isCollisionsEnabled, setEnabled: setCollisionsEnabled } = useCollisions();
+  const { isEnabled: isFluidsEnabled, setEnabled: setFluidsEnabled } = useFluids();
+  const { isEnabled: isBehaviorEnabled, setEnabled: setBehaviorEnabled } = useBehavior();
+  const { isEnabled: isSensorsEnabled, setEnabled: setSensorsEnabled } = useSensors();
+  const { isEnabled: isTrailsEnabled, setEnabled: setTrailsEnabled } = useTrails();
+  const { isEnabled: isInteractionEnabled, setEnabled: setInteractionEnabled } = useInteraction();
 
   return (
     <div className="controls-panel">
@@ -46,7 +52,7 @@ export function ModulesSidebar() {
         title="Environment"
         module={environment}
         enabled={isEnvironmentEnabled}
-        setEnabled={(enabled) => setModuleEnabled("environment", enabled)}
+        setEnabled={setEnvironmentEnabled}
         isSupported={isSupported(environment)}
       >
         <EnvironmentModule />
@@ -56,7 +62,7 @@ export function ModulesSidebar() {
         title="Boundary"
         module={boundary}
         enabled={isBoundaryEnabled}
-        setEnabled={(enabled) => setModuleEnabled("boundary", enabled)}
+        setEnabled={setBoundaryEnabled}
         isSupported={isSupported(boundary)}
       >
         <BoundaryModule />
@@ -66,7 +72,7 @@ export function ModulesSidebar() {
         title="Collisions"
         module={collisions}
         enabled={isCollisionsEnabled}
-        setEnabled={(enabled) => setModuleEnabled("collisions", enabled)}
+        setEnabled={setCollisionsEnabled}
         isSupported={isSupported(collisions)}
       >
         <CollisionsModule />
@@ -77,7 +83,7 @@ export function ModulesSidebar() {
         module={fluids}
         isSupported={isSupported(fluids)}
         enabled={isFluidsEnabled}
-        setEnabled={(enabled) => setModuleEnabled("fluids", enabled)}
+        setEnabled={setFluidsEnabled}
       >
         <FluidsModule />
       </ModuleWrapper>
@@ -87,7 +93,7 @@ export function ModulesSidebar() {
         module={behavior}
         isSupported={isSupported(behavior)}
         enabled={isBehaviorEnabled}
-        setEnabled={(enabled) => setModuleEnabled("behavior", enabled)}
+        setEnabled={setBehaviorEnabled}
       >
         <BehaviorModule />
       </ModuleWrapper>
@@ -97,7 +103,7 @@ export function ModulesSidebar() {
         module={trails}
         isSupported={isSupported(trails)}
         enabled={isTrailsEnabled}
-        setEnabled={(enabled) => setModuleEnabled("trails", enabled)}
+        setEnabled={setTrailsEnabled}
       >
         <TrailsModule />
       </ModuleWrapper>
@@ -107,7 +113,7 @@ export function ModulesSidebar() {
         module={sensors}
         isSupported={isSupported(sensors)}
         enabled={isSensorsEnabled}
-        setEnabled={(enabled) => setModuleEnabled("sensors", enabled)}
+        setEnabled={setSensorsEnabled}
       >
         <SensorsModule />
       </ModuleWrapper>
@@ -117,7 +123,7 @@ export function ModulesSidebar() {
         module={interaction}
         isSupported={isSupported(interaction)}
         enabled={isInteractionEnabled}
-        setEnabled={(enabled) => setModuleEnabled("interaction", enabled)}
+        setEnabled={setInteractionEnabled}
       >
         <InteractionModule />
       </ModuleWrapper>
