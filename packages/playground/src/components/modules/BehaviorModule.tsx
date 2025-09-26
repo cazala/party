@@ -1,9 +1,5 @@
 import { useEffect } from "react";
-import {
-  Behavior,
-  radToDeg,
-  degToRad,
-} from "@cazala/party";
+import { Behavior, radToDeg, degToRad } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { useAppDispatch, useAppSelector } from "../../modules/hooks";
 import {
@@ -39,10 +35,10 @@ export function BehaviorModule({
     viewRadius,
     viewAngle,
   } = behaviorState;
-  
+
   // Convert radians to degrees for display
   const viewAngleDegrees = radToDeg(viewAngle);
-  
+
   // Sync Redux state with behavior module when behavior is available
   useEffect(() => {
     if (behavior && enabled) {
@@ -56,7 +52,19 @@ export function BehaviorModule({
       behavior.setViewRadius(viewRadius);
       behavior.setViewAngle(viewAngle); // viewAngle is already in radians
     }
-  }, [behavior, enabled, wander, cohesion, alignment, repulsion, chase, avoid, separation, viewRadius, viewAngle]);
+  }, [
+    behavior,
+    enabled,
+    wander,
+    cohesion,
+    alignment,
+    repulsion,
+    chase,
+    avoid,
+    separation,
+    viewRadius,
+    viewAngle,
+  ]);
 
   return (
     <>
@@ -167,7 +175,7 @@ export function BehaviorModule({
         min={0}
         max={360}
         step={1}
-        formatValue={(v) => `${v}°`}
+        formatValue={(v) => `${v.toFixed(0)}°`}
         onChange={(v) => {
           dispatch(setBehaviorViewAngle(degToRad(v)));
           behavior?.setViewAngle(degToRad(v));
