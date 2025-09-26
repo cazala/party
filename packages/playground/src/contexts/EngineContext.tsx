@@ -26,7 +26,7 @@ import {
 } from "../modules/engine/slice";
 
 const LEFT_SIDEBAR_WIDTH = 280;
-const RIGHT_SIDEBAR_WIDTH = 280;
+const RIGHT_SIDEBAR_WIDTH = 320;
 const TOPBAR_HEIGHT = 60;
 const TOOLBAR_HEIGHT = 60;
 
