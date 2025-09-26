@@ -45,7 +45,7 @@ export function useInit() {
   );
 
   const setSpawnShapeValue = useCallback(
-    (value: InitState["spawnShape"]) => {
+    (value: InitState["shape"]) => {
       dispatch(setSpawnShape(value));
     },
     [dispatch]
