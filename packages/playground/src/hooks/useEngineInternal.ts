@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAppDispatch, useAppSelector } from "./redux";
+import { useAppDispatch } from "./useAppDispatch";
+import { useAppSelector } from "./useAppSelector";
 import {
-  selectEngineState,
   selectIsWebGPU,
   selectIsPlaying,
   selectIsInitialized,
   selectIsInitializing,
   selectError,
+  selectConstrainIterations,
+  selectGridCellSize,
   selectParticleCount,
   selectFPS,
   selectCamera,
@@ -77,12 +79,13 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const dispatch = useAppDispatch();
 
   // All state from Redux
-  const engineState = useAppSelector(selectEngineState);
   const isWebGPU = useAppSelector(selectIsWebGPU);
   const isPlaying = useAppSelector(selectIsPlaying);
   const isInitialized = useAppSelector(selectIsInitialized);
   const isInitializing = useAppSelector(selectIsInitializing);
   const error = useAppSelector(selectError);
+  const constrainIterations = useAppSelector(selectConstrainIterations);
+  const gridCellSize = useAppSelector(selectGridCellSize);
   const particleCount = useAppSelector(selectParticleCount);
   const fps = useAppSelector(selectFPS);
   const camera = useAppSelector(selectCamera);
@@ -363,18 +366,13 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
     // Apply current Redux settings to the engine
     try {
-      engine.setConstrainIterations(engineState.constrainIterations);
-      engine.setCellSize(engineState.gridCellSize);
+      engine.setConstrainIterations(constrainIterations);
+      engine.setCellSize(gridCellSize);
       engine.setClearColor(clearColor);
     } catch (err) {
       console.warn("Error applying engine configuration:", err);
     }
-  }, [
-    isInitialized,
-    engineState.constrainIterations,
-    engineState.gridCellSize,
-    clearColor,
-  ]);
+  }, [isInitialized, constrainIterations, gridCellSize, clearColor]);
 
   // Apply module states from Redux to engine modules
   useEffect(() => {
@@ -615,6 +613,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     isInitialized,
     isInitializing,
     error,
+    constrainIterations,
+    gridCellSize,
     particleCount,
     fps,
     clearColor,

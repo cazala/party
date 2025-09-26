@@ -12,7 +12,7 @@ import {
 } from "@cazala/party";
 import { useEngineInternal } from "../hooks/useEngineInternal";
 import { useWindowSize } from "../hooks/useWindowSize";
-import { useAppDispatch } from "../hooks/redux";
+import { useAppDispatch } from "../hooks/useAppDispatch";
 import {
   setSizeThunk,
   registerEngine,
@@ -35,6 +35,8 @@ export interface EngineContextType {
   isInitialized: boolean;
   isInitializing: boolean;
   error: string | null;
+  constrainIterations: number;
+  gridCellSize: number;
   particleCount: number;
   fps: number;
   clearColor: { r: number; g: number; b: number; a: number };

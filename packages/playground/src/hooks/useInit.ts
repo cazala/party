@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import { useAppDispatch, useAppSelector } from "./redux";
+import { useAppDispatch } from "./useAppDispatch";
+import { useAppSelector } from "./useAppSelector";
 import {
   setNumParticles,
   setSpawnShape,

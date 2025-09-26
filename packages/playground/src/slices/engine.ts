@@ -464,6 +464,10 @@ export const selectIsInitializing = (state: { engine: EngineState }) =>
   state.engine.isInitializing;
 export const selectError = (state: { engine: EngineState }) =>
   state.engine.error;
+export const selectConstrainIterations = (state: { engine: EngineState }) =>
+  state.engine.constrainIterations;
+export const selectGridCellSize = (state: { engine: EngineState }) =>
+  state.engine.gridCellSize;
 export const selectParticleCount = (state: { engine: EngineState }) =>
   state.engine.particleCount;
 export const selectFPS = (state: { engine: EngineState }) => state.engine.fps;

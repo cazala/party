@@ -3,23 +3,18 @@ import { Slider } from "./ui/Slider";
 import { Field } from "./ui/Field";
 import { Metrics } from "./ui/Metrics";
 import { useEngine } from "../hooks/useEngine";
-import { useAppDispatch, useAppSelector } from "../hooks/redux";
-import {
-  selectEngineState,
-  setConstrainIterations,
-  setGridCellSize,
-} from "../slices/engine";
 
 export function PerformanceControls() {
-  const dispatch = useAppDispatch();
-  const engineState = useAppSelector(selectEngineState);
   const {
-    setConstrainIterations: setConstrainIterationsThunk,
+    isWebGPU,
+    constrainIterations,
+    gridCellSize,
+    particleCount,
+    fps,
+    setConstrainIterations,
     setCellSize,
     toggleRuntime,
   } = useEngine();
-  const { isWebGPU, constrainIterations, gridCellSize, particleCount, fps } =
-    engineState;
   return (
     <>
       <Checkbox
@@ -34,10 +29,7 @@ export function PerformanceControls() {
         min={1}
         max={100}
         step={1}
-        onChange={(value) => {
-          dispatch(setConstrainIterations(value));
-          setConstrainIterationsThunk(value);
-        }}
+        onChange={setConstrainIterations}
       />
       <Slider
         label="Grid Cell Size"
@@ -45,10 +37,7 @@ export function PerformanceControls() {
         min={8}
         max={128}
         step={8}
-        onChange={(value) => {
-          dispatch(setGridCellSize(value));
-          setCellSize(value);
-        }}
+        onChange={setCellSize}
       />
 
       <Field>

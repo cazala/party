@@ -1,16 +1,12 @@
 import { ColorPicker } from "./ui/ColorPicker";
 import { useEngine } from "../hooks/useEngine";
-import { useAppDispatch, useAppSelector } from "../hooks/redux";
-import { selectClearColor, setClearColor } from "../slices/engine";
 
 interface RenderControlsProps {
   disabled?: boolean;
 }
 
 export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
-  const dispatch = useAppDispatch();
-  const clearColorRgba = useAppSelector(selectClearColor);
-  const { setClearColor: setClearColorThunk } = useEngine();
+  const { clearColor, setClearColor } = useEngine();
 
   // Convert RGBA to hex
   const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
@@ -34,15 +30,14 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
       : { r: 0, g: 0, b: 0, a: 1 };
   };
 
-  const clearColorHex = rgbaToHex(clearColorRgba);
+  const clearColorHex = rgbaToHex(clearColor);
   return (
     <ColorPicker
       label="Clear Color"
       value={clearColorHex}
       onChange={(hex) => {
         const rgba = hexToRgba(hex, 1);
-        dispatch(setClearColor(rgba));
-        setClearColorThunk(rgba);
+        setClearColor(rgba);
       }}
       disabled={disabled}
     />
