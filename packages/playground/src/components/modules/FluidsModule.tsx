@@ -34,7 +34,7 @@ export function FluidsModule({
     enableNearPressure,
     maxAcceleration,
   } = fluidsState;
-  
+
   // Sync Redux state with fluids module when fluids is available
   useEffect(() => {
     if (fluids && enabled) {
@@ -47,13 +47,27 @@ export function FluidsModule({
       fluids.setEnableNearPressure(enableNearPressure);
       fluids.setMaxAcceleration(maxAcceleration);
     }
-  }, [fluids, enabled, influenceRadius, targetDensity, pressureMultiplier, viscosity, nearPressureMultiplier, nearThreshold, enableNearPressure, maxAcceleration]);
+  }, [
+    fluids,
+    enabled,
+    influenceRadius,
+    targetDensity,
+    pressureMultiplier,
+    viscosity,
+    nearPressureMultiplier,
+    nearThreshold,
+    enableNearPressure,
+    maxAcceleration,
+  ]);
 
   return (
     <>
       <Slider
         label="Influence Radius"
         value={influenceRadius}
+        min={1}
+        max={100}
+        step={1}
         onChange={(v) => {
           dispatch(setFluidsInfluenceRadius(v));
           fluids?.setInfluenceRadius(v);
@@ -63,6 +77,9 @@ export function FluidsModule({
       <Slider
         label="Max Acceleration"
         value={maxAcceleration}
+        min={0}
+        max={100}
+        step={1}
         onChange={(v) => {
           dispatch(setFluidsMaxAcceleration(v));
           fluids?.setMaxAcceleration(v);
@@ -72,6 +89,9 @@ export function FluidsModule({
       <Slider
         label="Density"
         value={targetDensity}
+        min={0}
+        max={5}
+        step={0.01}
         onChange={(v) => {
           dispatch(setFluidsTargetDensity(v));
           fluids?.setTargetDensity(v);
@@ -81,6 +101,9 @@ export function FluidsModule({
       <Slider
         label="Pressure"
         value={pressureMultiplier}
+        min={0}
+        max={100}
+        step={1}
         onChange={(v) => {
           dispatch(setFluidsPressureMultiplier(v));
           fluids?.setPressureMultiplier(v);
@@ -90,6 +113,9 @@ export function FluidsModule({
       <Slider
         label="Viscosity"
         value={viscosity}
+        min={0}
+        max={10}
+        step={0.01}
         onChange={(v) => {
           dispatch(setFluidsViscosity(v));
           fluids?.setViscosity(v);
@@ -108,6 +134,9 @@ export function FluidsModule({
       <Slider
         label="Near Pressure"
         value={nearPressureMultiplier}
+        min={0}
+        max={100}
+        step={1}
         onChange={(v) => {
           dispatch(setFluidsNearPressureMultiplier(v));
           fluids?.setNearPressureMultiplier(v);
@@ -117,6 +146,9 @@ export function FluidsModule({
       <Slider
         label="Near Threshold"
         value={nearThreshold}
+        min={0}
+        max={100}
+        step={1}
         onChange={(v) => {
           dispatch(setFluidsNearThreshold(v));
           fluids?.setNearThreshold(v);
