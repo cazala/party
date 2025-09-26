@@ -43,6 +43,10 @@ import {
   setFPS as setFPSAction,
 } from "../modules/engine/slice";
 import {
+  selectModulesState,
+  importModuleSettings,
+} from "../modules/modules/slice";
+import {
   Environment,
   Boundary,
   Collisions,
@@ -77,6 +81,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const zoom = useAppSelector(selectZoom);
   const size = useAppSelector(selectSize);
   const clearColor = useAppSelector(selectClearColor);
+  const modulesState = useAppSelector(selectModulesState);
 
   // Engine and module references
   const engineRef = useRef<Engine | null>(null);
@@ -122,6 +127,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
             camera: currentEngine.getCamera(),
             zoom: currentEngine.getZoom(),
             size: currentEngine.getSize(),
+            modulesState: { ...modulesState },
           };
 
           currentEngine.destroy();
@@ -271,17 +277,21 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         dispatch(setWebGPU(shouldUseWebGPU));
 
         // Restore preserved state if we had one (during engine type toggle)
-        if (
-          preservedState &&
-          preservedState.particles &&
-          preservedState.particles.length > 0
-        ) {
-          console.log(
-            "🔄 Restoring",
-            preservedState.particles.length,
-            "particles from previous engine"
-          );
-          engine.setParticles(preservedState.particles);
+        if (preservedState) {
+          console.log("🔄 Restoring state from previous engine");
+
+          // Restore particles if we had them
+          if (preservedState.particles && preservedState.particles.length > 0) {
+            console.log(
+              "🔄 Restoring",
+              preservedState.particles.length,
+              "particles"
+            );
+            engine.setParticles(preservedState.particles);
+            dispatch(setParticleCount(preservedState.particles.length));
+          }
+
+          // Restore engine settings
           engine.setConstrainIterations(preservedState.constrainIterations);
           engine.setCellSize(preservedState.cellSize);
           engine.setClearColor(preservedState.clearColor);
@@ -289,8 +299,11 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           engine.setZoom(preservedState.zoom);
           engine.setSize(preservedState.size.width, preservedState.size.height);
 
-          // Update Redux state with preserved values
-          dispatch(setParticleCount(preservedState.particles.length));
+          // Restore module states in Redux
+          if (preservedState.modulesState) {
+            console.log("🔄 Restoring module states");
+            dispatch(importModuleSettings(preservedState.modulesState));
+          }
         }
 
         // Mark as initialized
@@ -344,6 +357,78 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     engineState.constrainIterations,
     engineState.gridCellSize,
     clearColor,
+  ]);
+
+  // Apply module states from Redux to engine modules
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const environment = environmentRef.current;
+    const boundary = boundaryRef.current;
+    const collisions = collisionsRef.current;
+    const fluids = fluidsRef.current;
+    const behavior = behaviorRef.current;
+    const sensors = sensorsRef.current;
+    const trails = trailsRef.current;
+    const interaction = interactionRef.current;
+
+    try {
+      // Apply module enabled/disabled states from Redux to module instances
+      if (environment && environment.setEnabled) {
+        environment.setEnabled(modulesState.environment.enabled);
+      }
+
+      if (boundary && boundary.setEnabled) {
+        boundary.setEnabled(modulesState.boundary.enabled);
+      }
+
+      if (collisions && collisions.setEnabled) {
+        collisions.setEnabled(modulesState.collisions.enabled);
+      }
+
+      if (fluids && fluids.setEnabled) {
+        fluids.setEnabled(modulesState.fluids.enabled);
+      }
+
+      if (behavior && behavior.setEnabled) {
+        behavior.setEnabled(modulesState.behavior.enabled);
+      }
+
+      if (sensors && sensors.setEnabled) {
+        sensors.setEnabled(modulesState.sensors.enabled);
+      }
+
+      if (trails && trails.setEnabled) {
+        trails.setEnabled(modulesState.trails.enabled);
+      }
+
+      if (interaction && interaction.setEnabled) {
+        interaction.setEnabled(modulesState.interaction.enabled);
+      }
+
+      console.log("🔄 Applied module states to engine:", {
+        environment: modulesState.environment.enabled,
+        boundary: modulesState.boundary.enabled,
+        collisions: modulesState.collisions.enabled,
+        fluids: modulesState.fluids.enabled,
+        behavior: modulesState.behavior.enabled,
+        sensors: modulesState.sensors.enabled,
+        trails: modulesState.trails.enabled,
+        interaction: modulesState.interaction.enabled,
+      });
+    } catch (err) {
+      console.warn("Error applying module states:", err);
+    }
+  }, [
+    isInitialized,
+    modulesState.environment.enabled,
+    modulesState.boundary.enabled,
+    modulesState.collisions.enabled,
+    modulesState.fluids.enabled,
+    modulesState.behavior.enabled,
+    modulesState.sensors.enabled,
+    modulesState.trails.enabled,
+    modulesState.interaction.enabled,
   ]);
 
   // Periodic updates for particle count and FPS

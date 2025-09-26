@@ -25,8 +25,6 @@ export function ModulesSidebar() {
     trails,
     interaction,
     isSupported,
-    isInitialized,
-    isInitializing,
   } = useEngine();
   
   // Get enabled states from Redux
@@ -56,8 +54,6 @@ export function ModulesSidebar() {
         enabled={environmentEnabled}
         setEnabled={(enabled) => handleModuleEnabledChange('environment', enabled)}
         isSupported={isSupported(environment)}
-        isInitialized={isInitialized}
-        isInitializing={isInitializing}
       >
         <EnvironmentModule environment={environment} />
       </ModuleWrapper>
@@ -68,8 +64,6 @@ export function ModulesSidebar() {
         enabled={boundaryEnabled}
         setEnabled={(enabled) => handleModuleEnabledChange('boundary', enabled)}
         isSupported={isSupported(boundary)}
-        isInitialized={isInitialized}
-        isInitializing={isInitializing}
       >
         <BoundaryModule boundary={boundary} />
       </ModuleWrapper>
@@ -80,8 +74,6 @@ export function ModulesSidebar() {
         enabled={collisionsEnabled}
         setEnabled={(enabled) => handleModuleEnabledChange('collisions', enabled)}
         isSupported={isSupported(collisions)}
-        isInitialized={isInitialized}
-        isInitializing={isInitializing}
       >
         <CollisionsModule collisions={collisions} />
       </ModuleWrapper>
@@ -92,8 +84,6 @@ export function ModulesSidebar() {
         isSupported={isSupported(fluids)}
         enabled={fluidsEnabled}
         setEnabled={(enabled) => handleModuleEnabledChange('fluids', enabled)}
-        isInitialized={isInitialized}
-        isInitializing={isInitializing}
       >
         <FluidsModule fluids={fluids} />
       </ModuleWrapper>
@@ -104,8 +94,6 @@ export function ModulesSidebar() {
         isSupported={isSupported(behavior)}
         enabled={behaviorEnabled}
         setEnabled={(enabled) => handleModuleEnabledChange('behavior', enabled)}
-        isInitialized={isInitialized}
-        isInitializing={isInitializing}
       >
         <BehaviorModule behavior={behavior} />
       </ModuleWrapper>
@@ -113,6 +101,7 @@ export function ModulesSidebar() {
       <ModuleWrapper
         title="Trails"
         module={trails}
+        isSupported={isSupported(trails)}
         enabled={trailsEnabled}
         setEnabled={(enabled) => handleModuleEnabledChange('trails', enabled)}
       >
@@ -125,8 +114,6 @@ export function ModulesSidebar() {
         isSupported={isSupported(sensors)}
         enabled={sensorsEnabled}
         setEnabled={(enabled) => handleModuleEnabledChange('sensors', enabled)}
-        isInitialized={isInitialized}
-        isInitializing={isInitializing}
       >
         <SensorsModule sensors={sensors} />
       </ModuleWrapper>
