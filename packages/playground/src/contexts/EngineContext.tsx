@@ -5,6 +5,17 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
+import {
+  Engine,
+  Environment,
+  Boundary,
+  Collisions,
+  Fluids,
+  Behavior,
+  Sensors,
+  Trails,
+  Interaction,
+} from "@cazala/party";
 import { useEngineInternal } from "../hooks/useEngine";
 import { useWindowSize } from "../hooks/useWindowSize";
 import { useAppDispatch } from "../modules/hooks";
@@ -23,6 +34,7 @@ const TOOLBAR_HEIGHT = 60;
 interface EngineContextType {
   // Canvas ref for direct access if needed
   canvasRef: React.RefObject<HTMLCanvasElement>;
+
   // All the engine state and actions
   isWebGPU: boolean;
   isPlaying: boolean;
@@ -35,8 +47,7 @@ interface EngineContextType {
   size: { width: number; height: number };
   camera: { x: number; y: number };
   zoom: number;
-  engineType: string;
-  useWebGPU: boolean;
+  runtime: "cpu" | "webgpu";
 
   // Action functions
   play: () => void;
@@ -61,25 +72,25 @@ interface EngineContextType {
     color: { r: number; g: number; b: number; a: number };
   }) => void;
   spawnParticles: (config: SpawnParticlesConfig) => void;
-  toggleEngineType: () => Promise<void>;
+  toggleRuntime: () => Promise<void>;
 
   // Utility functions
-  handleZoom: (deltaY: number, centerX: number, centerY: number) => void;
+  handleWheel: (deltaY: number, centerX: number, centerY: number) => void;
   screenToWorld: (sx: number, sy: number) => { x: number; y: number };
   isSupported: (module: any) => boolean;
   getParticleCount: () => number;
   getFPS: () => number;
 
   // Module references
-  system: any;
-  environment: any;
-  boundary: any;
-  collisions: any;
-  fluids: any;
-  behavior: any;
-  sensors: any;
-  trails: any;
-  interaction: any;
+  engine: Engine | null;
+  environment: Environment | null;
+  boundary: Boundary | null;
+  collisions: Collisions | null;
+  fluids: Fluids | null;
+  behavior: Behavior | null;
+  sensors: Sensors | null;
+  trails: Trails | null;
+  interaction: Interaction | null;
 }
 
 const EngineContext = createContext<EngineContextType | null>(null);
@@ -103,21 +114,21 @@ export function EngineProvider({ children }: EngineProviderProps) {
     initialSize: { width: canvasWidth, height: canvasHeight },
   });
 
-  const { system, isInitialized } = engineState;
+  const { engine, isInitialized } = engineState;
 
   // Register engine instance for thunks
   useEffect(() => {
-    registerEngine(system);
-  }, [system]);
+    registerEngine(engine);
+  }, [engine]);
 
   // Update canvas size when window size changes
   useEffect(() => {
-    if (system && isInitialized) {
+    if (engine && isInitialized) {
       const targetWidth = size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
       const targetHeight = size.height - TOPBAR_HEIGHT - TOOLBAR_HEIGHT;
       dispatch(setSizeThunk({ width: targetWidth, height: targetHeight }));
     }
-  }, [system, isInitialized, size, dispatch]);
+  }, [engine, isInitialized, size, dispatch]);
 
   // Add a timeout for initialization
   useEffect(() => {
@@ -160,13 +171,12 @@ export function EngineCanvas({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const { canvasRef, size, engineType, handleZoom, isInitialized } =
-    useEngine();
+  const { canvasRef, size, runtime, handleWheel, isInitialized } = useEngine();
 
   // Add wheel event listener for zoom
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !handleZoom || !isInitialized) return;
+    if (!canvas || !handleWheel || !isInitialized) return;
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault(); // Prevent page scroll
@@ -175,7 +185,7 @@ export function EngineCanvas({
       const centerX = e.clientX - rect.left;
       const centerY = e.clientY - rect.top;
 
-      handleZoom(e.deltaY, centerX, centerY);
+      handleWheel(e.deltaY, centerX, centerY);
     };
 
     canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -183,11 +193,11 @@ export function EngineCanvas({
     return () => {
       canvas.removeEventListener("wheel", onWheel);
     };
-  }, [handleZoom, isInitialized, engineType]);
+  }, [handleWheel, isInitialized, runtime]);
 
   return (
     <canvas
-      key={engineType} // Force canvas recreation when engine type changes
+      key={runtime} // Force canvas recreation when engine type changes
       ref={canvasRef}
       id="canvas"
       className={className}

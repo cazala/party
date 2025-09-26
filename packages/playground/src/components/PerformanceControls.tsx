@@ -13,19 +13,18 @@ import {
 export function PerformanceControls() {
   const dispatch = useAppDispatch();
   const engineState = useAppSelector(selectEngineState);
-  const { setConstrainIterations: setConstrainIterationsThunk, setCellSize, toggleEngineType } = useEngine();
   const {
-    isWebGPU,
-    constrainIterations,
-    gridCellSize,
-    particleCount,
-    fps,
-  } = engineState;
+    setConstrainIterations: setConstrainIterationsThunk,
+    setCellSize,
+    toggleRuntime,
+  } = useEngine();
+  const { isWebGPU, constrainIterations, gridCellSize, particleCount, fps } =
+    engineState;
   return (
     <>
       <Checkbox
         checked={isWebGPU}
-        onChange={() => toggleEngineType()}
+        onChange={() => toggleRuntime()}
         label="Use WebGPU"
       />
 
@@ -56,7 +55,10 @@ export function PerformanceControls() {
         <Metrics label="Particles" value={particleCount.toLocaleString()} />
       </Field>
       <Field>
-        <Metrics label="FPS" value={Math.min(Math.round(fps) || 0, 120).toLocaleString()} />
+        <Metrics
+          label="FPS"
+          value={Math.min(Math.round(fps) || 0, 120).toLocaleString()}
+        />
       </Field>
     </>
   );

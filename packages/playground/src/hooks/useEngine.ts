@@ -22,10 +22,10 @@ import {
   setConstrainIterationsThunk,
   setCellSizeThunk,
   setClearColorThunk,
-  toggleEngineType as toggleEngineTypeAction,
+  toggleRuntime as toggleRuntimeAction,
   addParticleThunk,
   spawnParticlesThunk,
-  handleZoomThunk,
+  handleWheelThunk,
   registerEngine,
   setParticleCount,
   setFPS,
@@ -93,7 +93,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const [isAutoMode, setIsAutoMode] = useState(true);
 
   // Engine type string for canvas key
-  const engineType = isWebGPU ? "webgpu" : "cpu";
+  const runtime: "cpu" | "webgpu" = isWebGPU ? "webgpu" : "cpu";
 
   // Initialize engine
   useEffect(() => {
@@ -439,10 +439,10 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     [dispatch]
   );
 
-  const toggleEngineType = useCallback(async () => {
+  const toggleRuntime = useCallback(async () => {
     // Preserve current state before toggling
     setIsAutoMode(false);
-    dispatch(toggleEngineTypeAction());
+    dispatch(toggleRuntimeAction());
   }, [dispatch]);
 
   // Utility functions
@@ -467,10 +467,10 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     [canvasRef]
   );
 
-  const handleZoom = useCallback(
+  const handleWheel = useCallback(
     (deltaY: number, centerX: number, centerY: number) => {
       dispatch(
-        handleZoomThunk({
+        handleWheelThunk({
           deltaY,
           centerX,
           centerY,
@@ -519,8 +519,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     size,
     camera,
     zoom,
-    engineType,
-    useWebGPU: isWebGPU, // Alias for consistency
+    runtime,
 
     // Action functions (wrapped thunks)
     play,
@@ -534,17 +533,17 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     setClearColor: setClearColorAction,
     addParticle,
     spawnParticles,
-    toggleEngineType,
+    toggleRuntime,
 
     // Utility functions
-    handleZoom,
+    handleWheel,
     screenToWorld,
     isSupported,
     getParticleCount,
     getFPS,
 
     // Module references (direct access to engine instances)
-    system: engineRef.current,
+    engine: engineRef.current,
     environment: environmentRef.current,
     boundary: boundaryRef.current,
     collisions: collisionsRef.current,

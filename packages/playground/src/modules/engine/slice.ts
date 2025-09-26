@@ -127,7 +127,7 @@ export const engineSlice = createSlice({
     setZoom: (state, action: PayloadAction<number>) => {
       state.zoom = action.payload;
     },
-    toggleEngineType: (state) => {
+    toggleRuntime: (state) => {
       state.isAutoMode = false;
       state.isWebGPU = !state.isWebGPU;
       // Note: Constraint iterations will be synced from the actual engine after recreation
@@ -245,8 +245,8 @@ export const setClearColorThunk = createAsyncThunk(
   }
 );
 
-export const toggleEngineTypeThunk = createAsyncThunk(
-  "engine/toggleEngineType",
+export const toggleRuntimeThunk = createAsyncThunk(
+  "engine/toggleRuntime",
   async (recreateEngine: () => Promise<void>, { dispatch }) => {
     const currentEngine = getEngine();
 
@@ -267,7 +267,7 @@ export const toggleEngineTypeThunk = createAsyncThunk(
       }
 
       // Toggle engine type in Redux
-      dispatch(engineSlice.actions.toggleEngineType());
+      dispatch(engineSlice.actions.toggleRuntime());
 
       // Recreate the engine with new type
       await recreateEngine();
@@ -383,8 +383,8 @@ export const spawnParticlesThunk = createAsyncThunk(
 );
 
 // Zoom handling thunk
-export const handleZoomThunk = createAsyncThunk(
-  "engine/handleZoom",
+export const handleWheelThunk = createAsyncThunk(
+  "engine/handleWheel",
   async (
     zoomData: {
       deltaY: number;
@@ -444,7 +444,7 @@ export const {
   setSize,
   setCamera,
   setZoom,
-  toggleEngineType,
+  toggleRuntime,
   updateEngineState,
   resetEngine,
 } = engineSlice.actions;
