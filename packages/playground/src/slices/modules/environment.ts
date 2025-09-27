@@ -55,6 +55,39 @@ export const environmentSlice = createSlice({
       state.dirX = action.payload.dirX;
       state.dirY = action.payload.dirY;
     },
+    setEnvironmentMode: (state, action: PayloadAction<string>) => {
+      state.mode = action.payload;
+      // Update dirX/dirY based on mode for basic directions
+      switch (action.payload) {
+        case "down":
+          state.dirX = 0;
+          state.dirY = 1;
+          break;
+        case "up":
+          state.dirX = 0;
+          state.dirY = -1;
+          break;
+        case "left":
+          state.dirX = -1;
+          state.dirY = 0;
+          break;
+        case "right":
+          state.dirX = 1;
+          state.dirY = 0;
+          break;
+        // For inwards, outwards, and custom, dirX/dirY are handled by the engine
+        case "inwards":
+        case "outwards":
+          state.dirX = 0;
+          state.dirY = 0;
+          break;
+        case "custom":
+          // When switching to custom mode, always set default to right (90°)
+          state.dirX = 1;
+          state.dirY = 0;
+          break;
+      }
+    },
     resetEnvironment: () => initialState,
     importEnvironmentSettings: (
       state,
@@ -72,6 +105,7 @@ export const {
   setEnvironmentFriction,
   setEnvironmentDamping,
   setEnvironmentDirection,
+  setEnvironmentMode,
   resetEnvironment,
   importEnvironmentSettings,
 } = environmentSlice.actions;

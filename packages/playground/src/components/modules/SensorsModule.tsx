@@ -113,6 +113,9 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         <Slider
           label="Color Similarity Threshold"
           value={colorSimilarityThreshold}
+          min={0}
+          max={1}
+          step={0.01}
           onChange={setColorSimilarityThreshold}
           disabled={!enabled}
         />

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
+import { degToRad } from "@cazala/party";
 import { useAppDispatch } from "../useAppDispatch";
 import { useAppSelector } from "../useAppSelector";
 import { useEngine } from "../useEngine";
@@ -11,6 +12,7 @@ import {
   setEnvironmentFriction,
   setEnvironmentDamping,
   setEnvironmentDirection,
+  setEnvironmentMode,
 } from "../../slices/modules/environment";
 
 export function useEnvironment() {
@@ -33,17 +35,7 @@ export function useEnvironment() {
       environment.setInertia(state.inertia);
       environment.setFriction(state.friction);
       environment.setDamping(state.damping);
-      environment.setGravityDirection?.(
-        state.dirX === 0 && state.dirY === 1
-          ? "down"
-          : state.dirX === 0 && state.dirY === -1
-          ? "up"
-          : state.dirX === -1 && state.dirY === 0
-          ? "left"
-          : state.dirX === 1 && state.dirY === 0
-          ? "right"
-          : ("custom" as any)
-      );
+      environment.setGravityDirection?.(state.mode as any);
     }
   }, [environment, state]);
 
@@ -90,19 +82,62 @@ export function useEnvironment() {
   const setDirection = useCallback(
     (dirX: number, dirY: number) => {
       dispatch(setEnvironmentDirection({ dirX, dirY }));
-      const direction =
-        dirX === 0 && dirY === 1
-          ? "down"
-          : dirX === 0 && dirY === -1
-          ? "up"
-          : dirX === -1 && dirY === 0
-          ? "left"
-          : dirX === 1 && dirY === 0
-          ? "right"
-          : ("custom" as any);
-      environment?.setGravityDirection?.(direction);
+      // Only auto-set mode if we're not already in custom mode
+      if (mode !== "custom") {
+        const direction =
+          dirX === 0 && dirY === 1
+            ? "down"
+            : dirX === 0 && dirY === -1
+            ? "up"
+            : dirX === -1 && dirY === 0
+            ? "left"
+            : dirX === 1 && dirY === 0
+            ? "right"
+            : ("custom" as any);
+        dispatch(setEnvironmentMode(direction));
+        environment?.setGravityDirection?.(direction);
+      } else {
+        // If in custom mode, just update the engine with custom
+        environment?.setGravityDirection?.("custom" as any);
+      }
+    },
+    [dispatch, environment, mode]
+  );
+
+  const setMode = useCallback(
+    (mode: string) => {
+      dispatch(setEnvironmentMode(mode));
+      environment?.setGravityDirection?.(mode as any);
     },
     [dispatch, environment]
+  );
+
+  const setCustomDirection = useCallback(
+    (dirX: number, dirY: number) => {
+      dispatch(setEnvironmentDirection({ dirX, dirY }));
+      // For custom mode, we need to tell the engine to use custom direction
+      environment?.setGravityDirection?.("custom" as any);
+    },
+    [dispatch, environment]
+  );
+
+  const setCustomAngle = useCallback(
+    (angleRadians: number) => {
+      // Use the engine's setGravityAngle method which handles custom angles properly
+      environment?.setGravityAngle?.(angleRadians);
+      // Also update our Redux state to keep it in sync
+      const dirX = Math.sin(angleRadians);
+      const dirY = -Math.cos(angleRadians);
+      dispatch(setEnvironmentDirection({ dirX, dirY }));
+    },
+    [dispatch, environment]
+  );
+
+  const setCustomAngleDegrees = useCallback(
+    (angleDegrees: number) => {
+      setCustomAngle(degToRad(angleDegrees));
+    },
+    [setCustomAngle]
   );
 
   return {
@@ -122,5 +157,9 @@ export function useEnvironment() {
     setFriction,
     setDamping,
     setDirection,
+    setMode,
+    setCustomDirection,
+    setCustomAngle,
+    setCustomAngleDegrees,
   };
 }

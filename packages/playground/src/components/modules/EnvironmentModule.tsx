@@ -1,3 +1,4 @@
+import { radToDeg } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
 import { useEnvironment } from "../../hooks/modules/useEnvironment";
@@ -10,25 +11,27 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
     inertia,
     friction,
     damping,
+    mode,
     setGravityStrength,
     setInertia,
     setFriction,
     setDamping,
-    setDirection,
+    setMode,
+    setCustomAngleDegrees,
   } = useEnvironment();
 
-  // Calculate direction and angle from dirX, dirY
-  const getDirectionFromVector = (x: number, y: number): string => {
-    if (x === 0 && y === 1) return "down";
-    if (x === 0 && y === -1) return "up";
-    if (x === -1 && y === 0) return "left";
-    if (x === 1 && y === 0) return "right";
-    // For inwards/outwards we'd need center point logic, simplified for now
-    return "custom";
-  };
+  // Use mode directly from the state
+  const direction = mode;
 
-  const direction = getDirectionFromVector(dirX, dirY);
-  const angle = Math.atan2(dirY, dirX) * (180 / Math.PI) + 90; // Convert to degrees
+  // Calculate angle properly for custom mode
+  let angle = 90; // Default to 90° (right) for custom mode
+  if (direction === "custom") {
+    // If we have valid dirX/dirY values (not both 0), calculate angle from them
+    if (dirX !== 0 || dirY !== 0) {
+      // Convert from dirX, dirY to degrees (0° = up, 90° = right, 180° = down, 270° = left)
+      angle = (radToDeg(Math.atan2(dirX, -dirY)) + 360) % 360;
+    }
+  }
 
   return (
     <>
@@ -46,31 +49,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
         label="Gravity Direction"
         value={direction}
         onChange={(dir) => {
-          let newDirX = 0,
-            newDirY = 0;
-          switch (dir) {
-            case "down":
-              newDirX = 0;
-              newDirY = 1;
-              break;
-            case "up":
-              newDirX = 0;
-              newDirY = -1;
-              break;
-            case "left":
-              newDirX = -1;
-              newDirY = 0;
-              break;
-            case "right":
-              newDirX = 1;
-              newDirY = 0;
-              break;
-            default:
-              newDirX = dirX;
-              newDirY = dirY;
-              break;
-          }
-          setDirection(newDirX, newDirY);
+          setMode(dir);
         }}
         options={[
           { value: "down", label: "Down" },
@@ -88,17 +67,12 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
         <Slider
           label="Gravity Angle"
           value={angle}
-          onChange={(deg) => {
-            const rad = ((deg - 90) * Math.PI) / 180; // Convert from degrees, adjust for coordinate system
-            const newDirX = Math.cos(rad);
-            const newDirY = Math.sin(rad);
-            setDirection(newDirX, newDirY);
-          }}
+          onChange={setCustomAngleDegrees}
           min={0}
           max={360}
           step={1}
           disabled={!enabled}
-          formatValue={(v) => `${v}°`}
+          formatValue={(v) => `${v.toFixed(0)}°`}
         />
       )}
 
