@@ -207,14 +207,20 @@ export class Boundary extends Module<"boundary", BoundaryInputKeys> {
   } else if (mode == 2.0) {
     // kill
     // Only kill once the particle is fully outside the bounds
-    if (
-      ${particleVar}.position.x + halfSize < minX ||
-      ${particleVar}.position.x - halfSize > maxX ||
-      ${particleVar}.position.y + halfSize < minY ||
-      ${particleVar}.position.y - halfSize > maxY
-    ) {
+    if (${particleVar}.position.x - halfSize < minX) {
+      ${particleVar}.position.x = minX - halfSize * 4;
+      ${particleVar}.mass = 0.0;
+    } else if (${particleVar}.position.x + halfSize > maxX) {
+      ${particleVar}.position.x = maxX + halfSize * 4;
       ${particleVar}.mass = 0.0;
     }
+    if (${particleVar}.position.y - halfSize < minY) {
+      ${particleVar}.position.y = minY - halfSize * 4;
+      ${particleVar}.mass = 0.0;
+    } else if (${particleVar}.position.y + halfSize > maxY) {
+      ${particleVar}.position.y = maxY + halfSize * 4;
+      ${particleVar}.mass = 0.0;
+    } 
   } else if (mode == 3.0) {
     // none: no boundary constraints; repel force above still applies
   }

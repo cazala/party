@@ -51,7 +51,7 @@ export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
         value={repelDistance}
         min={0}
         max={1000}
-        step={1000}
+        step={1}
         onChange={setRepelDistance}
         disabled={!enabled}
       />
@@ -60,7 +60,7 @@ export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
         value={repelStrength}
         min={0}
         max={1000}
-        step={1000}
+        step={1}
         onChange={setRepelStrength}
         disabled={!enabled}
       />
