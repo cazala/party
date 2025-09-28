@@ -3,8 +3,14 @@ import { Slider } from "./ui/Slider";
 import { Field } from "./ui/Field";
 import { Metrics } from "./ui/Metrics";
 import { useEngine } from "../hooks/useEngine";
+import { useAppSelector } from "../hooks/useAppSelector";
+import { useAppDispatch } from "../hooks/useAppDispatch";
+import { selectShowGrid, setShowGrid } from "../slices/ui";
 
 export function PerformanceControls() {
+  const dispatch = useAppDispatch();
+  const showGrid = useAppSelector(selectShowGrid);
+  
   const {
     isWebGPU,
     constrainIterations,
@@ -21,6 +27,12 @@ export function PerformanceControls() {
         checked={isWebGPU}
         onChange={() => toggleRuntime()}
         label="Use WebGPU"
+      />
+      
+      <Checkbox
+        checked={showGrid}
+        onChange={(checked) => dispatch(setShowGrid(checked))}
+        label="Show Grid"
       />
 
       <Slider
