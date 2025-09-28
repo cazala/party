@@ -110,6 +110,8 @@ export class CPUEngine extends AbstractEngine {
     this.particles = [];
     this.grid.clear();
     this.fpsEstimate = 60;
+    // Reset maxSize tracking
+    this.resetMaxSize();
   }
 
   getCount(): number {
@@ -124,10 +126,17 @@ export class CPUEngine extends AbstractEngine {
 
   setParticles(particle: IParticle[]): void {
     this.particles = particle.map((p) => new Particle(p));
+    // Update maxSize tracking
+    this.resetMaxSize();
+    for (const p of particle) {
+      this.updateMaxSize(p.size);
+    }
   }
 
   addParticle(particle: IParticle): void {
     this.particles.push(new Particle(particle));
+    // Update maxSize tracking
+    this.updateMaxSize(particle.size);
   }
 
   getParticles(): Promise<IParticle[]> {
@@ -289,6 +298,7 @@ export class CPUEngine extends AbstractEngine {
             force.apply({
               particle: particle,
               dt,
+              maxSize: this.getMaxSize(),
               getNeighbors,
               input,
               getState,
@@ -341,6 +351,7 @@ export class CPUEngine extends AbstractEngine {
                 particle: particle,
                 getNeighbors,
                 dt: dt,
+                maxSize: this.getMaxSize(),
                 input,
                 getState,
                 view: this.view,
@@ -384,6 +395,7 @@ export class CPUEngine extends AbstractEngine {
               particle: particle,
               getNeighbors,
               dt: dt,
+              maxSize: this.getMaxSize(),
               prevPos,
               postPos,
               input,

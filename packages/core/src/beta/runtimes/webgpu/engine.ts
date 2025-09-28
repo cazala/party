@@ -131,12 +131,19 @@ export class WebGPUEngine extends AbstractEngine {
   setParticles(p: IParticle[]): void {
     this.particles.setParticles(p);
     this.particles.syncToGPU(this.resources);
+    // Update maxSize tracking
+    this.resetMaxSize();
+    for (const particle of p) {
+      this.updateMaxSize(particle.size);
+    }
   }
 
   async addParticle(p: IParticle): Promise<void> {
     await this.particles.syncFromGPU(this.resources);
     this.particles.addParticle(p);
     this.particles.syncToGPU(this.resources);
+    // Update maxSize tracking
+    this.updateMaxSize(p.size);
   }
 
   /**
@@ -161,6 +168,8 @@ export class WebGPUEngine extends AbstractEngine {
     this.particles.clear();
     // Clear scene textures proactively
     this.render.clearTargets(this.resources);
+    // Reset maxSize tracking
+    this.resetMaxSize();
   }
 
   private animate = (): void => {
@@ -180,11 +189,12 @@ export class WebGPUEngine extends AbstractEngine {
       this.registry.getProgram()
     );
 
-    // Update simulation uniforms (dt, count, simStride)
+    // Update simulation uniforms (dt, count, simStride, maxSize)
     this.resources.writeSimulationUniform(this.registry.getProgram(), {
       dt,
       count: this.particles.getCount(),
       simStride: this.simStrideValue,
+      maxSize: this.getMaxSize(),
     });
 
     // Encode simulation + render

@@ -100,7 +100,7 @@ export function buildProgram(
   };
 
   // Internal: simulation + grid
-  pushUniformLayout("simulation", ["dt", "count", "simStride"] as const, 1);
+  pushUniformLayout("simulation", ["dt", "count", "simStride", "maxSize"] as const, 1);
   pushUniformLayout(
     "grid",
     [
@@ -155,6 +155,8 @@ export function buildProgram(
     .expr;
   const countExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping
     .count.expr;
+  const maxSizeExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping
+    .maxSize.expr;
 
   const baseState = ["prevX", "prevY", "posIntX", "posIntY"] as const;
   const stateSlots: Record<string, number> = {};
@@ -305,6 +307,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     const body = (descriptor as any).state?.({
       particleVar: "particle",
       dtVar: dtExpr,
+      maxSizeVar: maxSizeExpr,
       getUniform,
       setState: set,
     });
@@ -327,6 +330,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     const body = (descriptor as any).apply?.({
       particleVar: "particle",
       dtVar: dtExpr,
+      maxSizeVar: maxSizeExpr,
       getUniform,
       getState: get,
     });
@@ -349,6 +353,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     const body = (descriptor as any).constrain?.({
       particleVar: "particle",
       dtVar: dtExpr,
+      maxSizeVar: maxSizeExpr,
       getUniform,
       getState: get,
     });
@@ -373,6 +378,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     const body = (descriptor as any).correct?.({
       particleVar: "particle",
       dtVar: dtExpr,
+      maxSizeVar: maxSizeExpr,
       prevPosVar: "prevPos",
       postPosVar: "postPos", 
       getUniform,

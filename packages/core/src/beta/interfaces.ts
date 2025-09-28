@@ -56,6 +56,7 @@ export abstract class AbstractEngine implements IEngine {
   protected cellSize: number;
   protected view: View;
   protected modules: Module[];
+  protected maxSize: number = 0;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -222,6 +223,19 @@ export abstract class AbstractEngine implements IEngine {
     }
     this.constrainIterations = iterations;
     this.onConstrainIterationsChanged();
+  }
+
+  // MaxSize tracking
+  getMaxSize(): number {
+    return this.maxSize;
+  }
+
+  protected updateMaxSize(size: number): void {
+    this.maxSize = Math.max(this.maxSize, size);
+  }
+
+  protected resetMaxSize(): void {
+    this.maxSize = 0;
   }
 
   // Protected hooks for subclasses to override

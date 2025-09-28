@@ -102,24 +102,28 @@ export interface WebGPUForceDescriptor<
   state?: (args: {
     particleVar: string;
     dtVar: string;
+    maxSizeVar: string;
     getUniform: (id: InputKeys) => string;
     setState: (name: StateKeys, valueExpr: string) => string;
   }) => string;
   apply?: (args: {
     particleVar: string;
     dtVar: string;
+    maxSizeVar: string;
     getUniform: (id: InputKeys) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
   constrain?: (args: {
     particleVar: string;
     dtVar: string;
+    maxSizeVar: string;
     getUniform: (id: InputKeys) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
   correct?: (args: {
     particleVar: string;
     dtVar: string;
+    maxSizeVar: string;
     prevPosVar: string;
     postPosVar: string;
     getUniform: (id: InputKeys) => string;
@@ -223,6 +227,7 @@ export interface CPUForceDescriptor<
       radius: number
     ) => Particle[];
     dt: number;
+    maxSize: number;
     input: Record<InputKeys, number>;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
@@ -240,6 +245,7 @@ export interface CPUForceDescriptor<
       radius: number
     ) => Particle[];
     dt: number;
+    maxSize: number;
     input: Record<InputKeys, number>;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
@@ -251,6 +257,7 @@ export interface CPUForceDescriptor<
       radius: number
     ) => Particle[];
     dt: number;
+    maxSize: number;
     prevPos: { x: number; y: number };
     postPos: { x: number; y: number };
     input: Record<InputKeys, number>;

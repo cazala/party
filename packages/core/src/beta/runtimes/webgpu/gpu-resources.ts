@@ -275,7 +275,7 @@ export class GPUResources {
    */
   writeSimulationUniform(
     program: Program,
-    values: { dt?: number; count?: number; simStride?: number }
+    values: { dt?: number; count?: number; simStride?: number; maxSize?: number }
   ): void {
     const idx = program.layouts.findIndex((l) => l.moduleName === "simulation");
     if (idx === -1) return;
@@ -287,6 +287,8 @@ export class GPUResources {
       data[map.count.flatIndex] = values.count;
     if (values.simStride !== undefined && map.simStride)
       data[map.simStride.flatIndex] = values.simStride;
+    if (values.maxSize !== undefined && map.maxSize)
+      data[map.maxSize.flatIndex] = values.maxSize;
     this.writeModuleUniform(idx, data);
   }
 

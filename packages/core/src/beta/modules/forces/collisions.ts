@@ -20,7 +20,7 @@ import { Particle } from "../../particle";
 
 type CollisionInputKeys = "restitution";
 
-export const DEFAULT_COLLISIONS_RESTITUTION = 0.9;
+export const DEFAULT_COLLISIONS_RESTITUTION = 0.8;
 
 // Simple, brute-force elastic collision response applied only to current particle
 export class Collisions extends Module<"collisions", CollisionInputKeys> {
@@ -45,9 +45,9 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
 
   webgpu(): WebGPUDescriptor<CollisionInputKeys> {
     return {
-      constrain: ({ particleVar, getUniform }) => `
+      constrain: ({ particleVar, maxSizeVar, getUniform }) => `
   // Pass 1: find deepest overlap neighbor to reduce scan-order bias
-  var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size * 2.0);
+  var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size + ${maxSizeVar});
   var bestJ: u32 = NEIGHBOR_NONE;
   var bestN: vec2<f32> = vec2<f32>(0.0, 0.0);
   var bestOverlap: f32 = 0.0;
@@ -129,7 +129,8 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
     let e = ${getUniform("restitution")};
     let relN = dot(v1 - v2, n);
     if (relN < 0.0) {
-      let denom = max((1.0 / max(m1, 1e-6)) + (1.0 / max(m2, 1e-6)), 1e-6);
+      let mu = (m1 * m2) / max(m1 + m2, 1e-6);
+      let denom = max(1.0 / max(mu, 1e-6), 1e-6);
       let j = -(1.0 + e) * relN / denom;
       let dv = min(j / max(m1, 1e-6), 1000.0);
       ${particleVar}.velocity = v1 + n * dv;
@@ -163,11 +164,11 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
   cpu(): CPUDescriptor<CollisionInputKeys> {
     // Helper function equivalent to GLSL fract()
     const fract = (x: number) => x - Math.floor(x);
-    
+
     return {
-      constrain: ({ particle, getNeighbors, input }) => {
+      constrain: ({ particle, getNeighbors, input, maxSize }) => {
         // Find deepest overlap neighbor to reduce scan-order bias
-        const searchRadius = particle.size * 2;
+        const searchRadius = particle.size + maxSize;
         const neighbors = getNeighbors(particle.position, searchRadius);
 
         let bestOverlap = 0;
@@ -264,10 +265,8 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
           const relN = (v1x - v2x) * n.x + (v1y - v2y) * n.y;
 
           if (relN < 0) {
-            const denom = Math.max(
-              1 / Math.max(m1, 1e-6) + 1 / Math.max(m2, 1e-6),
-              1e-6
-            );
+            const mu = (m1 * m2) / Math.max(m1 + m2, 1e-6);
+            const denom = Math.max(1 / Math.max(mu, 1e-6), 1e-6);
             const j = (-(1 + e) * relN) / denom;
             const dv = Math.min(j / Math.max(m1, 1e-6), 1000);
             particle.velocity.x = v1x + n.x * dv;
