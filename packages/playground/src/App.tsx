@@ -1,5 +1,6 @@
 import { EngineProvider } from "./contexts/EngineContext";
 import { Canvas } from "./components/Canvas";
+import { Overlay } from "./components/Overlay";
 import { TopBar } from "./components/TopBar";
 import { ModulesSidebar } from "./components/ModulesSidebar";
 import { Toolbar } from "./components/ToolBar";
@@ -20,6 +21,7 @@ function AppContent() {
           <Toolbar style={{ display: "block" }} />
           <div className="canvas-container">
             <Canvas />
+            <Overlay />
           </div>
         </div>
         <div className="right-sidebar" style={{ display: "block" }}>

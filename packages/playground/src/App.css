@@ -26,6 +26,14 @@
   position: relative;
 }
 
+.canvas-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
 #canvas {
   display: block;
 }
@@ -43,6 +51,10 @@
 
 #canvas.grab-tool.grabbing {
   cursor: grabbing;
+}
+
+#canvas.spawn-tool {
+  cursor: none; /* Hide cursor when spawn tool is active, overlay will show preview */
 }
 
 .right-sidebar {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 import {
@@ -16,6 +16,32 @@ import {
   ToolMode,
 } from "../slices/tools";
 import { useEngine } from "../hooks/useEngine";
+import { useInit } from "../hooks/useInit";
+import { calculateMassFromSize } from "../utils/particle";
+
+interface OverlayData {
+  // Mouse tracking
+  mouseX: number;
+  mouseY: number;
+  
+  // Drag state
+  isDragging: boolean;
+  dragStartX: number;
+  dragStartY: number;
+  dragStartTime: number;
+  
+  // Size management
+  currentSize: number;
+  lockedSize: number;
+  
+  // Mode and controls
+  dragMode: "size" | "velocity";
+  isCtrlPressed: boolean;
+  previousCtrlPressed: boolean;
+  
+  // Color for current spawn
+  selectedColor: string;
+}
 
 export interface UseToolsReturn {
   // Tool mode management
@@ -30,16 +56,78 @@ export interface UseToolsReturn {
   isPinMode: boolean;
   isEmitterMode: boolean;
   isCursorMode: boolean;
+  
+  // Overlay functions
+  renderOverlay: (ctx: CanvasRenderingContext2D, canvasSize: { width: number; height: number }) => void;
+  updateMousePosition: (mouseX: number, mouseY: number) => void;
+  startDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean) => void;
+  updateDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean) => void;
+  endDrag: () => void;
 }
 
 export function useTools(): UseToolsReturn {
   const dispatch = useAppDispatch();
-  const { canvasRef, addParticle, screenToWorld, isInitialized, interaction } =
-    useEngine();
+  const { canvasRef, isInitialized, interaction, screenToWorld, addParticle } = useEngine();
+  const { particleSize, colors } = useInit();
+
+  // Single overlay data ref - everything in one place
+  const overlay = useRef<OverlayData>({
+    // Mouse tracking
+    mouseX: 0,
+    mouseY: 0,
+    
+    // Drag state
+    isDragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    dragStartTime: 0,
+    
+    // Size management
+    currentSize: particleSize,
+    lockedSize: particleSize,
+    
+    // Mode and controls
+    dragMode: "size",
+    isCtrlPressed: false,
+    previousCtrlPressed: false,
+    
+    // Color for current spawn
+    selectedColor: "#ffffff", // Will be set on first use
+  });
+
+  const dragThreshold = 5;
+
+  // Helper function to randomly select a color
+  const selectRandomColor = useCallback(() => {
+    if (colors.length === 0) return "#ffffff";
+    if (colors.length === 1) return colors[0];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }, [colors]);
+
+  // Helper function to parse color string to RGBA object
+  const parseColor = useCallback((colorStr: string) => {
+    // Handle hex colors
+    if (colorStr.startsWith("#")) {
+      const hex = colorStr.slice(1);
+      const r = parseInt(hex.slice(0, 2), 16) / 255;
+      const g = parseInt(hex.slice(2, 4), 16) / 255;
+      const b = parseInt(hex.slice(4, 6), 16) / 255;
+      return { r, g, b, a: 1 };
+    }
+    // Fallback to white
+    return { r: 1, g: 1, b: 1, a: 1 };
+  }, []);
 
   // Redux selectors
   const toolMode = useAppSelector(selectActiveTool);
   const isSpawnMode = useAppSelector(selectIsSpawnMode);
+
+  // Set initial color when entering spawn mode
+  useEffect(() => {
+    if (isSpawnMode && overlay.current.selectedColor === "#ffffff") {
+      overlay.current.selectedColor = selectRandomColor();
+    }
+  }, [isSpawnMode, selectRandomColor]);
   const isRemoveMode = useAppSelector(selectIsRemoveMode);
   const isJointMode = useAppSelector(selectIsJointMode);
   const isGrabMode = useAppSelector(selectIsGrabMode);
@@ -62,39 +150,247 @@ export function useTools(): UseToolsReturn {
   const resetToolMode = useCallback(() => {
     dispatch(resetTool());
   }, [dispatch]);
-  const handleSpawnTool = useCallback(
-    (e: MouseEvent) => {
-      if (!canvasRef.current || !addParticle || !screenToWorld) return;
 
-      const canvas = canvasRef.current;
-      const rect = canvas.getBoundingClientRect();
-      const sx = e.clientX - rect.left;
-      const sy = e.clientY - rect.top;
-      const { x, y } = screenToWorld(sx, sy);
+  // Overlay functions
+  const updateMousePosition = useCallback((mouseX: number, mouseY: number) => {
+    overlay.current.mouseX = mouseX;
+    overlay.current.mouseY = mouseY;
+  }, []);
 
-      // Default spawn parameters
-      const size = 5;
-      const mass = 1;
-      const color = { r: 1, g: 1, b: 1, a: 1 }; // White color (normalized 0-1)
+  const startDrag = useCallback(
+    (mouseX: number, mouseY: number, ctrlPressed: boolean) => {
+      overlay.current.dragStartX = mouseX;
+      overlay.current.dragStartY = mouseY;
+      overlay.current.dragStartTime = Date.now();
+      overlay.current.currentSize = particleSize;
+      overlay.current.lockedSize = particleSize;
+      overlay.current.isCtrlPressed = ctrlPressed;
+      overlay.current.previousCtrlPressed = ctrlPressed;
+      overlay.current.isDragging = false; // Wait for drag threshold
+      overlay.current.dragMode = ctrlPressed ? "velocity" : "size";
+      overlay.current.selectedColor = selectRandomColor(); // Select color for this spawn
+    },
+    [particleSize, selectRandomColor]
+  );
+
+  const updateDrag = useCallback(
+    (mouseX: number, mouseY: number, ctrlPressed: boolean) => {
+      // Check if we have a valid drag start position
+      if (overlay.current.dragStartTime === 0) return;
+
+      const dx = mouseX - overlay.current.dragStartX;
+      const dy = mouseY - overlay.current.dragStartY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      const shouldBeDragging = distance > dragThreshold;
+      const modeChanged = overlay.current.isCtrlPressed !== ctrlPressed;
+      
+      overlay.current.isCtrlPressed = ctrlPressed;
+
+      if (shouldBeDragging) {
+        const dragMode = ctrlPressed ? "velocity" : "size";
+        const newSize = Math.max(3, Math.min(50, distance / 2));
+        
+        overlay.current.isDragging = true;
+        overlay.current.dragMode = dragMode;
+        
+        if (dragMode === "size") {
+          overlay.current.currentSize = newSize;
+        } else {
+          // Lock size when switching from size to velocity mode
+          if (modeChanged && overlay.current.previousCtrlPressed === false) {
+            overlay.current.lockedSize = overlay.current.currentSize;
+          }
+          overlay.current.currentSize = overlay.current.lockedSize;
+        }
+      }
+      
+      overlay.current.previousCtrlPressed = ctrlPressed;
+    },
+    [dragThreshold]
+  );
+
+  const endDrag = useCallback(() => {
+    if (overlay.current.dragStartTime === 0 || !addParticle || !screenToWorld) return;
+
+    const now = Date.now();
+    const clickDuration = now - overlay.current.dragStartTime;
+    const dx = overlay.current.mouseX - overlay.current.dragStartX;
+    const dy = overlay.current.mouseY - overlay.current.dragStartY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    const wasClick = distance < dragThreshold && clickDuration < 200;
+
+    const worldPos = screenToWorld(overlay.current.dragStartX, overlay.current.dragStartY);
+    const color = parseColor(overlay.current.selectedColor);
+
+    if (wasClick) {
+      const size = particleSize;
+      const mass = calculateMassFromSize(size);
 
       addParticle({
-        position: { x, y },
+        position: worldPos,
         velocity: { x: 0, y: 0 },
         size,
         mass,
         color,
       });
-    },
-    [canvasRef, addParticle, screenToWorld]
-  );
+    } else {
+      const size = overlay.current.currentSize;
+      const mass = calculateMassFromSize(size);
+
+      let velocity = { x: 0, y: 0 };
+      if (overlay.current.isCtrlPressed) {
+        const velocityScale = 2.0;
+        velocity = {
+          x: dx * velocityScale,
+          y: dy * velocityScale,
+        };
+      }
+
+      addParticle({
+        position: worldPos,
+        velocity,
+        size,
+        mass,
+        color,
+      });
+    }
+
+    // Reset drag state and select new color for next spawn
+    overlay.current.dragStartTime = 0;
+    overlay.current.isDragging = false;
+    overlay.current.currentSize = particleSize;
+    overlay.current.selectedColor = selectRandomColor(); // New color for next spawn
+  }, [addParticle, screenToWorld, dragThreshold, particleSize, parseColor, selectRandomColor]);
+
+  const renderOverlay = useCallback((ctx: CanvasRenderingContext2D, canvasSize: { width: number; height: number }) => {
+    ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+
+    if (!isSpawnMode) {
+      return;
+    }
+
+    const data = overlay.current;
+
+    if (data.isDragging) {
+      if (data.dragMode === "velocity") {
+        // Draw solid particle at drag start position
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = data.selectedColor;
+        ctx.beginPath();
+        ctx.arc(data.dragStartX, data.dragStartY, data.currentSize, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Draw dashed circle around particle with gap
+        const gap = 4; // Gap between particle and dashed circle
+        ctx.strokeStyle = data.selectedColor;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(data.dragStartX, data.dragStartY, data.currentSize + gap, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw velocity arrow with capped length, starting from dashed circle edge
+        const dx = data.mouseX - data.dragStartX;
+        const dy = data.mouseY - data.dragStartY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const maxArrowLength = 150;
+        
+        // Calculate arrow start point at the edge of the dashed circle
+        const circleRadius = data.currentSize + gap;
+        const angle = Math.atan2(dy, dx);
+        const startX = data.dragStartX + Math.cos(angle) * circleRadius;
+        const startY = data.dragStartY + Math.sin(angle) * circleRadius;
+        
+        let endX = data.mouseX;
+        let endY = data.mouseY;
+        
+        if (distance > maxArrowLength) {
+          const scale = maxArrowLength / distance;
+          endX = data.dragStartX + dx * scale;
+          endY = data.dragStartY + dy * scale;
+        }
+        
+        ctx.strokeStyle = data.selectedColor;
+        ctx.lineWidth = 1; // Match the dashed circle line width
+        ctx.setLineDash([4, 4]); // Match the dashed circle pattern
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw solid triangle arrowhead
+        const arrowHeadLength = 8;
+        const arrowAngle = Math.PI / 6;
+
+        ctx.fillStyle = data.selectedColor;
+        ctx.setLineDash([]); // Ensure no dashes for arrowhead
+        ctx.beginPath();
+        ctx.moveTo(endX, endY); // Arrow tip
+        ctx.lineTo(
+          endX - arrowHeadLength * Math.cos(angle - arrowAngle),
+          endY - arrowHeadLength * Math.sin(angle - arrowAngle)
+        );
+        ctx.lineTo(
+          endX - arrowHeadLength * Math.cos(angle + arrowAngle),
+          endY - arrowHeadLength * Math.sin(angle + arrowAngle)
+        );
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Draw solid particle with current size at drag start position
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = data.selectedColor;
+        ctx.beginPath();
+        ctx.arc(data.dragStartX, data.dragStartY, data.currentSize, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Draw dashed circle around particle with gap
+        const gap = 4; // Gap between particle and dashed circle
+        ctx.strokeStyle = data.selectedColor;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(data.dragStartX, data.dragStartY, data.currentSize + gap, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    } else {
+      // Draw hover preview at mouse position - solid particle with dashed circle
+      const hoverSize = particleSize;
+      
+      // Draw solid particle
+      ctx.globalAlpha = 1.0;
+      ctx.fillStyle = data.selectedColor;
+      ctx.beginPath();
+      ctx.arc(data.mouseX, data.mouseY, hoverSize, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Draw dashed circle around particle with gap
+      const gap = 4; // Gap between particle and dashed circle
+      ctx.strokeStyle = data.selectedColor;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(data.mouseX, data.mouseY, hoverSize + gap, 0, 2 * Math.PI);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.globalAlpha = 1;
+  }, [isSpawnMode, particleSize]);
+
 
   const handleMouseDown = useCallback(
-    (e: MouseEvent) => {
-      if (!isInitialized) return;
+    (_e: MouseEvent) => {
+      if (!isInitialized || !canvasRef.current) return;
 
       switch (toolMode) {
         case "spawn":
-          handleSpawnTool(e);
+          // Skip - CanvasOverlay handles spawn tool mouse events
           break;
         case "remove":
           // TODO: Implement remove tool
@@ -117,12 +413,21 @@ export function useTools(): UseToolsReturn {
           break;
       }
     },
-    [toolMode, isInitialized, handleSpawnTool]
+    [toolMode, isInitialized, canvasRef]
   );
 
   const handleMouseMove = useCallback(
     (_e: MouseEvent) => {
-      if (!isInitialized) return;
+      if (!isInitialized || !canvasRef.current) return;
+
+      // Mouse coordinates available for tools if needed
+      // const canvas = canvasRef.current;
+      // const rect = canvas.getBoundingClientRect();
+      // const mouseX = e.clientX - rect.left;
+      // const mouseY = e.clientY - rect.top;
+
+      // Handle dragging for other tools (spawn tool handled by CanvasOverlay)
+      // TODO: Add drag handling for other tools when implemented
 
       switch (toolMode) {
         case "grab":
@@ -136,12 +441,20 @@ export function useTools(): UseToolsReturn {
           break;
       }
     },
-    [toolMode, isInitialized]
+    [toolMode, isInitialized, canvasRef]
   );
 
   const handleMouseUp = useCallback(
     (_e: MouseEvent) => {
       if (!isInitialized) return;
+
+      // Handle spawn tool - skip, CanvasOverlay handles this
+      if (toolMode === "spawn") {
+        return;
+      }
+
+      // Handle other tools
+      // TODO: Add mouse up handling for other tools when implemented
 
       switch (toolMode) {
         case "grab":
@@ -239,5 +552,12 @@ export function useTools(): UseToolsReturn {
     isPinMode,
     isEmitterMode,
     isCursorMode,
+    
+    // Overlay functions
+    renderOverlay,
+    updateMousePosition,
+    startDrag,
+    updateDrag,
+    endDrag,
   };
 }
