@@ -23,22 +23,22 @@ interface OverlayData {
   // Mouse tracking
   mouseX: number;
   mouseY: number;
-  
+
   // Drag state
   isDragging: boolean;
   dragStartX: number;
   dragStartY: number;
   dragStartTime: number;
-  
+
   // Size management
   currentSize: number;
   lockedSize: number;
-  
+
   // Mode and controls
   dragMode: "size" | "velocity";
   isCtrlPressed: boolean;
   previousCtrlPressed: boolean;
-  
+
   // Color for current spawn
   selectedColor: string;
 }
@@ -56,9 +56,12 @@ export interface UseToolsReturn {
   isPinMode: boolean;
   isEmitterMode: boolean;
   isCursorMode: boolean;
-  
+
   // Overlay functions
-  renderOverlay: (ctx: CanvasRenderingContext2D, canvasSize: { width: number; height: number }) => void;
+  renderOverlay: (
+    ctx: CanvasRenderingContext2D,
+    canvasSize: { width: number; height: number }
+  ) => void;
   updateMousePosition: (mouseX: number, mouseY: number) => void;
   startDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean) => void;
   updateDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean) => void;
@@ -67,7 +70,14 @@ export interface UseToolsReturn {
 
 export function useTools(): UseToolsReturn {
   const dispatch = useAppDispatch();
-  const { canvasRef, isInitialized, interaction, screenToWorld, addParticle } = useEngine();
+  const {
+    canvasRef,
+    isInitialized,
+    interaction,
+    screenToWorld,
+    addParticle,
+    zoom,
+  } = useEngine();
   const { particleSize, colors } = useInit();
 
   // Single overlay data ref - everything in one place
@@ -75,22 +85,22 @@ export function useTools(): UseToolsReturn {
     // Mouse tracking
     mouseX: 0,
     mouseY: 0,
-    
+
     // Drag state
     isDragging: false,
     dragStartX: 0,
     dragStartY: 0,
     dragStartTime: 0,
-    
+
     // Size management
     currentSize: particleSize,
     lockedSize: particleSize,
-    
+
     // Mode and controls
-    dragMode: "size",
+    dragMode: "velocity",
     isCtrlPressed: false,
     previousCtrlPressed: false,
-    
+
     // Color for current spawn
     selectedColor: "#ffffff", // Will be set on first use
   });
@@ -167,7 +177,7 @@ export function useTools(): UseToolsReturn {
       overlay.current.isCtrlPressed = ctrlPressed;
       overlay.current.previousCtrlPressed = ctrlPressed;
       overlay.current.isDragging = false; // Wait for drag threshold
-      overlay.current.dragMode = ctrlPressed ? "velocity" : "size";
+      overlay.current.dragMode = ctrlPressed ? "size" : "velocity";
       overlay.current.selectedColor = selectRandomColor(); // Select color for this spawn
     },
     [particleSize, selectRandomColor]
@@ -183,35 +193,34 @@ export function useTools(): UseToolsReturn {
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       const shouldBeDragging = distance > dragThreshold;
-      const modeChanged = overlay.current.isCtrlPressed !== ctrlPressed;
-      
+
       overlay.current.isCtrlPressed = ctrlPressed;
 
       if (shouldBeDragging) {
-        const dragMode = ctrlPressed ? "velocity" : "size";
+        const dragMode = ctrlPressed ? "size" : "velocity";
         const newSize = Math.max(3, Math.min(50, distance / 2));
-        
+
         overlay.current.isDragging = true;
         overlay.current.dragMode = dragMode;
-        
+
         if (dragMode === "size") {
           overlay.current.currentSize = newSize;
+          // Lock size when in size mode for future velocity mode
+          overlay.current.lockedSize = newSize;
         } else {
-          // Lock size when switching from size to velocity mode
-          if (modeChanged && overlay.current.previousCtrlPressed === false) {
-            overlay.current.lockedSize = overlay.current.currentSize;
-          }
+          // Use locked size when in velocity mode
           overlay.current.currentSize = overlay.current.lockedSize;
         }
       }
-      
+
       overlay.current.previousCtrlPressed = ctrlPressed;
     },
     [dragThreshold]
   );
 
   const endDrag = useCallback(() => {
-    if (overlay.current.dragStartTime === 0 || !addParticle || !screenToWorld) return;
+    if (overlay.current.dragStartTime === 0 || !addParticle || !screenToWorld)
+      return;
 
     const now = Date.now();
     const clickDuration = now - overlay.current.dragStartTime;
@@ -221,7 +230,10 @@ export function useTools(): UseToolsReturn {
 
     const wasClick = distance < dragThreshold && clickDuration < 200;
 
-    const worldPos = screenToWorld(overlay.current.dragStartX, overlay.current.dragStartY);
+    const worldPos = screenToWorld(
+      overlay.current.dragStartX,
+      overlay.current.dragStartY
+    );
     const color = parseColor(overlay.current.selectedColor);
 
     if (wasClick) {
@@ -240,11 +252,18 @@ export function useTools(): UseToolsReturn {
       const mass = calculateMassFromSize(size);
 
       let velocity = { x: 0, y: 0 };
-      if (overlay.current.isCtrlPressed) {
-        const velocityScale = 2.0;
+      if (!overlay.current.isCtrlPressed) {
+        const baseVelocityScale = 5.0;
+        const velocityScale = baseVelocityScale / Math.sqrt(zoom); // Square root relationship for more balanced scaling
+        const maxVelocityDistance = 150; // Same as maxArrowLength
+        const clampedDistance = Math.min(distance, maxVelocityDistance);
+        const normalizedDx =
+          distance > 0 ? (dx / distance) * clampedDistance : 0;
+        const normalizedDy =
+          distance > 0 ? (dy / distance) * clampedDistance : 0;
         velocity = {
-          x: dx * velocityScale,
-          y: dy * velocityScale,
+          x: normalizedDx * velocityScale,
+          y: normalizedDy * velocityScale,
         };
       }
 
@@ -262,127 +281,154 @@ export function useTools(): UseToolsReturn {
     overlay.current.isDragging = false;
     overlay.current.currentSize = particleSize;
     overlay.current.selectedColor = selectRandomColor(); // New color for next spawn
-  }, [addParticle, screenToWorld, dragThreshold, particleSize, parseColor, selectRandomColor]);
+  }, [
+    addParticle,
+    screenToWorld,
+    dragThreshold,
+    particleSize,
+    zoom,
+    parseColor,
+    selectRandomColor,
+  ]);
 
-  const renderOverlay = useCallback((ctx: CanvasRenderingContext2D, canvasSize: { width: number; height: number }) => {
-    ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+  const renderOverlay = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      canvasSize: { width: number; height: number }
+    ) => {
+      ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
 
-    if (!isSpawnMode) {
-      return;
-    }
+      if (!isSpawnMode) {
+        return;
+      }
 
-    const data = overlay.current;
+      const data = overlay.current;
 
-    if (data.isDragging) {
-      if (data.dragMode === "velocity") {
-        // Draw solid particle at drag start position
-        ctx.globalAlpha = 1.0;
-        ctx.fillStyle = data.selectedColor;
-        ctx.beginPath();
-        ctx.arc(data.dragStartX, data.dragStartY, data.currentSize, 0, 2 * Math.PI);
-        ctx.fill();
+      if (data.isDragging) {
+        if (data.dragMode === "velocity") {
+          // Draw solid particle at drag start position
+          ctx.globalAlpha = 1.0;
+          ctx.fillStyle = data.selectedColor;
+          ctx.beginPath();
+          const screenSize = data.currentSize * zoom;
+          ctx.arc(data.dragStartX, data.dragStartY, screenSize, 0, 2 * Math.PI);
+          ctx.fill();
 
-        // Draw dashed circle around particle with gap
-        const gap = 4; // Gap between particle and dashed circle
-        ctx.strokeStyle = data.selectedColor;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(data.dragStartX, data.dragStartY, data.currentSize + gap, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.setLineDash([]);
+          // Draw dashed circle around particle with gap
+          const gap = 4; // Keep gap constant regardless of zoom
+          ctx.strokeStyle = data.selectedColor;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(
+            data.dragStartX,
+            data.dragStartY,
+            screenSize + gap,
+            0,
+            2 * Math.PI
+          );
+          ctx.stroke();
+          ctx.setLineDash([]);
 
-        // Draw velocity arrow with capped length, starting from dashed circle edge
-        const dx = data.mouseX - data.dragStartX;
-        const dy = data.mouseY - data.dragStartY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const maxArrowLength = 150;
-        
-        // Calculate arrow start point at the edge of the dashed circle
-        const circleRadius = data.currentSize + gap;
-        const angle = Math.atan2(dy, dx);
-        const startX = data.dragStartX + Math.cos(angle) * circleRadius;
-        const startY = data.dragStartY + Math.sin(angle) * circleRadius;
-        
-        let endX = data.mouseX;
-        let endY = data.mouseY;
-        
-        if (distance > maxArrowLength) {
-          const scale = maxArrowLength / distance;
-          endX = data.dragStartX + dx * scale;
-          endY = data.dragStartY + dy * scale;
+          // Draw velocity arrow with capped length, starting from dashed circle edge
+          const dx = data.mouseX - data.dragStartX;
+          const dy = data.mouseY - data.dragStartY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const maxArrowLength = 150;
+
+          // Calculate arrow start point at the edge of the dashed circle
+          const circleRadius = screenSize + gap;
+          const angle = Math.atan2(dy, dx);
+          const startX = data.dragStartX + Math.cos(angle) * circleRadius;
+          const startY = data.dragStartY + Math.sin(angle) * circleRadius;
+
+          let endX = data.mouseX;
+          let endY = data.mouseY;
+
+          if (distance > maxArrowLength) {
+            const scale = maxArrowLength / distance;
+            endX = data.dragStartX + dx * scale;
+            endY = data.dragStartY + dy * scale;
+          }
+
+          ctx.strokeStyle = data.selectedColor;
+          ctx.lineWidth = 1; // Match the dashed circle line width
+          ctx.setLineDash([4, 4]); // Match the dashed circle pattern
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Draw solid triangle arrowhead
+          const arrowHeadLength = 8;
+          const arrowAngle = Math.PI / 6;
+
+          ctx.fillStyle = data.selectedColor;
+          ctx.setLineDash([]); // Ensure no dashes for arrowhead
+          ctx.beginPath();
+          ctx.moveTo(endX, endY); // Arrow tip
+          ctx.lineTo(
+            endX - arrowHeadLength * Math.cos(angle - arrowAngle),
+            endY - arrowHeadLength * Math.sin(angle - arrowAngle)
+          );
+          ctx.lineTo(
+            endX - arrowHeadLength * Math.cos(angle + arrowAngle),
+            endY - arrowHeadLength * Math.sin(angle + arrowAngle)
+          );
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          // Draw solid particle with current size at drag start position
+          ctx.globalAlpha = 1.0;
+          ctx.fillStyle = data.selectedColor;
+          ctx.beginPath();
+          const screenSize = data.currentSize * zoom;
+          ctx.arc(data.dragStartX, data.dragStartY, screenSize, 0, 2 * Math.PI);
+          ctx.fill();
+
+          // Draw dashed circle around particle with gap
+          const gap = 4; // Keep gap constant regardless of zoom
+          ctx.strokeStyle = data.selectedColor;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(
+            data.dragStartX,
+            data.dragStartY,
+            screenSize + gap,
+            0,
+            2 * Math.PI
+          );
+          ctx.stroke();
+          ctx.setLineDash([]);
         }
-        
-        ctx.strokeStyle = data.selectedColor;
-        ctx.lineWidth = 1; // Match the dashed circle line width
-        ctx.setLineDash([4, 4]); // Match the dashed circle pattern
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(endX, endY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Draw solid triangle arrowhead
-        const arrowHeadLength = 8;
-        const arrowAngle = Math.PI / 6;
-
-        ctx.fillStyle = data.selectedColor;
-        ctx.setLineDash([]); // Ensure no dashes for arrowhead
-        ctx.beginPath();
-        ctx.moveTo(endX, endY); // Arrow tip
-        ctx.lineTo(
-          endX - arrowHeadLength * Math.cos(angle - arrowAngle),
-          endY - arrowHeadLength * Math.sin(angle - arrowAngle)
-        );
-        ctx.lineTo(
-          endX - arrowHeadLength * Math.cos(angle + arrowAngle),
-          endY - arrowHeadLength * Math.sin(angle + arrowAngle)
-        );
-        ctx.closePath();
-        ctx.fill();
       } else {
-        // Draw solid particle with current size at drag start position
+        // Draw hover preview at mouse position - solid particle with dashed circle
+        const hoverSize = particleSize * zoom; // Apply zoom to hover preview
+
+        // Draw solid particle
         ctx.globalAlpha = 1.0;
         ctx.fillStyle = data.selectedColor;
         ctx.beginPath();
-        ctx.arc(data.dragStartX, data.dragStartY, data.currentSize, 0, 2 * Math.PI);
+        ctx.arc(data.mouseX, data.mouseY, hoverSize, 0, 2 * Math.PI);
         ctx.fill();
 
         // Draw dashed circle around particle with gap
-        const gap = 4; // Gap between particle and dashed circle
+        const gap = 4; // Keep gap constant regardless of zoom
         ctx.strokeStyle = data.selectedColor;
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.arc(data.dragStartX, data.dragStartY, data.currentSize + gap, 0, 2 * Math.PI);
+        ctx.arc(data.mouseX, data.mouseY, hoverSize + gap, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.setLineDash([]);
       }
-    } else {
-      // Draw hover preview at mouse position - solid particle with dashed circle
-      const hoverSize = particleSize;
-      
-      // Draw solid particle
-      ctx.globalAlpha = 1.0;
-      ctx.fillStyle = data.selectedColor;
-      ctx.beginPath();
-      ctx.arc(data.mouseX, data.mouseY, hoverSize, 0, 2 * Math.PI);
-      ctx.fill();
 
-      // Draw dashed circle around particle with gap
-      const gap = 4; // Gap between particle and dashed circle
-      ctx.strokeStyle = data.selectedColor;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.arc(data.mouseX, data.mouseY, hoverSize + gap, 0, 2 * Math.PI);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    ctx.globalAlpha = 1;
-  }, [isSpawnMode, particleSize]);
-
+      ctx.globalAlpha = 1;
+    },
+    [isSpawnMode, particleSize, zoom]
+  );
 
   const handleMouseDown = useCallback(
     (_e: MouseEvent) => {
@@ -552,7 +598,7 @@ export function useTools(): UseToolsReturn {
     isPinMode,
     isEmitterMode,
     isCursorMode,
-    
+
     // Overlay functions
     renderOverlay,
     updateMousePosition,
