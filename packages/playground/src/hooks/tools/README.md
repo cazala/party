@@ -21,7 +21,7 @@ Each tool has its own dedicated hook with consistent interface:
 
 - **`useSpawnTool.ts`** - Particle spawning with streaming, drag modes, etc. (~300 lines)
 - **`useCursorTool.ts`** - Cursor/interaction tool with engine interaction module
-- **`useRemoveTool.ts`** - Particle removal tool (placeholder for future implementation)
+- **`useRemoveTool.ts`** - Particle removal tool with brush-style continuous deletion (~95 lines)
 - **`useJointTool.ts`** - Joint creation tool (placeholder)
 - **`usePinTool.ts`** - Particle pinning tool (placeholder)
 - **`useGrabTool.ts`** - Particle grabbing/selection tool (placeholder)
@@ -115,6 +115,7 @@ function MyComponent() {
 | `useMouseHandler.ts` | ~60 | Mouse events |
 | `useCursorTool.ts` | ~70 | Cursor + interaction |
 | `useSpawnTool.ts` | ~300 | Spawn tool logic |
+| `useRemoveTool.ts` | ~95 | Remove tool logic |
 | `types.ts` | ~70 | Shared interfaces |
 | `utils.ts` | ~30 | Shared utilities |
 | Other tools | ~20 each | Future implementations |

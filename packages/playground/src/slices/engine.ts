@@ -427,6 +427,36 @@ export const handleWheelThunk = createAsyncThunk(
   }
 );
 
+// Remove particles thunk
+export const removeParticlesThunk = createAsyncThunk(
+  "engine/removeParticles",
+  async (
+    { center, radius }: { center: { x: number; y: number }; radius: number },
+    { dispatch }
+  ) => {
+    const engine = getEngine();
+    if (!engine) return;
+
+    // Get current particles
+    const particles = await engine.getParticles();
+
+    // Find particles within removal area and set mass to 0
+    const updatedParticles = particles.map((particle) => {
+      const dx = particle.position.x - center.x;
+      const dy = particle.position.y - center.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= radius) {
+        return { ...particle, mass: 0 };
+      }
+      return particle;
+    });
+
+    // Set updated particles back to engine
+    engine.setParticles(updatedParticles);
+  }
+);
+
 export const {
   setWebGPU,
   setAutoMode,

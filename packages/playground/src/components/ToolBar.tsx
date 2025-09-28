@@ -1,10 +1,10 @@
-import { MousePointer, Plus } from "lucide-react";
+import { MousePointer, Plus, Minus } from "lucide-react";
 import { useTools } from "../hooks/useTools";
 
-import "./Toolbar.css";
+import "./ToolBar.css";
 
 export function Toolbar({ style }: { style?: React.CSSProperties }) {
-  const { isCursorMode, isSpawnMode, setToolMode } = useTools();
+  const { isCursorMode, isSpawnMode, isRemoveMode, setToolMode } = useTools();
 
   return (
     <div className="toolbar" style={style}>
@@ -29,6 +29,16 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
           >
             <Plus width="16" height="16" />
             <span>Spawn</span>
+          </button>
+          <button
+            onClick={() => setToolMode("remove")}
+            className={`tool-mode-button tool-mode-third ${
+              isRemoveMode ? "tool-mode-active" : ""
+            }`}
+            title="Remove"
+          >
+            <Minus width="16" height="16" />
+            <span>Remove</span>
           </button>
         </div>
       </div>
