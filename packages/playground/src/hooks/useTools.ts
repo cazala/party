@@ -35,7 +35,7 @@ interface OverlayData {
   lockedSize: number;
 
   // Mode and controls
-  dragMode: "size" | "velocity";
+  dragMode: "size" | "velocity" | "neutral";
   isCtrlPressed: boolean;
   previousCtrlPressed: boolean;
   isShiftPressed: boolean;
@@ -68,8 +68,18 @@ export interface UseToolsReturn {
     canvasSize: { width: number; height: number }
   ) => void;
   updateMousePosition: (mouseX: number, mouseY: number) => void;
-  startDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed?: boolean) => void;
-  updateDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed?: boolean) => void;
+  startDrag: (
+    mouseX: number,
+    mouseY: number,
+    ctrlPressed: boolean,
+    shiftPressed?: boolean
+  ) => void;
+  updateDrag: (
+    mouseX: number,
+    mouseY: number,
+    ctrlPressed: boolean,
+    shiftPressed?: boolean
+  ) => void;
   endDrag: () => void;
 }
 
@@ -115,8 +125,8 @@ export function useTools(): UseToolsReturn {
     selectedColor: "#ffffff", // Will be set on first use
   });
 
-  const dragThreshold = 5;
-  const STREAM_RATE_MS = 100; // Spawn a particle every 100ms when streaming
+  const dragThreshold = 10;
+  const BASE_STREAM_RATE_MS = 100; // Base streaming rate
 
   // Helper function to randomly select a color
   const selectRandomColor = useCallback(() => {
@@ -143,7 +153,10 @@ export function useTools(): UseToolsReturn {
   const spawnParticleWithCurrentState = useCallback(() => {
     if (!addParticle || !screenToWorld) return;
 
-    const worldPos = screenToWorld(overlay.current.dragStartX, overlay.current.dragStartY);
+    const worldPos = screenToWorld(
+      overlay.current.dragStartX,
+      overlay.current.dragStartY
+    );
     const color = parseColor(overlay.current.selectedColor);
     const size = overlay.current.currentSize;
     const mass = calculateMassFromSize(size);
@@ -153,7 +166,7 @@ export function useTools(): UseToolsReturn {
       const dx = overlay.current.mouseX - overlay.current.dragStartX;
       const dy = overlay.current.mouseY - overlay.current.dragStartY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       const baseVelocityScale = 5.0;
       const velocityScale = baseVelocityScale / Math.sqrt(zoom);
       const maxVelocityDistance = 150;
@@ -175,23 +188,79 @@ export function useTools(): UseToolsReturn {
     });
   }, [addParticle, screenToWorld, zoom, parseColor]);
 
+  // Calculate dynamic streaming rate based on particle size and velocity
+  const calculateStreamingRate = useCallback(() => {
+    const size = overlay.current.currentSize;
+    let velocity = { x: 0, y: 0 };
+
+    if (overlay.current.dragMode === "velocity") {
+      const dx = overlay.current.mouseX - overlay.current.dragStartX;
+      const dy = overlay.current.mouseY - overlay.current.dragStartY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      const baseVelocityScale = 5.0;
+      const velocityScale = baseVelocityScale / Math.sqrt(zoom);
+      const maxVelocityDistance = 150;
+      const clampedDistance = Math.min(distance, maxVelocityDistance);
+      const normalizedDx = distance > 0 ? (dx / distance) * clampedDistance : 0;
+      const normalizedDy = distance > 0 ? (dy / distance) * clampedDistance : 0;
+      velocity = {
+        x: normalizedDx * velocityScale,
+        y: normalizedDy * velocityScale,
+      };
+    }
+
+    const velocityMagnitude = Math.sqrt(
+      velocity.x * velocity.x + velocity.y * velocity.y
+    );
+
+    // Rate factors:
+    // - Larger particles need more spacing (size factor increases interval)
+    // - Faster particles can be spawned more frequently (velocity factor decreases interval)
+    // - Use a more gradual curve for size factor to not penalize small particles too much
+    const sizeFactor = Math.max(0.5, size / 25); // Less aggressive scaling: size 5 = 0.5x, size 25 = 1x, size 50 = 2x
+    const velocityFactor = Math.max(0.5, 100 / Math.max(velocityMagnitude, 1)); // Faster particles = higher rate (shorter interval)
+    const combinedFactor = sizeFactor * velocityFactor;
+
+    const dynamicRate = Math.max(
+      30,
+      overlay.current.dragMode === "velocity" && velocityMagnitude > 0
+        ? BASE_STREAM_RATE_MS * combinedFactor * 4
+        : BASE_STREAM_RATE_MS * sizeFactor
+    ); // Min 30ms
+    return Math.min(dynamicRate, 400); // Max 400ms
+  }, [zoom, overlay]);
+
   // Function to start streaming particles
   const startStreaming = useCallback(() => {
     if (overlay.current.isStreaming) return;
-    
+
     overlay.current.isStreaming = true;
-    overlay.current.streamIntervalId = window.setInterval(() => {
+
+    const streamParticle = () => {
+      if (!overlay.current.isStreaming) return;
+
       spawnParticleWithCurrentState();
-    }, STREAM_RATE_MS);
-  }, [spawnParticleWithCurrentState, STREAM_RATE_MS]);
+
+      // Calculate new rate based on current state and schedule next spawn
+      const nextRate = calculateStreamingRate();
+      overlay.current.streamIntervalId = window.setTimeout(
+        streamParticle,
+        nextRate
+      );
+    };
+
+    // Start first particle immediately
+    streamParticle();
+  }, [spawnParticleWithCurrentState, calculateStreamingRate]);
 
   // Function to stop streaming particles
   const stopStreaming = useCallback(() => {
     if (!overlay.current.isStreaming) return;
-    
+
     overlay.current.isStreaming = false;
     if (overlay.current.streamIntervalId !== null) {
-      clearInterval(overlay.current.streamIntervalId);
+      clearTimeout(overlay.current.streamIntervalId);
       overlay.current.streamIntervalId = null;
     }
   }, []);
@@ -221,21 +290,25 @@ export function useTools(): UseToolsReturn {
   // Global key event listeners to handle shift key state and ESC cancellation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Shift' && !overlay.current.isShiftPressed) {
+      if (e.key === "Shift" && !overlay.current.isShiftPressed) {
         overlay.current.isShiftPressed = true;
         // Start streaming if we're in spawn mode and have a valid drag position
         if (isSpawnMode && overlay.current.dragStartTime > 0) {
           startStreaming();
         }
       }
-      
-      if (e.key === 'Escape' && isSpawnMode && overlay.current.dragStartTime > 0) {
+
+      if (
+        e.key === "Escape" &&
+        isSpawnMode &&
+        overlay.current.dragStartTime > 0
+      ) {
         // Cancel current drag operation without spawning particle
         e.preventDefault();
-        
+
         // Stop streaming if active
         stopStreaming();
-        
+
         // Reset drag state without spawning
         overlay.current.dragStartTime = 0;
         overlay.current.isDragging = false;
@@ -246,21 +319,27 @@ export function useTools(): UseToolsReturn {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Shift' && overlay.current.isShiftPressed) {
+      if (e.key === "Shift" && overlay.current.isShiftPressed) {
         overlay.current.isShiftPressed = false;
         // Stop streaming immediately when shift is released
         stopStreaming();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keyup", handleKeyUp);
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isSpawnMode, startStreaming, stopStreaming, particleSize, selectRandomColor]);
+  }, [
+    isSpawnMode,
+    startStreaming,
+    stopStreaming,
+    particleSize,
+    selectRandomColor,
+  ]);
 
   const isRemoveMode = useAppSelector(selectIsRemoveMode);
   const isJointMode = useAppSelector(selectIsJointMode);
@@ -292,7 +371,12 @@ export function useTools(): UseToolsReturn {
   }, []);
 
   const startDrag = useCallback(
-    (mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed: boolean = false) => {
+    (
+      mouseX: number,
+      mouseY: number,
+      ctrlPressed: boolean,
+      shiftPressed: boolean = false
+    ) => {
       overlay.current.dragStartX = mouseX;
       overlay.current.dragStartY = mouseY;
       overlay.current.dragStartTime = Date.now();
@@ -304,7 +388,7 @@ export function useTools(): UseToolsReturn {
       overlay.current.isDragging = false; // Wait for drag threshold
       overlay.current.dragMode = ctrlPressed ? "size" : "velocity";
       overlay.current.selectedColor = selectRandomColor(); // Select color for this spawn
-      
+
       // Start streaming if shift is pressed
       if (shiftPressed) {
         startStreaming();
@@ -314,7 +398,12 @@ export function useTools(): UseToolsReturn {
   );
 
   const updateDrag = useCallback(
-    (mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed: boolean = false) => {
+    (
+      mouseX: number,
+      mouseY: number,
+      ctrlPressed: boolean,
+      shiftPressed: boolean = false
+    ) => {
       // Check if we have a valid drag start position
       if (overlay.current.dragStartTime === 0) return;
 
@@ -340,6 +429,22 @@ export function useTools(): UseToolsReturn {
           // Lock size when in size mode for future velocity mode
           overlay.current.lockedSize = newSize;
         } else {
+          // In velocity mode, check if mouse is within particle radius
+          // Use a minimum radius of 20 pixels for better usability with small particles
+          const particleRadius = Math.max(
+            20,
+            overlay.current.lockedSize * zoom + 10
+          );
+          const isWithinParticle = distance <= particleRadius;
+
+          if (isWithinParticle) {
+            // Mouse is within particle - exit velocity mode (no arrow, just particle)
+            overlay.current.dragMode = "neutral";
+          } else {
+            // Mouse is outside particle - show velocity arrow
+            overlay.current.dragMode = "velocity";
+          }
+
           // Use locked size when in velocity mode
           overlay.current.currentSize = overlay.current.lockedSize;
         }
@@ -393,7 +498,10 @@ export function useTools(): UseToolsReturn {
       const mass = calculateMassFromSize(size);
 
       let velocity = { x: 0, y: 0 };
-      if (!overlay.current.isCtrlPressed) {
+      if (
+        !overlay.current.isCtrlPressed &&
+        overlay.current.dragMode === "velocity"
+      ) {
         const baseVelocityScale = 5.0;
         const velocityScale = baseVelocityScale / Math.sqrt(zoom); // Square root relationship for more balanced scaling
         const maxVelocityDistance = 150; // Same as maxArrowLength
@@ -419,7 +527,7 @@ export function useTools(): UseToolsReturn {
 
     // Stop streaming if it was active
     stopStreaming();
-    
+
     // Reset drag state and select new color for next spawn
     overlay.current.dragStartTime = 0;
     overlay.current.isDragging = false;
@@ -451,7 +559,31 @@ export function useTools(): UseToolsReturn {
       const data = overlay.current;
 
       if (data.isDragging) {
-        if (data.dragMode === "velocity") {
+        if (data.dragMode === "neutral") {
+          // Draw solid particle at drag start position with dashed circle (no velocity arrow)
+          ctx.globalAlpha = 1.0;
+          ctx.fillStyle = data.selectedColor;
+          ctx.beginPath();
+          const screenSize = data.currentSize * zoom;
+          ctx.arc(data.dragStartX, data.dragStartY, screenSize, 0, 2 * Math.PI);
+          ctx.fill();
+
+          // Draw dashed circle around particle with gap
+          const gap = 4; // Keep gap constant regardless of zoom
+          ctx.strokeStyle = data.selectedColor;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(
+            data.dragStartX,
+            data.dragStartY,
+            screenSize + gap,
+            0,
+            2 * Math.PI
+          );
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else if (data.dragMode === "velocity") {
           // Draw solid particle at drag start position
           ctx.globalAlpha = 1.0;
           ctx.fillStyle = data.selectedColor;
@@ -556,25 +688,25 @@ export function useTools(): UseToolsReturn {
           const maxLineLength = 150; // Same as maxArrowLength in velocity mode
           const circleRadius = screenSize + gap;
           const headCircleRadius = 4;
-          
+
           // Only draw line if there's enough space (head circle doesn't touch dashed circle)
           const minDistanceToRender = circleRadius + headCircleRadius;
-          
+
           if (distance > minDistanceToRender) {
             // Draw line from dashed circle edge to mouse position (or capped position)
             const angle = Math.atan2(dy, dx);
             const startX = data.dragStartX + Math.cos(angle) * circleRadius;
             const startY = data.dragStartY + Math.sin(angle) * circleRadius;
-            
+
             let endX = data.mouseX;
             let endY = data.mouseY;
-            
+
             if (distance > maxLineLength) {
               const scale = maxLineLength / distance;
               endX = data.dragStartX + dx * scale;
               endY = data.dragStartY + dy * scale;
             }
-            
+
             ctx.strokeStyle = data.selectedColor;
             ctx.lineWidth = 1;
             ctx.setLineDash([4, 4]);
@@ -591,6 +723,32 @@ export function useTools(): UseToolsReturn {
             ctx.fill();
           }
         }
+      } else if (data.dragStartTime > 0) {
+        // Draw particle at drag start position (before reaching drag threshold)
+        const hoverSize = particleSize * zoom; // Apply zoom to hover preview
+
+        // Draw solid particle
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = data.selectedColor;
+        ctx.beginPath();
+        ctx.arc(data.dragStartX, data.dragStartY, hoverSize, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Draw dashed circle around particle with gap
+        const gap = 4; // Keep gap constant regardless of zoom
+        ctx.strokeStyle = data.selectedColor;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(
+          data.dragStartX,
+          data.dragStartY,
+          hoverSize + gap,
+          0,
+          2 * Math.PI
+        );
+        ctx.stroke();
+        ctx.setLineDash([]);
       } else {
         // Draw hover preview at mouse position - solid particle with dashed circle
         const hoverSize = particleSize * zoom; // Apply zoom to hover preview
