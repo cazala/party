@@ -42,6 +42,7 @@ export class Boundary extends Module<"boundary", BoundaryInputKeys> {
   ] as const;
 
   constructor(opts?: {
+    enabled?: boolean;
     restitution?: number;
     friction?: number;
     mode?: BoundaryMode;
@@ -57,6 +58,9 @@ export class Boundary extends Module<"boundary", BoundaryInputKeys> {
       repelDistance: opts?.repelDistance ?? DEFAULT_BOUNDARY_REPEL_DISTANCE,
       repelStrength: opts?.repelStrength ?? DEFAULT_BOUNDARY_REPEL_STRENGTH,
     });
+    if (opts?.enabled !== undefined) {
+      this.setEnabled(!!opts.enabled);
+    }
   }
 
   setRestitution(value: number): void {

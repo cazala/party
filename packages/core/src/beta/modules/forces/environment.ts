@@ -55,6 +55,7 @@ export class Environment extends Module<"environment", EnvInputKeys> {
   private gravityAngle: number = Math.PI / 2; // radians, default down
 
   constructor(opts?: {
+    enabled?: boolean;
     gravityStrength?: number;
     dirX?: number;
     dirY?: number;
@@ -93,6 +94,9 @@ export class Environment extends Module<"environment", EnvInputKeys> {
           ? 2
           : 0,
     });
+    if (opts?.enabled !== undefined) {
+      this.setEnabled(!!opts.enabled);
+    }
   }
 
   private directionFromOptions(
@@ -232,7 +236,7 @@ export class Environment extends Module<"environment", EnvInputKeys> {
     return {
       apply: ({ particle, dt, input, view }) => {
         const gdir = new Vector(input.dirX, input.dirY);
-        
+
         if (input.mode === 1) {
           // Inwards gravity: center is camera position (matches WebGPU grid center)
           const camera = view.getCamera();
@@ -240,7 +244,10 @@ export class Environment extends Module<"environment", EnvInputKeys> {
         } else if (input.mode === 2) {
           // Outwards gravity: center is camera position (matches WebGPU grid center)
           const camera = view.getCamera();
-          gdir.set(particle.position.x - camera.x, particle.position.y - camera.y);
+          gdir.set(
+            particle.position.x - camera.x,
+            particle.position.y - camera.y
+          );
         }
         const glen = gdir.magnitude();
         if (glen > 0) {

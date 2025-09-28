@@ -203,24 +203,17 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
         // Create modules first
         const environment = new Environment({
-          gravityStrength: 0,
-          dirX: 0,
-          dirY: 1,
-          inertia: 0,
-          friction: 0,
-          damping: 0,
+          enabled: false,
         });
         const boundary = new Boundary({
-          restitution: 0.6,
-          friction: 0.1,
-          mode: "bounce",
+          enabled: false,
         });
-        const collisions = new Collisions();
-        const fluids = new Fluids();
-        const behavior = new Behavior();
-        const sensors = new Sensors();
-        const interaction = new Interaction();
-        const trails = new Trails();
+        const collisions = new Collisions({ enabled: false });
+        const fluids = new Fluids({ enabled: false });
+        const behavior = new Behavior({ enabled: false });
+        const sensors = new Sensors({ enabled: false });
+        const interaction = new Interaction({ enabled: false });
+        const trails = new Trails({ enabled: false });
 
         // Create particle renderer
         const particle = new Particle();

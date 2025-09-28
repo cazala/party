@@ -10,7 +10,7 @@ import { selectShowGrid, setShowGrid } from "../slices/ui";
 export function PerformanceControls() {
   const dispatch = useAppDispatch();
   const showGrid = useAppSelector(selectShowGrid);
-  
+
   const {
     isWebGPU,
     constrainIterations,
@@ -28,12 +28,6 @@ export function PerformanceControls() {
         onChange={() => toggleRuntime()}
         label="Use WebGPU"
       />
-      
-      <Checkbox
-        checked={showGrid}
-        onChange={(checked) => dispatch(setShowGrid(checked))}
-        label="Show Grid"
-      />
 
       <Slider
         label="Constrain Iterations"
@@ -43,6 +37,7 @@ export function PerformanceControls() {
         step={1}
         onChange={setConstrainIterations}
       />
+
       <Slider
         label="Grid Cell Size"
         value={gridCellSize}
@@ -50,6 +45,12 @@ export function PerformanceControls() {
         max={128}
         step={8}
         onChange={setCellSize}
+      />
+
+      <Checkbox
+        checked={showGrid}
+        onChange={(checked) => dispatch(setShowGrid(checked))}
+        label="Show Grid"
       />
 
       <Field>

@@ -28,11 +28,14 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
   readonly role = ModuleRole.Force;
   readonly keys = ["restitution"] as const;
 
-  constructor(opts?: { restitution?: number }) {
+  constructor(opts?: { enabled?: boolean; restitution?: number }) {
     super();
     this.write({
       restitution: opts?.restitution ?? DEFAULT_COLLISIONS_RESTITUTION,
     });
+    if (opts?.enabled !== undefined) {
+      this.setEnabled(!!opts.enabled);
+    }
   }
 
   setRestitution(value: number): void {
