@@ -533,6 +533,48 @@ export function useTools(): UseToolsReturn {
           );
           ctx.stroke();
           ctx.setLineDash([]);
+
+          // Draw indicator line from dashed circle edge to mouse position (capped like velocity arrow)
+          const dx = data.mouseX - data.dragStartX;
+          const dy = data.mouseY - data.dragStartY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const maxLineLength = 150; // Same as maxArrowLength in velocity mode
+          const circleRadius = screenSize + gap;
+          const headCircleRadius = 4;
+          
+          // Only draw line if there's enough space (head circle doesn't touch dashed circle)
+          const minDistanceToRender = circleRadius + headCircleRadius;
+          
+          if (distance > minDistanceToRender) {
+            // Draw line from dashed circle edge to mouse position (or capped position)
+            const angle = Math.atan2(dy, dx);
+            const startX = data.dragStartX + Math.cos(angle) * circleRadius;
+            const startY = data.dragStartY + Math.sin(angle) * circleRadius;
+            
+            let endX = data.mouseX;
+            let endY = data.mouseY;
+            
+            if (distance > maxLineLength) {
+              const scale = maxLineLength / distance;
+              endX = data.dragStartX + dx * scale;
+              endY = data.dragStartY + dy * scale;
+            }
+            
+            ctx.strokeStyle = data.selectedColor;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw small circle at line end position
+            ctx.fillStyle = data.selectedColor;
+            ctx.beginPath();
+            ctx.arc(endX, endY, headCircleRadius, 0, 2 * Math.PI);
+            ctx.fill();
+          }
         }
       } else {
         // Draw hover preview at mouse position - solid particle with dashed circle
