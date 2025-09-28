@@ -50,7 +50,7 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
     return {
       constrain: ({ particleVar, maxSizeVar, getUniform }) => `
   // Pass 1: find deepest overlap neighbor to reduce scan-order bias
-  var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size + ${maxSizeVar});
+  var it = neighbor_iter_init(${particleVar}.position, ${particleVar}.size + ${maxSizeVar} + 1);
   var bestJ: u32 = NEIGHBOR_NONE;
   var bestN: vec2<f32> = vec2<f32>(0.0, 0.0);
   var bestOverlap: f32 = 0.0;
@@ -171,7 +171,7 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
     return {
       constrain: ({ particle, getNeighbors, input, maxSize }) => {
         // Find deepest overlap neighbor to reduce scan-order bias
-        const searchRadius = particle.size + maxSize;
+        const searchRadius = particle.size + maxSize + 1;
         const neighbors = getNeighbors(particle.position, searchRadius);
 
         let bestOverlap = 0;
