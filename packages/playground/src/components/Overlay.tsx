@@ -4,7 +4,7 @@ import { useTools } from "../hooks/useTools";
 
 export function Overlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { size, canvasRef: mainCanvasRef } = useEngine();
+  const { size, canvasRef: mainCanvasRef, runtime } = useEngine();
   const {
     renderOverlay,
     updateMousePosition,
@@ -109,6 +109,7 @@ export function Overlay() {
     };
   }, [
     mainCanvasRef,
+    runtime,
     isSpawnMode,
     updateMousePosition,
     startDrag,
