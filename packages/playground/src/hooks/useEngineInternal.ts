@@ -215,16 +215,12 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           friction: 0.1,
           mode: "bounce",
         });
-        const collisions = new Collisions({ restitution: 0.8 });
-        const fluids = new Fluids({ enabled: false });
-        const behavior = new Behavior({ enabled: false });
-        const sensors = new Sensors({ enabled: false });
-        const interaction = new Interaction({
-          enabled: false,
-          strength: 10000,
-          radius: 500,
-        });
-        const trails = new Trails({ enabled: false });
+        const collisions = new Collisions();
+        const fluids = new Fluids();
+        const behavior = new Behavior();
+        const sensors = new Sensors();
+        const interaction = new Interaction();
+        const trails = new Trails();
 
         // Create particle renderer
         const particle = new Particle();

@@ -13,7 +13,7 @@ export interface InteractionModuleState {
 }
 
 const initialState: InteractionModuleState = {
-  enabled: false,
+  enabled: true,
   mode: DEFAULT_INTERACTION_MODE,
   strength: DEFAULT_INTERACTION_STRENGTH,
   radius: DEFAULT_INTERACTION_RADIUS,
