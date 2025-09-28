@@ -218,7 +218,7 @@ export function useTools(): UseToolsReturn {
     };
   }, [stopStreaming]);
 
-  // Global key event listeners to handle shift key state
+  // Global key event listeners to handle shift key state and ESC cancellation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift' && !overlay.current.isShiftPressed) {
@@ -227,6 +227,21 @@ export function useTools(): UseToolsReturn {
         if (isSpawnMode && overlay.current.dragStartTime > 0) {
           startStreaming();
         }
+      }
+      
+      if (e.key === 'Escape' && isSpawnMode && overlay.current.dragStartTime > 0) {
+        // Cancel current drag operation without spawning particle
+        e.preventDefault();
+        
+        // Stop streaming if active
+        stopStreaming();
+        
+        // Reset drag state without spawning
+        overlay.current.dragStartTime = 0;
+        overlay.current.isDragging = false;
+        overlay.current.isShiftPressed = false;
+        overlay.current.currentSize = particleSize;
+        overlay.current.selectedColor = selectRandomColor(); // New color for next spawn
       }
     };
 
@@ -245,7 +260,7 @@ export function useTools(): UseToolsReturn {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isSpawnMode, startStreaming, stopStreaming]);
+  }, [isSpawnMode, startStreaming, stopStreaming, particleSize, selectRandomColor]);
 
   const isRemoveMode = useAppSelector(selectIsRemoveMode);
   const isJointMode = useAppSelector(selectIsJointMode);
