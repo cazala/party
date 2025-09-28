@@ -38,6 +38,11 @@ interface OverlayData {
   dragMode: "size" | "velocity";
   isCtrlPressed: boolean;
   previousCtrlPressed: boolean;
+  isShiftPressed: boolean;
+
+  // Streaming state
+  isStreaming: boolean;
+  streamIntervalId: number | null;
 
   // Color for current spawn
   selectedColor: string;
@@ -63,8 +68,8 @@ export interface UseToolsReturn {
     canvasSize: { width: number; height: number }
   ) => void;
   updateMousePosition: (mouseX: number, mouseY: number) => void;
-  startDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean) => void;
-  updateDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean) => void;
+  startDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed?: boolean) => void;
+  updateDrag: (mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed?: boolean) => void;
   endDrag: () => void;
 }
 
@@ -100,12 +105,18 @@ export function useTools(): UseToolsReturn {
     dragMode: "velocity",
     isCtrlPressed: false,
     previousCtrlPressed: false,
+    isShiftPressed: false,
+
+    // Streaming state
+    isStreaming: false,
+    streamIntervalId: null,
 
     // Color for current spawn
     selectedColor: "#ffffff", // Will be set on first use
   });
 
   const dragThreshold = 5;
+  const STREAM_RATE_MS = 100; // Spawn a particle every 100ms when streaming
 
   // Helper function to randomly select a color
   const selectRandomColor = useCallback(() => {
@@ -128,16 +139,85 @@ export function useTools(): UseToolsReturn {
     return { r: 1, g: 1, b: 1, a: 1 };
   }, []);
 
+  // Function to spawn a single particle with current state
+  const spawnParticleWithCurrentState = useCallback(() => {
+    if (!addParticle || !screenToWorld) return;
+
+    const worldPos = screenToWorld(overlay.current.dragStartX, overlay.current.dragStartY);
+    const color = parseColor(overlay.current.selectedColor);
+    const size = overlay.current.currentSize;
+    const mass = calculateMassFromSize(size);
+
+    let velocity = { x: 0, y: 0 };
+    if (overlay.current.dragMode === "velocity") {
+      const dx = overlay.current.mouseX - overlay.current.dragStartX;
+      const dy = overlay.current.mouseY - overlay.current.dragStartY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      const baseVelocityScale = 5.0;
+      const velocityScale = baseVelocityScale / Math.sqrt(zoom);
+      const maxVelocityDistance = 150;
+      const clampedDistance = Math.min(distance, maxVelocityDistance);
+      const normalizedDx = distance > 0 ? (dx / distance) * clampedDistance : 0;
+      const normalizedDy = distance > 0 ? (dy / distance) * clampedDistance : 0;
+      velocity = {
+        x: normalizedDx * velocityScale,
+        y: normalizedDy * velocityScale,
+      };
+    }
+
+    addParticle({
+      position: worldPos,
+      velocity,
+      size,
+      mass,
+      color,
+    });
+  }, [addParticle, screenToWorld, zoom, parseColor]);
+
+  // Function to start streaming particles
+  const startStreaming = useCallback(() => {
+    if (overlay.current.isStreaming) return;
+    
+    overlay.current.isStreaming = true;
+    overlay.current.streamIntervalId = window.setInterval(() => {
+      spawnParticleWithCurrentState();
+    }, STREAM_RATE_MS);
+  }, [spawnParticleWithCurrentState, STREAM_RATE_MS]);
+
+  // Function to stop streaming particles
+  const stopStreaming = useCallback(() => {
+    if (!overlay.current.isStreaming) return;
+    
+    overlay.current.isStreaming = false;
+    if (overlay.current.streamIntervalId !== null) {
+      clearInterval(overlay.current.streamIntervalId);
+      overlay.current.streamIntervalId = null;
+    }
+  }, []);
+
   // Redux selectors
   const toolMode = useAppSelector(selectActiveTool);
   const isSpawnMode = useAppSelector(selectIsSpawnMode);
 
-  // Set initial color when entering spawn mode
+  // Set initial color when entering spawn mode and handle cleanup
   useEffect(() => {
     if (isSpawnMode && overlay.current.selectedColor === "#ffffff") {
       overlay.current.selectedColor = selectRandomColor();
     }
-  }, [isSpawnMode, selectRandomColor]);
+    // Stop streaming when exiting spawn mode
+    if (!isSpawnMode) {
+      stopStreaming();
+    }
+  }, [isSpawnMode, selectRandomColor, stopStreaming]);
+
+  // Cleanup streaming on unmount
+  useEffect(() => {
+    return () => {
+      stopStreaming();
+    };
+  }, [stopStreaming]);
+
   const isRemoveMode = useAppSelector(selectIsRemoveMode);
   const isJointMode = useAppSelector(selectIsJointMode);
   const isGrabMode = useAppSelector(selectIsGrabMode);
@@ -168,7 +248,7 @@ export function useTools(): UseToolsReturn {
   }, []);
 
   const startDrag = useCallback(
-    (mouseX: number, mouseY: number, ctrlPressed: boolean) => {
+    (mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed: boolean = false) => {
       overlay.current.dragStartX = mouseX;
       overlay.current.dragStartY = mouseY;
       overlay.current.dragStartTime = Date.now();
@@ -176,15 +256,21 @@ export function useTools(): UseToolsReturn {
       overlay.current.lockedSize = particleSize;
       overlay.current.isCtrlPressed = ctrlPressed;
       overlay.current.previousCtrlPressed = ctrlPressed;
+      overlay.current.isShiftPressed = shiftPressed;
       overlay.current.isDragging = false; // Wait for drag threshold
       overlay.current.dragMode = ctrlPressed ? "size" : "velocity";
       overlay.current.selectedColor = selectRandomColor(); // Select color for this spawn
+      
+      // Start streaming if shift is pressed
+      if (shiftPressed) {
+        startStreaming();
+      }
     },
-    [particleSize, selectRandomColor]
+    [particleSize, selectRandomColor, startStreaming]
   );
 
   const updateDrag = useCallback(
-    (mouseX: number, mouseY: number, ctrlPressed: boolean) => {
+    (mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed: boolean = false) => {
       // Check if we have a valid drag start position
       if (overlay.current.dragStartTime === 0) return;
 
@@ -195,6 +281,8 @@ export function useTools(): UseToolsReturn {
       const shouldBeDragging = distance > dragThreshold;
 
       overlay.current.isCtrlPressed = ctrlPressed;
+      const wasShiftPressed = overlay.current.isShiftPressed;
+      overlay.current.isShiftPressed = shiftPressed;
 
       if (shouldBeDragging) {
         const dragMode = ctrlPressed ? "size" : "velocity";
@@ -213,9 +301,18 @@ export function useTools(): UseToolsReturn {
         }
       }
 
+      // Handle shift key for streaming
+      if (shiftPressed && !wasShiftPressed) {
+        // Shift just pressed - start streaming
+        startStreaming();
+      } else if (!shiftPressed && wasShiftPressed) {
+        // Shift just released - stop streaming
+        stopStreaming();
+      }
+
       overlay.current.previousCtrlPressed = ctrlPressed;
     },
-    [dragThreshold]
+    [dragThreshold, startStreaming, stopStreaming]
   );
 
   const endDrag = useCallback(() => {
@@ -276,9 +373,13 @@ export function useTools(): UseToolsReturn {
       });
     }
 
+    // Stop streaming if it was active
+    stopStreaming();
+    
     // Reset drag state and select new color for next spawn
     overlay.current.dragStartTime = 0;
     overlay.current.isDragging = false;
+    overlay.current.isShiftPressed = false;
     overlay.current.currentSize = particleSize;
     overlay.current.selectedColor = selectRandomColor(); // New color for next spawn
   }, [
@@ -289,6 +390,7 @@ export function useTools(): UseToolsReturn {
     zoom,
     parseColor,
     selectRandomColor,
+    stopStreaming,
   ]);
 
   const renderOverlay = useCallback(

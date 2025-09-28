@@ -76,7 +76,7 @@ export function Overlay() {
 
       // If we're dragging, also call updateDrag
       if (isDragging.current) {
-        updateDrag(mouseX, mouseY, e.ctrlKey || e.metaKey);
+        updateDrag(mouseX, mouseY, e.ctrlKey || e.metaKey, e.shiftKey);
       }
     };
 
@@ -87,7 +87,7 @@ export function Overlay() {
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       isDragging.current = true;
-      startDrag(mouseX, mouseY, e.ctrlKey || e.metaKey);
+      startDrag(mouseX, mouseY, e.ctrlKey || e.metaKey, e.shiftKey);
     };
 
     const handleMouseUp = () => {
