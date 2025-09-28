@@ -218,6 +218,35 @@ export function useTools(): UseToolsReturn {
     };
   }, [stopStreaming]);
 
+  // Global key event listeners to handle shift key state
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift' && !overlay.current.isShiftPressed) {
+        overlay.current.isShiftPressed = true;
+        // Start streaming if we're in spawn mode and have a valid drag position
+        if (isSpawnMode && overlay.current.dragStartTime > 0) {
+          startStreaming();
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift' && overlay.current.isShiftPressed) {
+        overlay.current.isShiftPressed = false;
+        // Stop streaming immediately when shift is released
+        stopStreaming();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isSpawnMode, startStreaming, stopStreaming]);
+
   const isRemoveMode = useAppSelector(selectIsRemoveMode);
   const isJointMode = useAppSelector(selectIsJointMode);
   const isGrabMode = useAppSelector(selectIsGrabMode);
