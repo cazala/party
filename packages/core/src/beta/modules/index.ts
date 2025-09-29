@@ -5,5 +5,6 @@ export * from "./forces/fluids";
 export * from "./forces/behavior";
 export * from "./forces/sensors";
 export * from "./forces/interaction";
+export * from "./forces/pin";
 export * from "./render/trails";
 export * from "./render/particle";

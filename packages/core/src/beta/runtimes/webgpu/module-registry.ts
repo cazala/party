@@ -170,6 +170,8 @@ export class ModuleRegistry {
         if (this.moduleArrayState[name]) {
           this.moduleArrayState[name][key] = [...value];
           this.resources.writeArrayStorage(name, key, value);
+          // Also write the array length to the uniform buffer
+          state[`${key}_length`] = value.length;
         }
       } else if (typeof value === 'number') {
         // Handle number inputs
@@ -188,6 +190,7 @@ export class ModuleRegistry {
     for (const [key, map] of Object.entries(layout.mapping)) {
       data[(map as { flatIndex: number }).flatIndex] = state[key] ?? 0;
     }
+    
     this.resources.writeModuleUniform(index, data);
   }
 

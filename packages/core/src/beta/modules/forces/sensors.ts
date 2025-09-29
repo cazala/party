@@ -83,7 +83,6 @@ export class Sensors extends Module<"sensors", SensorsInputs> {
         opts?.fleeBehavior ?? DEFAULT_SENSORS_FLEE_BEHAVIOR
       ),
       fleeAngle: opts?.fleeAngle ?? DEFAULT_SENSORS_FLEE_ANGLE,
-      enabled: this.isEnabled() ? 1 : 0,
     });
 
     if (opts?.enabled !== undefined) {
@@ -281,7 +280,7 @@ fn sensor_is_activated(
 `,
       apply: ({ particleVar, getUniform }) => `
 // Early exit if module is disabled or particle is pinned
-if (${getUniform("enabled")} == 0.0 || ${particleVar}.mass == 0.0) {
+if (${particleVar}.mass == 0.0) {
   return;
 }
 

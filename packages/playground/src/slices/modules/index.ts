@@ -8,6 +8,7 @@ import { sensorsReducer, SensorsModuleState } from "./sensors";
 import { trailsReducer, TrailsModuleState } from "./trails";
 import { interactionReducer, InteractionModuleState } from "./interaction";
 import { particleReducer, ParticleModuleState } from "./particle";
+import { pinReducer, PinModuleState } from "./pin";
 
 // Re-export all module types
 export type {
@@ -20,6 +21,7 @@ export type {
   TrailsModuleState,
   InteractionModuleState,
   ParticleModuleState,
+  PinModuleState,
 };
 
 // Re-export all module actions and reducers
@@ -32,6 +34,7 @@ export * from "./sensors";
 export * from "./trails";
 export * from "./interaction";
 export * from "./particle";
+export * from "./pin";
 
 // Re-export combinedReducer for easier imports
 export interface ModulesState {
@@ -44,6 +47,7 @@ export interface ModulesState {
   trails: TrailsModuleState;
   interaction: InteractionModuleState;
   particle: ParticleModuleState;
+  pin: PinModuleState;
 }
 
 export const modulesReducer = combineReducers({
@@ -56,6 +60,7 @@ export const modulesReducer = combineReducers({
   trails: trailsReducer,
   interaction: interactionReducer,
   particle: particleReducer,
+  pin: pinReducer,
 });
 
 // Global selectors

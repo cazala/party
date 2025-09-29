@@ -43,7 +43,7 @@ export class GPUResources {
   private arrayStorageBuffers: Map<string, GPUBuffer> = new Map();
   private arrayLengthBuffers: Map<string, GPUBuffer> = new Map();
   private renderUniformBuffer: GPUBuffer | null = null;
-  private renderBindGroupLayout: GPUBindGroupLayout | null = null;
+  private renderBindGroupLayoutCache: Map<string, GPUBindGroupLayout> | null = null;
   private computeBindGroupLayout: GPUBindGroupLayout | null = null;
   private computePipelineLayout: GPUPipelineLayout | null = null;
   private simulationPipelines: SimulationPipelines = {};
@@ -383,38 +383,60 @@ export class GPUResources {
     this.currentScene = this.currentScene === "A" ? "B" : "A";
   }
 
-  getRenderBindGroupLayout(): GPUBindGroupLayout {
-    if (this.renderBindGroupLayout) return this.renderBindGroupLayout;
-    this.renderBindGroupLayout = this.getDevice().createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: "read-only-storage" },
-        },
-        {
-          binding: 1,
+  getRenderBindGroupLayout(arrayInputs?: string[]): GPUBindGroupLayout {
+    // Create a cache key based on array inputs
+    const cacheKey = arrayInputs ? `render_${arrayInputs.sort().join('_')}` : 'render_basic';
+    
+    // Check if we have a cached layout for this configuration
+    if (!this.renderBindGroupLayoutCache) {
+      this.renderBindGroupLayoutCache = new Map();
+    }
+    
+    const cached = this.renderBindGroupLayoutCache.get(cacheKey);
+    if (cached) return cached;
+
+    const entries: GPUBindGroupLayoutEntry[] = [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "read-only-storage" },
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        buffer: { type: "uniform" },
+      },
+      {
+        binding: 2,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: { sampleType: "float" },
+      },
+      {
+        binding: 3,
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {},
+      },
+      {
+        binding: 4,
+        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        buffer: { type: "uniform" },
+      },
+    ];
+
+    // Add array storage buffer entries if provided
+    if (arrayInputs && arrayInputs.length > 0) {
+      arrayInputs.forEach((_arrayKey, index) => {
+        entries.push({
+          binding: 5 + index,
           visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-          buffer: { type: "uniform" },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: { sampleType: "float" },
-        },
-        {
-          binding: 3,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-        {
-          binding: 4,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: { type: "uniform" },
-        },
-      ],
-    });
-    return this.renderBindGroupLayout;
+          buffer: { type: "read-only-storage" },
+        });
+      });
+    }
+
+    const layout = this.getDevice().createBindGroupLayout({ entries });
+    this.renderBindGroupLayoutCache.set(cacheKey, layout);
+    return layout;
   }
 
   buildComputeLayouts(compute: Program): void {
@@ -441,11 +463,13 @@ export class GPUResources {
           visibility: GPUShaderStage.COMPUTE,
           buffer: { type: "read-only-storage" },
         });
-        entries.push({
-          binding: bindings.lengthBinding,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "uniform" },
-        });
+        if (bindings.lengthBinding !== -1) {
+          entries.push({
+            binding: bindings.lengthBinding,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "uniform" },
+          });
+        }
       }
     }
     if (compute.extraBindings.grid) {
@@ -572,8 +596,9 @@ export class GPUResources {
     return pipeline;
   }
 
-  getOrCreateFullscreenRenderPipeline(shaderCode: string): GPURenderPipeline {
-    const key = `fs:${this.hashWGSL(shaderCode)}`;
+  getOrCreateFullscreenRenderPipeline(shaderCode: string, arrayInputs?: string[]): GPURenderPipeline {
+    const arrayKey = arrayInputs?.sort().join('_') || '';
+    const key = `fs:${this.hashWGSL(shaderCode)}:${arrayKey}`;
     const cached = this.fullscreenPipelines.get(key);
     if (cached) return cached;
     const shaderModule = this.getDevice().createShaderModule({
@@ -581,7 +606,7 @@ export class GPUResources {
     });
     const pipeline = this.getDevice().createRenderPipeline({
       layout: this.getDevice().createPipelineLayout({
-        bindGroupLayouts: [this.getRenderBindGroupLayout()],
+        bindGroupLayouts: [this.getRenderBindGroupLayout(arrayInputs)],
       }),
       vertex: { module: shaderModule, entryPoint: "vs_main" },
       fragment: {
@@ -626,17 +651,35 @@ export class GPUResources {
     renderUniformBuffer: GPUBuffer,
     readSceneView: GPUTextureView,
     sceneSampler: GPUSampler,
-    moduleUniformBuffer: GPUBuffer
+    moduleUniformBuffer: GPUBuffer,
+    moduleName: string,
+    arrayInputs?: string[]
   ): GPUBindGroup {
+    const entries: GPUBindGroupEntry[] = [
+      { binding: 0, resource: { buffer: particleBuffer } },
+      { binding: 1, resource: { buffer: renderUniformBuffer } },
+      { binding: 2, resource: readSceneView },
+      { binding: 3, resource: sceneSampler },
+      { binding: 4, resource: { buffer: moduleUniformBuffer } },
+    ];
+
+    // Add array storage buffer entries
+    if (arrayInputs && arrayInputs.length > 0) {
+      arrayInputs.forEach((arrayKey, index) => {
+        const storageKey = `${moduleName}_${arrayKey}`;
+        const arrayBuffer = this.arrayStorageBuffers.get(storageKey);
+        if (arrayBuffer) {
+          entries.push({
+            binding: 5 + index,
+            resource: { buffer: arrayBuffer },
+          });
+        }
+      });
+    }
+
     return this.getDevice().createBindGroup({
-      layout: this.getRenderBindGroupLayout(),
-      entries: [
-        { binding: 0, resource: { buffer: particleBuffer } },
-        { binding: 1, resource: { buffer: renderUniformBuffer } },
-        { binding: 2, resource: readSceneView },
-        { binding: 3, resource: sceneSampler },
-        { binding: 4, resource: { buffer: moduleUniformBuffer } },
-      ],
+      layout: this.getRenderBindGroupLayout(arrayInputs),
+      entries,
     });
   }
 
@@ -663,17 +706,17 @@ export class GPUResources {
         const arrayBuffer = this.arrayStorageBuffers.get(arrayKey);
         const lengthBuffer = this.arrayLengthBuffers.get(`${arrayKey}_length`);
 
-        if (arrayBuffer && lengthBuffer) {
-          entries.push(
-            {
-              binding: bindings.arrayBinding,
-              resource: { buffer: arrayBuffer },
-            },
-            {
+        if (arrayBuffer) {
+          entries.push({
+            binding: bindings.arrayBinding,
+            resource: { buffer: arrayBuffer },
+          });
+          if (bindings.lengthBinding !== -1 && lengthBuffer) {
+            entries.push({
               binding: bindings.lengthBinding,
               resource: { buffer: lengthBuffer },
-            }
-          );
+            });
+          }
         }
       }
     }
@@ -715,16 +758,34 @@ export class GPUResources {
     pipeline: GPUComputePipeline,
     readView: GPUTextureView,
     writeView: GPUTextureView,
-    moduleUniformBuffer: GPUBuffer
+    moduleUniformBuffer: GPUBuffer,
+    moduleName: string,
+    arrayInputs?: string[]
   ): GPUBindGroup {
     const layout = pipeline.getBindGroupLayout(0);
+    const entries: GPUBindGroupEntry[] = [
+      { binding: 0, resource: readView },
+      { binding: 1, resource: writeView },
+      { binding: 2, resource: { buffer: moduleUniformBuffer } },
+    ];
+
+    // Add array storage buffer entries
+    if (arrayInputs && arrayInputs.length > 0) {
+      arrayInputs.forEach((arrayKey, index) => {
+        const storageKey = `${moduleName}_${arrayKey}`;
+        const arrayBuffer = this.arrayStorageBuffers.get(storageKey);
+        if (arrayBuffer) {
+          entries.push({
+            binding: 3 + index,
+            resource: { buffer: arrayBuffer },
+          });
+        }
+      });
+    }
+
     return this.getDevice().createBindGroup({
       layout,
-      entries: [
-        { binding: 0, resource: readView },
-        { binding: 1, resource: writeView },
-        { binding: 2, resource: { buffer: moduleUniformBuffer } },
-      ],
+      entries,
     });
   }
 
@@ -756,14 +817,8 @@ export class GPUResources {
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       });
 
-      // Create length uniform buffer (single u32)
-      const lengthBuffer = this.getDevice().createBuffer({
-        size: 4, // single u32
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      });
-
+      // Length is now stored in main uniform buffer, no separate buffer needed
       this.arrayStorageBuffers.set(storageKey, arrayBuffer);
-      this.arrayLengthBuffers.set(`${storageKey}_length`, lengthBuffer);
     });
   }
 
@@ -777,9 +832,8 @@ export class GPUResources {
   ): void {
     const storageKey = `${moduleName}_${arrayKey}`;
     const arrayBuffer = this.arrayStorageBuffers.get(storageKey);
-    const lengthBuffer = this.arrayLengthBuffers.get(`${storageKey}_length`);
 
-    if (!arrayBuffer || !lengthBuffer) {
+    if (!arrayBuffer) {
       console.warn(`Array storage buffer not found for ${storageKey}`);
       return;
     }
@@ -817,15 +871,7 @@ export class GPUResources {
       );
     }
 
-    // Write length
-    const lengthData = new Uint32Array([data.length]);
-    this.getDevice().queue.writeBuffer(
-      lengthBuffer,
-      0,
-      lengthData.buffer,
-      lengthData.byteOffset,
-      lengthData.byteLength
-    );
+    // Length is now written to the main uniform buffer by the module registry
   }
 
   /**
@@ -862,6 +908,8 @@ export class GPUResources {
     this.arrayStorageBuffers.clear();
     this.arrayLengthBuffers.clear();
     this.renderUniformBuffer = null;
+    this.renderBindGroupLayoutCache?.clear();
+    this.renderBindGroupLayoutCache = null;
     this.gridCountsBuffer = null;
     this.gridIndicesBuffer = null;
     this.simStateBuffer = null;
@@ -874,7 +922,6 @@ export class GPUResources {
     this.copyPipelines.clear();
     this.fullscreenPipelines.clear();
     this.imageComputePipelines.clear();
-    this.renderBindGroupLayout = null;
     this.computeBindGroupLayout = null;
     this.computePipelineLayout = null;
   }

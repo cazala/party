@@ -194,18 +194,29 @@ export class CPUEngine extends AbstractEngine {
   ): ImageData | null {
     try {
       const context = this.canvas.getContext("2d")!;
-      
+
       // Clamp to canvas bounds
       const clampedX = Math.max(0, Math.min(x, this.canvas.width));
       const clampedY = Math.max(0, Math.min(y, this.canvas.height));
-      const clampedWidth = Math.max(0, Math.min(width, this.canvas.width - clampedX));
-      const clampedHeight = Math.max(0, Math.min(height, this.canvas.height - clampedY));
-      
+      const clampedWidth = Math.max(
+        0,
+        Math.min(width, this.canvas.width - clampedX)
+      );
+      const clampedHeight = Math.max(
+        0,
+        Math.min(height, this.canvas.height - clampedY)
+      );
+
       if (clampedWidth <= 0 || clampedHeight <= 0) {
         return null;
       }
 
-      return context.getImageData(clampedX, clampedY, clampedWidth, clampedHeight);
+      return context.getImageData(
+        clampedX,
+        clampedY,
+        clampedWidth,
+        clampedHeight
+      );
     } catch (error) {
       return null;
     }
@@ -237,8 +248,12 @@ export class CPUEngine extends AbstractEngine {
       this.getNeighbors(position, radius);
 
     // Image data access function
-    const getImageData = (x: number, y: number, width: number, height: number) =>
-      this.getImageData(x, y, width, height);
+    const getImageData = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ) => this.getImageData(x, y, width, height);
 
     // First pass: state computation for all modules
     for (const module of this.modules) {
@@ -255,7 +270,7 @@ export class CPUEngine extends AbstractEngine {
             input[key] = value ?? 0;
           }
           // Always add enabled
-          input.enabled = module.read().enabled ?? 0;
+          input.enabled = module.isEnabled() ? 1 : 0;
 
           for (const particle of this.particles) {
             const setState = (name: string, value: number) => {
@@ -294,7 +309,7 @@ export class CPUEngine extends AbstractEngine {
             input[key] = value ?? 0;
           }
           // Always add enabled
-          input.enabled = module.read().enabled ?? 0;
+          input.enabled = module.isEnabled() ? 1 : 0;
 
           for (const particle of this.particles) {
             const getState = (name: string, pid?: number) => {
@@ -350,7 +365,7 @@ export class CPUEngine extends AbstractEngine {
               input[key] = value ?? 0;
             }
             // Always add enabled
-            input.enabled = module.read().enabled ?? 0;
+            input.enabled = module.isEnabled() ? 1 : 0;
             for (const particle of this.particles) {
               const getState = (name: string, pid?: number) => {
                 return globalState[pid ?? particle.id]?.[name] ?? 0;
@@ -386,9 +401,10 @@ export class CPUEngine extends AbstractEngine {
             input[key] = value ?? 0;
           }
           // Always add enabled
-          input.enabled = module.read().enabled ?? 0;
+          input.enabled = module.isEnabled() ? 1 : 0;
 
-          for (const particle of this.particles) {
+          for (let index = 0; index < this.particles.length; index++) {
+            const particle = this.particles[index];
             const getState = (name: string, pid?: number) => {
               return globalState[pid ?? particle.id]?.[name] ?? 0;
             };
@@ -413,6 +429,7 @@ export class CPUEngine extends AbstractEngine {
               input,
               getState,
               view: this.view,
+              index,
             });
           }
         }
@@ -514,7 +531,7 @@ export class CPUEngine extends AbstractEngine {
             input[key] = value ?? 0;
           }
           // Always add enabled
-          input.enabled = module.read().enabled ?? 0;
+          input.enabled = module.isEnabled() ? 1 : 0;
 
           // Setup phase
           render.setup?.({

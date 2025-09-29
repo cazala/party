@@ -127,7 +127,10 @@ export function buildProgram(modules: readonly Module[]): Program {
   // 2) User module uniforms start at binding(3)
   let nextBindingIndex = 3;
   const arrayDecls: string[] = [];
-  const arrayBindings: Record<string, { arrayBinding: number; lengthBinding: number }> = {};
+  const arrayBindings: Record<
+    string,
+    { arrayBinding: number; lengthBinding: number; lengthExpr?: string }
+  > = {};
 
   modules.forEach((module) => {
     const uniformsVar = `${module.name}_uniforms`;
@@ -141,8 +144,9 @@ export function buildProgram(modules: readonly Module[]): Program {
       .filter(([_, type]) => type === DataType.ARRAY)
       .map(([key, _]) => key);
 
-    // Always add enabled as a number input
-    const allNumberInputs = [...numberInputs, "enabled"];
+    // Add enabled and array lengths as number inputs 
+    const arrayLengthInputs = arrayInputs.map(key => `${key}_length`);
+    const allNumberInputs = [...numberInputs, "enabled", ...arrayLengthInputs];
 
     // Create uniform buffer for number inputs
     const bindingIndex = nextBindingIndex++;
@@ -181,23 +185,22 @@ export function buildProgram(modules: readonly Module[]): Program {
     arrayInputs.forEach((arrayKey) => {
       const arrayBinding = nextBindingIndex++;
       const arrayVar = `${module.name}_${arrayKey}_array`;
-      const lengthVar = `${module.name}_${arrayKey}_length`;
 
       // Add array storage buffer declaration
       arrayDecls.push(
         `@group(0) @binding(${arrayBinding}) var<storage, read> ${arrayVar}: array<f32>;`
       );
 
-      // Add length uniform (we'll store length in a separate small uniform buffer)
-      const lengthBinding = nextBindingIndex++;
-      arrayDecls.push(
-        `@group(0) @binding(${lengthBinding}) var<uniform> ${lengthVar}: u32;`
-      );
+      // Length is now stored in the main uniform buffer, find its expression
+      const lengthKey = `${arrayKey}_length`;
+      const lengthMapping = mapping[lengthKey];
+      const lengthExpr = lengthMapping ? lengthMapping.expr : "0u";
 
       // Track array bindings
       arrayBindings[`${module.name}_${arrayKey}`] = {
         arrayBinding,
-        lengthBinding,
+        lengthBinding: -1, // No separate binding, using main uniform
+        lengthExpr,
       };
 
       // Add array mappings to the module's mapping for getUniform access
@@ -205,10 +208,13 @@ export function buildProgram(modules: readonly Module[]): Program {
         flatIndex: -1, // Not in uniform buffer
         expr: arrayVar, // Direct array reference
       };
-      mapping[`${arrayKey}_length`] = {
-        flatIndex: -1,
-        expr: lengthVar,
-      };
+      // Don't overwrite the length mapping if it already exists with a proper flatIndex
+      if (!mapping[`${arrayKey}_length`] || mapping[`${arrayKey}_length`].flatIndex === -1) {
+        mapping[`${arrayKey}_length`] = {
+          flatIndex: -1,
+          expr: lengthExpr,
+        };
+      }
     });
   });
 
@@ -252,7 +258,7 @@ export function buildProgram(modules: readonly Module[]): Program {
 
   const makeGetUniformAndLength = (module: Module) => {
     const layout = layouts.find((l) => l.moduleName === module.name)!;
-    const getUniform = (id: string, index?: number) => {
+    const getUniform = (id: string, index?: number | string) => {
       const mapping = layout.mapping[id];
       if (!mapping) return "0.0";
 
@@ -261,8 +267,8 @@ export function buildProgram(modules: readonly Module[]): Program {
         if (index !== undefined) {
           return `${mapping.expr}[${index}]`;
         } else {
-          // Return first element if no index specified for array
-          return `${mapping.expr}[0]`;
+          // Return the array variable name itself for direct access
+          return mapping.expr;
         }
       } else {
         // Regular number input
@@ -272,7 +278,7 @@ export function buildProgram(modules: readonly Module[]): Program {
     const getLength = (id: string) => {
       if (module.inputs[id] === DataType.ARRAY) {
         const lengthMapping = layout.mapping[`${id}_length`];
-        return lengthMapping?.expr ?? "0u";
+        return `u32(${lengthMapping?.expr ?? "0.0"})`;
       }
       return "0u";
     };
@@ -486,12 +492,11 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (body && body.trim()) {
       const enabled = layout.mapping.enabled.expr;
       const name = fn("correct", module.name);
-      moduleFns.push(
-        `fn ${name}(particle: ptr<function, Particle>, index: u32, prevPos: vec2<f32>, postPos: vec2<f32>) {\n  ${body.trim()}\n}`
-      );
-      correctStmts.push(
-        `if (${enabled} != 0.0) { ${name}(&particle, index, prevPos, postPos); }`
-      );
+      const functionCode = `fn ${name}(particle: ptr<function, Particle>, index: u32, prevPos: vec2<f32>, postPos: vec2<f32>) {\n  ${body.trim()}\n}`;
+      const callStatement = `if (${enabled} != 0.0) { ${name}(&particle, index, prevPos, postPos); }`;
+      
+      moduleFns.push(functionCode);
+      correctStmts.push(callStatement);
     }
   });
 

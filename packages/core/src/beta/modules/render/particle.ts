@@ -14,12 +14,24 @@ import {
   DataType,
 } from "../../module";
 
-type ParticleInputs = {};
+type ParticleInputs = {
+  redParticleIndexes: number[];
+};
 
 export class Particle extends Module<"particles", ParticleInputs> {
   readonly name = "particles" as const;
   readonly role = ModuleRole.Render;
-  readonly inputs = {} as const;
+  readonly inputs = {
+    redParticleIndexes: DataType.ARRAY,
+  } as const;
+
+  getRedParticleIndexes(): number[] {
+    return this.readArray("redParticleIndexes");
+  }
+
+  setRedParticleIndexes(indexes: number[]): void {
+    this.write({ redParticleIndexes: indexes });
+  }
 
   webgpu(): WebGPUDescriptor<ParticleInputs> {
     return {
@@ -27,11 +39,28 @@ export class Particle extends Module<"particles", ParticleInputs> {
       passes: [
         {
           kind: RenderPassKind.Fullscreen,
-          fragment: () => `{
+          fragment: ({ getUniform, getLength }) => `{
   let center = vec2<f32>(0.5, 0.5);
   let dist = distance(uv, center);
   let alpha = 1.0 - smoothstep(0.45, 0.5, dist);
-  return vec4<f32>(color.rgb, color.a * alpha);
+  
+  // Check if this particle should be red
+  let redCount = ${getLength("redParticleIndexes")};
+  var isRed = false;
+  for (var i = 0u; i < redCount; i++) {
+    let redIndex = u32(${getUniform("redParticleIndexes", "i")});
+    if (index == redIndex) {
+      isRed = true;
+      break;
+    }
+  }
+  
+  var finalColor = color.rgb;
+  if (isRed) {
+    finalColor = vec3<f32>(1.0, 0.0, 0.0); // Override with red color
+  }
+  
+  return vec4<f32>(finalColor, color.a * alpha);
 }`,
           bindings: [] as const,
           readsScene: false,

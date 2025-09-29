@@ -36,21 +36,22 @@ export abstract class Module<
   abstract readonly role: ModuleRole;
   abstract readonly inputs: { [K in keyof Inputs]: DataType };
 
-  private _state: Record<StateKeys, number> = {} as Record<StateKeys, number>;
+  private _state: Partial<Inputs> = {};
   private _writer:
-    | ((values: Partial<Record<string, number | number[]>>) => void)
-    | null = (values: Partial<Record<string, number | number[]>>) => {
+    | ((values: Partial<Inputs & { enabled: number }>) => void)
+    | null = (values: Partial<Inputs>) => {
     for (const key of Object.keys(values)) {
-      const val = values[key as keyof typeof values];
+      const val = values[key as keyof Inputs];
       if (typeof val === "number") {
-        this._state[key as StateKeys] = val;
+        this._state[key as keyof Inputs] = val as Inputs[keyof Inputs];
+      } else if (Array.isArray(val)) {
+        this._state[key as keyof Inputs] = [...val] as Inputs[keyof Inputs];
       }
     }
   };
-  private _reader: (() => Partial<Record<string, number | number[]>>) | null =
-    () => {
-      return this._state;
-    };
+  private _reader: (() => Partial<Inputs>) | null = () => {
+    return { ...this._state };
+  };
   private _enabled: boolean = true;
 
   attachUniformWriter(
@@ -61,17 +62,13 @@ export abstract class Module<
     writer({ ...values, enabled: this._enabled ? 1 : 0 });
   }
 
-  attachUniformReader(
-    reader: () => Partial<Record<string, number | number[]>>
-  ): void {
+  attachUniformReader(reader: () => Partial<Inputs>): void {
     this._reader = reader;
   }
 
   public write(values: Partial<Inputs>): void {
     // Binding keys are narrowed by the generic; cast to the writer's accepted shape
-    this._writer?.(
-      values as unknown as Partial<Record<string, number | number[]>>
-    );
+    this._writer?.(values as unknown as Partial<Inputs & { enabled: number }>);
   }
 
   public read(): Partial<Inputs> {
@@ -103,7 +100,9 @@ export abstract class Module<
     this._enabled = !!enabled;
     // Propagate to GPU uniform if available
     if (this._writer) {
-      this._writer({ enabled: this._enabled ? 1 : 0 });
+      this._writer({ enabled: this._enabled ? 1 : 0 } as unknown as Partial<
+        Inputs & { enabled: number }
+      >);
     }
   }
 
@@ -120,14 +119,14 @@ export interface WebGPUForceDescriptor<
 > {
   states?: readonly StateKeys[];
   global?: (args: {
-    getUniform: (id: keyof Inputs, index?: number) => string;
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
     getLength: (id: keyof Inputs) => string;
   }) => string;
   state?: (args: {
     particleVar: string;
     dtVar: string;
     maxSizeVar: string;
-    getUniform: (id: keyof Inputs, index?: number) => string;
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
     getLength: (id: keyof Inputs) => string;
     setState: (name: StateKeys, valueExpr: string) => string;
   }) => string;
@@ -135,7 +134,7 @@ export interface WebGPUForceDescriptor<
     particleVar: string;
     dtVar: string;
     maxSizeVar: string;
-    getUniform: (id: keyof Inputs, index?: number) => string;
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
     getLength: (id: keyof Inputs) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
@@ -143,7 +142,7 @@ export interface WebGPUForceDescriptor<
     particleVar: string;
     dtVar: string;
     maxSizeVar: string;
-    getUniform: (id: keyof Inputs, index?: number) => string;
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
     getLength: (id: keyof Inputs) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
@@ -153,7 +152,7 @@ export interface WebGPUForceDescriptor<
     maxSizeVar: string;
     prevPosVar: string;
     postPosVar: string;
-    getUniform: (id: keyof Inputs, index?: number) => string;
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
     getLength: (id: keyof Inputs) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
@@ -169,12 +168,12 @@ export type FullscreenRenderPass<
   vertex?: (args: {
     getUniform: (
       id: keyof Inputs | "canvasWidth" | "canvasHeight",
-      index?: number
+      index?: number | string
     ) => string;
     getLength: (id: keyof Inputs) => string;
   }) => string;
   globals?: (args: {
-    getUniform: (id: keyof Inputs, index?: number) => string;
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
     getLength: (id: keyof Inputs) => string;
   }) => string;
   fragment: (args: {
@@ -186,12 +185,12 @@ export type FullscreenRenderPass<
         | "clearColorR"
         | "clearColorG"
         | "clearColorB",
-      index?: number
+      index?: number | string
     ) => string;
     getLength: (id: keyof Inputs) => string;
     sampleScene: (uvExpr: string) => string;
   }) => string;
-  bindings: keyof Inputs[];
+  bindings: (keyof Inputs)[];
   readsScene?: boolean;
   writesScene?: true;
   instanced?: boolean;
@@ -218,18 +217,18 @@ export type ComputeRenderPass<
         | "clearColorR"
         | "clearColorG"
         | "clearColorB",
-      index?: number
+      index?: number | string
     ) => string;
     getLength: (id: keyof Inputs) => string;
     readScene: (coordsExpr: string) => string;
     writeScene: (coordsExpr: string, colorExpr: string) => string;
   }) => string;
-  bindings: keyof Inputs[];
+  bindings: (keyof Inputs)[];
   readsScene?: boolean;
   writesScene?: true;
   workgroupSize?: [number, number, number];
   globals?: (args: {
-    getUniform: (id: keyof Inputs, index?: number) => string;
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
     getLength: (id: keyof Inputs) => string;
   }) => string;
 };
@@ -326,6 +325,7 @@ export interface CPUForceDescriptor<
     input: Inputs;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
+    index: number;
   }) => void;
 }
 

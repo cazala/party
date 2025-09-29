@@ -16,6 +16,7 @@ import {
   Module,
   ComputeRenderPass,
   RenderPassKind,
+  DataType,
   type FullscreenRenderPass,
   type WebGPURenderDescriptor,
 } from "../../module";
@@ -90,7 +91,7 @@ export class RenderPipeline {
 
     for (let i = 0; i < modules.length; i++) {
       const module = modules[i];
-      const descriptor = module.webgpu() as WebGPURenderDescriptor<string>;
+      const descriptor = module.webgpu() as WebGPURenderDescriptor;
       if (!descriptor.passes || descriptor.passes.length === 0) continue;
       for (const pass of descriptor.passes) {
         // Resolve the uniform layout for this module
@@ -104,9 +105,9 @@ export class RenderPipeline {
           // Fullscreen raster pass (quad). Can write the scene directly to current view
           this.runFullscreenPass(
             encoder,
-            module.name,
+            module,
             layout,
-            pass,
+            pass as FullscreenRenderPass,
             views,
             resources,
             particleCount,
@@ -118,9 +119,9 @@ export class RenderPipeline {
           // Compute image pass. Writes into other view; if it writes the scene we ping-pong swap
           this.runComputePass(
             encoder,
-            module.name,
+            module,
             layout,
-            pass,
+            pass as ComputeRenderPass,
             views,
             resources,
             viewSize,
@@ -181,7 +182,7 @@ export class RenderPipeline {
 
   private runFullscreenPass(
     encoder: GPUCommandEncoder,
-    moduleName: string,
+    module: Module,
     layout: ModuleUniformLayout,
     pass: FullscreenRenderPass,
     views: {
@@ -194,10 +195,15 @@ export class RenderPipeline {
     clearColor: { r: number; g: number; b: number; a: number }
   ): void {
     // Generate WGSL for the fullscreen pass
-    const wgsl = buildFullscreenPassWGSL(pass, moduleName, layout, clearColor);
+    const wgsl = buildFullscreenPassWGSL(pass as FullscreenRenderPass, module.name, layout, module.inputs, clearColor);
+
+    // Get array inputs for this module
+    const arrayInputs = Object.entries(module.inputs)
+      .filter(([_, type]) => type === DataType.ARRAY)
+      .map(([key, _]) => key);
 
     // Acquire or create a cached render pipeline for the generated WGSL
-    const pipeline = resources.getOrCreateFullscreenRenderPipeline(wgsl);
+    const pipeline = resources.getOrCreateFullscreenRenderPipeline(wgsl, arrayInputs);
 
     // Create bind group with particle data, global render uniforms, scene sampler/texture, and module uniforms
     const bindGroup = resources.createFullscreenBindGroup(
@@ -207,7 +213,9 @@ export class RenderPipeline {
       resources.getSceneSampler(),
       resources
         .getModuleUniformBuffers()
-        .find((muf) => muf.layout.moduleName === moduleName)!.buffer
+        .find((muf) => muf.layout.moduleName === module.name)!.buffer,
+      module.name,
+      arrayInputs
     );
 
     // Begin render pass targeting the current view. Clear only on the very first write
@@ -237,7 +245,7 @@ export class RenderPipeline {
 
   private runComputePass(
     encoder: GPUCommandEncoder,
-    moduleName: string,
+    module: Module,
     layout: ModuleUniformLayout,
     pass: ComputeRenderPass,
     views: {
@@ -250,18 +258,26 @@ export class RenderPipeline {
     clearColor: { r: number; g: number; b: number; a: number }
   ): void {
     // Generate WGSL for the compute pass
-    const wgsl = buildComputeImagePassWGSL(pass, moduleName, layout, clearColor);
+    const wgsl = buildComputeImagePassWGSL(pass as ComputeRenderPass, module.name, layout, module.inputs, clearColor);
+    
+    // Get array inputs for this module
+    const arrayInputs = Object.entries(module.inputs)
+      .filter(([_, type]) => type === DataType.ARRAY)
+      .map(([key, _]) => key);
+    
     // Acquire or create a cached compute pipeline
     const pipeline = resources.getOrCreateImageComputePipeline(wgsl);
     const muf = resources
       .getModuleUniformBuffers()
-      .find((muf) => muf.layout.moduleName === moduleName)!;
+      .find((muf) => muf.layout.moduleName === module.name)!;
     // Bind current/other scene views and module uniforms
     const bindGroup = resources.createImageComputeBindGroup(
       pipeline,
       views.currentView,
       views.otherView,
-      muf.buffer
+      muf.buffer,
+      module.name,
+      arrayInputs
     );
     const canvasSize = size;
     // Compute dispatch size (assuming 8x8 threadgroups)

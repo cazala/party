@@ -5,8 +5,8 @@ import { CPUEngine } from "./runtimes/cpu/engine";
 
 export type EngineOptions = {
   canvas: HTMLCanvasElement;
-  forces: Module[];
-  render: Module[];
+  forces: Module<string, any>[];
+  render: Module<string, any>[];
   runtime: "cpu" | "webgpu" | "auto";
   constrainIterations?: number;
   clearColor?: { r: number; g: number; b: number; a: number };
@@ -170,6 +170,9 @@ export class Engine implements IEngine {
   }
   setConstrainIterations(iterations: number): void {
     this.engine.setConstrainIterations(iterations);
+  }
+  getModule(name: string): Module | undefined {
+    return this.engine.getModule(name);
   }
 
   // Check if a module is supported by the current runtime

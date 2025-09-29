@@ -44,6 +44,7 @@ export interface IEngine {
   setCellSize(size: number): void;
   getConstrainIterations(): number;
   setConstrainIterations(iterations: number): void;
+  getModule(name: string): Module | undefined;
 }
 
 export abstract class AbstractEngine implements IEngine {
@@ -249,5 +250,9 @@ export abstract class AbstractEngine implements IEngine {
 
   protected onConstrainIterationsChanged(): void {
     // Override in subclasses if needed
+  }
+
+  getModule<T extends Module>(name: string): T | undefined {
+    return this.modules.find((module) => module.name === name) as T | undefined;
   }
 }

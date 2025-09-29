@@ -9,6 +9,8 @@ import {
   Sensors,
   Trails,
   Interaction,
+  Pin,
+  Particle,
 } from "@cazala/party";
 import { useEngineInternal } from "../hooks/useEngineInternal";
 import { useWindowSize } from "../hooks/useWindowSize";
@@ -87,6 +89,8 @@ export interface EngineContextType {
   sensors: Sensors | null;
   trails: Trails | null;
   interaction: Interaction | null;
+  pin: Pin | null;
+  particle: Particle | null;
 }
 
 export const EngineContext = createContext<EngineContextType | null>(null);

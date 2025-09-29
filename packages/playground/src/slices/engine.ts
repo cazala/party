@@ -430,10 +430,13 @@ export const handleWheelThunk = createAsyncThunk(
 // Remove particles thunk
 export const removeParticlesThunk = createAsyncThunk(
   "engine/removeParticles",
-  async (
-    { center, radius }: { center: { x: number; y: number }; radius: number },
-    { dispatch }
-  ) => {
+  async ({
+    center,
+    radius,
+  }: {
+    center: { x: number; y: number };
+    radius: number;
+  }) => {
     const engine = getEngine();
     if (!engine) return;
 
@@ -456,6 +459,7 @@ export const removeParticlesThunk = createAsyncThunk(
     engine.setParticles(updatedParticles);
   }
 );
+
 
 export const {
   setWebGPU,

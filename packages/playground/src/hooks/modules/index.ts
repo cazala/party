@@ -7,3 +7,5 @@ export { useBehavior } from "./useBehavior";
 export { useSensors } from "./useSensors";
 export { useTrails } from "./useTrails";
 export { useInteraction } from "./useInteraction";
+export { usePin } from "./usePin";
+export { useParticle } from "./useParticle";
