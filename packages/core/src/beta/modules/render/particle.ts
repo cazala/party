@@ -13,14 +13,12 @@ import {
   CanvasComposition,
 } from "../../module";
 
-type ParticleInputKeys = "particleBuffer" | "renderUniforms";
-
-export class Particle extends Module<"particles", ParticleInputKeys> {
+export class Particle extends Module<"particles"> {
   readonly name = "particles" as const;
   readonly role = ModuleRole.Render;
-  readonly keys = ["particleBuffer", "renderUniforms"] as const;
+  readonly keys = [] as const;
 
-  webgpu(): WebGPUDescriptor<ParticleInputKeys> {
+  webgpu(): WebGPUDescriptor {
     return {
       // Single fullscreen pass that draws particles into the scene texture
       passes: [
@@ -32,7 +30,7 @@ export class Particle extends Module<"particles", ParticleInputKeys> {
   let alpha = 1.0 - smoothstep(0.45, 0.5, dist);
   return vec4<f32>(color.rgb, color.a * alpha);
 }`,
-          bindings: ["particleBuffer", "renderUniforms"] as const,
+          bindings: [] as const,
           readsScene: false,
           writesScene: true,
         },
@@ -40,7 +38,7 @@ export class Particle extends Module<"particles", ParticleInputKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<ParticleInputKeys> {
+  cpu(): CPUDescriptor {
     return {
       composition: CanvasComposition.RequiresClear,
       render: ({ particle, screenX, screenY, screenSize, utils }) => {
