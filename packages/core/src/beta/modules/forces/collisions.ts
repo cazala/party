@@ -64,6 +64,8 @@ export class Collisions extends Module<"collisions", CollisionsInputs> {
     let j = neighbor_iter_next(&it, index);
     if (j == NEIGHBOR_NONE) { break; }
     var other = particles[j];
+    // Skip removed neighbors; treat pinned as infinite mass later
+    if (other.mass == 0.0) { continue; }
     let r = other.size + ${particleVar}.size;
     let delta = ${particleVar}.position - other.position;
     let dist2 = dot(delta, delta);
@@ -137,10 +139,12 @@ export class Collisions extends Module<"collisions", CollisionsInputs> {
     let e = ${getUniform("restitution")};
     let relN = dot(v1 - v2, n);
     if (relN < 0.0) {
-      let mu = (m1 * m2) / max(m1 + m2, 1e-6);
-      let denom = max(1.0 / max(mu, 1e-6), 1e-6);
-      let j = -(1.0 + e) * relN / denom;
-      let dv = min(j / max(m1, 1e-6), 1000.0);
+      // Treat pinned (mass < 0) as infinite mass: zero inverse mass
+      let invM1 = select(0.0, 1.0 / max(m1, 1e-6), m1 > 0.0);
+      let invM2 = select(0.0, 1.0 / max(m2, 1e-6), m2 > 0.0);
+      let invSum = max(invM1 + invM2, 1e-6);
+      let j = -(1.0 + e) * relN / invSum;
+      let dv = min(j * invM1, 1000.0);
       ${particleVar}.velocity = v1 + n * dv;
     }
   }
@@ -186,6 +190,8 @@ export class Collisions extends Module<"collisions", CollisionsInputs> {
 
         for (const other of neighbors) {
           if (other.id === particle.id) continue;
+          // Skip removed neighbors; treat pinned as infinite mass later
+          if (other.mass === 0) continue;
 
           const r = other.size + particle.size;
           const deltaX = particle.position.x - other.position.x;
@@ -273,10 +279,12 @@ export class Collisions extends Module<"collisions", CollisionsInputs> {
           const relN = (v1x - v2x) * n.x + (v1y - v2y) * n.y;
 
           if (relN < 0) {
-            const mu = (m1 * m2) / Math.max(m1 + m2, 1e-6);
-            const denom = Math.max(1 / Math.max(mu, 1e-6), 1e-6);
-            const j = (-(1 + e) * relN) / denom;
-            const dv = Math.min(j / Math.max(m1, 1e-6), 1000);
+            // Treat pinned (mass < 0) as infinite mass: zero inverse mass
+            const invM1 = m1 > 0 ? 1 / Math.max(m1, 1e-6) : 0;
+            const invM2 = m2 > 0 ? 1 / Math.max(m2, 1e-6) : 0;
+            const invSum = Math.max(invM1 + invM2, 1e-6);
+            const j = (-(1 + e) * relN) / invSum;
+            const dv = Math.min(j * invM1, 1000);
             particle.velocity.x = v1x + n.x * dv;
             particle.velocity.y = v1y + n.y * dv;
           }

@@ -443,6 +443,8 @@ export const removeParticlesThunk = createAsyncThunk(
     // Get current particles
     const particles = await engine.getParticles();
 
+    let didChange = false;
+
     // Find particles within removal area and set mass to 0
     const updatedParticles = particles.map((particle) => {
       const dx = particle.position.x - center.x;
@@ -450,16 +452,18 @@ export const removeParticlesThunk = createAsyncThunk(
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       if (distance <= radius) {
+        didChange = true;
         return { ...particle, mass: 0 };
       }
       return particle;
     });
 
     // Set updated particles back to engine
-    engine.setParticles(updatedParticles);
+    if (didChange) {
+      engine.setParticles(updatedParticles);
+    }
   }
 );
-
 
 export const {
   setWebGPU,

@@ -36,7 +36,7 @@ export class CPUEngine extends AbstractEngine {
     let foundDeadParticle = false;
     for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i];
-      if (particle.mass <= 0) {
+      if (particle.mass === 0) {
         foundDeadParticle = true;
         break;
       }
@@ -48,7 +48,7 @@ export class CPUEngine extends AbstractEngine {
     let writeIndex = 0;
     for (let readIndex = 0; readIndex < this.particles.length; readIndex++) {
       const particle = this.particles[readIndex];
-      if (particle.mass > 0) {
+      if (particle.mass !== 0) {
         if (writeIndex !== readIndex) {
           this.particles[writeIndex] = particle;
         }
@@ -273,6 +273,7 @@ export class CPUEngine extends AbstractEngine {
           input.enabled = module.isEnabled() ? 1 : 0;
 
           for (const particle of this.particles) {
+            if (particle.mass <= 0) continue;
             const setState = (name: string, value: number) => {
               if (!globalState[particle.id]) {
                 globalState[particle.id] = {};
@@ -312,6 +313,7 @@ export class CPUEngine extends AbstractEngine {
           input.enabled = module.isEnabled() ? 1 : 0;
 
           for (const particle of this.particles) {
+            if (particle.mass <= 0) continue;
             const getState = (name: string, pid?: number) => {
               return globalState[pid ?? particle.id]?.[name] ?? 0;
             };
@@ -333,6 +335,7 @@ export class CPUEngine extends AbstractEngine {
 
     // Third pass: integration (once per particle)
     for (const particle of this.particles) {
+      if (particle.mass <= 0) continue;
       // Capture position before integration
       const prevPos = { x: particle.position.x, y: particle.position.y };
 
@@ -367,6 +370,7 @@ export class CPUEngine extends AbstractEngine {
             // Always add enabled
             input.enabled = module.isEnabled() ? 1 : 0;
             for (const particle of this.particles) {
+              if (particle.mass <= 0) continue;
               const getState = (name: string, pid?: number) => {
                 return globalState[pid ?? particle.id]?.[name] ?? 0;
               };
@@ -405,6 +409,7 @@ export class CPUEngine extends AbstractEngine {
 
           for (let index = 0; index < this.particles.length; index++) {
             const particle = this.particles[index];
+            if (particle.mass <= 0) continue;
             const getState = (name: string, pid?: number) => {
               return globalState[pid ?? particle.id]?.[name] ?? 0;
             };

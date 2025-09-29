@@ -14,7 +14,6 @@ import {
   DataType,
 } from "../../module";
 
-
 export const DEFAULT_FLUIDS_INFLUENCE_RADIUS = 100;
 export const DEFAULT_FLUIDS_TARGET_DENSITY = 1;
 export const DEFAULT_FLUIDS_PRESSURE_MULTIPLIER = 30;
@@ -155,6 +154,8 @@ export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
     let j = neighbor_iter_next(&it, index);
     if (j == NEIGHBOR_NONE) { break; }
     let other = particles[j];
+    // Skip removed or pinned neighbors
+    if (other.mass <= 0.0) { continue; }
 
     let d = posPred - other.position;
     let dist2 = dot(d, d);
@@ -204,6 +205,8 @@ export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
     let j = neighbor_iter_next(&it1, index);
     if (j == NEIGHBOR_NONE) { break; }
     let other = particles[j];
+    // Skip removed or pinned neighbors
+    if (other.mass <= 0.0) { continue; }
     let delta = other.position - ${particleVar}.position;
     let dist2 = dot(delta, delta);
     if (dist2 <= 0.0) { continue; }
@@ -237,6 +240,8 @@ export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
       let j = neighbor_iter_next(&it2, index);
       if (j == NEIGHBOR_NONE) { break; }
       let other = particles[j];
+      // Skip removed or pinned neighbors
+      if (other.mass <= 0.0) { continue; }
       let delta = other.position - ${particleVar}.position;
       let dist2 = dot(delta, delta);
       if (dist2 <= 0.0) { continue; }
@@ -296,6 +301,8 @@ export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
 
         for (const other of neighbors) {
           if (other.id === particle.id) continue; // Skip self
+          // Skip removed or pinned neighbors
+          if (other.mass <= 0) continue;
 
           const dX = posPredX - other.position.x;
           const dY = posPredY - other.position.y;
@@ -351,6 +358,8 @@ export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
 
         for (const other of neighbors) {
           if (other.id === particle.id) continue; // Skip self
+          // Skip removed or pinned neighbors
+          if (other.mass <= 0) continue;
 
           const deltaX = other.position.x - particle.position.x;
           const deltaY = other.position.y - particle.position.y;
@@ -396,6 +405,8 @@ export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
         if (visc !== 0.0) {
           for (const other of neighbors) {
             if (other.id === particle.id) continue; // Skip self
+            // Skip removed or pinned neighbors
+            if (other.mass <= 0) continue;
 
             const deltaX = other.position.x - particle.position.x;
             const deltaY = other.position.y - particle.position.y;

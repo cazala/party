@@ -11,27 +11,16 @@ import {
   RenderPassKind,
   CPUDescriptor,
   CanvasComposition,
-  DataType,
 } from "../../module";
 
-type ParticleInputs = {
-  redParticleIndexes: number[];
-};
+type ParticleInputs = Record<string, never>;
 
 export class Particle extends Module<"particles", ParticleInputs> {
   readonly name = "particles" as const;
   readonly role = ModuleRole.Render;
-  readonly inputs = {
-    redParticleIndexes: DataType.ARRAY,
-  } as const;
+  readonly inputs = {} as const;
 
-  getRedParticleIndexes(): number[] {
-    return this.readArray("redParticleIndexes");
-  }
-
-  setRedParticleIndexes(indexes: number[]): void {
-    this.write({ redParticleIndexes: indexes });
-  }
+  // No inputs
 
   webgpu(): WebGPUDescriptor<ParticleInputs> {
     return {
@@ -39,25 +28,15 @@ export class Particle extends Module<"particles", ParticleInputs> {
       passes: [
         {
           kind: RenderPassKind.Fullscreen,
-          fragment: ({ getUniform, getLength }) => `{
+          fragment: () => `{
   let center = vec2<f32>(0.5, 0.5);
   let dist = distance(uv, center);
   let alpha = 1.0 - smoothstep(0.45, 0.5, dist);
   
-  // Check if this particle should be red
-  let redCount = ${getLength("redParticleIndexes")};
-  var isRed = false;
-  for (var i = 0u; i < redCount; i++) {
-    let redIndex = u32(${getUniform("redParticleIndexes", "i")});
-    if (index == redIndex) {
-      isRed = true;
-      break;
-    }
-  }
-  
   var finalColor = color.rgb;
-  if (isRed) {
-    finalColor = vec3<f32>(1.0, 0.0, 0.0); // Override with red color
+  // Pinned particles render in red (vertex passes pinned flag)
+  if (pinned == 1u) {
+    finalColor = vec3<f32>(0.3, 0.3, 0.37);
   }
   
   return vec4<f32>(finalColor, color.a * alpha);
@@ -74,8 +53,11 @@ export class Particle extends Module<"particles", ParticleInputs> {
     return {
       composition: CanvasComposition.RequiresClear,
       render: ({ particle, screenX, screenY, screenSize, utils }) => {
-        // Just render a circle - engine handles all coordinate transformations and culling
-        utils.drawCircle(screenX, screenY, screenSize, particle.color);
+        const color =
+          particle.mass < 0
+            ? { r: 0.3, g: 0.3, b: 0.37, a: particle.color.a }
+            : particle.color;
+        utils.drawCircle(screenX, screenY, screenSize, color);
       },
     };
   }

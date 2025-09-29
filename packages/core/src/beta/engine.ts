@@ -136,6 +136,35 @@ export class Engine implements IEngine {
   getParticle(index: number): Promise<IParticle> {
     return this.engine.getParticle(index);
   }
+  // Helpers for pinning/unpinning
+  async pinParticles(indexes: number[]): Promise<void> {
+    const particles = await this.getParticles();
+    for (const idx of indexes) {
+      if (particles[idx]) particles[idx].mass = -1;
+    }
+    this.setParticles(particles);
+  }
+  async unpinParticles(indexes: number[]): Promise<void> {
+    const particles = await this.getParticles();
+    for (const idx of indexes) {
+      if (particles[idx]) {
+        const size = particles[idx].size;
+        // Derive mass from size deterministically (simple proportional mapping)
+        particles[idx].mass = Math.max(0.1, size);
+      }
+    }
+    this.setParticles(particles);
+  }
+  async unpinAll(): Promise<void> {
+    const particles = await this.getParticles();
+    for (let i = 0; i < particles.length; i++) {
+      if (particles[i].mass < 0) {
+        const size = particles[i].size;
+        particles[i].mass = Math.max(0.1, size);
+      }
+    }
+    this.setParticles(particles);
+  }
   clear(): void {
     this.engine.clear();
   }

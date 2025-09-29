@@ -55,7 +55,6 @@ import {
   importTrailsSettings,
   importInteractionSettings,
   importParticleSettings,
-  importPinSettings,
 } from "../slices/modules";
 import {
   Environment,
@@ -68,7 +67,6 @@ import {
   Interaction,
   Engine,
   Particle,
-  Pin,
 } from "@cazala/party";
 
 export interface UseEngineProps {
@@ -106,7 +104,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const sensorsRef = useRef<Sensors | null>(null);
   const trailsRef = useRef<Trails | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
-  const pinRef = useRef<Pin | null>(null);
   const particleRef = useRef<Particle | null>(null);
 
   // Local state for engine initialization
@@ -155,7 +152,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           sensorsRef.current = null;
           trailsRef.current = null;
           interactionRef.current = null;
-          pinRef.current = null;
           particleRef.current = null;
           registerEngine(null);
         } catch (err) {
@@ -220,7 +216,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const sensors = new Sensors({ enabled: false });
         const interaction = new Interaction({ enabled: false });
         const trails = new Trails({ enabled: false });
-        const pin = new Pin({ enabled: true });
 
         // Create particle renderer
         const particle = new Particle();
@@ -233,7 +228,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           fluids,
           sensors,
           interaction,
-          pin,
         ];
         const render = [trails, particle];
 
@@ -257,7 +251,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         sensorsRef.current = sensors;
         trailsRef.current = trails;
         interactionRef.current = interaction;
-        pinRef.current = pin;
         particleRef.current = particle;
 
         // Register engine for thunks
@@ -322,7 +315,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
             dispatch(importTrailsSettings(modules.trails));
             dispatch(importInteractionSettings(modules.interaction));
             dispatch(importParticleSettings(modules.particle));
-            dispatch(importPinSettings(modules.pin));
           }
         }
 
@@ -344,7 +336,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           sensorsRef.current = null;
           trailsRef.current = null;
           interactionRef.current = null;
-          pinRef.current = null;
           particleRef.current = null;
           registerEngine(null);
         };
@@ -388,7 +379,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     const sensors = sensorsRef.current;
     const trails = trailsRef.current;
     const interaction = interactionRef.current;
-    const pin = pinRef.current;
     const particle = particleRef.current;
 
     try {
@@ -425,10 +415,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         interaction.setEnabled(modulesState.interaction.enabled);
       }
 
-      if (pin && pin.setEnabled) {
-        pin.setEnabled(modulesState.pin.enabled);
-      }
-
       if (particle && particle.setEnabled) {
         particle.setEnabled(modulesState.particle.enabled);
       }
@@ -442,7 +428,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         sensors: modulesState.sensors.enabled,
         trails: modulesState.trails.enabled,
         interaction: modulesState.interaction.enabled,
-        pin: modulesState.pin.enabled,
         particle: modulesState.particle.enabled,
       });
     } catch (err) {
@@ -458,7 +443,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     modulesState.sensors.enabled,
     modulesState.trails.enabled,
     modulesState.interaction.enabled,
-    modulesState.pin.enabled,
   ]);
 
   // Periodic updates for particle count and FPS
@@ -669,7 +653,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     sensors: sensorsRef.current,
     trails: trailsRef.current,
     interaction: interactionRef.current,
-    pin: pinRef.current,
     particle: particleRef.current,
   };
 }
