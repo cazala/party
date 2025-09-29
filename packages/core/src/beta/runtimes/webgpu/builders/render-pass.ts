@@ -208,7 +208,7 @@ struct Particle {
   size: f32, mass: f32, color: vec4<f32>,
 }
 struct RenderUniforms { canvas_size: vec2<f32>, camera_position: vec2<f32>, zoom: f32, _pad: f32 }
-struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @location(2) @interpolate(flat) index: u32, @location(3) @interpolate(flat) pinned: u32 }
+struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @location(2) @interpolate(flat) index: u32, @location(3) @interpolate(flat) mass: f32 }
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<uniform> render_uniforms: RenderUniforms;
 @group(0) @binding(2) var scene_texture: texture_2d<f32>;
@@ -235,11 +235,11 @@ struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: v
   out.index = instance_index;
   out.color = ${instanced ? `particle.color` : `vec4<f32>(1.0)`};
   // Pass pinned flag to fragment (1 if mass < 0)
-  ${instanced ? `out.pinned = u32(particle.mass < 0.0);` : `out.pinned = 0u;`}
+  ${instanced ? `out.mass = particle.mass;` : `out.mass = 0.0;`}
 ${vertexBody}
   return out;
 }
-@fragment fn fs_main(@location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @location(2) @interpolate(flat) index: u32, @location(3) @interpolate(flat) pinned: u32, @builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> ${fragment}`;
+@fragment fn fs_main(@location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @location(2) @interpolate(flat) index: u32, @location(3) @interpolate(flat) mass: f32, @builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> ${fragment}`;
 
   return `${struct}\n${moduleUniformBindingDecl(
     moduleName,

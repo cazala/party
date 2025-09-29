@@ -35,7 +35,7 @@ export class Particle extends Module<"particles", ParticleInputs> {
   
   var finalColor = color.rgb;
   // Pinned particles render in red (vertex passes pinned flag)
-  if (pinned == 1u) {
+  if (mass < 0.0) {
     finalColor = vec3<f32>(0.3, 0.3, 0.37);
   }
   
