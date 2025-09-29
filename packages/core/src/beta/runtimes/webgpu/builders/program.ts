@@ -14,7 +14,12 @@
  * - `Program.simStateStride`: size of the shared SIM_STATE row per particle
  * - `Program.extraBindings`: indices for additional buffers/textures bound by pipelines
  */
-import { Module, ModuleRole, type WebGPUDescriptor } from "../../../module";
+import {
+  Module,
+  ModuleRole,
+  DataType,
+  type WebGPUDescriptor,
+} from "../../../module";
 
 export const PARTICLE_STRUCT = `
 struct Particle {
@@ -51,12 +56,11 @@ export interface Program {
     grid?: { countsBinding: number; indicesBinding: number };
     simState?: { stateBinding: number };
     sceneTexture?: { textureBinding: number };
+    arrays?: Record<string, { arrayBinding: number; lengthBinding: number }>; // moduleName_arrayKey -> bindings
   };
 }
 
-export function buildProgram(
-  modules: readonly Module<string, string, any>[]
-): Program {
+export function buildProgram(modules: readonly Module[]): Program {
   const descriptors = modules.map((m) => m.webgpu());
 
   const layouts: ModuleUniformLayout[] = [];
@@ -100,7 +104,11 @@ export function buildProgram(
   };
 
   // Internal: simulation + grid
-  pushUniformLayout("simulation", ["dt", "count", "simStride", "maxSize"] as const, 1);
+  pushUniformLayout(
+    "simulation",
+    ["dt", "count", "simStride", "maxSize"] as const,
+    1
+  );
   pushUniformLayout(
     "grid",
     [
@@ -117,14 +125,31 @@ export function buildProgram(
   );
 
   // 2) User module uniforms start at binding(3)
-  modules.forEach((module, idx) => {
-    const bindingIndex = idx + 3;
+  let nextBindingIndex = 3;
+  const arrayDecls: string[] = [];
+  const arrayBindings: Record<string, { arrayBinding: number; lengthBinding: number }> = {};
+
+  modules.forEach((module) => {
     const uniformsVar = `${module.name}_uniforms`;
     const structName = `Uniforms_${cap(module.name)}`;
-    const ids = [...module.keys, "enabled"] as string[];
-    const vec4Count = Math.max(1, Math.ceil(ids.length / 4));
+
+    // Separate number inputs (including enabled) from array inputs
+    const numberInputs = Object.entries(module.inputs)
+      .filter(([_, type]) => type === DataType.NUMBER)
+      .map(([key, _]) => key);
+    const arrayInputs = Object.entries(module.inputs)
+      .filter(([_, type]) => type === DataType.ARRAY)
+      .map(([key, _]) => key);
+
+    // Always add enabled as a number input
+    const allNumberInputs = [...numberInputs, "enabled"];
+
+    // Create uniform buffer for number inputs
+    const bindingIndex = nextBindingIndex++;
+    const vec4Count = Math.max(1, Math.ceil(allNumberInputs.length / 4));
     const mapping: Record<string, { flatIndex: number; expr: string }> = {};
-    ids.forEach((id, i) => {
+
+    allNumberInputs.forEach((id, i) => {
       const v = Math.floor(i / 4),
         c = i % 4;
       const comp = c === 0 ? "x" : c === 1 ? "y" : c === 2 ? "z" : "w";
@@ -133,11 +158,13 @@ export function buildProgram(
         expr: `${uniformsVar}.v${v}.${comp}`,
       };
     });
+
     const structWGSL = `struct ${structName} {\n${Array.from(
       { length: vec4Count },
       (_, i) => `  v${i}: vec4<f32>,`
     ).join("\n")}\n}`;
     const varDecl = `@group(0) @binding(${bindingIndex}) var<uniform> ${uniformsVar}: ${structName};`;
+
     layouts.push({
       moduleName: module.name,
       moduleRole: module.role,
@@ -149,14 +176,48 @@ export function buildProgram(
       mapping,
     });
     uniformDecls.push(structWGSL, varDecl);
+
+    // Create storage buffers for array inputs
+    arrayInputs.forEach((arrayKey) => {
+      const arrayBinding = nextBindingIndex++;
+      const arrayVar = `${module.name}_${arrayKey}_array`;
+      const lengthVar = `${module.name}_${arrayKey}_length`;
+
+      // Add array storage buffer declaration
+      arrayDecls.push(
+        `@group(0) @binding(${arrayBinding}) var<storage, read> ${arrayVar}: array<f32>;`
+      );
+
+      // Add length uniform (we'll store length in a separate small uniform buffer)
+      const lengthBinding = nextBindingIndex++;
+      arrayDecls.push(
+        `@group(0) @binding(${lengthBinding}) var<uniform> ${lengthVar}: u32;`
+      );
+
+      // Track array bindings
+      arrayBindings[`${module.name}_${arrayKey}`] = {
+        arrayBinding,
+        lengthBinding,
+      };
+
+      // Add array mappings to the module's mapping for getUniform access
+      mapping[arrayKey] = {
+        flatIndex: -1, // Not in uniform buffer
+        expr: arrayVar, // Direct array reference
+      };
+      mapping[`${arrayKey}_length`] = {
+        flatIndex: -1,
+        expr: lengthVar,
+      };
+    });
   });
 
   const dtExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping.dt
     .expr;
   const countExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping
     .count.expr;
-  const maxSizeExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping
-    .maxSize.expr;
+  const maxSizeExpr = layouts.find((l) => l.moduleName === "simulation")!
+    .mapping.maxSize.expr;
 
   const baseState = ["prevX", "prevY", "posIntX", "posIntY"] as const;
   const stateSlots: Record<string, number> = {};
@@ -176,17 +237,47 @@ export function buildProgram(
   });
   const SIM_STATE_STRIDE_VAL = nextSlot;
 
-  const lastUB = layouts.reduce((m, l) => Math.max(m, l.bindingIndex), 0);
-  const gridCountsBinding = lastUB + 1;
-  const gridIndicesBinding = lastUB + 2;
-  const simStateBinding = lastUB + 3;
-  const sceneTextureBinding = lastUB + 4;
+  // Grid and system bindings come after all module bindings (including arrays)
+  const gridCountsBinding = nextBindingIndex++;
+  const gridIndicesBinding = nextBindingIndex++;
+  const simStateBinding = nextBindingIndex++;
+  const sceneTextureBinding = nextBindingIndex++;
   const gridDecls = [
     `@group(0) @binding(${gridCountsBinding}) var<storage, read_write> GRID_COUNTS: array<atomic<u32>>;`,
     `@group(0) @binding(${gridIndicesBinding}) var<storage, read_write> GRID_INDICES: array<u32>;`,
     `@group(0) @binding(${simStateBinding}) var<storage, read_write> SIM_STATE: array<f32>;`,
     `@group(0) @binding(${sceneTextureBinding}) var scene_texture: texture_2d<f32>;`,
+    ...arrayDecls,
   ];
+
+  const makeGetUniformAndLength = (module: Module) => {
+    const layout = layouts.find((l) => l.moduleName === module.name)!;
+    const getUniform = (id: string, index?: number) => {
+      const mapping = layout.mapping[id];
+      if (!mapping) return "0.0";
+
+      // Check if this is an array input
+      if (module.inputs[id] === DataType.ARRAY) {
+        if (index !== undefined) {
+          return `${mapping.expr}[${index}]`;
+        } else {
+          // Return first element if no index specified for array
+          return `${mapping.expr}[0]`;
+        }
+      } else {
+        // Regular number input
+        return mapping.expr;
+      }
+    };
+    const getLength = (id: string) => {
+      if (module.inputs[id] === DataType.ARRAY) {
+        const lengthMapping = layout.mapping[`${id}_length`];
+        return lengthMapping?.expr ?? "0u";
+      }
+      return "0u";
+    };
+    return { getUniform, getLength };
+  };
 
   const globals: string[] = [];
   // Internal simulation helpers
@@ -220,15 +311,17 @@ fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { 
   );
 
   // Optional: allow force modules to inject globals
-  const addGlobal = (module: Module, descriptor: WebGPUDescriptor<string, any>) => {
+  const addGlobal = (module: Module, descriptor: WebGPUDescriptor) => {
     if (module.role !== ModuleRole.Force) return;
     const g = (descriptor as any).global as
       | undefined
-      | ((a: { getUniform: (id: string) => string }) => string);
+      | ((a: {
+          getUniform: (id: string, index?: number) => string;
+          getLength: (id: string) => string;
+        }) => string);
     if (!g) return;
-    const layout = layouts.find((l) => l.moduleName === module.name)!;
-    const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
-    const code = g({ getUniform });
+    const { getUniform, getLength } = makeGetUniformAndLength(module);
+    const code = g({ getUniform, getLength });
     if (code && code.trim()) {
       globals.push(`// Global for ${module.name}`);
       globals.push(code.trim());
@@ -303,12 +396,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (module.role !== ModuleRole.Force || !(descriptor as any).state) return;
     const layout = layouts.find((l) => l.moduleName === module.name)!;
     const { set } = makeGetSet(module.name);
-    const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const { getUniform, getLength } = makeGetUniformAndLength(module);
     const body = (descriptor as any).state?.({
       particleVar: "particle",
       dtVar: dtExpr,
       maxSizeVar: maxSizeExpr,
       getUniform,
+      getLength,
       setState: set,
     });
     if (body && body.trim()) {
@@ -326,12 +420,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (module.role !== ModuleRole.Force || !(descriptor as any).apply) return;
     const layout = layouts.find((l) => l.moduleName === module.name)!;
     const { get } = makeGetSet(module.name);
-    const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const { getUniform, getLength } = makeGetUniformAndLength(module);
     const body = (descriptor as any).apply?.({
       particleVar: "particle",
       dtVar: dtExpr,
       maxSizeVar: maxSizeExpr,
       getUniform,
+      getLength,
       getState: get,
     });
     if (body && body.trim()) {
@@ -346,15 +441,17 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
   modules.forEach((module, idx) => {
     const descriptor = descriptors[idx];
-    if (module.role !== ModuleRole.Force || !(descriptor as any).constrain) return;
+    if (module.role !== ModuleRole.Force || !(descriptor as any).constrain)
+      return;
     const layout = layouts.find((l) => l.moduleName === module.name)!;
     const { get } = makeGetSet(module.name);
-    const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const { getUniform, getLength } = makeGetUniformAndLength(module);
     const body = (descriptor as any).constrain?.({
       particleVar: "particle",
       dtVar: dtExpr,
       maxSizeVar: maxSizeExpr,
       getUniform,
+      getLength,
       getState: get,
     });
     if (body && body.trim()) {
@@ -371,17 +468,19 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
   modules.forEach((module, idx) => {
     const descriptor = descriptors[idx];
-    if (module.role !== ModuleRole.Force || !(descriptor as any).correct) return;
+    if (module.role !== ModuleRole.Force || !(descriptor as any).correct)
+      return;
     const layout = layouts.find((l) => l.moduleName === module.name)!;
     const { get } = makeGetSet(module.name);
-    const getUniform = (id: string) => layout.mapping[id]?.expr ?? "0.0";
+    const { getUniform, getLength } = makeGetUniformAndLength(module);
     const body = (descriptor as any).correct?.({
       particleVar: "particle",
       dtVar: dtExpr,
       maxSizeVar: maxSizeExpr,
       prevPosVar: "prevPos",
-      postPosVar: "postPos", 
+      postPosVar: "postPos",
       getUniform,
+      getLength,
       getState: get,
     });
     if (body && body.trim()) {
@@ -438,6 +537,7 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
       },
       simState: { stateBinding: simStateBinding },
       sceneTexture: { textureBinding: sceneTextureBinding },
+      arrays: Object.keys(arrayBindings).length > 0 ? arrayBindings : undefined,
     },
   };
 }

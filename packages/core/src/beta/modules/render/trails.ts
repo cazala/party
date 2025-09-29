@@ -13,17 +13,24 @@ import {
   RenderPassKind,
   CPUDescriptor,
   CanvasComposition,
+  DataType,
 } from "../../module";
-
-type TrailInputKeys = "trailDecay" | "trailDiffuse";
 
 export const DEFAULT_TRAILS_TRAIL_DECAY = 2;
 export const DEFAULT_TRAILS_TRAIL_DIFFUSE = 0.0;
 
-export class Trails extends Module<"trails", TrailInputKeys> {
+type TrailsInputs = {
+  trailDecay: number;
+  trailDiffuse: number;
+};
+
+export class Trails extends Module<"trails", TrailsInputs> {
   readonly name = "trails" as const;
   readonly role = ModuleRole.Render;
-  readonly keys = ["trailDecay", "trailDiffuse"] as const;
+  readonly inputs = {
+    trailDecay: DataType.NUMBER,
+    trailDiffuse: DataType.NUMBER,
+  } as const;
 
   constructor(opts?: {
     enabled?: boolean;
@@ -56,7 +63,7 @@ export class Trails extends Module<"trails", TrailInputKeys> {
     return this.readValue("trailDiffuse");
   }
 
-  webgpu(): WebGPUDescriptor<TrailInputKeys> {
+  webgpu(): WebGPUDescriptor<TrailsInputs> {
     return {
       passes: [
         {
@@ -122,7 +129,7 @@ export class Trails extends Module<"trails", TrailInputKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<TrailInputKeys> {
+  cpu(): CPUDescriptor<TrailsInputs> {
     return {
       composition: CanvasComposition.HandlesBackground,
       setup: ({ context, input, clearColor }) => {

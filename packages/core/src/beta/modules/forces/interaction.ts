@@ -9,15 +9,8 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
+  DataType,
 } from "../../module";
-
-type InteractionInputKeys =
-  | "mode"
-  | "strength"
-  | "radius"
-  | "positionX"
-  | "positionY"
-  | "active";
 
 export const DEFAULT_INTERACTION_MODE: "attract" | "repel" = "attract";
 export const DEFAULT_INTERACTION_STRENGTH = 10000;
@@ -26,17 +19,26 @@ export const DEFAULT_INTERACTION_RADIUS = 500;
 // action: 0 -> click (left), 1 -> right_click
 // mode: 0 -> attract, 1 -> repel
 
-export class Interaction extends Module<"interaction", InteractionInputKeys> {
+type InteractionInputs = {
+  mode: number;
+  strength: number;
+  radius: number;
+  positionX: number;
+  positionY: number;
+  active: number;
+};
+
+export class Interaction extends Module<"interaction", InteractionInputs> {
   readonly name = "interaction" as const;
   readonly role = ModuleRole.Force;
-  readonly keys = [
-    "mode",
-    "strength",
-    "radius",
-    "positionX",
-    "positionY",
-    "active",
-  ] as const;
+  readonly inputs = {
+    mode: DataType.NUMBER,
+    strength: DataType.NUMBER,
+    radius: DataType.NUMBER,
+    positionX: DataType.NUMBER,
+    positionY: DataType.NUMBER,
+    active: DataType.NUMBER,
+  } as const;
 
   constructor(opts?: {
     enabled?: boolean;
@@ -97,7 +99,7 @@ export class Interaction extends Module<"interaction", InteractionInputKeys> {
     return this.readValue("active") === 1;
   }
 
-  webgpu(): WebGPUDescriptor<InteractionInputKeys> {
+  webgpu(): WebGPUDescriptor<InteractionInputs> {
     return {
       apply: ({ particleVar, getUniform }) => `{
   if (${getUniform("active")} == 0.0 ) { return; }
@@ -119,7 +121,7 @@ export class Interaction extends Module<"interaction", InteractionInputKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<InteractionInputKeys> {
+  cpu(): CPUDescriptor<InteractionInputs> {
     return {
       apply: ({ particle, input }) => {
         if (!input.active) return;

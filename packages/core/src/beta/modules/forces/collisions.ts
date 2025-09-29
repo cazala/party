@@ -15,18 +15,23 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
+  DataType,
 } from "../../module";
 import { Particle } from "../../particle";
-
-type CollisionInputKeys = "restitution";
 
 export const DEFAULT_COLLISIONS_RESTITUTION = 0.8;
 
 // Simple, brute-force elastic collision response applied only to current particle
-export class Collisions extends Module<"collisions", CollisionInputKeys> {
+type CollisionsInputs = {
+  restitution: number;
+};
+
+export class Collisions extends Module<"collisions", CollisionsInputs> {
   readonly name = "collisions" as const;
   readonly role = ModuleRole.Force;
-  readonly keys = ["restitution"] as const;
+  readonly inputs = {
+    restitution: DataType.NUMBER,
+  } as const;
 
   constructor(opts?: { enabled?: boolean; restitution?: number }) {
     super();
@@ -46,7 +51,7 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
     return this.readValue("restitution");
   }
 
-  webgpu(): WebGPUDescriptor<CollisionInputKeys> {
+  webgpu(): WebGPUDescriptor<CollisionsInputs> {
     return {
       constrain: ({ particleVar, maxSizeVar, getUniform }) => `
   // Pass 1: find deepest overlap neighbor to reduce scan-order bias
@@ -164,7 +169,7 @@ export class Collisions extends Module<"collisions", CollisionInputKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<CollisionInputKeys> {
+  cpu(): CPUDescriptor<CollisionsInputs> {
     // Helper function equivalent to GLSL fract()
     const fract = (x: number) => x - Math.floor(x);
 

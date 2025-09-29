@@ -11,14 +11,17 @@ import {
   RenderPassKind,
   CPUDescriptor,
   CanvasComposition,
+  DataType,
 } from "../../module";
 
-export class Particle extends Module<"particles"> {
+type ParticleInputs = {};
+
+export class Particle extends Module<"particles", ParticleInputs> {
   readonly name = "particles" as const;
   readonly role = ModuleRole.Render;
-  readonly keys = [] as const;
+  readonly inputs = {} as const;
 
-  webgpu(): WebGPUDescriptor {
+  webgpu(): WebGPUDescriptor<ParticleInputs> {
     return {
       // Single fullscreen pass that draws particles into the scene texture
       passes: [
@@ -38,7 +41,7 @@ export class Particle extends Module<"particles"> {
     };
   }
 
-  cpu(): CPUDescriptor {
+  cpu(): CPUDescriptor<ParticleInputs> {
     return {
       composition: CanvasComposition.RequiresClear,
       render: ({ particle, screenX, screenY, screenSize, utils }) => {

@@ -13,19 +13,20 @@
  */
 import type { GPUResources } from "./gpu-resources";
 import { buildProgram, type Program } from "./builders/program";
-import { Module, ModuleRole, type WebGPURenderDescriptor } from "../../module";
+import { Module, ModuleRole, type WebGPURenderDescriptor, DataType } from "../../module";
 
 /**
  * Manages module enablement/state, builds the Program, and exposes uniform writers/readers.
  */
 export class ModuleRegistry {
-  private readonly modules: readonly Module<string, string, any>[];
+  private readonly modules: readonly Module[];
   private program: Program | null = null;
   private moduleUniformState: Record<string, number>[] = [];
+  private moduleArrayState: Record<string, Record<string, number[]>> = {};
   private nameToIndex: Map<string, number> = new Map();
   private resources: GPUResources | null = null;
 
-  constructor(modules: readonly Module<string, string, any>[]) {
+  constructor(modules: readonly Module[]) {
     this.modules = modules;
   }
 
@@ -42,11 +43,31 @@ export class ModuleRegistry {
       this.nameToIndex.set(layout.moduleName, i)
     );
     resources.createModuleUniformBuffers(this.program.layouts);
+    
+    // Create array storage buffers for modules with array inputs
+    this.modules.forEach((module) => {
+      const arrayInputs = Object.entries(module.inputs)
+        .filter(([_, type]) => type === DataType.ARRAY)
+        .map(([key, _]) => key);
+      
+      if (arrayInputs.length > 0) {
+        resources.createArrayStorageBuffers(module.name, arrayInputs);
+        this.moduleArrayState[module.name] = {};
+        arrayInputs.forEach((arrayKey) => {
+          this.moduleArrayState[module.name][arrayKey] = [];
+        });
+      }
+    });
 
     // Initialize CPU-side uniform state for each module
     this.moduleUniformState = this.program.layouts.map((layout) => {
       const state: Record<string, number> = {};
-      for (const key of Object.keys(layout.mapping)) state[key] = 0;
+      for (const key of Object.keys(layout.mapping)) {
+        // Only initialize number inputs (not array references)
+        if (layout.mapping[key].flatIndex !== -1) {
+          state[key] = 0;
+        }
+      }
       if (layout.moduleName !== "simulation" && "enabled" in layout.mapping) {
         state["enabled"] = 1;
       }
@@ -80,32 +101,31 @@ export class ModuleRegistry {
   /** Returns a writer for the given module name. */
   getUniformWriter(
     name: string
-  ): (values: Partial<Record<string, number>>) => void {
+  ): (values: Partial<Record<string, number | number[]>>) => void {
     return (values) => this.writeModuleUniform(name, values);
   }
 
   /** Returns a reader for the given module name. */
-  getUniformReader(name: string): () => Record<string, number> {
+  getUniformReader(name: string): () => Partial<Record<string, number | number[]>> {
     return () => this.readModuleUniform(name);
   }
 
   /** Filter enabled render module descriptors for the render pipeline. */
-  getEnabledRenderDescriptors(): WebGPURenderDescriptor<string>[] {
+  getEnabledRenderDescriptors(): WebGPURenderDescriptor[] {
     return this.modules
       .map((m) => m.webgpu())
       .filter(
-        (
-          _descriptor,
-          idx
-        ): _descriptor is WebGPURenderDescriptor<string> =>
-          this.modules[idx].role === ModuleRole.Render && this.modules[idx].isEnabled()
+        (_descriptor, idx): _descriptor is WebGPURenderDescriptor =>
+          this.modules[idx].role === ModuleRole.Render &&
+          this.modules[idx].isEnabled()
       );
   }
 
   /** Get enabled render modules for the render pipeline. */
   getEnabledRenderModules(): Module[] {
-    return this.modules
-      .filter((module) => module.role === ModuleRole.Render && module.isEnabled());
+    return this.modules.filter(
+      (module) => module.role === ModuleRole.Render && module.isEnabled()
+    );
   }
 
   /** Get all modules. */
@@ -124,21 +144,39 @@ export class ModuleRegistry {
   }
 
   // Internal helpers
-  private readModuleUniform(name: string): Record<string, number> {
+  private readModuleUniform(name: string): Partial<Record<string, number | number[]>> {
     const idx = this.getModuleIndex(name);
-    return { ...(this.moduleUniformState[idx] || {}) };
+    const result: Partial<Record<string, number | number[]>> = { ...(this.moduleUniformState[idx] || {}) };
+    
+    // Add array state if present
+    if (this.moduleArrayState[name]) {
+      Object.assign(result, this.moduleArrayState[name]);
+    }
+    
+    return result;
   }
 
   private writeModuleUniform(
     name: string,
-    values: Partial<Record<string, number>>
+    values: Partial<Record<string, number | number[]>>
   ): void {
-    if (!this.program) return;
+    if (!this.program || !this.resources) return;
     const idx = this.getModuleIndex(name);
     const state = this.moduleUniformState[idx];
+    
     for (const [key, value] of Object.entries(values)) {
-      state[key] = value as number;
+      if (Array.isArray(value)) {
+        // Handle array inputs
+        if (this.moduleArrayState[name]) {
+          this.moduleArrayState[name][key] = [...value];
+          this.resources.writeArrayStorage(name, key, value);
+        }
+      } else if (typeof value === 'number') {
+        // Handle number inputs
+        state[key] = value;
+      }
     }
+    
     this.flushModuleUniform(idx);
   }
 

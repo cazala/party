@@ -40,6 +40,8 @@ export interface SimulationPipelines {
 export class GPUResources {
   private particleBuffer: GPUBuffer | null = null;
   private moduleUniformBuffers: ModuleUniformBuffer[] = [];
+  private arrayStorageBuffers: Map<string, GPUBuffer> = new Map();
+  private arrayLengthBuffers: Map<string, GPUBuffer> = new Map();
   private renderUniformBuffer: GPUBuffer | null = null;
   private renderBindGroupLayout: GPUBindGroupLayout | null = null;
   private computeBindGroupLayout: GPUBindGroupLayout | null = null;
@@ -149,7 +151,10 @@ export class GPUResources {
     this.particleBuffer?.destroy();
     this.particleBuffer = this.getDevice().createBuffer({
       size,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC,
     });
   }
 
@@ -184,7 +189,7 @@ export class GPUResources {
     }
 
     const sizeBytes = sizeFloats * 4;
-    
+
     // Create staging buffer for readback
     const stagingBuffer = this.getDevice().createBuffer({
       size: sizeBytes,
@@ -201,7 +206,7 @@ export class GPUResources {
         0,
         sizeBytes
       );
-      
+
       // Submit commands and wait for completion
       this.getDevice().queue.submit([encoder.finish()]);
       await this.getDevice().queue.onSubmittedWorkDone();
@@ -275,7 +280,12 @@ export class GPUResources {
    */
   writeSimulationUniform(
     program: Program,
-    values: { dt?: number; count?: number; simStride?: number; maxSize?: number }
+    values: {
+      dt?: number;
+      count?: number;
+      simStride?: number;
+      maxSize?: number;
+    }
   ): void {
     const idx = program.layouts.findIndex((l) => l.moduleName === "simulation");
     if (idx === -1) return;
@@ -420,6 +430,23 @@ export class GPUResources {
         visibility: GPUShaderStage.COMPUTE,
         buffer: { type: "uniform" },
       });
+    }
+    // Add array storage buffer bindings
+    if (compute.extraBindings.arrays) {
+      for (const [_arrayKey, bindings] of Object.entries(
+        compute.extraBindings.arrays
+      )) {
+        entries.push({
+          binding: bindings.arrayBinding,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        });
+        entries.push({
+          binding: bindings.lengthBinding,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "uniform" },
+        });
+      }
     }
     if (compute.extraBindings.grid) {
       entries.push({
@@ -627,6 +654,29 @@ export class GPUResources {
         resource: { buffer: muf.buffer },
       })),
     ];
+
+    // Add array storage buffer bindings
+    if (compute.extraBindings.arrays) {
+      for (const [arrayKey, bindings] of Object.entries(
+        compute.extraBindings.arrays
+      )) {
+        const arrayBuffer = this.arrayStorageBuffers.get(arrayKey);
+        const lengthBuffer = this.arrayLengthBuffers.get(`${arrayKey}_length`);
+
+        if (arrayBuffer && lengthBuffer) {
+          entries.push(
+            {
+              binding: bindings.arrayBinding,
+              resource: { buffer: arrayBuffer },
+            },
+            {
+              binding: bindings.lengthBinding,
+              resource: { buffer: lengthBuffer },
+            }
+          );
+        }
+      }
+    }
     if (
       compute.extraBindings.grid &&
       this.gridCountsBuffer &&
@@ -678,15 +728,139 @@ export class GPUResources {
     });
   }
 
+  /**
+   * Create array storage buffers for a module's array inputs
+   */
+  createArrayStorageBuffers(moduleName: string, arrayInputs: string[]): void {
+    // Clean up old buffers for this module
+    this.arrayStorageBuffers.forEach((buffer, key) => {
+      if (key.startsWith(`${moduleName}_`)) {
+        buffer.destroy();
+        this.arrayStorageBuffers.delete(key);
+      }
+    });
+    this.arrayLengthBuffers.forEach((buffer, key) => {
+      if (key.startsWith(`${moduleName}_`)) {
+        buffer.destroy();
+        this.arrayLengthBuffers.delete(key);
+      }
+    });
+
+    // Create new buffers
+    arrayInputs.forEach((arrayKey) => {
+      const storageKey = `${moduleName}_${arrayKey}`;
+
+      // Create array storage buffer (initial size 1MB, will grow as needed)
+      const arrayBuffer = this.getDevice().createBuffer({
+        size: 1024 * 1024, // 1MB initial size
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+
+      // Create length uniform buffer (single u32)
+      const lengthBuffer = this.getDevice().createBuffer({
+        size: 4, // single u32
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+
+      this.arrayStorageBuffers.set(storageKey, arrayBuffer);
+      this.arrayLengthBuffers.set(`${storageKey}_length`, lengthBuffer);
+    });
+  }
+
+  /**
+   * Write array data to storage buffer
+   */
+  writeArrayStorage(
+    moduleName: string,
+    arrayKey: string,
+    data: number[]
+  ): void {
+    const storageKey = `${moduleName}_${arrayKey}`;
+    const arrayBuffer = this.arrayStorageBuffers.get(storageKey);
+    const lengthBuffer = this.arrayLengthBuffers.get(`${storageKey}_length`);
+
+    if (!arrayBuffer || !lengthBuffer) {
+      console.warn(`Array storage buffer not found for ${storageKey}`);
+      return;
+    }
+
+    // Check if we need to resize the buffer
+    const requiredSize = data.length * 4;
+    if (requiredSize > arrayBuffer.size) {
+      // Recreate with larger size
+      arrayBuffer.destroy();
+      const newSize = Math.max(requiredSize, arrayBuffer.size * 2);
+      const newBuffer = this.getDevice().createBuffer({
+        size: newSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      this.arrayStorageBuffers.set(storageKey, newBuffer);
+
+      // Write data to new buffer
+      const arrayData = new Float32Array(data);
+      this.getDevice().queue.writeBuffer(
+        newBuffer,
+        0,
+        arrayData.buffer,
+        arrayData.byteOffset,
+        arrayData.byteLength
+      );
+    } else {
+      // Write data to existing buffer
+      const arrayData = new Float32Array(data);
+      this.getDevice().queue.writeBuffer(
+        arrayBuffer,
+        0,
+        arrayData.buffer,
+        arrayData.byteOffset,
+        arrayData.byteLength
+      );
+    }
+
+    // Write length
+    const lengthData = new Uint32Array([data.length]);
+    this.getDevice().queue.writeBuffer(
+      lengthBuffer,
+      0,
+      lengthData.buffer,
+      lengthData.byteOffset,
+      lengthData.byteLength
+    );
+  }
+
+  /**
+   * Get array storage buffer for a module's array input
+   */
+  getArrayStorageBuffer(
+    moduleName: string,
+    arrayKey: string
+  ): GPUBuffer | undefined {
+    return this.arrayStorageBuffers.get(`${moduleName}_${arrayKey}`);
+  }
+
+  /**
+   * Get array length buffer for a module's array input
+   */
+  getArrayLengthBuffer(
+    moduleName: string,
+    arrayKey: string
+  ): GPUBuffer | undefined {
+    return this.arrayLengthBuffers.get(`${moduleName}_${arrayKey}_length`);
+  }
+
   dispose(): void {
     this.particleBuffer?.destroy();
     this.moduleUniformBuffers.forEach((muf) => muf.buffer.destroy());
+    this.arrayStorageBuffers.forEach((buffer) => buffer.destroy());
+    this.arrayLengthBuffers.forEach((buffer) => buffer.destroy());
     this.renderUniformBuffer?.destroy();
     this.gridCountsBuffer?.destroy();
     this.gridIndicesBuffer?.destroy();
     this.simStateBuffer?.destroy();
     this.particleBuffer = null;
     this.moduleUniformBuffers = [];
+    this.arrayStorageBuffers.clear();
+    this.arrayLengthBuffers.clear();
     this.renderUniformBuffer = null;
     this.gridCountsBuffer = null;
     this.gridIndicesBuffer = null;

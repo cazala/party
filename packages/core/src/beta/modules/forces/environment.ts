@@ -11,6 +11,7 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
+  DataType,
 } from "../../module";
 
 export const DEFAULT_ENVIRONMENT_GRAVITY_STRENGTH = 0;
@@ -19,15 +20,6 @@ export const DEFAULT_ENVIRONMENT_GRAVITY_ANGLE = Math.PI / 2; // radians, defaul
 export const DEFAULT_ENVIRONMENT_INERTIA = 0;
 export const DEFAULT_ENVIRONMENT_FRICTION = 0;
 export const DEFAULT_ENVIRONMENT_DAMPING = 0;
-
-type EnvInputKeys =
-  | "gravityStrength"
-  | "dirX"
-  | "dirY"
-  | "inertia"
-  | "friction"
-  | "damping"
-  | "mode";
 
 export type GravityDirection =
   | "up"
@@ -38,18 +30,28 @@ export type GravityDirection =
   | "outwards"
   | "custom";
 
-export class Environment extends Module<"environment", EnvInputKeys> {
+type EnvironmentInputs = {
+  gravityStrength: number;
+  dirX: number;
+  dirY: number;
+  inertia: number;
+  friction: number;
+  damping: number;
+  mode: number;
+};
+
+export class Environment extends Module<"environment", EnvironmentInputs> {
   readonly name = "environment" as const;
   readonly role = ModuleRole.Force;
-  readonly keys = [
-    "gravityStrength",
-    "dirX",
-    "dirY",
-    "inertia",
-    "friction",
-    "damping",
-    "mode",
-  ] as const;
+  readonly inputs = {
+    gravityStrength: DataType.NUMBER,
+    dirX: DataType.NUMBER,
+    dirY: DataType.NUMBER,
+    inertia: DataType.NUMBER,
+    friction: DataType.NUMBER,
+    damping: DataType.NUMBER,
+    mode: DataType.NUMBER,
+  } as const;
 
   private gravityDirection: GravityDirection = "down";
   private gravityAngle: number = Math.PI / 2; // radians, default down
@@ -189,7 +191,7 @@ export class Environment extends Module<"environment", EnvInputKeys> {
     return this.readValue("mode");
   }
 
-  webgpu(): WebGPUDescriptor<EnvInputKeys> {
+  webgpu(): WebGPUDescriptor<EnvironmentInputs> {
     return {
       apply: ({ particleVar, dtVar, getUniform }) => `
   // Gravity as force: acceleration += dir * strength
@@ -232,7 +234,7 @@ export class Environment extends Module<"environment", EnvInputKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<EnvInputKeys> {
+  cpu(): CPUDescriptor<EnvironmentInputs> {
     return {
       apply: ({ particle, dt, input, view }) => {
         const gdir = new Vector(input.dirX, input.dirY);

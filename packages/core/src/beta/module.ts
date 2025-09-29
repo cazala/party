@@ -19,58 +19,80 @@ export enum ModuleRole {
   Render = "render",
 }
 
-type InputKeysBase = "enabled" | string;
+export enum DataType {
+  NUMBER = "number",
+  ARRAY = "array",
+}
 
 export abstract class Module<
   Name extends string = string,
-  InputKeys extends InputKeysBase = InputKeysBase,
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >,
   StateKeys extends string = any
 > {
   abstract readonly name: Name;
   abstract readonly role: ModuleRole;
-  abstract readonly keys: readonly InputKeys[];
+  abstract readonly inputs: { [K in keyof Inputs]: DataType };
 
   private _state: Record<StateKeys, number> = {} as Record<StateKeys, number>;
-  private _writer: ((values: Partial<Record<string, number>>) => void) | null =
-    (values: Partial<Record<string, number>>) => {
-      for (const key of Object.keys(values)) {
-        this._state[key as StateKeys] = values[key as StateKeys] ?? 0;
+  private _writer:
+    | ((values: Partial<Record<string, number | number[]>>) => void)
+    | null = (values: Partial<Record<string, number | number[]>>) => {
+    for (const key of Object.keys(values)) {
+      const val = values[key as keyof typeof values];
+      if (typeof val === "number") {
+        this._state[key as StateKeys] = val;
       }
-    };
-  private _reader: (() => Partial<Record<string, number>>) | null = () => {
-    return this._state;
+    }
   };
+  private _reader: (() => Partial<Record<string, number | number[]>>) | null =
+    () => {
+      return this._state;
+    };
   private _enabled: boolean = true;
 
   attachUniformWriter(
-    writer: (values: Partial<Record<string, number>>) => void
+    writer: (values: Partial<Record<string, number | number[]>>) => void
   ): void {
     const values = this.read();
     this._writer = writer;
     writer({ ...values, enabled: this._enabled ? 1 : 0 });
   }
 
-  attachUniformReader(reader: () => Partial<Record<string, number>>): void {
+  attachUniformReader(
+    reader: () => Partial<Record<string, number | number[]>>
+  ): void {
     this._reader = reader;
   }
 
-  public write(values: Partial<Record<InputKeys, number>>): void {
+  public write(values: Partial<Inputs>): void {
     // Binding keys are narrowed by the generic; cast to the writer's accepted shape
-    this._writer?.(values as unknown as Partial<Record<string, number>>);
+    this._writer?.(
+      values as unknown as Partial<Record<string, number | number[]>>
+    );
   }
 
-  public read(): Partial<Record<InputKeys, number>> {
-    const vals = this._reader?.() as unknown as Partial<
-      Record<InputKeys, number>
-    >;
+  public read(): Partial<Inputs> {
+    const vals = this._reader?.() as unknown as Partial<Inputs>;
     return vals || {};
   }
 
-  public readValue(key: InputKeys): number {
+  public readValue(key: keyof Inputs | "enabled"): number {
     const vals = this._reader?.() as unknown as Partial<
-      Record<InputKeys, number>
+      Record<keyof Inputs | "enabled", number | number[]>
     >;
-    return vals[key] ?? 0;
+    const val = vals[key];
+    return typeof val === "number" ? val : 0;
+  }
+
+  public readArray(key: keyof Inputs | "enabled"): number[] {
+    const vals = this._reader?.() as unknown as Partial<
+      Record<keyof Inputs | "enabled", number | number[]>
+    >;
+    const val = vals[key];
+    return Array.isArray(val) ? val : [];
   }
 
   isEnabled(): boolean {
@@ -85,39 +107,44 @@ export abstract class Module<
     }
   }
 
-  abstract webgpu(): WebGPUDescriptor<InputKeys, StateKeys>;
-  abstract cpu(): CPUDescriptor<InputKeys, StateKeys>;
-}
-
-export interface BaseDescriptor {
-  // Base descriptors no longer need name, role, keys as they're in the Module class
+  abstract webgpu(): WebGPUDescriptor<Inputs, StateKeys>;
+  abstract cpu(): CPUDescriptor<Inputs, StateKeys>;
 }
 
 export interface WebGPUForceDescriptor<
-  InputKeys extends string = string,
-  StateKeys extends string = string
-> extends BaseDescriptor {
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >,
+  StateKeys extends string | number | symbol = string
+> {
   states?: readonly StateKeys[];
-  global?: (args: { getUniform: (id: InputKeys) => string }) => string;
+  global?: (args: {
+    getUniform: (id: keyof Inputs, index?: number) => string;
+    getLength: (id: keyof Inputs) => string;
+  }) => string;
   state?: (args: {
     particleVar: string;
     dtVar: string;
     maxSizeVar: string;
-    getUniform: (id: InputKeys) => string;
+    getUniform: (id: keyof Inputs, index?: number) => string;
+    getLength: (id: keyof Inputs) => string;
     setState: (name: StateKeys, valueExpr: string) => string;
   }) => string;
   apply?: (args: {
     particleVar: string;
     dtVar: string;
     maxSizeVar: string;
-    getUniform: (id: InputKeys) => string;
+    getUniform: (id: keyof Inputs, index?: number) => string;
+    getLength: (id: keyof Inputs) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
   constrain?: (args: {
     particleVar: string;
     dtVar: string;
     maxSizeVar: string;
-    getUniform: (id: InputKeys) => string;
+    getUniform: (id: keyof Inputs, index?: number) => string;
+    getLength: (id: keyof Inputs) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
   correct?: (args: {
@@ -126,30 +153,45 @@ export interface WebGPUForceDescriptor<
     maxSizeVar: string;
     prevPosVar: string;
     postPosVar: string;
-    getUniform: (id: InputKeys) => string;
+    getUniform: (id: keyof Inputs, index?: number) => string;
+    getLength: (id: keyof Inputs) => string;
     getState: (name: StateKeys, pidVar?: string) => string;
   }) => string;
 }
 
-export type FullscreenRenderPass<InputKeys extends string = string> = {
+export type FullscreenRenderPass<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >
+> = {
   kind: RenderPassKind.Fullscreen;
   vertex?: (args: {
-    getUniform: (id: InputKeys | "canvasWidth" | "canvasHeight") => string;
+    getUniform: (
+      id: keyof Inputs | "canvasWidth" | "canvasHeight",
+      index?: number
+    ) => string;
+    getLength: (id: keyof Inputs) => string;
   }) => string;
-  globals?: (args: { getUniform: (id: InputKeys) => string }) => string;
+  globals?: (args: {
+    getUniform: (id: keyof Inputs, index?: number) => string;
+    getLength: (id: keyof Inputs) => string;
+  }) => string;
   fragment: (args: {
     getUniform: (
       id:
-        | InputKeys
+        | keyof Inputs
         | "canvasWidth"
         | "canvasHeight"
         | "clearColorR"
         | "clearColorG"
-        | "clearColorB"
+        | "clearColorB",
+      index?: number
     ) => string;
+    getLength: (id: keyof Inputs) => string;
     sampleScene: (uvExpr: string) => string;
   }) => string;
-  bindings: readonly InputKeys[];
+  bindings: keyof Inputs[];
   readsScene?: boolean;
   writesScene?: true;
   instanced?: boolean;
@@ -160,48 +202,69 @@ export enum RenderPassKind {
   Compute = "compute",
 }
 
-export type ComputeRenderPass<InputKeys extends string = string> = {
+export type ComputeRenderPass<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >
+> = {
   kind: RenderPassKind.Compute;
   kernel: (args: {
     getUniform: (
       id:
-        | InputKeys
+        | keyof Inputs
         | "canvasWidth"
         | "canvasHeight"
         | "clearColorR"
         | "clearColorG"
-        | "clearColorB"
+        | "clearColorB",
+      index?: number
     ) => string;
+    getLength: (id: keyof Inputs) => string;
     readScene: (coordsExpr: string) => string;
     writeScene: (coordsExpr: string, colorExpr: string) => string;
   }) => string;
-  bindings: readonly InputKeys[];
+  bindings: keyof Inputs[];
   readsScene?: boolean;
   writesScene?: true;
   workgroupSize?: [number, number, number];
-  globals?: (args: { getUniform: (id: InputKeys) => string }) => string;
+  globals?: (args: {
+    getUniform: (id: keyof Inputs, index?: number) => string;
+    getLength: (id: keyof Inputs) => string;
+  }) => string;
 };
 
-export type RenderPass<Keys extends string = string> =
-  | FullscreenRenderPass<Keys>
-  | ComputeRenderPass<Keys>;
+export type RenderPass<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >
+> = FullscreenRenderPass<Inputs> | ComputeRenderPass<Inputs>;
 
-export interface WebGPURenderDescriptor<InputKeys extends string = string>
-  extends BaseDescriptor {
-  passes: Array<RenderPass<InputKeys>>;
+export interface WebGPURenderDescriptor<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >
+> {
+  passes: Array<RenderPass<Inputs>>;
 }
 
 export type WebGPUDescriptor<
-  InputKeys extends string = string,
-  StateKeys extends string = never
-> =
-  | WebGPUForceDescriptor<InputKeys, StateKeys>
-  | WebGPURenderDescriptor<InputKeys>;
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >,
+  StateKeys extends string | number | symbol = string
+> = WebGPUForceDescriptor<Inputs, StateKeys> | WebGPURenderDescriptor<Inputs>;
 
 export interface CPUForceDescriptor<
-  InputKeys extends string = string,
-  StateKeys extends string = never
-> extends BaseDescriptor {
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >,
+  StateKeys extends string | number | symbol = never
+> {
   states?: readonly StateKeys[];
   state?: (args: {
     particle: Particle;
@@ -210,7 +273,7 @@ export interface CPUForceDescriptor<
       radius: number
     ) => Particle[];
     dt: number;
-    input: Record<InputKeys, number>;
+    input: Inputs;
     setState: (name: StateKeys, value: number) => void;
     view: View;
     getImageData: (
@@ -228,7 +291,7 @@ export interface CPUForceDescriptor<
     ) => Particle[];
     dt: number;
     maxSize: number;
-    input: Record<InputKeys, number>;
+    input: Inputs;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
     getImageData: (
@@ -246,7 +309,7 @@ export interface CPUForceDescriptor<
     ) => Particle[];
     dt: number;
     maxSize: number;
-    input: Record<InputKeys, number>;
+    input: Inputs;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
   }) => void;
@@ -260,7 +323,7 @@ export interface CPUForceDescriptor<
     maxSize: number;
     prevPos: { x: number; y: number };
     postPos: { x: number; y: number };
-    input: Record<InputKeys, number>;
+    input: Inputs;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
   }) => void;
@@ -292,15 +355,19 @@ export enum CanvasComposition {
   Additive = "additive",
 }
 
-export interface CPURenderDescriptor<InputKeys extends string = string>
-  extends BaseDescriptor {
+export interface CPURenderDescriptor<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >
+> {
   // How this module composes with the canvas background
   composition?: CanvasComposition;
 
   // Optional setup phase (called once per frame before particles)
   setup?: (args: {
     context: CanvasRenderingContext2D;
-    input: Record<InputKeys, number>;
+    input: Inputs;
     view: View;
     clearColor: { r: number; g: number; b: number; a: number };
     utils: CPURenderUtils;
@@ -313,19 +380,22 @@ export interface CPURenderDescriptor<InputKeys extends string = string>
     screenX: number;
     screenY: number;
     screenSize: number;
-    input: Record<InputKeys, number>;
+    input: Inputs;
     utils: CPURenderUtils;
   }) => void;
 
   // Optional teardown phase (called once per frame after all particles)
   teardown?: (args: {
     context: CanvasRenderingContext2D;
-    input: Record<InputKeys, number>;
+    input: Inputs;
     utils: CPURenderUtils;
   }) => void;
 }
 
 export type CPUDescriptor<
-  InputKeys extends string = string,
-  StateKeys extends string = never
-> = CPUForceDescriptor<InputKeys, StateKeys> | CPURenderDescriptor<InputKeys>;
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >,
+  StateKeys extends string | number | symbol = string
+> = CPUForceDescriptor<Inputs, StateKeys> | CPURenderDescriptor<Inputs>;

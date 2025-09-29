@@ -11,17 +11,9 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
+  DataType,
 } from "../../module";
 
-type FluidsInputKeys =
-  | "influenceRadius"
-  | "targetDensity"
-  | "pressureMultiplier"
-  | "viscosity"
-  | "nearPressureMultiplier"
-  | "nearThreshold"
-  | "enableNearPressure"
-  | "maxAcceleration";
 
 export const DEFAULT_FLUIDS_INFLUENCE_RADIUS = 100;
 export const DEFAULT_FLUIDS_TARGET_DENSITY = 1;
@@ -34,19 +26,30 @@ export const DEFAULT_FLUIDS_MAX_ACCELERATION = 75;
 
 type FluidStateKeys = "density" | "nearDensity";
 
-export class Fluids extends Module<"fluids", FluidsInputKeys, FluidStateKeys> {
+type FluidsInputs = {
+  influenceRadius: number;
+  targetDensity: number;
+  pressureMultiplier: number;
+  viscosity: number;
+  nearPressureMultiplier: number;
+  nearThreshold: number;
+  enableNearPressure: number;
+  maxAcceleration: number;
+};
+
+export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
   readonly name = "fluids" as const;
   readonly role = ModuleRole.Force;
-  readonly keys = [
-    "influenceRadius",
-    "targetDensity",
-    "pressureMultiplier",
-    "viscosity",
-    "nearPressureMultiplier",
-    "nearThreshold",
-    "enableNearPressure",
-    "maxAcceleration",
-  ] as const;
+  readonly inputs = {
+    influenceRadius: DataType.NUMBER,
+    targetDensity: DataType.NUMBER,
+    pressureMultiplier: DataType.NUMBER,
+    viscosity: DataType.NUMBER,
+    nearPressureMultiplier: DataType.NUMBER,
+    nearThreshold: DataType.NUMBER,
+    enableNearPressure: DataType.NUMBER,
+    maxAcceleration: DataType.NUMBER,
+  } as const;
 
   constructor(opts?: {
     enabled?: boolean;
@@ -129,7 +132,7 @@ export class Fluids extends Module<"fluids", FluidsInputKeys, FluidStateKeys> {
     return this.readValue("maxAcceleration");
   }
 
-  webgpu(): WebGPUDescriptor<FluidsInputKeys, FluidStateKeys> {
+  webgpu(): WebGPUDescriptor<FluidsInputs, FluidStateKeys> {
     return {
       states: ["density", "nearDensity"],
       // State pass: precompute density and near-density per particle
@@ -267,7 +270,7 @@ export class Fluids extends Module<"fluids", FluidsInputKeys, FluidStateKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<FluidsInputKeys, FluidStateKeys> {
+  cpu(): CPUDescriptor<FluidsInputs, FluidStateKeys> {
     return {
       states: ["density", "nearDensity"],
 

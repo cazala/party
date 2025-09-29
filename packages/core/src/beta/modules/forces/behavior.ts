@@ -11,18 +11,8 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
+  DataType,
 } from "../../module";
-
-type BehaviorInputKeys =
-  | "wander"
-  | "cohesion"
-  | "alignment"
-  | "repulsion"
-  | "chase"
-  | "avoid"
-  | "separation"
-  | "viewRadius"
-  | "viewAngle";
 
 export const DEFAULT_BEHAVIOR_WANDER = 20;
 export const DEFAULT_BEHAVIOR_COHESION = 1.5;
@@ -34,20 +24,32 @@ export const DEFAULT_BEHAVIOR_SEPARATION = 10;
 export const DEFAULT_BEHAVIOR_VIEW_RADIUS = 100;
 export const DEFAULT_BEHAVIOR_VIEW_ANGLE = 1.5 * Math.PI;
 
-export class Behavior extends Module<"behavior", BehaviorInputKeys> {
+type BehaviorInputs = {
+  wander: number;
+  cohesion: number;
+  alignment: number;
+  repulsion: number;
+  chase: number;
+  avoid: number;
+  separation: number;
+  viewRadius: number;
+  viewAngle: number;
+};
+
+export class Behavior extends Module<"behavior", BehaviorInputs> {
   readonly name = "behavior" as const;
   readonly role = ModuleRole.Force;
-  readonly keys = [
-    "wander",
-    "cohesion",
-    "alignment",
-    "repulsion",
-    "chase",
-    "avoid",
-    "separation",
-    "viewRadius",
-    "viewAngle",
-  ] as const;
+  readonly inputs = {
+    wander: DataType.NUMBER,
+    cohesion: DataType.NUMBER,
+    alignment: DataType.NUMBER,
+    repulsion: DataType.NUMBER,
+    chase: DataType.NUMBER,
+    avoid: DataType.NUMBER,
+    separation: DataType.NUMBER,
+    viewRadius: DataType.NUMBER,
+    viewAngle: DataType.NUMBER,
+  } as const;
 
   constructor(opts?: {
     wander?: number;
@@ -132,7 +134,7 @@ export class Behavior extends Module<"behavior", BehaviorInputKeys> {
     return this.readValue("viewAngle");
   }
 
-  webgpu(): WebGPUDescriptor<BehaviorInputKeys> {
+  webgpu(): WebGPUDescriptor<BehaviorInputs> {
     return {
       apply: ({ particleVar, getUniform }) => `
   // Neighbor loop within view radius
@@ -256,7 +258,7 @@ export class Behavior extends Module<"behavior", BehaviorInputKeys> {
     };
   }
 
-  cpu(): CPUDescriptor<BehaviorInputKeys> {
+  cpu(): CPUDescriptor<BehaviorInputs> {
     return {
       apply: ({ particle, getNeighbors }) => {
         // Get behavior parameters

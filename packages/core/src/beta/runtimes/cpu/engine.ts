@@ -249,10 +249,13 @@ export class CPUEngine extends AbstractEngine {
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Force && (descriptor as any).state) {
           const force = descriptor as any;
-          const input: Record<string, number> = {};
-          for (const key of module.keys ?? []) {
-            input[key] = module.read()[key] ?? 0;
+          const input: Record<string, number | number[]> = {};
+          for (const key of Object.keys(module.inputs)) {
+            const value = module.read()[key];
+            input[key] = value ?? 0;
           }
+          // Always add enabled
+          input.enabled = module.read().enabled ?? 0;
 
           for (const particle of this.particles) {
             const setState = (name: string, value: number) => {
@@ -285,10 +288,13 @@ export class CPUEngine extends AbstractEngine {
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Force && (descriptor as any).apply) {
           const force = descriptor as any;
-          const input: Record<string, number> = {};
-          for (const key of module.keys ?? []) {
-            input[key] = module.read()[key] ?? 0;
+          const input: Record<string, number | number[]> = {};
+          for (const key of Object.keys(module.inputs)) {
+            const value = module.read()[key];
+            input[key] = value ?? 0;
           }
+          // Always add enabled
+          input.enabled = module.read().enabled ?? 0;
 
           for (const particle of this.particles) {
             const getState = (name: string, pid?: number) => {
@@ -338,10 +344,13 @@ export class CPUEngine extends AbstractEngine {
             (descriptor as any).constrain
           ) {
             const force = descriptor as any;
-            const input: Record<string, number> = {};
-            for (const key of module.keys ?? []) {
-              input[key] = module.read()[key] ?? 0;
+            const input: Record<string, number | number[]> = {};
+            for (const key of Object.keys(module.inputs)) {
+              const value = module.read()[key];
+              input[key] = value ?? 0;
             }
+            // Always add enabled
+            input.enabled = module.read().enabled ?? 0;
             for (const particle of this.particles) {
               const getState = (name: string, pid?: number) => {
                 return globalState[pid ?? particle.id]?.[name] ?? 0;
@@ -371,10 +380,13 @@ export class CPUEngine extends AbstractEngine {
         const descriptor = module.cpu();
         if (module.role === ModuleRole.Force && (descriptor as any).correct) {
           const force = descriptor as any;
-          const input: Record<string, number> = {};
-          for (const key of module.keys ?? []) {
-            input[key] = module.read()[key] ?? 0;
+          const input: Record<string, number | number[]> = {};
+          for (const key of Object.keys(module.inputs)) {
+            const value = module.read()[key];
+            input[key] = value ?? 0;
           }
+          // Always add enabled
+          input.enabled = module.read().enabled ?? 0;
 
           for (const particle of this.particles) {
             const getState = (name: string, pid?: number) => {
@@ -496,10 +508,13 @@ export class CPUEngine extends AbstractEngine {
         if (module.role === ModuleRole.Render) {
           const render = descriptor as any;
           // input
-          const input: Record<string, number> = {};
-          for (const key of module.keys ?? []) {
-            input[key] = module.read()[key] ?? 0;
+          const input: Record<string, number | number[]> = {};
+          for (const key of Object.keys(module.inputs)) {
+            const value = module.read()[key];
+            input[key] = value ?? 0;
           }
+          // Always add enabled
+          input.enabled = module.read().enabled ?? 0;
 
           // Setup phase
           render.setup?.({

@@ -11,21 +11,10 @@ import {
   type WebGPUDescriptor,
   ModuleRole,
   CPUDescriptor,
+  DataType,
 } from "../../module";
 
 export type SensorBehavior = "any" | "same" | "different" | "none";
-
-type SensorInputKeys =
-  | "sensorDistance"
-  | "sensorAngle"
-  | "sensorRadius"
-  | "sensorThreshold"
-  | "sensorStrength"
-  | "colorSimilarityThreshold"
-  | "followBehavior"
-  | "fleeBehavior"
-  | "fleeAngle"
-  | "enabled";
 
 export const DEFAULT_SENSORS_SENSOR_DISTANCE = 30;
 export const DEFAULT_SENSORS_SENSOR_ANGLE = Math.PI / 6; // 30 degrees
@@ -37,21 +26,32 @@ export const DEFAULT_SENSORS_FOLLOW_BEHAVIOR: SensorBehavior = "any";
 export const DEFAULT_SENSORS_FLEE_BEHAVIOR: SensorBehavior = "none";
 export const DEFAULT_SENSORS_FLEE_ANGLE = Math.PI / 2;
 
-export class Sensors extends Module<"sensors", SensorInputKeys> {
+type SensorsInputs = {
+  sensorDistance: number;
+  sensorAngle: number;
+  sensorRadius: number;
+  sensorThreshold: number;
+  sensorStrength: number;
+  colorSimilarityThreshold: number;
+  followBehavior: number;
+  fleeBehavior: number;
+  fleeAngle: number;
+};
+
+export class Sensors extends Module<"sensors", SensorsInputs> {
   readonly name = "sensors" as const;
   readonly role = ModuleRole.Force;
-  readonly keys = [
-    "sensorDistance",
-    "sensorAngle",
-    "sensorRadius",
-    "sensorThreshold",
-    "sensorStrength",
-    "colorSimilarityThreshold",
-    "followBehavior",
-    "fleeBehavior",
-    "fleeAngle",
-    "enabled",
-  ] as const;
+  readonly inputs = {
+    sensorDistance: DataType.NUMBER,
+    sensorAngle: DataType.NUMBER,
+    sensorRadius: DataType.NUMBER,
+    sensorThreshold: DataType.NUMBER,
+    sensorStrength: DataType.NUMBER,
+    colorSimilarityThreshold: DataType.NUMBER,
+    followBehavior: DataType.NUMBER,
+    fleeBehavior: DataType.NUMBER,
+    fleeAngle: DataType.NUMBER,
+  } as const;
 
   constructor(opts?: {
     enabled?: boolean;
@@ -173,7 +173,7 @@ export class Sensors extends Module<"sensors", SensorInputKeys> {
     return this.readValue("enabled");
   }
 
-  webgpu(): WebGPUDescriptor<SensorInputKeys> {
+  webgpu(): WebGPUDescriptor<SensorsInputs> {
     return {
       global: () => `// Sensor helper functions (defined at global scope)
 // Sample from the scene texture bound to the compute pipeline
@@ -408,7 +408,7 @@ if (length(totalForce) > 0.0) {
     };
   }
 
-  cpu(): CPUDescriptor<SensorInputKeys> {
+  cpu(): CPUDescriptor<SensorsInputs> {
     return {
       apply: ({ particle, input, getImageData, view }) => {
         const sensorDist = input.sensorDistance;
