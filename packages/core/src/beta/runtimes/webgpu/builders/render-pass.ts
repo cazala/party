@@ -34,21 +34,22 @@ function makeGetUniformExpr<Inputs extends Record<string, number | number[]>>(
     const mapping = layout.mapping[id as string];
     if (!mapping) return "0.0";
 
-    // Replace the uniform variable name for render passes
-    const expr = mapping.expr.replace(
-      `${moduleName}_uniforms`,
-      `module_uniforms`
-    );
-
     // Check if this is an array input
     if (moduleInputs[id] === DataType.ARRAY) {
       if (index !== undefined) {
-        return `${expr}[${index}]`;
+        // Use combined array with offset
+        const offsetExpr = mapping.offsetExpr?.replace(`${moduleName}_uniforms`, `module_uniforms`) || "0u";
+        return `${moduleName}_arrays[u32(${offsetExpr}) + u32(${index})]`;
       } else {
         // Return the array variable name itself for direct access
-        return expr;
+        return `${moduleName}_arrays`;
       }
     } else {
+      // Replace the uniform variable name for render passes
+      const expr = mapping.expr.replace(
+        `${moduleName}_uniforms`,
+        `module_uniforms`
+      );
       // Regular number input
       return expr;
     }
@@ -205,12 +206,9 @@ export function buildFullscreenPassWGSL<
     .filter(([_, type]) => type === DataType.ARRAY)
     .map(([key, _]) => key);
 
-  const arrayDeclarations = arrayInputs
-    .map((arrayKey, index) => {
-      const bindingIndex = 5 + index; // Start after fixed bindings (0-4)
-      return `@group(0) @binding(${bindingIndex}) var<storage, read> ${moduleName}_${arrayKey}_array: array<f32>;`;
-    })
-    .join("\n");
+  const arrayDeclarations = arrayInputs.length > 0 
+    ? `@group(0) @binding(5) var<storage, read> ${moduleName}_arrays: array<f32>;`
+    : "";
 
   const code = `
 struct Particle {
@@ -288,12 +286,9 @@ export function buildComputeImagePassWGSL<
     .filter(([_, type]) => type === DataType.ARRAY)
     .map(([key, _]) => key);
 
-  const arrayDeclarations = arrayInputs
-    .map((arrayKey, index) => {
-      const bindingIndex = 3 + index; // Start after fixed bindings (0-2 for compute)
-      return `@group(0) @binding(${bindingIndex}) var<storage, read> ${moduleName}_${arrayKey}_array: array<f32>;`;
-    })
-    .join("\n");
+  const arrayDeclarations = arrayInputs.length > 0 
+    ? `@group(0) @binding(3) var<storage, read> ${moduleName}_arrays: array<f32>;`
+    : "";
 
   // kernel
   const kernelBody = pass.kernel({

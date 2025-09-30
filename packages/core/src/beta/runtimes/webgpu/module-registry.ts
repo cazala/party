@@ -56,7 +56,7 @@ export class ModuleRegistry {
         .map(([key, _]) => key);
 
       if (arrayInputs.length > 0) {
-        resources.createArrayStorageBuffers(module.name, arrayInputs);
+        resources.createCombinedArrayStorageBuffer(module.name, arrayInputs);
         this.moduleArrayState[module.name] = {};
         arrayInputs.forEach((arrayKey) => {
           this.moduleArrayState[module.name][arrayKey] = [];
@@ -134,7 +134,7 @@ export class ModuleRegistry {
   getEnabledRenderModules(): Module[] {
     return this.modules.filter((module, idx) => {
       if (!module.isEnabled()) return false;
-      const descriptor = this.modules[idx].webgpu<WebGPURenderDescriptor>();
+      const descriptor = this.modules[idx].webgpu() as WebGPURenderDescriptor;
       return !!(
         descriptor &&
         descriptor.passes &&
@@ -183,19 +183,55 @@ export class ModuleRegistry {
     const idx = this.getModuleIndex(name);
     const state = this.moduleUniformState[idx];
 
+    // First pass: collect array updates and update state
+    const arrayDataMap: Record<string, number[]> = {};
+    let hasArrayUpdate = false;
+
     for (const [key, value] of Object.entries(values)) {
       if (Array.isArray(value)) {
         // Handle array inputs
         if (this.moduleArrayState[name]) {
           this.moduleArrayState[name][key] = [...value];
-          this.resources.writeArrayStorage(name, key, value);
-          // Also write the array length to the uniform buffer
+          arrayDataMap[key] = value;
+
+          // Store array length in uniform state
           state[`${key}_length`] = value.length;
+          hasArrayUpdate = true;
         }
       } else if (typeof value === "number") {
         // Handle number inputs
         state[key] = value;
       }
+    }
+
+    // Second pass: recalculate all offsets for this module if any array changed
+    const arrayOffsets: Record<string, number> = {};
+    if (hasArrayUpdate && this.moduleArrayState[name]) {
+      // Get all array keys in a consistent order (alphabetical)
+      const arrayKeys = Object.keys(this.moduleArrayState[name]).sort();
+      let currentOffset = 0;
+
+      for (const arrayKey of arrayKeys) {
+        arrayOffsets[arrayKey] = currentOffset;
+        state[`${arrayKey}_offset`] = currentOffset;
+        currentOffset += this.moduleArrayState[name][arrayKey].length;
+      }
+
+      // Need to write all arrays, not just the ones that changed
+      for (const arrayKey of arrayKeys) {
+        if (!arrayDataMap[arrayKey]) {
+          arrayDataMap[arrayKey] = this.moduleArrayState[name][arrayKey];
+        }
+      }
+    }
+
+    // Write combined array data if there are array updates
+    if (hasArrayUpdate && Object.keys(arrayDataMap).length > 0) {
+      this.resources.writeCombinedArrayStorage(
+        name,
+        arrayDataMap,
+        arrayOffsets
+      );
     }
 
     this.flushModuleUniform(idx);

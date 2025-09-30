@@ -18,7 +18,6 @@ import {
   Module,
   ModuleRole,
   DataType,
-  type WebGPUDescriptor,
   WebGPUForceDescriptor,
 } from "../../../module";
 
@@ -46,7 +45,7 @@ export interface ModuleUniformLayout {
   structName: string;
   sizeBytes: number;
   vec4Count: number;
-  mapping: Record<string, { flatIndex: number; expr: string }>;
+  mapping: Record<string, { flatIndex: number; expr: string; offsetExpr?: string }>;
 }
 
 export interface Program {
@@ -76,7 +75,7 @@ export function buildProgram(modules: readonly Module[]): Program {
     const structName = `Uniforms_${cap(name)}`;
     const idsLocal = [...fieldIds] as string[];
     const vec4Count = Math.max(1, Math.ceil(idsLocal.length / 4));
-    const mapping: Record<string, { flatIndex: number; expr: string }> = {};
+    const mapping: Record<string, { flatIndex: number; expr: string; offsetExpr?: string }> = {};
     idsLocal.forEach((id, i) => {
       const v = Math.floor(i / 4),
         c = i % 4;
@@ -130,7 +129,7 @@ export function buildProgram(modules: readonly Module[]): Program {
   const arrayDecls: string[] = [];
   const arrayBindings: Record<
     string,
-    { arrayBinding: number; lengthBinding: number; lengthExpr?: string }
+    { arrayBinding: number; lengthBinding: number; combinedArrayVar?: string }
   > = {};
 
   modules.forEach((module) => {
@@ -152,7 +151,7 @@ export function buildProgram(modules: readonly Module[]): Program {
     // Create uniform buffer for number inputs
     const bindingIndex = nextBindingIndex++;
     const vec4Count = Math.max(1, Math.ceil(allNumberInputs.length / 4));
-    const mapping: Record<string, { flatIndex: number; expr: string }> = {};
+    const mapping: Record<string, { flatIndex: number; expr: string; offsetExpr?: string }> = {};
 
     allNumberInputs.forEach((id, i) => {
       const v = Math.floor(i / 4),
@@ -182,44 +181,79 @@ export function buildProgram(modules: readonly Module[]): Program {
     });
     uniformDecls.push(structWGSL, varDecl);
 
-    // Create storage buffers for array inputs
-    arrayInputs.forEach((arrayKey) => {
+    // Create combined storage buffer for all array inputs of this module
+    if (arrayInputs.length > 0) {
       const arrayBinding = nextBindingIndex++;
-      const arrayVar = `${module.name}_${arrayKey}_array`;
+      const combinedArrayVar = `${module.name}_arrays`;
 
-      // Add array storage buffer declaration
+      // Add combined array storage buffer declaration
       arrayDecls.push(
-        `@group(0) @binding(${arrayBinding}) var<storage, read> ${arrayVar}: array<f32>;`
+        `@group(0) @binding(${arrayBinding}) var<storage, read> ${combinedArrayVar}: array<f32>;`
       );
 
-      // Length is now stored in the main uniform buffer, find its expression
-      const lengthKey = `${arrayKey}_length`;
-      const lengthMapping = mapping[lengthKey];
-      const lengthExpr = lengthMapping ? lengthMapping.expr : "0u";
+      // Add offset uniforms for each array in the combined buffer
+      let offsetIndex = allNumberInputs.length;
+      arrayInputs.forEach((arrayKey) => {
+        const offsetKey = `${arrayKey}_offset`;
+        const offsetMapping = {
+          flatIndex: offsetIndex,
+          expr: `${uniformsVar}.v${Math.floor(offsetIndex / 4)}.${['x', 'y', 'z', 'w'][offsetIndex % 4]}`,
+        };
+        mapping[offsetKey] = offsetMapping;
+        offsetIndex++;
+      });
 
-      // Track array bindings
-      arrayBindings[`${module.name}_${arrayKey}`] = {
+      // Update vec4Count to include offset fields
+      const totalNumberInputs = allNumberInputs.length + arrayInputs.length;
+      const updatedVec4Count = Math.max(1, Math.ceil(totalNumberInputs / 4));
+      
+      // Re-generate the struct with additional offset fields
+      const updatedStructWGSL = `struct ${structName} {\n${Array.from(
+        { length: updatedVec4Count },
+        (_, i) => `  v${i}: vec4<f32>,`
+      ).join("\n")}\n}`;
+      
+      // Update the layout
+      layouts[layouts.length - 1].vec4Count = updatedVec4Count;
+      layouts[layouts.length - 1].sizeBytes = updatedVec4Count * 16;
+      
+      // Replace the last struct declaration
+      uniformDecls[uniformDecls.length - 2] = updatedStructWGSL;
+
+      // Track combined array binding for this module
+      arrayBindings[module.name] = {
         arrayBinding,
         lengthBinding: -1, // No separate binding, using main uniform
-        lengthExpr,
+        combinedArrayVar,
       };
 
-      // Add array mappings to the module's mapping for getUniform access
-      mapping[arrayKey] = {
-        flatIndex: -1, // Not in uniform buffer
-        expr: arrayVar, // Direct array reference
-      };
-      // Don't overwrite the length mapping if it already exists with a proper flatIndex
-      if (
-        !mapping[`${arrayKey}_length`] ||
-        mapping[`${arrayKey}_length`].flatIndex === -1
-      ) {
-        mapping[`${arrayKey}_length`] = {
-          flatIndex: -1,
-          expr: lengthExpr,
+      arrayInputs.forEach((arrayKey) => {
+        // Length is stored in the main uniform buffer
+        const lengthKey = `${arrayKey}_length`;
+        const lengthMapping = mapping[lengthKey];
+        const lengthExpr = lengthMapping ? lengthMapping.expr : "0u";
+
+        // Offset is also stored in the main uniform buffer
+        const offsetKey = `${arrayKey}_offset`;
+        const offsetMapping = mapping[offsetKey];
+        const offsetExpr = offsetMapping ? offsetMapping.expr : "0u";
+
+        // Add array mappings for getUniform access (base expression without index)
+        mapping[arrayKey] = {
+          flatIndex: -1, // Not in uniform buffer
+          expr: combinedArrayVar, // Base array reference, offset will be added by getUniform
+          offsetExpr, // Store offset expression for getUniform to use
         };
-      }
-    });
+        
+        // Ensure length mapping exists
+        if (!mapping[lengthKey] || mapping[lengthKey].flatIndex === -1) {
+          mapping[lengthKey] = {
+            flatIndex: -1,
+            expr: lengthExpr,
+          };
+        }
+      });
+    }
   });
 
   const dtExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping.dt
@@ -269,7 +303,9 @@ export function buildProgram(modules: readonly Module[]): Program {
       // Check if this is an array input
       if (module.inputs[id] === DataType.ARRAY) {
         if (index !== undefined) {
-          return `${mapping.expr}[${index}]`;
+          // Use combined array with offset
+          const offsetExpr = mapping.offsetExpr || "0u";
+          return `${mapping.expr}[u32(${offsetExpr}) + u32(${index})]`;
         } else {
           // Return the array variable name itself for direct access
           return mapping.expr;
