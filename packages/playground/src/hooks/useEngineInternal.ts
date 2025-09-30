@@ -55,6 +55,7 @@ import {
   importTrailsSettings,
   importInteractionSettings,
   importParticleSettings,
+  importJointLinesSettings,
 } from "../slices/modules";
 import {
   Environment,
@@ -67,6 +68,8 @@ import {
   Interaction,
   Engine,
   Particle,
+  Joints,
+  JointLines,
 } from "@cazala/party";
 
 export interface UseEngineProps {
@@ -105,7 +108,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const trailsRef = useRef<Trails | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
   const particleRef = useRef<Particle | null>(null);
-  const jointsRef = useRef<any | null>(null);
+  const jointsRef = useRef<Joints | null>(null);
+  const jointLinesRef = useRef<JointLines | null>(null);
 
   // Local state for engine initialization
   const [isAutoMode, setIsAutoMode] = useState(true);
@@ -154,6 +158,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           trailsRef.current = null;
           interactionRef.current = null;
           particleRef.current = null;
+          jointsRef.current = null;
+          jointLinesRef.current = null;
           registerEngine(null);
         } catch (err) {
           console.warn("Error cleaning up previous engine:", err);
@@ -217,8 +223,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const sensors = new Sensors({ enabled: false });
         const interaction = new Interaction({ enabled: false });
         const trails = new Trails({ enabled: false });
-        // Lazy import from core for Joints to avoid circular issues
-        const { Joints, JointLines } = await import("@cazala/party");
         const joints = new Joints({ enabled: false });
         const jointLines = new JointLines({ enabled: false });
 
@@ -235,7 +239,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           interaction,
           joints,
         ];
-        const render = [trails, jointLines as any, particle];
+        const render = [trails, jointLines, particle];
 
         // Create engine
         const engine = new Engine({
@@ -258,8 +262,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         trailsRef.current = trails;
         interactionRef.current = interaction;
         particleRef.current = particle;
-        jointsRef.current = joints as any;
-
+        jointsRef.current = joints;
+        jointLinesRef.current = jointLines;
         // Register engine for thunks
         registerEngine(engine);
 
@@ -327,6 +331,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
               );
               dispatch(importJointsSettings(modules.joints));
             }
+            if (modules.jointLines) {
+              dispatch(importJointLinesSettings(modules.jointLines));
+            }
             dispatch(importParticleSettings(modules.particle));
           }
         }
@@ -350,6 +357,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           trailsRef.current = null;
           interactionRef.current = null;
           particleRef.current = null;
+          jointsRef.current = null;
+          jointLinesRef.current = null;
           registerEngine(null);
         };
       } catch (err) {
@@ -393,7 +402,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     const trails = trailsRef.current;
     const interaction = interactionRef.current;
     const particle = particleRef.current;
-
+    const joints = jointsRef.current;
+    const jointLines = jointLinesRef.current;
     try {
       // Apply module enabled/disabled states from Redux to module instances
       if (environment && environment.setEnabled) {
@@ -432,6 +442,14 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         particle.setEnabled(modulesState.particle.enabled);
       }
 
+      if (joints && joints.setEnabled) {
+        joints.setEnabled(modulesState.joints.enabled);
+      }
+
+      if (jointLines && jointLines.setEnabled) {
+        jointLines.setEnabled(modulesState.jointLines.enabled);
+      }
+
       console.log("🔄 Applied module states to engine:", {
         environment: modulesState.environment.enabled,
         boundary: modulesState.boundary.enabled,
@@ -456,6 +474,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     modulesState.sensors.enabled,
     modulesState.trails.enabled,
     modulesState.interaction.enabled,
+    modulesState.joints.enabled,
+    modulesState.jointLines.enabled,
   ]);
 
   // Periodic updates for particle count and FPS
@@ -668,5 +688,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     interaction: interactionRef.current,
     particle: particleRef.current,
     joints: jointsRef.current,
+    jointLines: jointLinesRef.current,
   };
 }

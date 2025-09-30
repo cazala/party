@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
+import { SensorBehavior } from "@cazala/party";
 import { useAppDispatch } from "../useAppDispatch";
 import { useAppSelector } from "../useAppSelector";
 import { useEngine } from "../useEngine";
@@ -47,8 +48,8 @@ export function useSensors() {
       sensors.setSensorRadius(state.sensorRadius);
       sensors.setSensorThreshold(state.sensorThreshold);
       sensors.setSensorStrength(state.sensorStrength);
-      sensors.setFollowBehavior(state.followValue as any);
-      sensors.setFleeBehavior(state.fleeValue as any);
+      sensors.setFollowBehavior(state.followValue);
+      sensors.setFleeBehavior(state.fleeValue);
       sensors.setColorSimilarityThreshold(state.colorSimilarityThreshold);
       sensors.setFleeAngle(state.fleeAngle);
     }
@@ -103,17 +104,17 @@ export function useSensors() {
   );
 
   const setFollowValue = useCallback(
-    (value: string) => {
+    (value: SensorBehavior) => {
       dispatch(setSensorFollowValue(value));
-      sensors?.setFollowBehavior(value as any);
+      sensors?.setFollowBehavior(value);
     },
     [dispatch, sensors]
   );
 
   const setFleeValue = useCallback(
-    (value: string) => {
+    (value: SensorBehavior) => {
       dispatch(setSensorFleeValue(value));
-      sensors?.setFleeBehavior(value as any);
+      sensors?.setFleeBehavior(value);
     },
     [dispatch, sensors]
   );

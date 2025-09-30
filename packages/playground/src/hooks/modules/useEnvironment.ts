@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
-import { degToRad } from "@cazala/party";
+import { degToRad, GravityDirection } from "@cazala/party";
 import { useAppDispatch } from "../useAppDispatch";
 import { useAppSelector } from "../useAppSelector";
 import { useEngine } from "../useEngine";
@@ -35,7 +35,7 @@ export function useEnvironment() {
       environment.setInertia(state.inertia);
       environment.setFriction(state.friction);
       environment.setDamping(state.damping);
-      environment.setGravityDirection?.(state.mode as any);
+      environment.setGravityDirection?.(state.mode);
     }
   }, [environment, state]);
 
@@ -93,21 +93,21 @@ export function useEnvironment() {
             ? "left"
             : dirX === 1 && dirY === 0
             ? "right"
-            : ("custom" as any);
+            : "custom";
         dispatch(setEnvironmentMode(direction));
-        environment?.setGravityDirection?.(direction);
+        environment?.setGravityDirection(direction);
       } else {
         // If in custom mode, just update the engine with custom
-        environment?.setGravityDirection?.("custom" as any);
+        environment?.setGravityDirection("custom");
       }
     },
     [dispatch, environment, mode]
   );
 
   const setMode = useCallback(
-    (mode: string) => {
+    (mode: GravityDirection) => {
       dispatch(setEnvironmentMode(mode));
-      environment?.setGravityDirection?.(mode as any);
+      environment?.setGravityDirection?.(mode);
     },
     [dispatch, environment]
   );
@@ -116,7 +116,7 @@ export function useEnvironment() {
     (dirX: number, dirY: number) => {
       dispatch(setEnvironmentDirection({ dirX, dirY }));
       // For custom mode, we need to tell the engine to use custom direction
-      environment?.setGravityDirection?.("custom" as any);
+      environment?.setGravityDirection?.("custom");
     },
     [dispatch, environment]
   );

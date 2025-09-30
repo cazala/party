@@ -134,8 +134,12 @@ export class ModuleRegistry {
   getEnabledRenderModules(): Module[] {
     return this.modules.filter((module, idx) => {
       if (!module.isEnabled()) return false;
-      const desc = this.modules[idx].webgpu() as any;
-      return !!(desc && desc.passes && (desc.passes as any[]).length > 0);
+      const descriptor = this.modules[idx].webgpu<WebGPURenderDescriptor>();
+      return !!(
+        descriptor &&
+        descriptor.passes &&
+        descriptor.passes.length > 0
+      );
     });
   }
 

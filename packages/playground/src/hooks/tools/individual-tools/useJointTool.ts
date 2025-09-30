@@ -2,10 +2,12 @@ import { useCallback, useRef } from "react";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 import { useEngine } from "../../useEngine";
 import { useJoints } from "../../modules/useJoints";
+import { useJointLines } from "../../modules/useJointLines";
 
 export function useJointTool(_isActive: boolean) {
   const { engine, screenToWorld } = useEngine();
   const { addJoint } = useJoints();
+  const jointLines = useJointLines();
   const selectedIndexRef = useRef<number | null>(null);
   const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -63,6 +65,12 @@ export function useJointTool(_isActive: boolean) {
             const dy = pb.position.y - pa.position.y;
             const rest = Math.sqrt(dx * dx + dy * dy);
             addJoint(a, b, rest);
+            // Also update joint lines with the new joint
+            const currentAIndexes = [...jointLines.aIndexes];
+            const currentBIndexes = [...jointLines.bIndexes];
+            currentAIndexes.push(a);
+            currentBIndexes.push(b);
+            jointLines.setJoints(currentAIndexes, currentBIndexes);
           }
           selectedIndexRef.current = null;
         }

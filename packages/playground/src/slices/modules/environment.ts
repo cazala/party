@@ -5,6 +5,7 @@ import {
   DEFAULT_ENVIRONMENT_INERTIA,
   DEFAULT_ENVIRONMENT_FRICTION,
   DEFAULT_ENVIRONMENT_DAMPING,
+  GravityDirection,
 } from "@cazala/party";
 
 export interface EnvironmentModuleState {
@@ -15,7 +16,7 @@ export interface EnvironmentModuleState {
   inertia: number;
   friction: number;
   damping: number;
-  mode: string;
+  mode: GravityDirection;
 }
 
 const initialState: EnvironmentModuleState = {
@@ -55,7 +56,7 @@ export const environmentSlice = createSlice({
       state.dirX = action.payload.dirX;
       state.dirY = action.payload.dirY;
     },
-    setEnvironmentMode: (state, action: PayloadAction<string>) => {
+    setEnvironmentMode: (state, action: PayloadAction<GravityDirection>) => {
       state.mode = action.payload;
       // Update dirX/dirY based on mode for basic directions
       switch (action.payload) {

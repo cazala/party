@@ -74,7 +74,12 @@ export class Joints extends Module<"joints", JointsInputs> {
     let rest = ${getUniform("restLengths", "j")};
     if (rest <= 0.0) { continue; }
     var selfIndex = index;
-    var otherIndex = a == selfIndex ? b : (b == selfIndex ? a : 0xffffffffu);
+    var otherIndex = 0xffffffffu;
+    if (a == selfIndex) {
+      otherIndex = b;
+    } else if (b == selfIndex) {
+      otherIndex = a;
+    }
     if (otherIndex == 0xffffffffu) { continue; }
     var other = particles[otherIndex];
     // Skip removed
@@ -93,7 +98,7 @@ export class Joints extends Module<"joints", JointsInputs> {
     let corr = dir * (diff * (invM_self / invSum));
     ${particleVar}.position = ${particleVar}.position + corr;
   }
-`,
+}`,
     };
   }
 
@@ -145,6 +150,6 @@ export class Joints extends Module<"joints", JointsInputs> {
           particle.position.y += ny * corrMag;
         }
       },
-    } as any;
+    };
   }
 }

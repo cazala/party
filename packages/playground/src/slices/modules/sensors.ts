@@ -8,6 +8,7 @@ import {
   DEFAULT_SENSORS_SENSOR_RADIUS,
   DEFAULT_SENSORS_SENSOR_STRENGTH,
   DEFAULT_SENSORS_SENSOR_THRESHOLD,
+  SensorBehavior,
 } from "@cazala/party";
 
 export interface SensorsModuleState {
@@ -17,8 +18,8 @@ export interface SensorsModuleState {
   sensorRadius: number;
   sensorThreshold: number;
   sensorStrength: number;
-  followValue: string;
-  fleeValue: string;
+  followValue: SensorBehavior;
+  fleeValue: SensorBehavior;
   colorSimilarityThreshold: number;
   fleeAngle: number; // stored in radians, displayed in degrees
 }
@@ -30,8 +31,8 @@ const initialState: SensorsModuleState = {
   sensorRadius: DEFAULT_SENSORS_SENSOR_RADIUS,
   sensorThreshold: DEFAULT_SENSORS_SENSOR_THRESHOLD,
   sensorStrength: DEFAULT_SENSORS_SENSOR_STRENGTH,
-  followValue: DEFAULT_SENSORS_FOLLOW_BEHAVIOR as string,
-  fleeValue: DEFAULT_SENSORS_FLEE_BEHAVIOR as string,
+  followValue: DEFAULT_SENSORS_FOLLOW_BEHAVIOR,
+  fleeValue: DEFAULT_SENSORS_FLEE_BEHAVIOR,
   colorSimilarityThreshold: DEFAULT_SENSORS_COLOR_SIMILARITY_THRESHOLD,
   fleeAngle: DEFAULT_SENSORS_FLEE_ANGLE, // 180 degrees in radians
 };
@@ -58,10 +59,10 @@ export const sensorsSlice = createSlice({
     setSensorStrength: (state, action: PayloadAction<number>) => {
       state.sensorStrength = action.payload;
     },
-    setSensorFollowValue: (state, action: PayloadAction<string>) => {
+    setSensorFollowValue: (state, action: PayloadAction<SensorBehavior>) => {
       state.followValue = action.payload;
     },
-    setSensorFleeValue: (state, action: PayloadAction<string>) => {
+    setSensorFleeValue: (state, action: PayloadAction<SensorBehavior>) => {
       state.fleeValue = action.payload;
     },
     setSensorColorSimilarityThreshold: (

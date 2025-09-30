@@ -1,5 +1,11 @@
 import { AbstractEngine, IParticle } from "../../interfaces";
-import { Module, ModuleRole, CanvasComposition } from "../../module";
+import {
+  Module,
+  ModuleRole,
+  CanvasComposition,
+  CPURenderDescriptor,
+  CPUForceDescriptor,
+} from "../../module";
 import { SpatialGrid } from "./spatial-grid";
 import { Particle } from "../../particle";
 import { Vector } from "../../vector";
@@ -260,36 +266,36 @@ export class CPUEngine extends AbstractEngine {
       try {
         // Skip disabled modules
         if (!module.isEnabled()) continue;
+        if (module.role === ModuleRole.Force) {
+          const force = module.cpu() as CPUForceDescriptor;
+          if (force.state) {
+            const input: Record<string, number | number[]> = {};
+            for (const key of Object.keys(module.inputs)) {
+              const value = module.read()[key];
+              input[key] = value ?? 0;
+            }
+            // Always add enabled
+            input.enabled = module.isEnabled() ? 1 : 0;
 
-        const descriptor = module.cpu();
-        if (module.role === ModuleRole.Force && (descriptor as any).state) {
-          const force = descriptor as any;
-          const input: Record<string, number | number[]> = {};
-          for (const key of Object.keys(module.inputs)) {
-            const value = module.read()[key];
-            input[key] = value ?? 0;
-          }
-          // Always add enabled
-          input.enabled = module.isEnabled() ? 1 : 0;
+            for (const particle of this.particles) {
+              if (particle.mass <= 0) continue;
+              const setState = (name: string, value: number) => {
+                if (!globalState[particle.id]) {
+                  globalState[particle.id] = {};
+                }
+                globalState[particle.id][name] = value;
+              };
 
-          for (const particle of this.particles) {
-            if (particle.mass <= 0) continue;
-            const setState = (name: string, value: number) => {
-              if (!globalState[particle.id]) {
-                globalState[particle.id] = {};
-              }
-              globalState[particle.id][name] = value;
-            };
-
-            force.state({
-              particle: particle,
-              dt,
-              getNeighbors,
-              input,
-              setState,
-              view: this.view,
-              getImageData,
-            });
+              force.state?.({
+                particle: particle,
+                dt,
+                getNeighbors,
+                input,
+                setState,
+                view: this.view,
+                getImageData,
+              });
+            }
           }
         }
       } catch (error) {}
@@ -300,34 +306,34 @@ export class CPUEngine extends AbstractEngine {
       try {
         // Skip disabled modules
         if (!module.isEnabled()) continue;
+        if (module.role === ModuleRole.Force) {
+          const force = module.cpu() as CPUForceDescriptor;
+          if (force.apply) {
+            const input: Record<string, number | number[]> = {};
+            for (const key of Object.keys(module.inputs)) {
+              const value = module.read()[key];
+              input[key] = value ?? 0;
+            }
+            // Always add enabled
+            input.enabled = module.isEnabled() ? 1 : 0;
 
-        const descriptor = module.cpu();
-        if (module.role === ModuleRole.Force && (descriptor as any).apply) {
-          const force = descriptor as any;
-          const input: Record<string, number | number[]> = {};
-          for (const key of Object.keys(module.inputs)) {
-            const value = module.read()[key];
-            input[key] = value ?? 0;
-          }
-          // Always add enabled
-          input.enabled = module.isEnabled() ? 1 : 0;
+            for (const particle of this.particles) {
+              if (particle.mass <= 0) continue;
+              const getState = (name: string, pid?: number) => {
+                return globalState[pid ?? particle.id]?.[name] ?? 0;
+              };
 
-          for (const particle of this.particles) {
-            if (particle.mass <= 0) continue;
-            const getState = (name: string, pid?: number) => {
-              return globalState[pid ?? particle.id]?.[name] ?? 0;
-            };
-
-            force.apply({
-              particle: particle,
-              dt,
-              maxSize: this.getMaxSize(),
-              getNeighbors,
-              input,
-              getState,
-              view: this.view,
-              getImageData,
-            });
+              force.apply?.({
+                particle: particle,
+                dt,
+                maxSize: this.getMaxSize(),
+                getNeighbors,
+                input,
+                getState,
+                view: this.view,
+                getImageData,
+              });
+            }
           }
         }
       } catch (error) {}
@@ -355,38 +361,35 @@ export class CPUEngine extends AbstractEngine {
         try {
           // Skip disabled modules
           if (!module.isEnabled()) continue;
+          if (module.role === ModuleRole.Force) {
+            const force = module.cpu() as CPUForceDescriptor;
+            if (force.constrain) {
+              const input: Record<string, number | number[]> = {};
+              for (const key of Object.keys(module.inputs)) {
+                const value = module.read()[key];
+                input[key] = value ?? 0;
+              }
+              // Always add enabled
+              input.enabled = module.isEnabled() ? 1 : 0;
+              for (let pi = 0; pi < this.particles.length; pi++) {
+                const particle = this.particles[pi];
+                if (particle.mass <= 0) continue;
+                const getState = (name: string, pid?: number) => {
+                  return globalState[pid ?? particle.id]?.[name] ?? 0;
+                };
 
-          const descriptor = module.cpu();
-          if (
-            module.role === ModuleRole.Force &&
-            (descriptor as any).constrain
-          ) {
-            const force = descriptor as any;
-            const input: Record<string, number | number[]> = {};
-            for (const key of Object.keys(module.inputs)) {
-              const value = module.read()[key];
-              input[key] = value ?? 0;
-            }
-            // Always add enabled
-            input.enabled = module.isEnabled() ? 1 : 0;
-            for (let pi = 0; pi < this.particles.length; pi++) {
-              const particle = this.particles[pi];
-              if (particle.mass <= 0) continue;
-              const getState = (name: string, pid?: number) => {
-                return globalState[pid ?? particle.id]?.[name] ?? 0;
-              };
-
-              force.constrain({
-                particle: particle,
-                getNeighbors,
-                dt: dt,
-                maxSize: this.getMaxSize(),
-                input,
-                getState,
-                view: this.view,
-                index: pi,
-                getParticleByIndex: (i: number) => this.particles[i],
-              });
+                force.constrain?.({
+                  particle: particle,
+                  getNeighbors,
+                  dt: dt,
+                  maxSize: this.getMaxSize(),
+                  input,
+                  getState,
+                  view: this.view,
+                  index: pi,
+                  getParticleByIndex: (i: number) => this.particles[i],
+                });
+              }
             }
           }
         } catch (error) {}
@@ -398,47 +401,47 @@ export class CPUEngine extends AbstractEngine {
       try {
         // Skip disabled modules
         if (!module.isEnabled()) continue;
+        if (module.role === ModuleRole.Force) {
+          const force = module.cpu() as CPUForceDescriptor;
+          if (force.correct) {
+            const input: Record<string, number | number[]> = {};
+            for (const key of Object.keys(module.inputs)) {
+              const value = module.read()[key];
+              input[key] = value ?? 0;
+            }
+            // Always add enabled
+            input.enabled = module.isEnabled() ? 1 : 0;
 
-        const descriptor = module.cpu();
-        if (module.role === ModuleRole.Force && (descriptor as any).correct) {
-          const force = descriptor as any;
-          const input: Record<string, number | number[]> = {};
-          for (const key of Object.keys(module.inputs)) {
-            const value = module.read()[key];
-            input[key] = value ?? 0;
-          }
-          // Always add enabled
-          input.enabled = module.isEnabled() ? 1 : 0;
+            for (let index = 0; index < this.particles.length; index++) {
+              const particle = this.particles[index];
+              if (particle.mass <= 0) continue;
+              const getState = (name: string, pid?: number) => {
+                return globalState[pid ?? particle.id]?.[name] ?? 0;
+              };
 
-          for (let index = 0; index < this.particles.length; index++) {
-            const particle = this.particles[index];
-            if (particle.mass <= 0) continue;
-            const getState = (name: string, pid?: number) => {
-              return globalState[pid ?? particle.id]?.[name] ?? 0;
-            };
+              const positions = positionState.get(particle.id);
+              const prevPos = positions?.prev ?? {
+                x: particle.position.x,
+                y: particle.position.y,
+              };
+              const postPos = positions?.post ?? {
+                x: particle.position.x,
+                y: particle.position.y,
+              };
 
-            const positions = positionState.get(particle.id);
-            const prevPos = positions?.prev ?? {
-              x: particle.position.x,
-              y: particle.position.y,
-            };
-            const postPos = positions?.post ?? {
-              x: particle.position.x,
-              y: particle.position.y,
-            };
-
-            force.correct({
-              particle: particle,
-              getNeighbors,
-              dt: dt,
-              maxSize: this.getMaxSize(),
-              prevPos,
-              postPos,
-              input,
-              getState,
-              view: this.view,
-              index,
-            });
+              force.correct({
+                particle: particle,
+                getNeighbors,
+                dt: dt,
+                maxSize: this.getMaxSize(),
+                prevPos,
+                postPos,
+                input,
+                getState,
+                view: this.view,
+                index,
+              });
+            }
           }
         }
       } catch (error) {}
@@ -503,7 +506,7 @@ export class CPUEngine extends AbstractEngine {
     const hasBackgroundHandler = this.modules.some((module) => {
       if (!module.isEnabled() || module.role !== ModuleRole.Render)
         return false;
-      const descriptor = module.cpu() as any;
+      const descriptor = module.cpu() as CPURenderDescriptor;
       return descriptor.composition === CanvasComposition.HandlesBackground;
     });
 
@@ -512,7 +515,7 @@ export class CPUEngine extends AbstractEngine {
       const needsClearing = this.modules.some((module) => {
         if (!module.isEnabled() || module.role !== ModuleRole.Render)
           return false;
-        const descriptor = module.cpu() as any;
+        const descriptor = module.cpu() as CPURenderDescriptor;
         return descriptor.composition === CanvasComposition.RequiresClear;
       });
 
@@ -528,10 +531,9 @@ export class CPUEngine extends AbstractEngine {
       try {
         // Skip disabled modules
         if (!module.isEnabled()) continue;
-
-        const descriptor = module.cpu();
         if (module.role === ModuleRole.Render) {
-          const render = descriptor as any;
+          const descriptor = module.cpu() as CPURenderDescriptor;
+          const render = descriptor;
           // input
           const input: Record<string, number | number[]> = {};
           for (const key of Object.keys(module.inputs)) {

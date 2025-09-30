@@ -25,13 +25,13 @@ function buildModuleUniformStruct(
   return `struct Uniforms_${moduleName} {\n${structFields}\n}`;
 }
 
-function makeGetUniformExpr(
+function makeGetUniformExpr<Inputs extends Record<string, number | number[]>>(
   layout: ModuleUniformLayout,
   moduleName: string,
-  moduleInputs: Record<string, DataType>
-): (id: string, index?: number | string) => string {
-  return (id: string, index?: number | string) => {
-    const mapping = layout.mapping[id];
+  moduleInputs: Record<keyof Inputs, DataType>
+): (id: keyof Inputs, index?: number | string) => string {
+  return (id: keyof Inputs, index?: number | string) => {
+    const mapping = layout.mapping[id as string];
     if (!mapping) return "0.0";
 
     // Replace the uniform variable name for render passes
@@ -55,14 +55,14 @@ function makeGetUniformExpr(
   };
 }
 
-function makeGetLengthExpr(
+function makeGetLengthExpr<Inputs extends Record<string, number | number[]>>(
   layout: ModuleUniformLayout,
   moduleName: string,
-  moduleInputs: Record<string, DataType>
-): (id: string) => string {
-  return (id: string) => {
+  moduleInputs: Record<keyof Inputs, DataType>
+): (id: keyof Inputs) => string {
+  return (id: keyof Inputs) => {
     if (moduleInputs[id] === DataType.ARRAY) {
-      const lengthMapping = layout.mapping[`${id}_length`];
+      const lengthMapping = layout.mapping[`${id.toString()}_length`];
       if (lengthMapping) {
         const expr = lengthMapping.expr.replace(
           `${moduleName}_uniforms`,
@@ -75,16 +75,18 @@ function makeGetLengthExpr(
   };
 }
 
-function getUniformForFullscreen(
-  lookupExpr: (id: string, index?: number | string) => string,
+function getUniformForFullscreen<
+  Inputs extends Record<string, number | number[]>
+>(
+  lookupExpr: (id: keyof Inputs, index?: number | string) => string,
   clearColor: { r: number; g: number; b: number; a: number }
-): (id: string, index?: number | string) => string {
+): (id: keyof Inputs, index?: number | string) => string {
   const toFloatLiteral = (n: number) =>
     Number.isInteger(n) ? `${n}.0` : `${n}`;
   const cr = toFloatLiteral(clearColor.r);
   const cg = toFloatLiteral(clearColor.g);
   const cb = toFloatLiteral(clearColor.b);
-  return (id: string, index?: number | string) =>
+  return (id: keyof Inputs, index?: number | string) =>
     id === "canvasWidth"
       ? "render_uniforms.canvas_size.x"
       : id === "canvasHeight"
@@ -98,16 +100,16 @@ function getUniformForFullscreen(
       : lookupExpr(id, index);
 }
 
-function getUniformForCompute(
-  lookupExpr: (id: string) => string,
+function getUniformForCompute<Inputs extends Record<string, number | number[]>>(
+  lookupExpr: (id: keyof Inputs, index?: number | string) => string,
   clearColor: { r: number; g: number; b: number; a: number }
-): (id: string) => string {
+): (id: keyof Inputs, index?: number | string) => string {
   const toFloatLiteral = (n: number) =>
     Number.isInteger(n) ? `${n}.0` : `${n}`;
   const cr = toFloatLiteral(clearColor.r);
   const cg = toFloatLiteral(clearColor.g);
   const cb = toFloatLiteral(clearColor.b);
-  return (id: string) =>
+  return (id: keyof Inputs, index?: number | string) =>
     id === "canvasWidth"
       ? "f32(textureDimensions(input_texture).x)"
       : id === "canvasHeight"
@@ -118,7 +120,7 @@ function getUniformForCompute(
       ? cg
       : id === "clearColorB"
       ? cb
-      : lookupExpr(id);
+      : lookupExpr(id, index);
 }
 
 function moduleUniformBindingDecl(
@@ -137,19 +139,27 @@ export function buildFullscreenPassWGSL<
   pass: FullscreenRenderPass<Inputs>,
   moduleName: string,
   layout: ModuleUniformLayout,
-  moduleInputs: Record<string, DataType>,
+  moduleInputs: Record<keyof Inputs, DataType>,
   clearColor: { r: number; g: number; b: number; a: number }
 ): string {
   // build WGSL
   const struct = buildModuleUniformStruct(moduleName, layout);
-  const uniformExpr = makeGetUniformExpr(layout, moduleName, moduleInputs);
-  const lengthExpr = makeGetLengthExpr(layout, moduleName, moduleInputs);
+  const uniformExpr = makeGetUniformExpr<Inputs>(
+    layout,
+    moduleName,
+    moduleInputs
+  );
+  const lengthExpr = makeGetLengthExpr<Inputs>(
+    layout,
+    moduleName,
+    moduleInputs
+  );
 
   const instanced = pass.instanced ?? true;
 
   const fragment = pass.fragment({
-    getUniform: getUniformForFullscreen(uniformExpr, clearColor) as any,
-    getLength: lengthExpr as any,
+    getUniform: getUniformForFullscreen<Inputs>(uniformExpr, clearColor),
+    getLength: lengthExpr,
     sampleScene: (uvExpr: string) =>
       `textureSampleLevel(scene_texture, scene_sampler, ${uvExpr}, 0.0)`,
   });
@@ -157,9 +167,9 @@ export function buildFullscreenPassWGSL<
   // Vertex hook and defaults
   const vertexBodyHook = pass.vertex
     ? pass.vertex({
-        getUniform: getUniformForFullscreen(uniformExpr, clearColor) as any,
-        getLength: lengthExpr as any,
-      } as any)
+        getUniform: getUniformForFullscreen<Inputs>(uniformExpr, clearColor),
+        getLength: lengthExpr,
+      })
     : null;
 
   // Default vertex bodies for instanced and non-instanced modes
@@ -248,22 +258,30 @@ ${vertexBody}
 }
 
 export function buildComputeImagePassWGSL<
-  Keys extends Record<string, number | number[]> = Record<
+  Inputs extends Record<string, number | number[]> = Record<
     string,
     number | number[]
   >
 >(
-  pass: ComputeRenderPass<Keys>,
+  pass: ComputeRenderPass<Inputs>,
   moduleName: string,
   layout: ModuleUniformLayout,
-  moduleInputs: Record<string, DataType>,
+  moduleInputs: Record<keyof Inputs, DataType>,
   clearColor: { r: number; g: number; b: number; a: number },
   workgroup: [number, number, number] = [8, 8, 1]
 ): string {
   // struct and uniform lookup
   const struct = buildModuleUniformStruct(moduleName, layout);
-  const uniformExpr = makeGetUniformExpr(layout, moduleName, moduleInputs);
-  const lengthExpr = makeGetLengthExpr(layout, moduleName, moduleInputs);
+  const uniformExpr = makeGetUniformExpr<Inputs>(
+    layout,
+    moduleName,
+    moduleInputs
+  );
+  const lengthExpr = makeGetLengthExpr<Inputs>(
+    layout,
+    moduleName,
+    moduleInputs
+  );
 
   // Generate array storage buffer declarations for array inputs
   const arrayInputs = Object.entries(moduleInputs)
@@ -279,13 +297,13 @@ export function buildComputeImagePassWGSL<
 
   // kernel
   const kernelBody = pass.kernel({
-    getUniform: getUniformForCompute(uniformExpr, clearColor) as any,
-    getLength: lengthExpr as any,
+    getUniform: getUniformForCompute<Inputs>(uniformExpr, clearColor),
+    getLength: lengthExpr,
     readScene: (coordsExpr: string) =>
       `textureLoad(input_texture, ${coordsExpr}, 0)`,
     writeScene: (coordsExpr: string, colorExpr: string) =>
       `textureStore(output_texture, ${coordsExpr}, ${colorExpr})`,
-  } as any);
+  });
 
   // code
   const code = `

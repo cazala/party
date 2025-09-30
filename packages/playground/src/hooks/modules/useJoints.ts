@@ -1,6 +1,8 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch } from "../useAppDispatch";
 import { useAppSelector } from "../useAppSelector";
+import { useEngine } from "../useEngine";
+import { selectModules } from "../../slices/modules";
 import {
   addJoint as addJointAction,
   removeJoint as removeJointAction,
@@ -8,44 +10,36 @@ import {
   setLineWidth as setLineWidthAction,
   setJoints as setJointsAction,
   setJointsEnabled,
-  selectModules,
-} from "../../slices/modules";
-import { useEngine } from "../useEngine";
+  selectJoints,
+} from "../../slices/modules/joints";
 
 export function useJoints() {
   const dispatch = useAppDispatch();
-  const { joints } = useAppSelector(selectModules);
-  const { engine } = useEngine();
+  const { joints } = useEngine();
 
-  // Sync Redux → engine module if present
+  // Get state
+  const modulesState = useAppSelector(selectModules);
+  const state = useMemo(() => selectJoints(modulesState), [modulesState]);
+
+  // Destructure individual properties
+  const { enabled, enableCollisions, lineWidth, aIndexes, bIndexes, restLengths } = state;
+  const isEnabled = state.enabled;
+
+  // Sync Redux state to engine module when they change
   useEffect(() => {
-    if (!engine || !(engine as any).joints) return;
-    const mod = (engine as any).joints;
-    if (mod.setEnabled) mod.setEnabled(joints.enabled);
-    if (mod.setEnableCollisions)
-      mod.setEnableCollisions(joints.enableCollisions ? 1 : 0);
-    if (mod.setLineWidth) mod.setLineWidth(joints.lineWidth);
-    if (mod.setJoints)
-      mod.setJoints(joints.aIndexes, joints.bIndexes, joints.restLengths);
-  }, [engine, joints]);
+    if (joints) {
+      joints.setEnabled(state.enabled);
+      joints.setEnableCollisions(state.enableCollisions ? 1 : 0);
+      joints.setLineWidth(state.lineWidth);
+      joints.setJoints(state.aIndexes, state.bIndexes, state.restLengths);
+    }
+  }, [joints, state]);
 
   const addJoint = useCallback(
     (a: number, b: number, rest: number) => {
-      if (a === b) return;
-      let aa = a;
-      let bb = b;
-      if (bb < aa) {
-        const t = aa;
-        aa = bb;
-        bb = t;
-      }
-      // Check existing
-      for (let i = 0; i < joints.aIndexes.length; i++) {
-        if (joints.aIndexes[i] === aa && joints.bIndexes[i] === bb) return;
-      }
-      dispatch(addJointAction({ a: aa, b: bb, rest }));
+      dispatch(addJointAction({ a, b, rest }));
     },
-    [dispatch, joints.aIndexes, joints.bIndexes]
+    [dispatch]
   );
 
   const removeJoint = useCallback(
@@ -54,28 +48,46 @@ export function useJoints() {
   );
 
   const setEnableCollisions = useCallback(
-    (v: boolean) => dispatch(setEnableCollisionsAction(v)),
-    [dispatch]
+    (value: boolean) => {
+      dispatch(setEnableCollisionsAction(value));
+      joints?.setEnableCollisions(value ? 1 : 0);
+    },
+    [dispatch, joints]
   );
 
   const setLineWidth = useCallback(
-    (v: number) => dispatch(setLineWidthAction(v)),
-    [dispatch]
+    (value: number) => {
+      dispatch(setLineWidthAction(value));
+      joints?.setLineWidth(value);
+    },
+    [dispatch, joints]
   );
 
   const setEnabled = useCallback(
-    (v: boolean) => dispatch(setJointsEnabled(v)),
+    (enabled: boolean) => {
+      dispatch(setJointsEnabled(enabled));
+    },
     [dispatch]
   );
 
   const setJoints = useCallback(
-    (aIndexes: number[], bIndexes: number[], restLengths: number[]) =>
-      dispatch(setJointsAction({ aIndexes, bIndexes, restLengths })),
-    [dispatch]
+    (aIndexes: number[], bIndexes: number[], restLengths: number[]) => {
+      dispatch(setJointsAction({ aIndexes, bIndexes, restLengths }));
+      joints?.setJoints(aIndexes, bIndexes, restLengths);
+    },
+    [dispatch, joints]
   );
 
   return {
-    state: joints,
+    // Individual state properties
+    enabled,
+    enableCollisions,
+    lineWidth,
+    aIndexes,
+    bIndexes,
+    restLengths,
+    isEnabled,
+    // Actions
     addJoint,
     removeJoint,
     setEnableCollisions,

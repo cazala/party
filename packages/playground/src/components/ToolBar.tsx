@@ -49,7 +49,7 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
           </button>
           <button
             onClick={() => setToolMode("pin")}
-            className={`tool-mode-button ${
+            className={`tool-mode-button tool-mode-fourth ${
               isPinMode ? "tool-mode-active" : ""
             }`}
             title="Pin"
@@ -59,7 +59,7 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
           </button>
           <button
             onClick={() => setToolMode("joint")}
-            className={`tool-mode-button tool-mode-fourth ${
+            className={`tool-mode-button tool-mode-fifth ${
               isJointMode ? "tool-mode-active" : ""
             }`}
             title="Joint"

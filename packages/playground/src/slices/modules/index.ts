@@ -9,6 +9,7 @@ import { trailsReducer, TrailsModuleState } from "./trails";
 import { interactionReducer, InteractionModuleState } from "./interaction";
 import { particleReducer, ParticleModuleState } from "./particle";
 import { jointsReducer, JointsModuleState } from "./joints";
+import { jointLinesReducer, JointLinesModuleState } from "./joint-lines";
 
 // Re-export all module types
 export type {
@@ -22,6 +23,7 @@ export type {
   InteractionModuleState,
   ParticleModuleState,
   JointsModuleState,
+  JointLinesModuleState,
 };
 
 // Re-export all module actions and reducers
@@ -35,6 +37,7 @@ export * from "./trails";
 export * from "./interaction";
 export * from "./particle";
 export * from "./joints";
+export * from "./joint-lines";
 
 // Re-export combinedReducer for easier imports
 export interface ModulesState {
@@ -48,6 +51,7 @@ export interface ModulesState {
   interaction: InteractionModuleState;
   particle: ParticleModuleState;
   joints: JointsModuleState;
+  jointLines: JointLinesModuleState;
 }
 
 export const modulesReducer = combineReducers({
@@ -61,10 +65,12 @@ export const modulesReducer = combineReducers({
   interaction: interactionReducer,
   particle: particleReducer,
   joints: jointsReducer,
+  jointLines: jointLinesReducer,
 });
 
 // Global selectors
-export const selectModules = (state: any) => state.modules;
+export const selectModules = (state: { modules: ModulesState }) =>
+  state.modules;
 
 // Global actions for resetting and importing all modules
 export const resetAllModules = {

@@ -19,6 +19,7 @@ import {
   ModuleRole,
   DataType,
   type WebGPUDescriptor,
+  WebGPUForceDescriptor,
 } from "../../../module";
 
 export const PARTICLE_STRUCT = `
@@ -238,10 +239,10 @@ export function buildProgram(modules: readonly Module[]): Program {
   let nextSlot = baseState.length;
   const localSlots: Record<string, Record<string, number>> = {};
   modules.forEach((module, idx) => {
-    const descriptor = descriptors[idx];
     localSlots[module.name] = {};
-    if (module.role === ModuleRole.Force && (descriptor as any).states) {
-      ((descriptor as any).states as readonly string[]).forEach((field) => {
+    if (module.role === ModuleRole.Force) {
+      const descriptor = descriptors[idx] as WebGPUForceDescriptor;
+      descriptor.states?.forEach((field) => {
         const key = `${module.name}.${field}`;
         if (stateSlots[key] === undefined) stateSlots[key] = nextSlot++;
         localSlots[module.name][field] = stateSlots[key];
@@ -324,17 +325,11 @@ fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { 
   );
 
   // Optional: allow force modules to inject globals
-  const addGlobal = (module: Module, descriptor: WebGPUDescriptor) => {
+  const addGlobal = (module: Module, descriptor: WebGPUForceDescriptor) => {
     if (module.role !== ModuleRole.Force) return;
-    const g = (descriptor as any).global as
-      | undefined
-      | ((a: {
-          getUniform: (id: string, index?: number) => string;
-          getLength: (id: string) => string;
-        }) => string);
-    if (!g) return;
+    if (!descriptor.global) return;
     const { getUniform, getLength } = makeGetUniformAndLength(module);
-    const code = g({ getUniform, getLength });
+    const code = descriptor.global({ getUniform, getLength });
     if (code && code.trim()) {
       globals.push(`// Global for ${module.name}`);
       globals.push(code.trim());
@@ -342,7 +337,9 @@ fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { 
   };
   modules
     .filter((m) => m.role === ModuleRole.Force)
-    .forEach((m, idx) => addGlobal(m, descriptors[idx]));
+    .forEach((m, idx) =>
+      addGlobal(m, descriptors[idx] as WebGPUForceDescriptor)
+    );
 
   const systemEntrypoints: string[] = [];
   systemEntrypoints.push(`@compute @workgroup_size(64)
@@ -405,12 +402,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   };
 
   modules.forEach((module, idx) => {
-    const descriptor = descriptors[idx];
-    if (module.role !== ModuleRole.Force || !(descriptor as any).state) return;
+    if (module.role !== ModuleRole.Force) return;
+    const descriptor = descriptors[idx] as WebGPUForceDescriptor;
+    if (!descriptor.state) return;
     const layout = layouts.find((l) => l.moduleName === module.name)!;
     const { set } = makeGetSet(module.name);
     const { getUniform, getLength } = makeGetUniformAndLength(module);
-    const body = (descriptor as any).state?.({
+    const body = descriptor.state({
       particleVar: "particle",
       dtVar: dtExpr,
       maxSizeVar: maxSizeExpr,
@@ -429,12 +427,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   });
 
   modules.forEach((module, idx) => {
-    const descriptor = descriptors[idx];
-    if (module.role !== ModuleRole.Force || !(descriptor as any).apply) return;
+    if (module.role !== ModuleRole.Force) return;
+    const descriptor = descriptors[idx] as WebGPUForceDescriptor;
+    if (!descriptor.apply) return;
     const layout = layouts.find((l) => l.moduleName === module.name)!;
     const { get } = makeGetSet(module.name);
     const { getUniform, getLength } = makeGetUniformAndLength(module);
-    const body = (descriptor as any).apply?.({
+    const body = descriptor.apply({
       particleVar: "particle",
       dtVar: dtExpr,
       maxSizeVar: maxSizeExpr,
@@ -453,13 +452,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   });
 
   modules.forEach((module, idx) => {
-    const descriptor = descriptors[idx];
-    if (module.role !== ModuleRole.Force || !(descriptor as any).constrain)
-      return;
+    if (module.role !== ModuleRole.Force) return;
+    const descriptor = descriptors[idx] as WebGPUForceDescriptor;
+    if (!descriptor.constrain) return;
     const layout = layouts.find((l) => l.moduleName === module.name)!;
     const { get } = makeGetSet(module.name);
     const { getUniform, getLength } = makeGetUniformAndLength(module);
-    const body = (descriptor as any).constrain?.({
+    const body = descriptor.constrain({
       particleVar: "particle",
       dtVar: dtExpr,
       maxSizeVar: maxSizeExpr,
@@ -480,13 +479,13 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
   });
 
   modules.forEach((module, idx) => {
-    const descriptor = descriptors[idx];
-    if (module.role !== ModuleRole.Force || !(descriptor as any).correct)
-      return;
+    if (module.role !== ModuleRole.Force) return;
+    const descriptor = descriptors[idx] as WebGPUForceDescriptor;
+    if (!descriptor.correct) return;
     const layout = layouts.find((l) => l.moduleName === module.name)!;
     const { get } = makeGetSet(module.name);
     const { getUniform, getLength } = makeGetUniformAndLength(module);
-    const body = (descriptor as any).correct?.({
+    const body = descriptor.correct({
       particleVar: "particle",
       dtVar: dtExpr,
       maxSizeVar: maxSizeExpr,

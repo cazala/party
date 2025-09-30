@@ -29,7 +29,7 @@ export function useBoundary() {
   // Sync Redux state to engine module when they change
   useEffect(() => {
     if (boundary) {
-      boundary.setMode(state.mode as any);
+      boundary.setMode(state.mode);
       boundary.setRestitution(state.restitution);
       boundary.setFriction(state.friction);
       boundary.setRepelDistance(state.repelDistance);
@@ -48,7 +48,7 @@ export function useBoundary() {
   const setMode = useCallback(
     (mode: BoundaryModuleState["mode"]) => {
       dispatch(setBoundaryMode(mode));
-      boundary?.setMode(mode as any);
+      boundary?.setMode(mode);
     },
     [dispatch, boundary]
   );

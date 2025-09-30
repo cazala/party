@@ -84,3 +84,8 @@ export const {
 } = jointsSlice.actions;
 
 export const jointsReducer = jointsSlice.reducer;
+
+// Selectors
+export const selectJoints = (state: {
+  joints: JointsModuleState;
+}) => state.joints;

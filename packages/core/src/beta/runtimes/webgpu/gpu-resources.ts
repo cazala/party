@@ -43,7 +43,8 @@ export class GPUResources {
   private arrayStorageBuffers: Map<string, GPUBuffer> = new Map();
   private arrayLengthBuffers: Map<string, GPUBuffer> = new Map();
   private renderUniformBuffer: GPUBuffer | null = null;
-  private renderBindGroupLayoutCache: Map<string, GPUBindGroupLayout> | null = null;
+  private renderBindGroupLayoutCache: Map<string, GPUBindGroupLayout> | null =
+    null;
   private computeBindGroupLayout: GPUBindGroupLayout | null = null;
   private computePipelineLayout: GPUPipelineLayout | null = null;
   private simulationPipelines: SimulationPipelines = {};
@@ -385,13 +386,15 @@ export class GPUResources {
 
   getRenderBindGroupLayout(arrayInputs?: string[]): GPUBindGroupLayout {
     // Create a cache key based on array inputs
-    const cacheKey = arrayInputs ? `render_${arrayInputs.sort().join('_')}` : 'render_basic';
-    
+    const cacheKey = arrayInputs
+      ? `render_${arrayInputs.sort().join("_")}`
+      : "render_basic";
+
     // Check if we have a cached layout for this configuration
     if (!this.renderBindGroupLayoutCache) {
       this.renderBindGroupLayoutCache = new Map();
     }
-    
+
     const cached = this.renderBindGroupLayoutCache.get(cacheKey);
     if (cached) return cached;
 
@@ -447,11 +450,18 @@ export class GPUResources {
       buffer: { type: "storage" },
     });
     for (const layout of compute.layouts) {
-      entries.push({
-        binding: layout.bindingIndex,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: "uniform" },
-      });
+      // Only include internal and force-module uniforms in compute bind group layout
+      if (
+        layout.moduleName === "simulation" ||
+        layout.moduleName === "grid" ||
+        layout.moduleRole === "force"
+      ) {
+        entries.push({
+          binding: layout.bindingIndex,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "uniform" },
+        });
+      }
     }
     // Add array storage buffer bindings
     if (compute.extraBindings.arrays) {
@@ -596,8 +606,11 @@ export class GPUResources {
     return pipeline;
   }
 
-  getOrCreateFullscreenRenderPipeline(shaderCode: string, arrayInputs?: string[]): GPURenderPipeline {
-    const arrayKey = arrayInputs?.sort().join('_') || '';
+  getOrCreateFullscreenRenderPipeline(
+    shaderCode: string,
+    arrayInputs?: string[]
+  ): GPURenderPipeline {
+    const arrayKey = arrayInputs?.sort().join("_") || "";
     const key = `fs:${this.hashWGSL(shaderCode)}:${arrayKey}`;
     const cached = this.fullscreenPipelines.get(key);
     if (cached) return cached;
@@ -639,7 +652,7 @@ export class GPUResources {
       code: shaderCode,
     });
     const pipeline = this.getDevice().createComputePipeline({
-      layout: "auto" as any,
+      layout: "auto",
       compute: { module: shaderModule, entryPoint: "cs_main" },
     });
     this.imageComputePipelines.set(key, pipeline);
@@ -692,10 +705,23 @@ export class GPUResources {
     }
     const entries: GPUBindGroupEntry[] = [
       { binding: 0, resource: { buffer: this.particleBuffer } },
-      ...this.moduleUniformBuffers.map((muf) => ({
-        binding: muf.layout.bindingIndex,
-        resource: { buffer: muf.buffer },
-      })),
+      // Include only uniforms required by compute (internal + force modules)
+      ...compute.layouts
+        .filter(
+          (l) =>
+            l.moduleName === "simulation" ||
+            l.moduleName === "grid" ||
+            l.moduleRole === "force"
+        )
+        .map((layout) => {
+          const muf = this.moduleUniformBuffers.find(
+            (b) => b.layout.moduleName === layout.moduleName
+          )!;
+          return {
+            binding: layout.bindingIndex,
+            resource: { buffer: muf.buffer },
+          };
+        }),
     ];
 
     // Add array storage buffer bindings
