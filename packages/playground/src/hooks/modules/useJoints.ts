@@ -7,7 +7,6 @@ import {
   addJoint as addJointAction,
   removeJoint as removeJointAction,
   setEnableCollisions as setEnableCollisionsAction,
-  setLineWidth as setLineWidthAction,
   setJoints as setJointsAction,
   setJointsEnabled,
   selectJoints,
@@ -22,7 +21,7 @@ export function useJoints() {
   const state = useMemo(() => selectJoints(modulesState), [modulesState]);
 
   // Destructure individual properties
-  const { enabled, enableCollisions, lineWidth, aIndexes, bIndexes, restLengths } = state;
+  const { enabled, enableCollisions, aIndexes, bIndexes, restLengths } = state;
   const isEnabled = state.enabled;
 
   // Sync Redux state to engine module when they change
@@ -30,7 +29,6 @@ export function useJoints() {
     if (joints) {
       joints.setEnabled(state.enabled);
       joints.setEnableCollisions(state.enableCollisions ? 1 : 0);
-      joints.setLineWidth(state.lineWidth);
       joints.setJoints(state.aIndexes, state.bIndexes, state.restLengths);
     }
   }, [joints, state]);
@@ -38,7 +36,12 @@ export function useJoints() {
   const addJoint = useCallback(
     (a: number, b: number, rest: number) => {
       console.log("🔗 useJoints.addJoint called:", { a, b, rest });
-      console.log("🔗 Current joints state:", { enabled, aIndexes, bIndexes, restLengths });
+      console.log("🔗 Current joints state:", {
+        enabled,
+        aIndexes,
+        bIndexes,
+        restLengths,
+      });
       dispatch(addJointAction({ a, b, rest }));
     },
     [dispatch, enabled, aIndexes, bIndexes, restLengths]
@@ -53,14 +56,6 @@ export function useJoints() {
     (value: boolean) => {
       dispatch(setEnableCollisionsAction(value));
       joints?.setEnableCollisions(value ? 1 : 0);
-    },
-    [dispatch, joints]
-  );
-
-  const setLineWidth = useCallback(
-    (value: number) => {
-      dispatch(setLineWidthAction(value));
-      joints?.setLineWidth(value);
     },
     [dispatch, joints]
   );
@@ -84,7 +79,6 @@ export function useJoints() {
     // Individual state properties
     enabled,
     enableCollisions,
-    lineWidth,
     aIndexes,
     bIndexes,
     restLengths,
@@ -93,7 +87,6 @@ export function useJoints() {
     addJoint,
     removeJoint,
     setEnableCollisions,
-    setLineWidth,
     setEnabled,
     setJoints,
   };

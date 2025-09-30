@@ -6,7 +6,6 @@ export interface JointsModuleState {
   aIndexes: number[];
   bIndexes: number[];
   restLengths: number[];
-  lineWidth: number;
 }
 
 const initialState: JointsModuleState = {
@@ -15,7 +14,6 @@ const initialState: JointsModuleState = {
   aIndexes: [],
   bIndexes: [],
   restLengths: [],
-  lineWidth: 1.5,
 };
 
 export const jointsSlice = createSlice({
@@ -27,9 +25,6 @@ export const jointsSlice = createSlice({
     },
     setEnableCollisions: (state, action: PayloadAction<boolean>) => {
       state.enableCollisions = action.payload;
-    },
-    setLineWidth: (state, action: PayloadAction<number>) => {
-      state.lineWidth = action.payload;
     },
     setJoints: (
       state,
@@ -75,7 +70,6 @@ export const jointsSlice = createSlice({
 export const {
   setEnabled: setJointsEnabled,
   setEnableCollisions,
-  setLineWidth,
   setJoints,
   addJoint,
   removeJoint,

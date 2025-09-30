@@ -12,7 +12,6 @@ type JointsInputs = {
   bIndexes: number[];
   restLengths: number[];
   enableCollisions: number;
-  lineWidth: number;
 };
 
 export class Joints extends Module<"joints", JointsInputs> {
@@ -32,7 +31,6 @@ export class Joints extends Module<"joints", JointsInputs> {
     bIndexes?: number[];
     restLengths?: number[];
     enableCollisions?: number;
-    lineWidth?: number;
   }) {
     super();
     this.write({
@@ -40,9 +38,20 @@ export class Joints extends Module<"joints", JointsInputs> {
       bIndexes: opts?.bIndexes ?? [],
       restLengths: opts?.restLengths ?? [],
       enableCollisions: opts?.enableCollisions ?? 1,
-      lineWidth: opts?.lineWidth ?? 1.5,
     });
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
+  }
+
+  getJoints(): {
+    aIndexes: number[];
+    bIndexes: number[];
+    restLengths: number[];
+  } {
+    return {
+      aIndexes: this.readArray("aIndexes") as number[],
+      bIndexes: this.readArray("bIndexes") as number[],
+      restLengths: this.readArray("restLengths") as number[],
+    };
   }
 
   setJoints(
@@ -53,12 +62,12 @@ export class Joints extends Module<"joints", JointsInputs> {
     this.write({ aIndexes, bIndexes, restLengths });
   }
 
-  setEnableCollisions(val: number): void {
-    this.write({ enableCollisions: val });
+  getEnableCollisions() {
+    return this.readValue("enableCollisions");
   }
 
-  setLineWidth(val: number): void {
-    this.write({ lineWidth: val });
+  setEnableCollisions(val: number): void {
+    this.write({ enableCollisions: val });
   }
 
   webgpu(): WebGPUDescriptor<JointsInputs> {

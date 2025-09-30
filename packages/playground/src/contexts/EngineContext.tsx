@@ -11,7 +11,7 @@ import {
   Interaction,
   Particle,
   Joints,
-  JointLines,
+  Lines,
 } from "@cazala/party";
 import { useEngineInternal } from "../hooks/useEngineInternal";
 import { useWindowSize } from "../hooks/useWindowSize";
@@ -92,7 +92,7 @@ export interface EngineContextType {
   interaction: Interaction | null;
   particle: Particle | null;
   joints: Joints | null;
-  jointLines: JointLines | null;
+  lines: Lines | null;
 }
 
 export const EngineContext = createContext<EngineContextType | null>(null);

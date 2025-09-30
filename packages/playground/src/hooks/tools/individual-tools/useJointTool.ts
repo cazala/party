@@ -2,12 +2,12 @@ import { useCallback, useRef } from "react";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 import { useEngine } from "../../useEngine";
 import { useJoints } from "../../modules/useJoints";
-import { useJointLines } from "../../modules/useJointLines";
+import { useLines } from "../../modules/useLines";
 
 export function useJointTool(_isActive: boolean) {
-  const { engine, screenToWorld, jointLines: jointLinesEngine } = useEngine();
+  const { engine, screenToWorld } = useEngine();
   const joints = useJoints();
-  const jointLines = useJointLines();
+  const lines = useLines();
   const selectedIndexRef = useRef<number | null>(null);
   const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -65,29 +65,32 @@ export function useJointTool(_isActive: boolean) {
             const dy = pb.position.y - pa.position.y;
             const rest = Math.sqrt(dx * dx + dy * dy);
             console.log("🔗 Creating joint:", { a, b, rest });
-            
+
             // Enable joints module if not already enabled
             if (!joints.enabled) {
               console.log("🔗 Enabling joints module");
               joints.setEnabled(true);
             }
-            
-            // Enable joint lines module if not already enabled  
-            if (!jointLines.enabled) {
+
+            // Enable joint lines module if not already enabled
+            if (!lines.enabled) {
               console.log("📏 Enabling joint lines module");
-              jointLines.setEnabled(true);
+              lines.setEnabled(true);
             }
-            
+
             joints.addJoint(a, b, rest);
             // Also update joint lines with the new joint
-            const currentAIndexes = [...jointLines.aIndexes];
-            const currentBIndexes = [...jointLines.bIndexes];
+            const currentAIndexes = [...lines.aIndexes];
+            const currentBIndexes = [...lines.bIndexes];
             currentAIndexes.push(a);
             currentBIndexes.push(b);
-            console.log("📏 Setting joint lines:", { currentAIndexes, currentBIndexes });
-            
-            // Update Redux state (this should trigger the useEffect in useJointLines)
-            jointLines.setJoints(currentAIndexes, currentBIndexes);
+            console.log("📏 Setting joint lines:", {
+              currentAIndexes,
+              currentBIndexes,
+            });
+
+            // Update Redux state (this should trigger the useEffect in useLines)
+            lines.setLines(currentAIndexes, currentBIndexes);
           }
           selectedIndexRef.current = null;
         }

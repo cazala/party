@@ -4,19 +4,19 @@ import { useAppSelector } from "../useAppSelector";
 import { useEngine } from "../useEngine";
 import { selectModules } from "../../slices/modules";
 import {
-  selectJointLines,
-  setJointLinesEnabled,
-  setJointLinesLineWidth,
-  setJointLinesJoints,
-} from "../../slices/modules/joint-lines";
+  selectLines,
+  setLinesEnabled,
+  setLineWidth as setLineWidthAction,
+  setLines as setLinesAction,
+} from "../../slices/modules/lines";
 
-export function useJointLines() {
+export function useLines() {
   const dispatch = useAppDispatch();
-  const { jointLines } = useEngine();
+  const { lines } = useEngine();
 
   // Get state
   const modulesState = useAppSelector(selectModules);
-  const state = useMemo(() => selectJointLines(modulesState), [modulesState]);
+  const state = useMemo(() => selectLines(modulesState), [modulesState]);
 
   // Destructure individual properties
   const { enabled, lineWidth, aIndexes, bIndexes } = state;
@@ -24,34 +24,34 @@ export function useJointLines() {
 
   // Sync Redux state to engine module when they change
   useEffect(() => {
-    if (jointLines) {
-      jointLines.setLineWidth(state.lineWidth);
-      jointLines.setJoints(state.aIndexes, state.bIndexes);
+    if (lines) {
+      lines.setLineWidth(state.lineWidth);
+      lines.setLines(state.aIndexes, state.bIndexes);
     }
-  }, [jointLines, state]);
+  }, [lines, state]);
 
   // Action creators with engine calls
   const setEnabled = useCallback(
     (enabled: boolean) => {
-      dispatch(setJointLinesEnabled(enabled));
+      dispatch(setLinesEnabled(enabled));
     },
     [dispatch]
   );
 
   const setLineWidth = useCallback(
     (value: number) => {
-      dispatch(setJointLinesLineWidth(value));
-      jointLines?.setLineWidth(value);
+      dispatch(setLineWidthAction(value));
+      lines?.setLineWidth(value);
     },
-    [dispatch, jointLines]
+    [dispatch, lines]
   );
 
-  const setJoints = useCallback(
+  const setLines = useCallback(
     (aIndexes: number[], bIndexes: number[]) => {
-      dispatch(setJointLinesJoints({ aIndexes, bIndexes }));
-      jointLines?.setJoints(aIndexes, bIndexes);
+      dispatch(setLinesAction({ aIndexes, bIndexes }));
+      lines?.setLines(aIndexes, bIndexes);
     },
-    [dispatch, jointLines]
+    [dispatch, lines]
   );
 
   return {
@@ -64,6 +64,6 @@ export function useJointLines() {
     // Actions
     setEnabled,
     setLineWidth,
-    setJoints,
+    setLines,
   };
 }

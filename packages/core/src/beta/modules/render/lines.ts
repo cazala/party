@@ -8,14 +8,14 @@ import {
   CanvasComposition,
 } from "../../module";
 
-type JointLinesInputs = {
+type LinesInputs = {
   aIndexes: number[];
   bIndexes: number[];
   lineWidth: number;
 };
 
-export class JointLines extends Module<"jointLines", JointLinesInputs> {
-  readonly name = "jointLines" as const;
+export class Lines extends Module<"lines", LinesInputs> {
+  readonly name = "lines" as const;
   readonly role = ModuleRole.Render;
   readonly inputs = {
     aIndexes: DataType.ARRAY,
@@ -38,7 +38,7 @@ export class JointLines extends Module<"jointLines", JointLinesInputs> {
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
 
-  setJoints(aIndexes: number[], bIndexes: number[]): void {
+  setLines(aIndexes: number[], bIndexes: number[]): void {
     this.write({ aIndexes, bIndexes });
   }
 
@@ -46,7 +46,7 @@ export class JointLines extends Module<"jointLines", JointLinesInputs> {
     this.write({ lineWidth: value });
   }
 
-  webgpu(): WebGPUDescriptor<JointLinesInputs> {
+  webgpu(): WebGPUDescriptor<LinesInputs> {
     return {
       passes: [
         {
@@ -115,14 +115,13 @@ export class JointLines extends Module<"jointLines", JointLinesInputs> {
     };
   }
 
-  cpu(): CPUDescriptor<JointLinesInputs> {
+  cpu(): CPUDescriptor<LinesInputs> {
     return {
       composition: CanvasComposition.Additive,
       setup: ({ context, input, view, particles }) => {
         const a = (this.readArray("aIndexes") as number[]) || [];
         const b = (this.readArray("bIndexes") as number[]) || [];
         const lw = typeof input.lineWidth === "number" ? input.lineWidth : 1.5;
-
 
         const camera = view.getCamera();
         const zoom = view.getZoom();

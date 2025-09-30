@@ -9,7 +9,7 @@ import { trailsReducer, TrailsModuleState } from "./trails";
 import { interactionReducer, InteractionModuleState } from "./interaction";
 import { particleReducer, ParticleModuleState } from "./particle";
 import { jointsReducer, JointsModuleState } from "./joints";
-import { jointLinesReducer, JointLinesModuleState } from "./joint-lines";
+import { linesReducer, LinesModuleState } from "./lines";
 
 // Re-export all module types
 export type {
@@ -23,7 +23,7 @@ export type {
   InteractionModuleState,
   ParticleModuleState,
   JointsModuleState,
-  JointLinesModuleState,
+  LinesModuleState,
 };
 
 // Re-export all module actions and reducers
@@ -37,7 +37,7 @@ export * from "./trails";
 export * from "./interaction";
 export * from "./particle";
 export * from "./joints";
-export * from "./joint-lines";
+export * from "./lines";
 
 // Re-export combinedReducer for easier imports
 export interface ModulesState {
@@ -51,7 +51,7 @@ export interface ModulesState {
   interaction: InteractionModuleState;
   particle: ParticleModuleState;
   joints: JointsModuleState;
-  jointLines: JointLinesModuleState;
+  lines: LinesModuleState;
 }
 
 export const modulesReducer = combineReducers({
@@ -65,7 +65,7 @@ export const modulesReducer = combineReducers({
   interaction: interactionReducer,
   particle: particleReducer,
   joints: jointsReducer,
-  jointLines: jointLinesReducer,
+  lines: linesReducer,
 });
 
 // Global selectors

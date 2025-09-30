@@ -1,21 +1,21 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export interface JointLinesModuleState {
+export interface LinesModuleState {
   enabled: boolean;
   aIndexes: number[];
   bIndexes: number[];
   lineWidth: number;
 }
 
-const initialState: JointLinesModuleState = {
+const initialState: LinesModuleState = {
   enabled: true,
   aIndexes: [],
   bIndexes: [],
   lineWidth: 1.5,
 };
 
-export const jointLinesSlice = createSlice({
-  name: "modules/jointLines",
+export const linesSlice = createSlice({
+  name: "modules/lines",
   initialState,
   reducers: {
     setEnabled: (state, action: PayloadAction<boolean>) => {
@@ -24,7 +24,7 @@ export const jointLinesSlice = createSlice({
     setLineWidth: (state, action: PayloadAction<number>) => {
       state.lineWidth = action.payload;
     },
-    setJoints: (
+    setLines: (
       state,
       action: PayloadAction<{
         aIndexes: number[];
@@ -35,23 +35,21 @@ export const jointLinesSlice = createSlice({
       state.bIndexes = action.payload.bIndexes;
     },
     reset: () => initialState,
-    importSettings: (state, action: PayloadAction<JointLinesModuleState>) => {
+    importSettings: (state, action: PayloadAction<LinesModuleState>) => {
       return { ...state, ...action.payload };
     },
   },
 });
 
 export const {
-  setEnabled: setJointLinesEnabled,
-  setLineWidth: setJointLinesLineWidth,
-  setJoints: setJointLinesJoints,
-  reset: resetJointLines,
-  importSettings: importJointLinesSettings,
-} = jointLinesSlice.actions;
+  setEnabled: setLinesEnabled,
+  setLineWidth: setLineWidth,
+  setLines: setLines,
+  reset: resetLines,
+  importSettings: importLinesSettings,
+} = linesSlice.actions;
 
-export const jointLinesReducer = jointLinesSlice.reducer;
+export const linesReducer = linesSlice.reducer;
 
 // Selectors
-export const selectJointLines = (state: {
-  jointLines: JointLinesModuleState;
-}) => state.jointLines;
+export const selectLines = (state: { lines: LinesModuleState }) => state.lines;
