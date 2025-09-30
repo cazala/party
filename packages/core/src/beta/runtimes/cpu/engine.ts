@@ -369,7 +369,8 @@ export class CPUEngine extends AbstractEngine {
             }
             // Always add enabled
             input.enabled = module.isEnabled() ? 1 : 0;
-            for (const particle of this.particles) {
+            for (let pi = 0; pi < this.particles.length; pi++) {
+              const particle = this.particles[pi];
               if (particle.mass <= 0) continue;
               const getState = (name: string, pid?: number) => {
                 return globalState[pid ?? particle.id]?.[name] ?? 0;
@@ -383,6 +384,8 @@ export class CPUEngine extends AbstractEngine {
                 input,
                 getState,
                 view: this.view,
+                index: pi,
+                getParticleByIndex: (i: number) => this.particles[i],
               });
             }
           }
@@ -545,6 +548,7 @@ export class CPUEngine extends AbstractEngine {
             view: this.view,
             clearColor: this.clearColor,
             utils,
+            particles: this.particles,
           });
 
           // Render each visible particle

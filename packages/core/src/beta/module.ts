@@ -311,6 +311,8 @@ export interface CPUForceDescriptor<
     input: Inputs;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
+    index?: number;
+    getParticleByIndex?: (i: number) => Particle | undefined;
   }) => void;
   correct?: (args: {
     particle: Particle;
@@ -371,6 +373,7 @@ export interface CPURenderDescriptor<
     view: View;
     clearColor: { r: number; g: number; b: number; a: number };
     utils: CPURenderUtils;
+    particles: Particle[];
   }) => void;
 
   // Optional per-particle rendering (called for each visible particle with transformed coordinates)

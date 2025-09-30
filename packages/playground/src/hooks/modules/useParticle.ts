@@ -10,7 +10,8 @@ import {
 
 export function useParticle() {
   const dispatch = useAppDispatch();
-  const { particle } = useEngine();
+  // Engine particle module reference no longer used here
+  useEngine();
 
   // Get state
   const modulesState = useAppSelector(selectModules);

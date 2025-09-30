@@ -105,6 +105,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const trailsRef = useRef<Trails | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
   const particleRef = useRef<Particle | null>(null);
+  const jointsRef = useRef<any | null>(null);
 
   // Local state for engine initialization
   const [isAutoMode, setIsAutoMode] = useState(true);
@@ -216,6 +217,10 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const sensors = new Sensors({ enabled: false });
         const interaction = new Interaction({ enabled: false });
         const trails = new Trails({ enabled: false });
+        // Lazy import from core for Joints to avoid circular issues
+        const { Joints, JointLines } = await import("@cazala/party");
+        const joints = new Joints({ enabled: false });
+        const jointLines = new JointLines({ enabled: false });
 
         // Create particle renderer
         const particle = new Particle();
@@ -228,8 +233,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           fluids,
           sensors,
           interaction,
+          joints,
         ];
-        const render = [trails, particle];
+        const render = [trails, jointLines as any, particle];
 
         // Create engine
         const engine = new Engine({
@@ -252,6 +258,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         trailsRef.current = trails;
         interactionRef.current = interaction;
         particleRef.current = particle;
+        jointsRef.current = joints as any;
 
         // Register engine for thunks
         registerEngine(engine);
@@ -314,6 +321,12 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
             dispatch(importSensorsSettings(modules.sensors));
             dispatch(importTrailsSettings(modules.trails));
             dispatch(importInteractionSettings(modules.interaction));
+            if (modules.joints) {
+              const { importJointsSettings } = await import(
+                "../slices/modules"
+              );
+              dispatch(importJointsSettings(modules.joints));
+            }
             dispatch(importParticleSettings(modules.particle));
           }
         }
@@ -654,5 +667,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     trails: trailsRef.current,
     interaction: interactionRef.current,
     particle: particleRef.current,
+    joints: jointsRef.current,
   };
 }

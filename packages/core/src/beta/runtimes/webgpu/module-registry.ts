@@ -13,7 +13,12 @@
  */
 import type { GPUResources } from "./gpu-resources";
 import { buildProgram, type Program } from "./builders/program";
-import { Module, ModuleRole, type WebGPURenderDescriptor, DataType } from "../../module";
+import {
+  Module,
+  ModuleRole,
+  type WebGPURenderDescriptor,
+  DataType,
+} from "../../module";
 
 /**
  * Manages module enablement/state, builds the Program, and exposes uniform writers/readers.
@@ -43,13 +48,13 @@ export class ModuleRegistry {
       this.nameToIndex.set(layout.moduleName, i)
     );
     resources.createModuleUniformBuffers(this.program.layouts);
-    
+
     // Create array storage buffers for modules with array inputs
     this.modules.forEach((module) => {
       const arrayInputs = Object.entries(module.inputs)
         .filter(([_, type]) => type === DataType.ARRAY)
         .map(([key, _]) => key);
-      
+
       if (arrayInputs.length > 0) {
         resources.createArrayStorageBuffers(module.name, arrayInputs);
         this.moduleArrayState[module.name] = {};
@@ -106,7 +111,9 @@ export class ModuleRegistry {
   }
 
   /** Returns a reader for the given module name. */
-  getUniformReader(name: string): () => Partial<Record<string, number | number[]>> {
+  getUniformReader(
+    name: string
+  ): () => Partial<Record<string, number | number[]>> {
     return () => this.readModuleUniform(name);
   }
 
@@ -121,11 +128,15 @@ export class ModuleRegistry {
       );
   }
 
-  /** Get enabled render modules for the render pipeline. */
+  /** Get enabled render modules for the render pipeline.
+   *  Includes any module that provides render passes in its descriptor, regardless of role.
+   */
   getEnabledRenderModules(): Module[] {
-    return this.modules.filter(
-      (module) => module.role === ModuleRole.Render && module.isEnabled()
-    );
+    return this.modules.filter((module, idx) => {
+      if (!module.isEnabled()) return false;
+      const desc = this.modules[idx].webgpu() as any;
+      return !!(desc && desc.passes && (desc.passes as any[]).length > 0);
+    });
   }
 
   /** Get all modules. */
@@ -144,15 +155,19 @@ export class ModuleRegistry {
   }
 
   // Internal helpers
-  private readModuleUniform(name: string): Partial<Record<string, number | number[]>> {
+  private readModuleUniform(
+    name: string
+  ): Partial<Record<string, number | number[]>> {
     const idx = this.getModuleIndex(name);
-    const result: Partial<Record<string, number | number[]>> = { ...(this.moduleUniformState[idx] || {}) };
-    
+    const result: Partial<Record<string, number | number[]>> = {
+      ...(this.moduleUniformState[idx] || {}),
+    };
+
     // Add array state if present
     if (this.moduleArrayState[name]) {
       Object.assign(result, this.moduleArrayState[name]);
     }
-    
+
     return result;
   }
 
@@ -163,7 +178,7 @@ export class ModuleRegistry {
     if (!this.program || !this.resources) return;
     const idx = this.getModuleIndex(name);
     const state = this.moduleUniformState[idx];
-    
+
     for (const [key, value] of Object.entries(values)) {
       if (Array.isArray(value)) {
         // Handle array inputs
@@ -173,12 +188,12 @@ export class ModuleRegistry {
           // Also write the array length to the uniform buffer
           state[`${key}_length`] = value.length;
         }
-      } else if (typeof value === 'number') {
+      } else if (typeof value === "number") {
         // Handle number inputs
         state[key] = value;
       }
     }
-    
+
     this.flushModuleUniform(idx);
   }
 
@@ -190,7 +205,7 @@ export class ModuleRegistry {
     for (const [key, map] of Object.entries(layout.mapping)) {
       data[(map as { flatIndex: number }).flatIndex] = state[key] ?? 0;
     }
-    
+
     this.resources.writeModuleUniform(index, data);
   }
 
