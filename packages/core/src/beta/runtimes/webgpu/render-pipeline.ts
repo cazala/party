@@ -202,8 +202,11 @@ export class RenderPipeline {
       .filter(([_, type]) => type === DataType.ARRAY)
       .map(([key, _]) => key);
 
+    // Check if this is a non-instanced pass that needs fragment particle access
+    const fragmentParticleAccess = pass.instanced === false;
+
     // Acquire or create a cached render pipeline for the generated WGSL
-    const pipeline = resources.getOrCreateFullscreenRenderPipeline(wgsl, arrayInputs);
+    const pipeline = resources.getOrCreateFullscreenRenderPipeline(wgsl, arrayInputs, fragmentParticleAccess);
 
     // Create bind group with particle data, global render uniforms, scene sampler/texture, and module uniforms
     const bindGroup = resources.createFullscreenBindGroup(
@@ -215,7 +218,8 @@ export class RenderPipeline {
         .getModuleUniformBuffers()
         .find((muf) => muf.layout.moduleName === module.name)!.buffer,
       module.name,
-      arrayInputs
+      arrayInputs,
+      fragmentParticleAccess
     );
 
     // Begin render pass targeting the current view. Clear only on the very first write

@@ -384,11 +384,11 @@ export class GPUResources {
     this.currentScene = this.currentScene === "A" ? "B" : "A";
   }
 
-  getRenderBindGroupLayout(arrayInputs?: string[]): GPUBindGroupLayout {
-    // Create a cache key based on array inputs
+  getRenderBindGroupLayout(arrayInputs?: string[], fragmentParticleAccess?: boolean): GPUBindGroupLayout {
+    // Create a cache key based on array inputs and fragment access
     const cacheKey = arrayInputs
-      ? `render_${arrayInputs.sort().join("_")}`
-      : "render_basic";
+      ? `render_${arrayInputs.sort().join("_")}_frag_${fragmentParticleAccess || false}`
+      : `render_basic_frag_${fragmentParticleAccess || false}`;
 
     // Check if we have a cached layout for this configuration
     if (!this.renderBindGroupLayoutCache) {
@@ -401,7 +401,9 @@ export class GPUResources {
     const entries: GPUBindGroupLayoutEntry[] = [
       {
         binding: 0,
-        visibility: GPUShaderStage.VERTEX,
+        visibility: fragmentParticleAccess 
+          ? GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT
+          : GPUShaderStage.VERTEX,
         buffer: { type: "read-only-storage" },
       },
       {
@@ -608,10 +610,11 @@ export class GPUResources {
 
   getOrCreateFullscreenRenderPipeline(
     shaderCode: string,
-    arrayInputs?: string[]
+    arrayInputs?: string[],
+    fragmentParticleAccess?: boolean
   ): GPURenderPipeline {
     const arrayKey = arrayInputs?.sort().join("_") || "";
-    const key = `fs:${this.hashWGSL(shaderCode)}:${arrayKey}`;
+    const key = `fs:${this.hashWGSL(shaderCode)}:${arrayKey}:frag_${fragmentParticleAccess || false}`;
     const cached = this.fullscreenPipelines.get(key);
     if (cached) return cached;
     const shaderModule = this.getDevice().createShaderModule({
@@ -619,7 +622,7 @@ export class GPUResources {
     });
     const pipeline = this.getDevice().createRenderPipeline({
       layout: this.getDevice().createPipelineLayout({
-        bindGroupLayouts: [this.getRenderBindGroupLayout(arrayInputs)],
+        bindGroupLayouts: [this.getRenderBindGroupLayout(arrayInputs, fragmentParticleAccess)],
       }),
       vertex: { module: shaderModule, entryPoint: "vs_main" },
       fragment: {
@@ -666,7 +669,8 @@ export class GPUResources {
     sceneSampler: GPUSampler,
     moduleUniformBuffer: GPUBuffer,
     moduleName: string,
-    arrayInputs?: string[]
+    arrayInputs?: string[],
+    fragmentParticleAccess?: boolean
   ): GPUBindGroup {
     const entries: GPUBindGroupEntry[] = [
       { binding: 0, resource: { buffer: particleBuffer } },
@@ -691,7 +695,7 @@ export class GPUResources {
     }
 
     return this.getDevice().createBindGroup({
-      layout: this.getRenderBindGroupLayout(arrayInputs),
+      layout: this.getRenderBindGroupLayout(arrayInputs, fragmentParticleAccess),
       entries,
     });
   }

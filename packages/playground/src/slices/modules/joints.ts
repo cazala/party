@@ -10,7 +10,7 @@ export interface JointsModuleState {
 }
 
 const initialState: JointsModuleState = {
-  enabled: false,
+  enabled: true,
   enableCollisions: true,
   aIndexes: [],
   bIndexes: [],
@@ -86,6 +86,5 @@ export const {
 export const jointsReducer = jointsSlice.reducer;
 
 // Selectors
-export const selectJoints = (state: {
-  joints: JointsModuleState;
-}) => state.joints;
+export const selectJoints = (state: { joints: JointsModuleState }) =>
+  state.joints;

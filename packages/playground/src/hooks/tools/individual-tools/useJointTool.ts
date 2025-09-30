@@ -5,8 +5,8 @@ import { useJoints } from "../../modules/useJoints";
 import { useJointLines } from "../../modules/useJointLines";
 
 export function useJointTool(_isActive: boolean) {
-  const { engine, screenToWorld } = useEngine();
-  const { addJoint } = useJoints();
+  const { engine, screenToWorld, jointLines: jointLinesEngine } = useEngine();
+  const joints = useJoints();
   const jointLines = useJointLines();
   const selectedIndexRef = useRef<number | null>(null);
   const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -64,12 +64,29 @@ export function useJointTool(_isActive: boolean) {
             const dx = pb.position.x - pa.position.x;
             const dy = pb.position.y - pa.position.y;
             const rest = Math.sqrt(dx * dx + dy * dy);
-            addJoint(a, b, rest);
+            console.log("🔗 Creating joint:", { a, b, rest });
+            
+            // Enable joints module if not already enabled
+            if (!joints.enabled) {
+              console.log("🔗 Enabling joints module");
+              joints.setEnabled(true);
+            }
+            
+            // Enable joint lines module if not already enabled  
+            if (!jointLines.enabled) {
+              console.log("📏 Enabling joint lines module");
+              jointLines.setEnabled(true);
+            }
+            
+            joints.addJoint(a, b, rest);
             // Also update joint lines with the new joint
             const currentAIndexes = [...jointLines.aIndexes];
             const currentBIndexes = [...jointLines.bIndexes];
             currentAIndexes.push(a);
             currentBIndexes.push(b);
+            console.log("📏 Setting joint lines:", { currentAIndexes, currentBIndexes });
+            
+            // Update Redux state (this should trigger the useEffect in useJointLines)
             jointLines.setJoints(currentAIndexes, currentBIndexes);
           }
           selectedIndexRef.current = null;

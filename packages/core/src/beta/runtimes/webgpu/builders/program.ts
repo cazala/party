@@ -183,10 +183,6 @@ export function buildProgram(modules: readonly Module[]): Program {
     uniformDecls.push(structWGSL, varDecl);
 
     // Create storage buffers for array inputs
-    // Only expose array storage buffers for force modules in the compute Program
-    if (module.role !== ModuleRole.Force) {
-      return;
-    }
     arrayInputs.forEach((arrayKey) => {
       const arrayBinding = nextBindingIndex++;
       const arrayVar = `${module.name}_${arrayKey}_array`;

@@ -37,9 +37,11 @@ export function useJoints() {
 
   const addJoint = useCallback(
     (a: number, b: number, rest: number) => {
+      console.log("🔗 useJoints.addJoint called:", { a, b, rest });
+      console.log("🔗 Current joints state:", { enabled, aIndexes, bIndexes, restLengths });
       dispatch(addJointAction({ a, b, rest }));
     },
-    [dispatch]
+    [dispatch, enabled, aIndexes, bIndexes, restLengths]
   );
 
   const removeJoint = useCallback(

@@ -8,7 +8,7 @@ export interface JointLinesModuleState {
 }
 
 const initialState: JointLinesModuleState = {
-  enabled: false,
+  enabled: true,
   aIndexes: [],
   bIndexes: [],
   lineWidth: 1.5,

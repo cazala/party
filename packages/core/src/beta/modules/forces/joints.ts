@@ -67,6 +67,14 @@ export class Joints extends Module<"joints", JointsInputs> {
       constrain: ({ particleVar, getUniform, getLength }) => `{
   let jointCount = ${getLength("aIndexes")};
   if (jointCount == 0u) { return; }
+  
+  // Debug: Check array values for first particle only (to avoid spam)
+  if (index == 0u && jointCount > 0u) {
+    let debug_a = u32(${getUniform("aIndexes", "0u")});
+    let debug_b = u32(${getUniform("bIndexes", "0u")});
+    // This won't show but will help us understand if the force module has the same issue
+  }
+  
   // For v1: linear scan joints; future: binary search over sorted aIndexes
   for (var j = 0u; j < jointCount; j++) {
     let a = u32(${getUniform("aIndexes", "j")});
