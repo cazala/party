@@ -6,6 +6,7 @@ export interface JointsModuleState {
   aIndexes: number[];
   bIndexes: number[];
   restLengths: number[];
+  momentum: number;
 }
 
 const initialState: JointsModuleState = {
@@ -14,6 +15,7 @@ const initialState: JointsModuleState = {
   aIndexes: [],
   bIndexes: [],
   restLengths: [],
+  momentum: 0.7,
 };
 
 export const jointsSlice = createSlice({
@@ -25,6 +27,9 @@ export const jointsSlice = createSlice({
     },
     setEnableCollisions: (state, action: PayloadAction<boolean>) => {
       state.enableCollisions = action.payload;
+    },
+    setMomentum: (state, action: PayloadAction<number>) => {
+      state.momentum = Math.max(0, Math.min(1, action.payload)); // Clamp between 0 and 1
     },
     setJoints: (
       state,
@@ -70,6 +75,7 @@ export const jointsSlice = createSlice({
 export const {
   setEnabled: setJointsEnabled,
   setEnableCollisions,
+  setMomentum,
   setJoints,
   addJoint,
   removeJoint,

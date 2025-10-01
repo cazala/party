@@ -9,6 +9,7 @@ import {
   setEnableCollisions as setEnableCollisionsAction,
   setJoints as setJointsAction,
   setJointsEnabled,
+  setMomentum as setMomentumAction,
   selectJoints,
 } from "../../slices/modules/joints";
 
@@ -21,7 +22,7 @@ export function useJoints() {
   const state = useMemo(() => selectJoints(modulesState), [modulesState]);
 
   // Destructure individual properties
-  const { enabled, enableCollisions, aIndexes, bIndexes, restLengths } = state;
+  const { enabled, enableCollisions, aIndexes, bIndexes, restLengths, momentum } = state;
   const isEnabled = state.enabled;
 
   // Sync Redux state to engine module when they change
@@ -29,6 +30,7 @@ export function useJoints() {
     if (joints) {
       joints.setEnabled(state.enabled);
       joints.setEnableCollisions(state.enableCollisions ? 1 : 0);
+      joints.setMomentum(state.momentum);
       joints.setJoints(state.aIndexes, state.bIndexes, state.restLengths);
     }
   }, [joints, state]);
@@ -75,6 +77,14 @@ export function useJoints() {
     [dispatch, joints]
   );
 
+  const setMomentum = useCallback(
+    (value: number) => {
+      dispatch(setMomentumAction(value));
+      joints?.setMomentum(value);
+    },
+    [dispatch, joints]
+  );
+
   return {
     // Individual state properties
     enabled,
@@ -82,6 +92,7 @@ export function useJoints() {
     aIndexes,
     bIndexes,
     restLengths,
+    momentum,
     isEnabled,
     // Actions
     addJoint,
@@ -89,5 +100,6 @@ export function useJoints() {
     setEnableCollisions,
     setEnabled,
     setJoints,
+    setMomentum,
   };
 }

@@ -277,7 +277,8 @@ export class CPUEngine extends AbstractEngine {
             // Always add enabled
             input.enabled = module.isEnabled() ? 1 : 0;
 
-            for (const particle of this.particles) {
+            for (let pi = 0; pi < this.particles.length; pi++) {
+              const particle = this.particles[pi];
               if (particle.mass <= 0) continue;
               const setState = (name: string, value: number) => {
                 if (!globalState[particle.id]) {
@@ -286,13 +287,15 @@ export class CPUEngine extends AbstractEngine {
                 globalState[particle.id][name] = value;
               };
 
-              force.state?.({
+              force.state({
                 particle: particle,
                 dt,
                 getNeighbors,
                 input,
                 setState,
                 view: this.view,
+                index: pi,
+                particles: this.particles,
                 getImageData,
               });
             }
@@ -317,13 +320,14 @@ export class CPUEngine extends AbstractEngine {
             // Always add enabled
             input.enabled = module.isEnabled() ? 1 : 0;
 
-            for (const particle of this.particles) {
+            for (let pi = 0; pi < this.particles.length; pi++) {
+              const particle = this.particles[pi];
               if (particle.mass <= 0) continue;
               const getState = (name: string, pid?: number) => {
                 return globalState[pid ?? particle.id]?.[name] ?? 0;
               };
 
-              force.apply?.({
+              force.apply({
                 particle: particle,
                 dt,
                 maxSize: this.getMaxSize(),
@@ -331,6 +335,8 @@ export class CPUEngine extends AbstractEngine {
                 input,
                 getState,
                 view: this.view,
+                index: pi,
+                particles: this.particles,
                 getImageData,
               });
             }
@@ -378,7 +384,7 @@ export class CPUEngine extends AbstractEngine {
                   return globalState[pid ?? particle.id]?.[name] ?? 0;
                 };
 
-                force.constrain?.({
+                force.constrain({
                   particle: particle,
                   getNeighbors,
                   dt: dt,
@@ -387,7 +393,8 @@ export class CPUEngine extends AbstractEngine {
                   getState,
                   view: this.view,
                   index: pi,
-                  getParticleByIndex: (i: number) => this.particles[i],
+                  particles: this.particles,
+                  getImageData,
                 });
               }
             }
@@ -440,6 +447,8 @@ export class CPUEngine extends AbstractEngine {
                 getState,
                 view: this.view,
                 index,
+                particles: this.particles,
+                getImageData,
               });
             }
           }

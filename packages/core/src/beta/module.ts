@@ -275,6 +275,8 @@ export interface CPUForceDescriptor<
     input: Inputs;
     setState: (name: StateKeys, value: number) => void;
     view: View;
+    index: number;
+    particles: Particle[];
     getImageData: (
       x: number,
       y: number,
@@ -293,6 +295,8 @@ export interface CPUForceDescriptor<
     input: Inputs;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
+    index: number;
+    particles: Particle[];
     getImageData: (
       x: number,
       y: number,
@@ -311,8 +315,14 @@ export interface CPUForceDescriptor<
     input: Inputs;
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
-    index?: number;
-    getParticleByIndex?: (i: number) => Particle | undefined;
+    index: number;
+    particles: Particle[];
+    getImageData: (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ) => ImageData | null;
   }) => void;
   correct?: (args: {
     particle: Particle;
@@ -328,6 +338,13 @@ export interface CPUForceDescriptor<
     getState: (name: StateKeys, pid?: number) => number;
     view: View;
     index: number;
+    particles: Particle[];
+    getImageData: (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ) => ImageData | null;
   }) => void;
 }
 

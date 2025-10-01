@@ -12,6 +12,7 @@ type JointsInputs = {
   bIndexes: number[];
   restLengths: number[];
   enableCollisions: number;
+  momentum: number;
 };
 
 export class Joints extends Module<"joints", JointsInputs> {
@@ -22,7 +23,7 @@ export class Joints extends Module<"joints", JointsInputs> {
     bIndexes: DataType.ARRAY,
     restLengths: DataType.ARRAY,
     enableCollisions: DataType.NUMBER,
-    lineWidth: DataType.NUMBER,
+    momentum: DataType.NUMBER,
   } as const;
 
   constructor(opts?: {
@@ -31,6 +32,7 @@ export class Joints extends Module<"joints", JointsInputs> {
     bIndexes?: number[];
     restLengths?: number[];
     enableCollisions?: number;
+    momentum?: number;
   }) {
     super();
     this.write({
@@ -38,6 +40,7 @@ export class Joints extends Module<"joints", JointsInputs> {
       bIndexes: opts?.bIndexes ?? [],
       restLengths: opts?.restLengths ?? [],
       enableCollisions: opts?.enableCollisions ?? 1,
+      momentum: opts?.momentum ?? 0.7,
     });
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
@@ -70,8 +73,28 @@ export class Joints extends Module<"joints", JointsInputs> {
     this.write({ enableCollisions: val });
   }
 
-  webgpu(): WebGPUDescriptor<JointsInputs> {
+  getMomentum() {
+    return this.readValue("momentum");
+  }
+
+  setMomentum(val: number): void {
+    this.write({ momentum: Math.max(0, Math.min(1, val)) }); // Clamp between 0 and 1
+  }
+
+  webgpu(): WebGPUDescriptor<JointsInputs, "prevX" | "prevY"> {
     return {
+      states: ["prevX", "prevY"] as const,
+
+      // Store pre-physics positions for momentum preservation
+      state: ({ particleVar, getLength, setState }) => `{
+  let jointCount = ${getLength("aIndexes")};
+  if (jointCount > 0u) {
+    // Store current position before physics integration
+    ${setState("prevX", `${particleVar}.position.x`)};
+    ${setState("prevY", `${particleVar}.position.y`)};
+  }
+}`,
+
       // v1: constrain in per-particle pass, linear scan over joints for simplicity
       constrain: ({ particleVar, getUniform, getLength }) => `{
   let jointCount = ${getLength("aIndexes")};
@@ -116,25 +139,50 @@ export class Joints extends Module<"joints", JointsInputs> {
     ${particleVar}.position = ${particleVar}.position + corr;
   }
 }`,
+
+      // Apply momentum preservation after constraint solving
+      correct: ({ particleVar, getUniform, getLength, getState, dtVar }) => `{
+  let jointCount = ${getLength("aIndexes")};
+  if (jointCount == 0u) { return; }
+  
+  let momentum = ${getUniform("momentum")};
+  if (momentum <= 0.0) { return; }
+  
+  // Get stored pre-physics position
+  let prevX = ${getState("prevX")};
+  let prevY = ${getState("prevY")};
+  let prevPos = vec2<f32>(prevX, prevY);
+  
+  // Calculate actual total movement (from pre-physics to post-constraint)
+  let totalMovement = ${particleVar}.position - prevPos;
+  let actualVelocity = totalMovement / ${dtVar};
+  
+  // Blend current velocity with actual movement velocity
+  ${particleVar}.velocity = ${particleVar}.velocity * (1.0 - momentum) + actualVelocity * momentum;
+}`,
     };
   }
 
-  cpu(): CPUDescriptor<JointsInputs> {
+  cpu(): CPUDescriptor<JointsInputs, "prevX" | "prevY"> {
     return {
+      states: ["prevX", "prevY"] as const,
+
+      // Store pre-physics positions for momentum preservation
+      state: ({ particle, setState }) => {
+        // Store current position before physics integration (only for particles with joints)
+        const jointCount = Math.min(
+          (this.readArray("aIndexes") as number[])?.length || 0,
+          (this.readArray("bIndexes") as number[])?.length || 0
+        );
+
+        if (jointCount > 0) {
+          setState("prevX", particle.position.x);
+          setState("prevY", particle.position.y);
+        }
+      },
+
       // Force part: apply distance constraints with inverse-mass split
-      constrain: (args: {
-        particle: Particle;
-        index?: number;
-        getParticleByIndex?: (i: number) => Particle | undefined;
-      }) => {
-        const particle = (args as { particle: Particle }).particle;
-        const index = (args as { index?: number }).index;
-        const getParticleByIndex = (
-          args as {
-            getParticleByIndex?: (i: number) => Particle | undefined;
-          }
-        ).getParticleByIndex;
-        if (!getParticleByIndex || index === undefined) return;
+      constrain: ({ particle, index, particles }) => {
         if (particle.mass === 0) return;
         const a = (this.readArray("aIndexes") as number[]) || [];
         const b = (this.readArray("bIndexes") as number[]) || [];
@@ -145,7 +193,7 @@ export class Joints extends Module<"joints", JointsInputs> {
           const ib = b[j] >>> 0;
           if (ia !== index && ib !== index) continue;
           const otherIndex = ia === index ? ib : ia;
-          const other = getParticleByIndex(otherIndex);
+          const other = particles[otherIndex];
           if (!other) continue;
           if (other.mass === 0) continue; // removed
           const dx = other.position.x - particle.position.x;
@@ -166,6 +214,37 @@ export class Joints extends Module<"joints", JointsInputs> {
           particle.position.x += nx * corrMag;
           particle.position.y += ny * corrMag;
         }
+      },
+
+      // Apply momentum preservation after constraint solving
+      correct: ({ particle, getState, dt }) => {
+        if (dt <= 0) return;
+
+        const momentum = this.readValue("momentum") as number;
+        if (momentum <= 0) return;
+
+        // Check if this particle has any joints
+        const a = (this.readArray("aIndexes") as number[]) || [];
+        const b = (this.readArray("bIndexes") as number[]) || [];
+        const hasJoints = a.includes(particle.id) || b.includes(particle.id);
+
+        if (!hasJoints) return;
+
+        // Get stored pre-physics position
+        const prevX = getState("prevX");
+        const prevY = getState("prevY");
+
+        // Calculate actual total movement (from pre-physics to post-constraint)
+        const totalMovementX = particle.position.x - prevX;
+        const totalMovementY = particle.position.y - prevY;
+        const actualVelocityX = totalMovementX / dt;
+        const actualVelocityY = totalMovementY / dt;
+
+        // Blend current velocity with actual movement velocity
+        particle.velocity.x =
+          particle.velocity.x * (1 - momentum) + actualVelocityX * momentum;
+        particle.velocity.y =
+          particle.velocity.y * (1 - momentum) + actualVelocityY * momentum;
       },
     };
   }
