@@ -26,8 +26,8 @@ export function TopBar() {
 
   const handleReset = useCallback(() => {
     // Reset joints and lines to empty arrays
-    setJoints([], [], []);
-    setLines([], []);
+    setJoints([]);
+    setLines([]);
     // Re-spawn particles using current INIT panel config from Redux
     spawnParticles(initState);
     play();

@@ -3,6 +3,7 @@ import { useAppDispatch } from "../useAppDispatch";
 import { useAppSelector } from "../useAppSelector";
 import { useEngine } from "../useEngine";
 import { selectModules } from "../../slices/modules";
+import { Line } from "@cazala/party";
 import {
   selectLines,
   setLinesEnabled,
@@ -19,14 +20,14 @@ export function useLines() {
   const state = useMemo(() => selectLines(modulesState), [modulesState]);
 
   // Destructure individual properties
-  const { enabled, lineWidth, aIndexes, bIndexes } = state;
+  const { enabled, lineWidth, list } = state;
   const isEnabled = state.enabled;
 
   // Sync Redux state to engine module when they change
   useEffect(() => {
     if (lines) {
       lines.setLineWidth(state.lineWidth);
-      lines.setLines(state.aIndexes, state.bIndexes);
+      lines.setLines(state.list);
     }
   }, [lines, state]);
 
@@ -47,9 +48,9 @@ export function useLines() {
   );
 
   const setLines = useCallback(
-    (aIndexes: number[], bIndexes: number[]) => {
-      dispatch(setLinesAction({ aIndexes, bIndexes }));
-      lines?.setLines(aIndexes, bIndexes);
+    (linesToSet: Line[]) => {
+      dispatch(setLinesAction(linesToSet));
+      lines?.setLines(linesToSet);
     },
     [dispatch, lines]
   );
@@ -58,8 +59,7 @@ export function useLines() {
     // Individual state properties
     enabled,
     lineWidth,
-    aIndexes,
-    bIndexes,
+    list,
     isEnabled,
     // Actions
     setEnabled,

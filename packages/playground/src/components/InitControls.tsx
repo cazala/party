@@ -87,8 +87,8 @@ export function InitControls() {
 
   // Reset joints and lines when particle configuration changes (but not when engine changes)
   useEffect(() => {
-    setJoints([], [], []);
-    setLines([], []);
+    setJoints([]);
+    setLines([]);
   }, [
     numParticles,
     shape,

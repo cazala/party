@@ -12,6 +12,12 @@ export const DEFAULT_JOINTS_SEPARATION = 0.5;
 export const DEFAULT_JOINTS_STEPS = 48;
 export const DEFAULT_JOINTS_FRICTION = 0.01;
 
+export interface Joint {
+  aIndex: number;
+  bIndex: number;
+  restLength: number;
+}
+
 type JointsInputs = {
   aIndexes: number[];
   bIndexes: number[];
@@ -22,7 +28,7 @@ type JointsInputs = {
   separation: number; // joint-joint positional separation strength per iteration
   steps: number; // substeps for CCD sweep
   friction: number; // 0=no friction, 1=high friction
-  groupIds: number[]; // per-particle rigid body id (computed on CPU)
+  groupIds: number[]; // per-particle rigid body id
 };
 
 export class Joints extends Module<"joints", JointsInputs> {
@@ -43,6 +49,7 @@ export class Joints extends Module<"joints", JointsInputs> {
 
   constructor(opts?: {
     enabled?: boolean;
+    joints?: Joint[];
     aIndexes?: number[];
     bIndexes?: number[];
     restLengths?: number[];
@@ -54,10 +61,23 @@ export class Joints extends Module<"joints", JointsInputs> {
     friction?: number;
   }) {
     super();
+    
+    // Handle joints array if provided, otherwise use separate arrays
+    let aIndexes: number[], bIndexes: number[], restLengths: number[];
+    if (opts?.joints) {
+      aIndexes = opts.joints.map(j => j.aIndex);
+      bIndexes = opts.joints.map(j => j.bIndex);
+      restLengths = opts.joints.map(j => j.restLength);
+    } else {
+      aIndexes = opts?.aIndexes ?? [];
+      bIndexes = opts?.bIndexes ?? [];
+      restLengths = opts?.restLengths ?? [];
+    }
+    
     this.write({
-      aIndexes: opts?.aIndexes ?? [],
-      bIndexes: opts?.bIndexes ?? [],
-      restLengths: opts?.restLengths ?? [],
+      aIndexes,
+      bIndexes,
+      restLengths,
       enableCollisions: opts?.enableCollisions ?? 1,
       momentum: opts?.momentum ?? 0.7,
       restitution: opts?.restitution ?? DEFAULT_JOINTS_RESTITUTION,
@@ -69,38 +89,65 @@ export class Joints extends Module<"joints", JointsInputs> {
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
 
-  getJoints(): {
-    aIndexes: number[];
-    bIndexes: number[];
-    restLengths: number[];
-  } {
-    return {
-      aIndexes: this.readArray("aIndexes") as number[],
-      bIndexes: this.readArray("bIndexes") as number[],
-      restLengths: this.readArray("restLengths") as number[],
-    };
+  getJoints(): Joint[] {
+    const aIndexes = this.readArray("aIndexes") as number[];
+    const bIndexes = this.readArray("bIndexes") as number[];
+    const restLengths = this.readArray("restLengths") as number[];
+    
+    const joints: Joint[] = [];
+    const length = Math.min(aIndexes.length, bIndexes.length, restLengths.length);
+    for (let i = 0; i < length; i++) {
+      joints.push({
+        aIndex: aIndexes[i],
+        bIndex: bIndexes[i],
+        restLength: restLengths[i],
+      });
+    }
+    return joints;
   }
 
+  setJoints(joints: Joint[]): void;
   setJoints(
     aIndexes: number[],
     bIndexes: number[],
     restLengths: number[]
+  ): void;
+  setJoints(
+    jointsOrAIndexes: Joint[] | number[],
+    bIndexes?: number[],
+    restLengths?: number[]
   ): void {
+    let aIndexes: number[], bIndexesArray: number[], restLengthsArray: number[];
+    
+    // Check if first argument is Joint[] or number[]
+    if (bIndexes === undefined && restLengths === undefined) {
+      // First overload: Joint[]
+      const joints = jointsOrAIndexes as Joint[];
+      aIndexes = joints.map(j => j.aIndex);
+      bIndexesArray = joints.map(j => j.bIndex);
+      restLengthsArray = joints.map(j => j.restLength);
+    } else {
+      // Second overload: separate arrays
+      aIndexes = jointsOrAIndexes as number[];
+      bIndexesArray = bIndexes!;
+      restLengthsArray = restLengths!;
+    }
+    
     // Always write joint arrays
-    this.write({ aIndexes, bIndexes, restLengths });
+    this.write({ aIndexes, bIndexes: bIndexesArray, restLengths: restLengthsArray });
 
     // Compute rigid body groupIds from joints (BFS over joint graph) and write them once here
     const n = Math.max(
       aIndexes.length ? Math.max(...aIndexes) + 1 : 0,
-      bIndexes.length ? Math.max(...bIndexes) + 1 : 0
+      bIndexesArray.length ? Math.max(...bIndexesArray) + 1 : 0
     );
     if (n > 0) {
       const adj: number[][] = Array.from({ length: n }, () => []);
       const deg = new Array<number>(n).fill(0);
-      const validLen = Math.min(aIndexes.length, bIndexes.length);
+      const validLen = Math.min(aIndexes.length, bIndexesArray.length);
       for (let i = 0; i < validLen; i++) {
         const u = aIndexes[i] >>> 0;
-        const v = bIndexes[i] >>> 0;
+        const v = bIndexesArray[i] >>> 0;
         if (u >= n || v >= n) continue;
         adj[u].push(v);
         adj[v].push(u);

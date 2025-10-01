@@ -8,6 +8,11 @@ import {
   CanvasComposition,
 } from "../../module";
 
+export interface Line {
+  aIndex: number;
+  bIndex: number;
+}
+
 type LinesInputs = {
   aIndexes: number[];
   bIndexes: number[];
@@ -25,21 +30,67 @@ export class Lines extends Module<"lines", LinesInputs> {
 
   constructor(opts?: {
     enabled?: boolean;
+    lines?: Line[];
     aIndexes?: number[];
     bIndexes?: number[];
     lineWidth?: number;
   }) {
     super();
+    
+    // Handle lines array if provided, otherwise use separate arrays
+    let aIndexes: number[], bIndexes: number[];
+    if (opts?.lines) {
+      aIndexes = opts.lines.map(l => l.aIndex);
+      bIndexes = opts.lines.map(l => l.bIndex);
+    } else {
+      aIndexes = opts?.aIndexes ?? [];
+      bIndexes = opts?.bIndexes ?? [];
+    }
+    
     this.write({
-      aIndexes: opts?.aIndexes ?? [],
-      bIndexes: opts?.bIndexes ?? [],
+      aIndexes,
+      bIndexes,
       lineWidth: opts?.lineWidth ?? 1.5,
     });
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
 
-  setLines(aIndexes: number[], bIndexes: number[]): void {
-    this.write({ aIndexes, bIndexes });
+  getLines(): Line[] {
+    const aIndexes = this.readArray("aIndexes") as number[];
+    const bIndexes = this.readArray("bIndexes") as number[];
+    
+    const lines: Line[] = [];
+    const length = Math.min(aIndexes.length, bIndexes.length);
+    for (let i = 0; i < length; i++) {
+      lines.push({
+        aIndex: aIndexes[i],
+        bIndex: bIndexes[i],
+      });
+    }
+    return lines;
+  }
+
+  setLines(lines: Line[]): void;
+  setLines(aIndexes: number[], bIndexes: number[]): void;
+  setLines(
+    linesOrAIndexes: Line[] | number[],
+    bIndexes?: number[]
+  ): void {
+    let aIndexes: number[], bIndexesArray: number[];
+    
+    // Check if first argument is Line[] or number[]
+    if (bIndexes === undefined) {
+      // First overload: Line[]
+      const lines = linesOrAIndexes as Line[];
+      aIndexes = lines.map(l => l.aIndex);
+      bIndexesArray = lines.map(l => l.bIndex);
+    } else {
+      // Second overload: separate arrays
+      aIndexes = linesOrAIndexes as number[];
+      bIndexesArray = bIndexes;
+    }
+    
+    this.write({ aIndexes, bIndexes: bIndexesArray });
   }
 
   setLineWidth(value: number): void {

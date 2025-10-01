@@ -80,17 +80,14 @@ export function useJointTool(_isActive: boolean) {
 
             joints.addJoint(a, b, rest);
             // Also update joint lines with the new joint
-            const currentAIndexes = [...lines.aIndexes];
-            const currentBIndexes = [...lines.bIndexes];
-            currentAIndexes.push(a);
-            currentBIndexes.push(b);
+            const currentLines = [...lines.list];
+            currentLines.push({ aIndex: a, bIndex: b });
             console.log("📏 Setting joint lines:", {
-              currentAIndexes,
-              currentBIndexes,
+              currentLines,
             });
 
             // Update Redux state (this should trigger the useEffect in useLines)
-            lines.setLines(currentAIndexes, currentBIndexes);
+            lines.setLines(currentLines);
           }
           selectedIndexRef.current = null;
         }

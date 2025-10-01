@@ -1,16 +1,15 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { Line } from "@cazala/party";
 
 export interface LinesModuleState {
   enabled: boolean;
-  aIndexes: number[];
-  bIndexes: number[];
+  list: Line[];
   lineWidth: number;
 }
 
 const initialState: LinesModuleState = {
   enabled: true,
-  aIndexes: [],
-  bIndexes: [],
+  list: [],
   lineWidth: 1.5,
 };
 
@@ -24,15 +23,8 @@ export const linesSlice = createSlice({
     setLineWidth: (state, action: PayloadAction<number>) => {
       state.lineWidth = action.payload;
     },
-    setLines: (
-      state,
-      action: PayloadAction<{
-        aIndexes: number[];
-        bIndexes: number[];
-      }>
-    ) => {
-      state.aIndexes = action.payload.aIndexes;
-      state.bIndexes = action.payload.bIndexes;
+    setLines: (state, action: PayloadAction<Line[]>) => {
+      state.list = action.payload;
     },
     reset: () => initialState,
     importSettings: (state, action: PayloadAction<LinesModuleState>) => {

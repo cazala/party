@@ -3,6 +3,7 @@ import { useAppDispatch } from "../useAppDispatch";
 import { useAppSelector } from "../useAppSelector";
 import { useEngine } from "../useEngine";
 import { selectModules } from "../../slices/modules";
+import { Joint } from "@cazala/party";
 import {
   addJoint as addJointAction,
   removeJoint as removeJointAction,
@@ -22,7 +23,7 @@ export function useJoints() {
   const state = useMemo(() => selectJoints(modulesState), [modulesState]);
 
   // Destructure individual properties
-  const { enabled, enableCollisions, aIndexes, bIndexes, restLengths, momentum } = state;
+  const { enabled, enableCollisions, list, momentum } = state;
   const isEnabled = state.enabled;
 
   // Sync Redux state to engine module when they change
@@ -31,7 +32,7 @@ export function useJoints() {
       joints.setEnabled(state.enabled);
       joints.setEnableCollisions(state.enableCollisions ? 1 : 0);
       joints.setMomentum(state.momentum);
-      joints.setJoints(state.aIndexes, state.bIndexes, state.restLengths);
+      joints.setJoints(state.list);
     }
   }, [joints, state]);
 
@@ -40,13 +41,11 @@ export function useJoints() {
       console.log("🔗 useJoints.addJoint called:", { a, b, rest });
       console.log("🔗 Current joints state:", {
         enabled,
-        aIndexes,
-        bIndexes,
-        restLengths,
+        list,
       });
       dispatch(addJointAction({ a, b, rest }));
     },
-    [dispatch, enabled, aIndexes, bIndexes, restLengths]
+    [dispatch, enabled, list]
   );
 
   const removeJoint = useCallback(
@@ -70,9 +69,9 @@ export function useJoints() {
   );
 
   const setJoints = useCallback(
-    (aIndexes: number[], bIndexes: number[], restLengths: number[]) => {
-      dispatch(setJointsAction({ aIndexes, bIndexes, restLengths }));
-      joints?.setJoints(aIndexes, bIndexes, restLengths);
+    (jointsToSet: Joint[]) => {
+      dispatch(setJointsAction(jointsToSet));
+      joints?.setJoints(jointsToSet);
     },
     [dispatch, joints]
   );
@@ -89,9 +88,7 @@ export function useJoints() {
     // Individual state properties
     enabled,
     enableCollisions,
-    aIndexes,
-    bIndexes,
-    restLengths,
+    list,
     momentum,
     isEnabled,
     // Actions

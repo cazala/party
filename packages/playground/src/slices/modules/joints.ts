@@ -1,20 +1,17 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { Joint } from "@cazala/party";
 
 export interface JointsModuleState {
   enabled: boolean;
   enableCollisions: boolean;
-  aIndexes: number[];
-  bIndexes: number[];
-  restLengths: number[];
+  list: Joint[];
   momentum: number;
 }
 
 const initialState: JointsModuleState = {
   enabled: true,
   enableCollisions: true,
-  aIndexes: [],
-  bIndexes: [],
-  restLengths: [],
+  list: [],
   momentum: 0.7,
 };
 
@@ -31,17 +28,8 @@ export const jointsSlice = createSlice({
     setMomentum: (state, action: PayloadAction<number>) => {
       state.momentum = Math.max(0, Math.min(1, action.payload)); // Clamp between 0 and 1
     },
-    setJoints: (
-      state,
-      action: PayloadAction<{
-        aIndexes: number[];
-        bIndexes: number[];
-        restLengths: number[];
-      }>
-    ) => {
-      state.aIndexes = action.payload.aIndexes;
-      state.bIndexes = action.payload.bIndexes;
-      state.restLengths = action.payload.restLengths;
+    setJoints: (state, action: PayloadAction<Joint[]>) => {
+      state.list = action.payload;
     },
     addJoint: (
       state,
@@ -51,19 +39,15 @@ export const jointsSlice = createSlice({
       if (a === b) return;
       if (b < a) [a, b] = [b, a];
       // dedupe
-      for (let i = 0; i < state.aIndexes.length; i++) {
-        if (state.aIndexes[i] === a && state.bIndexes[i] === b) return;
+      for (let i = 0; i < state.list.length; i++) {
+        if (state.list[i].aIndex === a && state.list[i].bIndex === b) return;
       }
-      state.aIndexes.push(a);
-      state.bIndexes.push(b);
-      state.restLengths.push(rest);
+      state.list.push({ aIndex: a, bIndex: b, restLength: rest });
     },
     removeJoint: (state, action: PayloadAction<number>) => {
       const i = action.payload;
-      if (i < 0 || i >= state.aIndexes.length) return;
-      state.aIndexes.splice(i, 1);
-      state.bIndexes.splice(i, 1);
-      state.restLengths.splice(i, 1);
+      if (i < 0 || i >= state.list.length) return;
+      state.list.splice(i, 1);
     },
     reset: () => initialState,
     importSettings: (state, action: PayloadAction<JointsModuleState>) => {
