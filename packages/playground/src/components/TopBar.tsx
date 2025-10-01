@@ -9,8 +9,8 @@ import "./TopBar.css";
 export function TopBar() {
   const { isPlaying, play, pause, clear, spawnParticles } = useEngine();
   const { initState } = useInit();
-  const { setJoints } = useJoints();
-  const { setLines } = useLines();
+  const { removeAllJoints } = useJoints();
+  const { removeAllLines } = useLines();
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -25,13 +25,13 @@ export function TopBar() {
   };
 
   const handleReset = useCallback(() => {
-    // Reset joints and lines to empty arrays
-    setJoints([]);
-    setLines([]);
+    // Reset joints and lines using helper methods
+    removeAllJoints();
+    removeAllLines();
     // Re-spawn particles using current INIT panel config from Redux
     spawnParticles(initState);
     play();
-  }, [setJoints, setLines, spawnParticles, play, initState]);
+  }, [removeAllJoints, removeAllLines, spawnParticles, play, initState]);
 
   return (
     <div className="top-bar">

@@ -55,6 +55,31 @@ export function useLines() {
     [dispatch, lines]
   );
 
+  const addLine = useCallback(
+    (line: Line) => {
+      lines?.add(line);
+      // Update Redux state with new lines
+      const updatedLines = lines?.getLines() || [];
+      dispatch(setLinesAction(updatedLines));
+    },
+    [lines, dispatch]
+  );
+
+  const removeLine = useCallback(
+    (aIndex: number, bIndex: number) => {
+      lines?.remove(aIndex, bIndex);
+      // Update Redux state with remaining lines
+      const updatedLines = lines?.getLines() || [];
+      dispatch(setLinesAction(updatedLines));
+    },
+    [lines, dispatch]
+  );
+
+  const removeAllLines = useCallback(() => {
+    lines?.removeAll();
+    dispatch(setLinesAction([]));
+  }, [lines, dispatch]);
+
   return {
     // Individual state properties
     enabled,
@@ -65,5 +90,9 @@ export function useLines() {
     setEnabled,
     setLineWidth,
     setLines,
+    // Helper methods
+    addLine,
+    removeLine,
+    removeAllLines,
   };
 }

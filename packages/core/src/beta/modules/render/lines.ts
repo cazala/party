@@ -97,6 +97,47 @@ export class Lines extends Module<"lines", LinesInputs> {
     this.write({ lineWidth: value });
   }
 
+  add(line: Line): void {
+    const currentLines = this.getLines();
+    
+    // Normalize line (ensure aIndex <= bIndex) and dedupe
+    let { aIndex, bIndex } = line;
+    if (aIndex === bIndex) return; // Skip self-lines
+    if (bIndex < aIndex) [aIndex, bIndex] = [bIndex, aIndex];
+    
+    // Check for duplicates
+    for (const existing of currentLines) {
+      let { aIndex: existingA, bIndex: existingB } = existing;
+      if (existingB < existingA) [existingA, existingB] = [existingB, existingA];
+      if (existingA === aIndex && existingB === bIndex) return;
+    }
+    
+    // Add the line
+    currentLines.push({ aIndex, bIndex });
+    this.setLines(currentLines);
+  }
+
+  remove(aIndex: number, bIndex: number): void {
+    const currentLines = this.getLines();
+    
+    // Normalize indices for comparison
+    let searchA = aIndex, searchB = bIndex;
+    if (searchB < searchA) [searchA, searchB] = [searchB, searchA];
+    
+    // Find and remove the line (works with flipped indices too)
+    const filteredLines = currentLines.filter(line => {
+      let { aIndex: lineA, bIndex: lineB } = line;
+      if (lineB < lineA) [lineA, lineB] = [lineB, lineA];
+      return !(lineA === searchA && lineB === searchB);
+    });
+    
+    this.setLines(filteredLines);
+  }
+
+  removeAll(): void {
+    this.setLines([]);
+  }
+
   webgpu(): WebGPUDescriptor<LinesInputs> {
     return {
       passes: [

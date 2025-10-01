@@ -5,8 +5,6 @@ import { useEngine } from "../useEngine";
 import { selectModules } from "../../slices/modules";
 import { Joint } from "@cazala/party";
 import {
-  addJoint as addJointAction,
-  removeJoint as removeJointAction,
   setEnableCollisions as setEnableCollisionsAction,
   setJoints as setJointsAction,
   setJointsEnabled,
@@ -36,22 +34,6 @@ export function useJoints() {
     }
   }, [joints, state]);
 
-  const addJoint = useCallback(
-    (a: number, b: number, rest: number) => {
-      console.log("🔗 useJoints.addJoint called:", { a, b, rest });
-      console.log("🔗 Current joints state:", {
-        enabled,
-        list,
-      });
-      dispatch(addJointAction({ a, b, rest }));
-    },
-    [dispatch, enabled, list]
-  );
-
-  const removeJoint = useCallback(
-    (i: number) => dispatch(removeJointAction(i)),
-    [dispatch]
-  );
 
   const setEnableCollisions = useCallback(
     (value: boolean) => {
@@ -84,6 +66,31 @@ export function useJoints() {
     [dispatch, joints]
   );
 
+  const addJoint = useCallback(
+    (joint: Joint) => {
+      joints?.add(joint);
+      // Update Redux state with new joints
+      const updatedJoints = joints?.getJoints() || [];
+      dispatch(setJointsAction(updatedJoints));
+    },
+    [joints, dispatch]
+  );
+
+  const removeJoint = useCallback(
+    (aIndex: number, bIndex: number) => {
+      joints?.remove(aIndex, bIndex);
+      // Update Redux state with remaining joints
+      const updatedJoints = joints?.getJoints() || [];
+      dispatch(setJointsAction(updatedJoints));
+    },
+    [joints, dispatch]
+  );
+
+  const removeAllJoints = useCallback(() => {
+    joints?.removeAll();
+    dispatch(setJointsAction([]));
+  }, [joints, dispatch]);
+
   return {
     // Individual state properties
     enabled,
@@ -92,11 +99,13 @@ export function useJoints() {
     momentum,
     isEnabled,
     // Actions
-    addJoint,
-    removeJoint,
     setEnableCollisions,
     setEnabled,
     setJoints,
     setMomentum,
+    // Helper methods
+    addJoint,
+    removeJoint,
+    removeAllJoints,
   };
 }

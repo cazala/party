@@ -229,6 +229,47 @@ export class Joints extends Module<"joints", JointsInputs> {
     this.write({ friction: Math.max(0, Math.min(1, val)) });
   }
 
+  add(joint: Joint): void {
+    const currentJoints = this.getJoints();
+    
+    // Normalize joint (ensure aIndex <= bIndex) and dedupe
+    let { aIndex, bIndex, restLength } = joint;
+    if (aIndex === bIndex) return; // Skip self-joints
+    if (bIndex < aIndex) [aIndex, bIndex] = [bIndex, aIndex];
+    
+    // Check for duplicates
+    for (const existing of currentJoints) {
+      let { aIndex: existingA, bIndex: existingB } = existing;
+      if (existingB < existingA) [existingA, existingB] = [existingB, existingA];
+      if (existingA === aIndex && existingB === bIndex) return;
+    }
+    
+    // Add the joint
+    currentJoints.push({ aIndex, bIndex, restLength });
+    this.setJoints(currentJoints);
+  }
+
+  remove(aIndex: number, bIndex: number): void {
+    const currentJoints = this.getJoints();
+    
+    // Normalize indices for comparison
+    let searchA = aIndex, searchB = bIndex;
+    if (searchB < searchA) [searchA, searchB] = [searchB, searchA];
+    
+    // Find and remove the joint (works with flipped indices too)
+    const filteredJoints = currentJoints.filter(joint => {
+      let { aIndex: jointA, bIndex: jointB } = joint;
+      if (jointB < jointA) [jointA, jointB] = [jointB, jointA];
+      return !(jointA === searchA && jointB === searchB);
+    });
+    
+    this.setJoints(filteredJoints);
+  }
+
+  removeAll(): void {
+    this.setJoints([]);
+  }
+
   // groupIds are derived from joints; no external setters/getters
 
   webgpu(): WebGPUDescriptor<JointsInputs, "prevX" | "prevY"> {

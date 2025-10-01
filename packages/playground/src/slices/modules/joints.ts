@@ -31,25 +31,6 @@ export const jointsSlice = createSlice({
     setJoints: (state, action: PayloadAction<Joint[]>) => {
       state.list = action.payload;
     },
-    addJoint: (
-      state,
-      action: PayloadAction<{ a: number; b: number; rest: number }>
-    ) => {
-      let { a, b, rest } = action.payload;
-      if (a === b) return;
-      if (b < a) [a, b] = [b, a];
-      // dedupe
-      for (let i = 0; i < state.list.length; i++) {
-        if (state.list[i].aIndex === a && state.list[i].bIndex === b) return;
-      }
-      state.list.push({ aIndex: a, bIndex: b, restLength: rest });
-    },
-    removeJoint: (state, action: PayloadAction<number>) => {
-      const i = action.payload;
-      if (i < 0 || i >= state.list.length) return;
-      state.list.splice(i, 1);
-    },
-    reset: () => initialState,
     importSettings: (state, action: PayloadAction<JointsModuleState>) => {
       return { ...state, ...action.payload };
     },
@@ -61,9 +42,6 @@ export const {
   setEnableCollisions,
   setMomentum,
   setJoints,
-  addJoint,
-  removeJoint,
-  reset,
   importSettings: importJointsSettings,
 } = jointsSlice.actions;
 

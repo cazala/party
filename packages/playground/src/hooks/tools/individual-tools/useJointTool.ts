@@ -78,16 +78,10 @@ export function useJointTool(_isActive: boolean) {
               lines.setEnabled(true);
             }
 
-            joints.addJoint(a, b, rest);
-            // Also update joint lines with the new joint
-            const currentLines = [...lines.list];
-            currentLines.push({ aIndex: a, bIndex: b });
-            console.log("📏 Setting joint lines:", {
-              currentLines,
-            });
-
-            // Update Redux state (this should trigger the useEffect in useLines)
-            lines.setLines(currentLines);
+            joints.addJoint({ aIndex: a, bIndex: b, restLength: rest });
+            // Also add joint line using the new helper method
+            lines.addLine({ aIndex: a, bIndex: b });
+            console.log("📏 Added joint line:", { a, b });
           }
           selectedIndexRef.current = null;
         }

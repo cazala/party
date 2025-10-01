@@ -12,8 +12,8 @@ import "./InitControls.css";
 
 export function InitControls() {
   const { spawnParticles, isInitialized } = useEngine();
-  const { setJoints } = useJoints();
-  const { setLines } = useLines();
+  const { removeAllJoints } = useJoints();
+  const { removeAllLines } = useLines();
   const {
     numParticles,
     shape,
@@ -87,9 +87,11 @@ export function InitControls() {
 
   // Reset joints and lines when particle configuration changes (but not when engine changes)
   useEffect(() => {
-    setJoints([]);
-    setLines([]);
+    removeAllJoints();
+    removeAllLines();
   }, [
+    // DO NOT ADD removeAllJoints and removeAllLines to the dependency array
+    // otherwise it will reset the joints and lines when the runtime type changes (e.g. from cpu to webgpu)
     numParticles,
     shape,
     spacing,
