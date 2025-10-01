@@ -1,10 +1,10 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 import { useEngine } from "../../useEngine";
 import { useJoints } from "../../modules/useJoints";
 import { useLines } from "../../modules/useLines";
 
-export function useJointTool(_isActive: boolean) {
+export function useJointTool(isActive: boolean) {
   const { engine, screenToWorld, camera, zoom, size } = useEngine();
   const joints = useJoints();
   const lines = useLines();
@@ -27,6 +27,25 @@ export function useJointTool(_isActive: boolean) {
     },
     [engine, camera, zoom, size]
   );
+
+  // Global keyboard event listener for ESC key
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedIndexRef.current !== null) {
+        // Cancel joint creation
+        selectedIndexRef.current = null;
+        selectedParticlePos.current = null;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isActive]);
 
   const renderOverlay: ToolRenderFunction = useCallback(
     (ctx) => {
@@ -130,8 +149,17 @@ export function useJointTool(_isActive: boolean) {
             lines.addLine({ aIndex: a, bIndex: b });
             console.log("📏 Added joint line:", { a, b });
           }
-          selectedIndexRef.current = null;
-          selectedParticlePos.current = null;
+          
+          // Check if ctrl/cmd is pressed to chain joints
+          if (ev.ctrlKey || ev.metaKey) {
+            // Start new joint with the second particle as the first
+            selectedIndexRef.current = b;
+            selectedParticlePos.current = particles[b].position;
+          } else {
+            // Normal behavior - clear selection
+            selectedIndexRef.current = null;
+            selectedParticlePos.current = null;
+          }
         }
       }
     },
