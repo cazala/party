@@ -6,6 +6,9 @@ export interface JointsModuleState {
   enableCollisions: boolean;
   list: Joint[];
   momentum: number;
+  restitution: number;
+  separation: number;
+  friction: number;
 }
 
 const initialState: JointsModuleState = {
@@ -13,6 +16,9 @@ const initialState: JointsModuleState = {
   enableCollisions: true,
   list: [],
   momentum: 0.7,
+  restitution: 0.9,
+  separation: 0.5,
+  friction: 0.01,
 };
 
 export const jointsSlice = createSlice({
@@ -31,6 +37,15 @@ export const jointsSlice = createSlice({
     setJoints: (state, action: PayloadAction<Joint[]>) => {
       state.list = action.payload;
     },
+    setRestitution: (state, action: PayloadAction<number>) => {
+      state.restitution = Math.max(0, Math.min(1, action.payload));
+    },
+    setSeparation: (state, action: PayloadAction<number>) => {
+      state.separation = Math.max(0, Math.min(0.5, action.payload));
+    },
+    setFriction: (state, action: PayloadAction<number>) => {
+      state.friction = Math.max(0, Math.min(1, action.payload));
+    },
     importSettings: (state, action: PayloadAction<JointsModuleState>) => {
       return { ...state, ...action.payload };
     },
@@ -42,6 +57,9 @@ export const {
   setEnableCollisions,
   setMomentum,
   setJoints,
+  setRestitution,
+  setSeparation,
+  setFriction,
   importSettings: importJointsSettings,
 } = jointsSlice.actions;
 

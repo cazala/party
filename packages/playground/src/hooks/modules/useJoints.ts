@@ -9,6 +9,9 @@ import {
   setJoints as setJointsAction,
   setJointsEnabled,
   setMomentum as setMomentumAction,
+  setRestitution as setRestitutionAction,
+  setSeparation as setSeparationAction,
+  setFriction as setFrictionAction,
   selectJoints,
 } from "../../slices/modules/joints";
 
@@ -21,7 +24,7 @@ export function useJoints() {
   const state = useMemo(() => selectJoints(modulesState), [modulesState]);
 
   // Destructure individual properties
-  const { enabled, enableCollisions, list, momentum } = state;
+  const { enabled, enableCollisions, list, momentum, restitution, separation, friction } = state;
   const isEnabled = state.enabled;
 
   // Sync Redux state to engine module when they change
@@ -30,6 +33,9 @@ export function useJoints() {
       joints.setEnabled(state.enabled);
       joints.setEnableCollisions(state.enableCollisions ? 1 : 0);
       joints.setMomentum(state.momentum);
+      joints.setRestitution(state.restitution);
+      joints.setSeparation(state.separation);
+      joints.setFriction(state.friction);
       joints.setJoints(state.list);
     }
   }, [joints, state]);
@@ -91,18 +97,48 @@ export function useJoints() {
     dispatch(setJointsAction([]));
   }, [joints, dispatch]);
 
+  const setRestitution = useCallback(
+    (value: number) => {
+      dispatch(setRestitutionAction(value));
+      joints?.setRestitution(value);
+    },
+    [dispatch, joints]
+  );
+
+  const setSeparation = useCallback(
+    (value: number) => {
+      dispatch(setSeparationAction(value));
+      joints?.setSeparation(value);
+    },
+    [dispatch, joints]
+  );
+
+  const setFriction = useCallback(
+    (value: number) => {
+      dispatch(setFrictionAction(value));
+      joints?.setFriction(value);
+    },
+    [dispatch, joints]
+  );
+
   return {
     // Individual state properties
     enabled,
     enableCollisions,
     list,
     momentum,
+    restitution,
+    separation,
+    friction,
     isEnabled,
     // Actions
     setEnableCollisions,
     setEnabled,
     setJoints,
     setMomentum,
+    setRestitution,
+    setSeparation,
+    setFriction,
     // Helper methods
     addJoint,
     removeJoint,

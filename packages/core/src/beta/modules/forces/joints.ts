@@ -11,6 +11,8 @@ export const DEFAULT_JOINTS_RESTITUTION = 0.9;
 export const DEFAULT_JOINTS_SEPARATION = 0.5;
 export const DEFAULT_JOINTS_STEPS = 48;
 export const DEFAULT_JOINTS_FRICTION = 0.01;
+export const DEFAULT_JOINTS_MOMENTUM = 0.7;
+export const DEFAULT_JOINTS_ENABLE_COLLISIONS = 1;
 
 export interface Joint {
   aIndex: number;
@@ -78,8 +80,8 @@ export class Joints extends Module<"joints", JointsInputs> {
       aIndexes,
       bIndexes,
       restLengths,
-      enableCollisions: opts?.enableCollisions ?? 1,
-      momentum: opts?.momentum ?? 0.7,
+      enableCollisions: opts?.enableCollisions ?? DEFAULT_JOINTS_ENABLE_COLLISIONS,
+      momentum: opts?.momentum ?? DEFAULT_JOINTS_MOMENTUM,
       restitution: opts?.restitution ?? DEFAULT_JOINTS_RESTITUTION,
       separation: opts?.separation ?? DEFAULT_JOINTS_SEPARATION,
       steps: opts?.steps ?? DEFAULT_JOINTS_STEPS,

@@ -46,7 +46,7 @@ export function ModuleWrapper({
         checked={internalEnabled}
         onChange={(checked) => handleEnabledChange(checked)}
         disabled={!isSupported}
-        label={!isSupported ? `${title} (Not supported)` : title}
+        label={!isSupported ? `${title} (Not supported)` : `Enable`}
       />
       <Section style={{ opacity: !isSupported ? 0.5 : 1 }}>
         {React.cloneElement(children as React.ReactElement, {

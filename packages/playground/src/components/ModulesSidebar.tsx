@@ -6,6 +6,7 @@ import { BehaviorModule } from "./modules/BehaviorModule";
 import { SensorsModule } from "./modules/SensorsModule";
 import { TrailsModule } from "./modules/TrailsModule";
 import { InteractionModule } from "./modules/InteractionModule";
+import { JointsModule } from "./modules/JointsModule";
 import { ModuleWrapper } from "./ModuleWrapper";
 import { useEngine } from "../hooks/useEngine";
 import {
@@ -17,6 +18,7 @@ import {
   useSensors,
   useTrails,
   useInteraction,
+  useJoints,
 } from "../hooks/modules";
 import "./ModulesSidebar.css";
 
@@ -30,6 +32,7 @@ export function ModulesSidebar() {
     sensors,
     trails,
     interaction,
+    joints,
     isSupported,
   } = useEngine();
 
@@ -41,6 +44,7 @@ export function ModulesSidebar() {
   const { isEnabled: isSensorsEnabled, setEnabled: setSensorsEnabled } = useSensors();
   const { isEnabled: isTrailsEnabled, setEnabled: setTrailsEnabled } = useTrails();
   const { isEnabled: isInteractionEnabled, setEnabled: setInteractionEnabled } = useInteraction();
+  const { isEnabled: isJointsEnabled, setEnabled: setJointsEnabled } = useJoints();
 
   return (
     <div className="controls-panel">
@@ -116,6 +120,16 @@ export function ModulesSidebar() {
         setEnabled={setSensorsEnabled}
       >
         <SensorsModule />
+      </ModuleWrapper>
+
+      <ModuleWrapper
+        title="Joints"
+        module={joints}
+        isSupported={isSupported(joints)}
+        enabled={isJointsEnabled}
+        setEnabled={setJointsEnabled}
+      >
+        <JointsModule />
       </ModuleWrapper>
 
       <ModuleWrapper
