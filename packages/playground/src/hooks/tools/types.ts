@@ -34,6 +34,9 @@ export interface UseToolsReturn {
   isEmitterMode: boolean;
   isCursorMode: boolean;
 
+  // Tool-specific states
+  isGrabbing: boolean;
+
   // Overlay functions
   renderOverlay: (
     ctx: CanvasRenderingContext2D,

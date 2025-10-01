@@ -11,7 +11,7 @@ export function Canvas({
   style?: React.CSSProperties;
 }) {
   const { canvasRef, size, runtime, handleWheel, isInitialized } = useEngine();
-  const { isSpawnMode } = useTools();
+  const { isSpawnMode, isGrabMode, isGrabbing } = useTools();
 
   // Add wheel event listener for zoom
   useEffect(() => {
@@ -39,6 +39,8 @@ export function Canvas({
   const canvasClasses = [
     className,
     isSpawnMode ? "spawn-tool" : "",
+    isGrabMode ? "grab-tool" : "",
+    isGrabbing ? "grabbing" : "",
   ].filter(Boolean).join(" ");
 
   return (

@@ -108,5 +108,8 @@ export function useTools(): UseToolsReturn {
     startDrag: spawnTool.startDrag,
     updateDrag: spawnTool.updateDrag,
     endDrag: spawnTool.endDrag,
+    
+    // Grab tool specific state
+    isGrabbing: grabTool.isGrabbing,
   };
 }
