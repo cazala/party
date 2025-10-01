@@ -22,6 +22,8 @@ export function TopBar() {
 
   const handleClear = () => {
     clear();
+    removeAllJoints();
+    removeAllLines();
   };
 
   const handleReset = useCallback(() => {

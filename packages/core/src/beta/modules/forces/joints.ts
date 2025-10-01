@@ -63,24 +63,25 @@ export class Joints extends Module<"joints", JointsInputs> {
     friction?: number;
   }) {
     super();
-    
+
     // Handle joints array if provided, otherwise use separate arrays
     let aIndexes: number[], bIndexes: number[], restLengths: number[];
     if (opts?.joints) {
-      aIndexes = opts.joints.map(j => j.aIndex);
-      bIndexes = opts.joints.map(j => j.bIndex);
-      restLengths = opts.joints.map(j => j.restLength);
+      aIndexes = opts.joints.map((j) => j.aIndex);
+      bIndexes = opts.joints.map((j) => j.bIndex);
+      restLengths = opts.joints.map((j) => j.restLength);
     } else {
       aIndexes = opts?.aIndexes ?? [];
       bIndexes = opts?.bIndexes ?? [];
       restLengths = opts?.restLengths ?? [];
     }
-    
+
     this.write({
       aIndexes,
       bIndexes,
       restLengths,
-      enableCollisions: opts?.enableCollisions ?? DEFAULT_JOINTS_ENABLE_COLLISIONS,
+      enableCollisions:
+        opts?.enableCollisions ?? DEFAULT_JOINTS_ENABLE_COLLISIONS,
       momentum: opts?.momentum ?? DEFAULT_JOINTS_MOMENTUM,
       restitution: opts?.restitution ?? DEFAULT_JOINTS_RESTITUTION,
       separation: opts?.separation ?? DEFAULT_JOINTS_SEPARATION,
@@ -95,9 +96,13 @@ export class Joints extends Module<"joints", JointsInputs> {
     const aIndexes = this.readArray("aIndexes") as number[];
     const bIndexes = this.readArray("bIndexes") as number[];
     const restLengths = this.readArray("restLengths") as number[];
-    
+
     const joints: Joint[] = [];
-    const length = Math.min(aIndexes.length, bIndexes.length, restLengths.length);
+    const length = Math.min(
+      aIndexes.length,
+      bIndexes.length,
+      restLengths.length
+    );
     for (let i = 0; i < length; i++) {
       joints.push({
         aIndex: aIndexes[i],
@@ -120,23 +125,27 @@ export class Joints extends Module<"joints", JointsInputs> {
     restLengths?: number[]
   ): void {
     let aIndexes: number[], bIndexesArray: number[], restLengthsArray: number[];
-    
+
     // Check if first argument is Joint[] or number[]
     if (bIndexes === undefined && restLengths === undefined) {
       // First overload: Joint[]
       const joints = jointsOrAIndexes as Joint[];
-      aIndexes = joints.map(j => j.aIndex);
-      bIndexesArray = joints.map(j => j.bIndex);
-      restLengthsArray = joints.map(j => j.restLength);
+      aIndexes = joints.map((j) => j.aIndex);
+      bIndexesArray = joints.map((j) => j.bIndex);
+      restLengthsArray = joints.map((j) => j.restLength);
     } else {
       // Second overload: separate arrays
       aIndexes = jointsOrAIndexes as number[];
       bIndexesArray = bIndexes!;
       restLengthsArray = restLengths!;
     }
-    
+
     // Always write joint arrays
-    this.write({ aIndexes, bIndexes: bIndexesArray, restLengths: restLengthsArray });
+    this.write({
+      aIndexes,
+      bIndexes: bIndexesArray,
+      restLengths: restLengthsArray,
+    });
 
     // Compute rigid body groupIds from joints (BFS over joint graph) and write them once here
     const n = Math.max(
@@ -233,19 +242,20 @@ export class Joints extends Module<"joints", JointsInputs> {
 
   add(joint: Joint): void {
     const currentJoints = this.getJoints();
-    
+
     // Normalize joint (ensure aIndex <= bIndex) and dedupe
     let { aIndex, bIndex, restLength } = joint;
     if (aIndex === bIndex) return; // Skip self-joints
     if (bIndex < aIndex) [aIndex, bIndex] = [bIndex, aIndex];
-    
+
     // Check for duplicates
     for (const existing of currentJoints) {
       let { aIndex: existingA, bIndex: existingB } = existing;
-      if (existingB < existingA) [existingA, existingB] = [existingB, existingA];
+      if (existingB < existingA)
+        [existingA, existingB] = [existingB, existingA];
       if (existingA === aIndex && existingB === bIndex) return;
     }
-    
+
     // Add the joint
     currentJoints.push({ aIndex, bIndex, restLength });
     this.setJoints(currentJoints);
@@ -253,18 +263,19 @@ export class Joints extends Module<"joints", JointsInputs> {
 
   remove(aIndex: number, bIndex: number): void {
     const currentJoints = this.getJoints();
-    
+
     // Normalize indices for comparison
-    let searchA = aIndex, searchB = bIndex;
+    let searchA = aIndex,
+      searchB = bIndex;
     if (searchB < searchA) [searchA, searchB] = [searchB, searchA];
-    
+
     // Find and remove the joint (works with flipped indices too)
-    const filteredJoints = currentJoints.filter(joint => {
+    const filteredJoints = currentJoints.filter((joint) => {
       let { aIndex: jointA, bIndex: jointB } = joint;
       if (jointB < jointA) [jointA, jointB] = [jointB, jointA];
       return !(jointA === searchA && jointB === searchB);
     });
-    
+
     this.setJoints(filteredJoints);
   }
 
@@ -292,13 +303,6 @@ export class Joints extends Module<"joints", JointsInputs> {
       constrain: ({ particleVar, getUniform, getLength }) => `{
   let jointCount = ${getLength("aIndexes")};
   if (jointCount == 0u) { return; }
-  
-  // Debug: Check array values for first particle only (to avoid spam)
-  if (index == 0u && jointCount > 0u) {
-    let debug_a = u32(${getUniform("aIndexes", "0u")});
-    let debug_b = u32(${getUniform("bIndexes", "0u")});
-    // This won't show but will help us understand if the force module has the same issue
-  }
   
   // For v1: linear scan joints; future: binary search over sorted aIndexes
   for (var j = 0u; j < jointCount; j++) {
@@ -333,7 +337,16 @@ export class Joints extends Module<"joints", JointsInputs> {
   }
 
   // Optional collision handling with joints (particle vs joint, joint vs joint)
-  if (${getUniform("enableCollisions")} > 0.0 && ${particleVar}.mass > 0.0) {
+  // Only for particles that are part of at least one joint
+  var hasJoint = false;
+  for (var jj = 0u; jj < jointCount; jj++) {
+    let ja = u32(${getUniform("aIndexes", "jj")});
+    let jb = u32(${getUniform("bIndexes", "jj")});
+    if (ja == index || jb == index) { hasJoint = true; break; }
+  }
+  if (${getUniform(
+    "enableCollisions"
+  )} > 0.0 && ${particleVar}.mass > 0.0 && hasJoint) {
     // Particle vs Joint: find deepest overlap with any segment not incident to this particle
     var bestOverlap: f32 = 0.0;
     var bestNormal: vec2<f32> = vec2<f32>(0.0, 0.0);
@@ -444,6 +457,13 @@ export class Joints extends Module<"joints", JointsInputs> {
   let jointCount = ${getLength("aIndexes")};
   if (jointCount == 0u) { return; }
   
+  // Substep CCD: particle-vs-joint should run for all particles
+  var hasJoint = false; // still used below for joint-segment CCD and momentum
+  for (var jj = 0u; jj < jointCount; jj++) {
+    let ja = u32(${getUniform("aIndexes", "jj")});
+    let jb = u32(${getUniform("bIndexes", "jj")});
+    if (ja == index || jb == index) { hasJoint = true; break; }
+  }
   if (${getUniform("enableCollisions")} > 0.0) {
     // Substep CCD: sweep particle (as a circle of radius r) from previous to current position
     let prevX = ${getState("prevX")};
@@ -499,7 +519,7 @@ export class Joints extends Module<"joints", JointsInputs> {
   }
 
   // Joint-segment CCD for joints incident to this particle against other joints
-  if (${getUniform("enableCollisions")} > 0.0) {
+  if (${getUniform("enableCollisions")} > 0.0 && hasJoint) {
     let stepsJS: u32 = max(1u, u32(${getUniform("steps")}));
     for (var j0 = 0u; j0 < jointCount; j0++) {
       let a0 = u32(${getUniform("aIndexes", "j0")});
@@ -566,7 +586,7 @@ export class Joints extends Module<"joints", JointsInputs> {
   }
 
   let momentum = ${getUniform("momentum")};
-  if (momentum <= 0.0) { return; }
+  if (momentum <= 0.0 || !hasJoint) { return; }
   
   // Get stored pre-physics position
   let prevX2 = ${getState("prevX")};
