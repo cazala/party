@@ -37,35 +37,6 @@ export class CPUEngine extends AbstractEngine {
     return Promise.resolve();
   }
 
-  private removeDeadParticles(): void {
-    // Check if any particles need removal first
-    let foundDeadParticle = false;
-    for (let i = 0; i < this.particles.length; i++) {
-      const particle = this.particles[i];
-      if (particle.mass === 0) {
-        foundDeadParticle = true;
-        break;
-      }
-    }
-
-    if (!foundDeadParticle) return;
-
-    // Use in-place filtering to avoid creating new arrays
-    let writeIndex = 0;
-    for (let readIndex = 0; readIndex < this.particles.length; readIndex++) {
-      const particle = this.particles[readIndex];
-      if (particle.mass !== 0) {
-        if (writeIndex !== readIndex) {
-          this.particles[writeIndex] = particle;
-        }
-        writeIndex++;
-      }
-    }
-
-    // Truncate array to new length
-    this.particles.length = writeIndex;
-  }
-
   // Implement abstract methods for animation loop
   protected startAnimationLoop(): void {
     if (this.animationId) {
@@ -455,9 +426,6 @@ export class CPUEngine extends AbstractEngine {
         }
       } catch (error) {}
     }
-
-    // remove dead particles
-    this.removeDeadParticles();
   }
 
   private createRenderUtils(context: CanvasRenderingContext2D) {
@@ -564,6 +532,8 @@ export class CPUEngine extends AbstractEngine {
 
           // Render each visible particle
           for (const particle of this.particles) {
+            if (particle.mass == 0) continue;
+
             // Transform world position to screen position
             const worldX = (particle.position.x - camera.x) * zoom;
             const worldY = (particle.position.y - camera.y) * zoom;
