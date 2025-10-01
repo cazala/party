@@ -5,28 +5,74 @@ import { useJoints } from "../../modules/useJoints";
 import { useLines } from "../../modules/useLines";
 
 export function useJointTool(_isActive: boolean) {
-  const { engine, screenToWorld } = useEngine();
+  const { engine, screenToWorld, camera, zoom, size } = useEngine();
   const joints = useJoints();
   const lines = useLines();
   const selectedIndexRef = useRef<number | null>(null);
+  const selectedParticlePos = useRef<{ x: number; y: number } | null>(null);
   const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Convert world coordinates to screen coordinates
+  const worldToScreen = useCallback(
+    (worldX: number, worldY: number) => {
+      if (!engine) return { x: worldX, y: worldY };
+      
+      const centerX = size.width / 2;
+      const centerY = size.height / 2;
+      
+      const screenX = centerX + (worldX - camera.x) * zoom;
+      const screenY = centerY + (worldY - camera.y) * zoom;
+      
+      return { x: screenX, y: screenY };
+    },
+    [engine, camera, zoom, size]
+  );
 
   const renderOverlay: ToolRenderFunction = useCallback(
     (ctx) => {
       if (!engine) return;
       const sel = selectedIndexRef.current;
       if (sel == null) return;
-      // Draw a small circle at mouse position to indicate second selection
-      ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.6)";
-      ctx.lineWidth = 1.5;
+      
       const mp = mousePosRef.current;
+      const circleRadius = 6;
+
+      // Draw line from selected particle to edge of circle (not center)
+      const selectedPos = selectedParticlePos.current;
+      if (selectedPos) {
+        const particleScreen = worldToScreen(selectedPos.x, selectedPos.y);
+        
+        // Calculate direction from particle to mouse to find circle edge
+        const dx = mp.x - particleScreen.x;
+        const dy = mp.y - particleScreen.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Calculate point on circle edge closest to particle
+        const circleEdgeX = mp.x - (dx / distance) * circleRadius;
+        const circleEdgeY = mp.y - (dy / distance) * circleRadius;
+        
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,255,255,1)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(particleScreen.x, particleScreen.y);
+        ctx.lineTo(circleEdgeX, circleEdgeY);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw circle at mouse position with matching style
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,1)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      ctx.arc(mp.x, mp.y, 6, 0, Math.PI * 2);
+      ctx.arc(mp.x, mp.y, circleRadius, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     },
-    [engine]
+    [engine, worldToScreen]
   );
 
   const handlers: ToolHandlers = {
@@ -55,6 +101,7 @@ export function useJointTool(_isActive: boolean) {
       if (bestI !== -1) {
         if (selectedIndexRef.current == null) {
           selectedIndexRef.current = bestI;
+          selectedParticlePos.current = particles[bestI].position;
         } else {
           const a = selectedIndexRef.current;
           const b = bestI;
@@ -84,6 +131,7 @@ export function useJointTool(_isActive: boolean) {
             console.log("📏 Added joint line:", { a, b });
           }
           selectedIndexRef.current = null;
+          selectedParticlePos.current = null;
         }
       }
     },

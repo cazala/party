@@ -21,6 +21,7 @@
 }
 
 .canvas-container {
+  width: calc(100vw - 280px - 320px); /* TODO: Unhardcode this */
   flex: 1;
   background: var(--color-canvas);
   position: relative;
@@ -76,7 +77,7 @@ body {
   .app-content {
     flex-direction: column;
   }
-  
+
   .left-sidebar,
   .right-sidebar {
     width: 100%;
@@ -85,7 +86,7 @@ body {
     border-right: none;
     border-top: 1px solid #333;
   }
-  
+
   .canvas-container {
     height: 50vh;
     order: -1; /* Put canvas first on mobile */
