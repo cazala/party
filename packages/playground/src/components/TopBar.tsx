@@ -2,11 +2,15 @@ import { useCallback } from "react";
 import { RefreshCw, Trash2 } from "lucide-react";
 import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
+import { useJoints } from "../hooks/modules/useJoints";
+import { useLines } from "../hooks/modules/useLines";
 import "./TopBar.css";
 
 export function TopBar() {
   const { isPlaying, play, pause, clear, spawnParticles } = useEngine();
   const { initState } = useInit();
+  const { setJoints } = useJoints();
+  const { setLines } = useLines();
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -21,10 +25,13 @@ export function TopBar() {
   };
 
   const handleReset = useCallback(() => {
+    // Reset joints and lines to empty arrays
+    setJoints([], [], []);
+    setLines([], []);
     // Re-spawn particles using current INIT panel config from Redux
     spawnParticles(initState);
     play();
-  }, [spawnParticles, play, initState]);
+  }, [setJoints, setLines, spawnParticles, play, initState]);
 
   return (
     <div className="top-bar">

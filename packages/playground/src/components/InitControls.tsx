@@ -5,11 +5,15 @@ import { Slider } from "./ui/Slider";
 import { Dropdown } from "./ui/Dropdown";
 import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
+import { useJoints } from "../hooks/modules/useJoints";
+import { useLines } from "../hooks/modules/useLines";
 import { InitVelocityConfig as InitVelocityConfigType } from "../slices/init";
 import "./InitControls.css";
 
 export function InitControls() {
   const { spawnParticles, isInitialized } = useEngine();
+  const { setJoints } = useJoints();
+  const { setLines } = useLines();
   const {
     numParticles,
     shape,
@@ -68,6 +72,24 @@ export function InitControls() {
     });
   }, [
     spawnParticles,
+    numParticles,
+    shape,
+    spacing,
+    particleSize,
+    particleMass,
+    radius,
+    innerRadius,
+    squareSize,
+    cornerRadius,
+    colors,
+    velocityConfig,
+  ]);
+
+  // Reset joints and lines when particle configuration changes (but not when engine changes)
+  useEffect(() => {
+    setJoints([], [], []);
+    setLines([], []);
+  }, [
     numParticles,
     shape,
     spacing,
