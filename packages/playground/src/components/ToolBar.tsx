@@ -69,16 +69,7 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
             <Hand width="16" height="16" />
             <span>Grab</span>
           </button>
-          <button
-            onClick={() => setToolMode("draw")}
-            className={`tool-mode-button tool-mode-sixth ${
-              isDrawMode ? "tool-mode-active" : ""
-            }`}
-            title="Draw"
-          >
-            <Pen width="16" height="16" />
-            <span>Draw</span>
-          </button>
+
           <button
             onClick={() => setToolMode("joint")}
             className={`tool-mode-button tool-mode-seventh ${
@@ -88,6 +79,16 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
           >
             <Link width="16" height="16" />
             <span>Joint</span>
+          </button>
+          <button
+            onClick={() => setToolMode("draw")}
+            className={`tool-mode-button tool-mode-sixth ${
+              isDrawMode ? "tool-mode-active" : ""
+            }`}
+            title="Draw"
+          >
+            <Pen width="16" height="16" />
+            <span>Draw</span>
           </button>
         </div>
       </div>

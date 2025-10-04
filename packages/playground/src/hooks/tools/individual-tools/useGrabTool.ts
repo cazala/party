@@ -121,7 +121,7 @@ export function useGrabTool(isActive: boolean) {
       }
     },
 
-    onMouseUp: async () => {
+    onMouseUp: async (ev) => {
       if (!engine || !isActive || grabbedParticleIndex.current === null) return;
 
       if (isDraggingRef.current) {
@@ -130,8 +130,11 @@ export function useGrabTool(isActive: boolean) {
           particles[grabbedParticleIndex.current] &&
           originalMassRef.current !== null
         ) {
-          // Restore original mass only if it wasn't originally pinned
-          if (originalMassRef.current > 0) {
+          // Check if Ctrl/Cmd is held to keep particle pinned
+          const keepPinned = ev && (ev.ctrlKey || ev.metaKey);
+          
+          // Restore original mass only if it wasn't originally pinned AND Ctrl/Cmd is not held
+          if (originalMassRef.current > 0 && !keepPinned) {
             particles[grabbedParticleIndex.current].mass =
               originalMassRef.current;
           }
@@ -161,8 +164,8 @@ export function useGrabTool(isActive: boolean) {
               y: avgVelY * momentumScale,
             };
 
-            // Apply velocity to particle (only if not originally pinned)
-            if (originalMassRef.current > 0) {
+            // Apply velocity to particle (only if not originally pinned and not keeping pinned)
+            if (originalMassRef.current > 0 && !keepPinned) {
               particles[grabbedParticleIndex.current].velocity = throwVelocity;
             }
           }
