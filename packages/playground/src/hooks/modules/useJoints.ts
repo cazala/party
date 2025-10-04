@@ -5,12 +5,14 @@ import { useEngine } from "../useEngine";
 import { selectModules } from "../../slices/modules";
 import { Joint } from "@cazala/party";
 import {
-  setEnableCollisions as setEnableCollisionsAction,
+  setEnableParticleCollisions as setEnableParticleCollisionsAction,
+  setEnableJointCollisions as setEnableJointCollisionsAction,
   setJoints as setJointsAction,
   setJointsEnabled,
   setMomentum as setMomentumAction,
   setRestitution as setRestitutionAction,
   setSeparation as setSeparationAction,
+  setSteps as setStepsAction,
   setFriction as setFrictionAction,
   selectJoints,
 } from "../../slices/modules/joints";
@@ -24,27 +26,37 @@ export function useJoints() {
   const state = useMemo(() => selectJoints(modulesState), [modulesState]);
 
   // Destructure individual properties
-  const { enabled, enableCollisions, list, momentum, restitution, separation, friction } = state;
+  const { enabled, enableParticleCollisions, enableJointCollisions, list, momentum, restitution, separation, steps, friction } = state;
   const isEnabled = state.enabled;
 
   // Sync Redux state to engine module when they change
   useEffect(() => {
     if (joints) {
       joints.setEnabled(state.enabled);
-      joints.setEnableCollisions(state.enableCollisions ? 1 : 0);
+      joints.setEnableParticleCollisions(state.enableParticleCollisions ? 1 : 0);
+      joints.setEnableJointCollisions(state.enableJointCollisions ? 1 : 0);
       joints.setMomentum(state.momentum);
       joints.setRestitution(state.restitution);
       joints.setSeparation(state.separation);
+      joints.setSteps(state.steps);
       joints.setFriction(state.friction);
       joints.setJoints(state.list);
     }
   }, [joints, state]);
 
 
-  const setEnableCollisions = useCallback(
+  const setEnableParticleCollisions = useCallback(
     (value: boolean) => {
-      dispatch(setEnableCollisionsAction(value));
-      joints?.setEnableCollisions(value ? 1 : 0);
+      dispatch(setEnableParticleCollisionsAction(value));
+      joints?.setEnableParticleCollisions(value ? 1 : 0);
+    },
+    [dispatch, joints]
+  );
+
+  const setEnableJointCollisions = useCallback(
+    (value: boolean) => {
+      dispatch(setEnableJointCollisionsAction(value));
+      joints?.setEnableJointCollisions(value ? 1 : 0);
     },
     [dispatch, joints]
   );
@@ -113,6 +125,14 @@ export function useJoints() {
     [dispatch, joints]
   );
 
+  const setSteps = useCallback(
+    (value: number) => {
+      dispatch(setStepsAction(value));
+      joints?.setSteps(value);
+    },
+    [dispatch, joints]
+  );
+
   const setFriction = useCallback(
     (value: number) => {
       dispatch(setFrictionAction(value));
@@ -124,20 +144,24 @@ export function useJoints() {
   return {
     // Individual state properties
     enabled,
-    enableCollisions,
+    enableParticleCollisions,
+    enableJointCollisions,
     list,
     momentum,
     restitution,
     separation,
+    steps,
     friction,
     isEnabled,
     // Actions
-    setEnableCollisions,
+    setEnableParticleCollisions,
+    setEnableJointCollisions,
     setEnabled,
     setJoints,
     setMomentum,
     setRestitution,
     setSeparation,
+    setSteps,
     setFriction,
     // Helper methods
     addJoint,

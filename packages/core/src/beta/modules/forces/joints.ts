@@ -12,7 +12,8 @@ export const DEFAULT_JOINTS_SEPARATION = 0.5;
 export const DEFAULT_JOINTS_STEPS = 48;
 export const DEFAULT_JOINTS_FRICTION = 0.01;
 export const DEFAULT_JOINTS_MOMENTUM = 0.7;
-export const DEFAULT_JOINTS_ENABLE_COLLISIONS = 1;
+export const DEFAULT_JOINTS_ENABLE_PARTICLE_COLLISIONS = 0;
+export const DEFAULT_JOINTS_ENABLE_JOINT_COLLISIONS = 0;
 
 export interface Joint {
   aIndex: number;
@@ -24,7 +25,8 @@ type JointsInputs = {
   aIndexes: number[];
   bIndexes: number[];
   restLengths: number[];
-  enableCollisions: number;
+  enableParticleCollisions: number;
+  enableJointCollisions: number;
   momentum: number;
   restitution: number; // particle-vs-joint restitution
   separation: number; // joint-joint positional separation strength per iteration
@@ -40,7 +42,8 @@ export class Joints extends Module<"joints", JointsInputs> {
     aIndexes: DataType.ARRAY,
     bIndexes: DataType.ARRAY,
     restLengths: DataType.ARRAY,
-    enableCollisions: DataType.NUMBER,
+    enableParticleCollisions: DataType.NUMBER,
+    enableJointCollisions: DataType.NUMBER,
     momentum: DataType.NUMBER,
     restitution: DataType.NUMBER,
     separation: DataType.NUMBER,
@@ -55,7 +58,8 @@ export class Joints extends Module<"joints", JointsInputs> {
     aIndexes?: number[];
     bIndexes?: number[];
     restLengths?: number[];
-    enableCollisions?: number;
+    enableParticleCollisions?: number;
+    enableJointCollisions?: number;
     momentum?: number;
     restitution?: number;
     separation?: number;
@@ -80,8 +84,11 @@ export class Joints extends Module<"joints", JointsInputs> {
       aIndexes,
       bIndexes,
       restLengths,
-      enableCollisions:
-        opts?.enableCollisions ?? DEFAULT_JOINTS_ENABLE_COLLISIONS,
+      enableParticleCollisions:
+        opts?.enableParticleCollisions ??
+        DEFAULT_JOINTS_ENABLE_PARTICLE_COLLISIONS,
+      enableJointCollisions:
+        opts?.enableJointCollisions ?? DEFAULT_JOINTS_ENABLE_JOINT_COLLISIONS,
       momentum: opts?.momentum ?? DEFAULT_JOINTS_MOMENTUM,
       restitution: opts?.restitution ?? DEFAULT_JOINTS_RESTITUTION,
       separation: opts?.separation ?? DEFAULT_JOINTS_SEPARATION,
@@ -191,12 +198,29 @@ export class Joints extends Module<"joints", JointsInputs> {
     }
   }
 
+  getEnableParticleCollisions() {
+    return this.readValue("enableParticleCollisions");
+  }
+
+  setEnableParticleCollisions(val: number): void {
+    this.write({ enableParticleCollisions: val });
+  }
+
+  getEnableJointCollisions() {
+    return this.readValue("enableJointCollisions");
+  }
+
+  setEnableJointCollisions(val: number): void {
+    this.write({ enableJointCollisions: val });
+  }
+
+  // Legacy method for backward compatibility
   getEnableCollisions() {
-    return this.readValue("enableCollisions");
+    return this.readValue("enableParticleCollisions");
   }
 
   setEnableCollisions(val: number): void {
-    this.write({ enableCollisions: val });
+    this.write({ enableParticleCollisions: val, enableJointCollisions: val });
   }
 
   getMomentum() {
@@ -420,7 +444,7 @@ export class Joints extends Module<"joints", JointsInputs> {
     if (ja == index || jb == index) { hasJoint = true; break; }
   }
   if (${getUniform(
-    "enableCollisions"
+    "enableParticleCollisions"
   )} > 0.0 && ${particleVar}.mass > 0.0 && hasJoint) {
     // Particle vs Joint: find deepest overlap with any segment not incident to this particle
     var bestOverlap: f32 = 0.0;
@@ -470,6 +494,7 @@ export class Joints extends Module<"joints", JointsInputs> {
     }
 
     // Joint vs Joint: for joints incident to this particle, nudge to resolve crossings
+    if (${getUniform("enableJointCollisions")} > 0.0) {
     for (var j3 = 0u; j3 < jointCount; j3++) {
       let a3 = u32(${getUniform("aIndexes", "j3")});
       let b3 = u32(${getUniform("bIndexes", "j3")});
@@ -524,6 +549,7 @@ export class Joints extends Module<"joints", JointsInputs> {
         }
       }
     }
+    }
   }
 }`,
 
@@ -539,7 +565,7 @@ export class Joints extends Module<"joints", JointsInputs> {
     let jb = u32(${getUniform("bIndexes", "jj")});
     if (ja == index || jb == index) { hasJoint = true; break; }
   }
-  if (${getUniform("enableCollisions")} > 0.0) {
+  if (${getUniform("enableParticleCollisions")} > 0.0) {
     // Substep CCD: sweep particle (as a circle of radius r) from previous to current position
     let prevX = ${getState("prevX")};
     let prevY = ${getState("prevY")};
@@ -594,7 +620,7 @@ export class Joints extends Module<"joints", JointsInputs> {
   }
 
   // Joint-segment CCD for joints incident to this particle against other joints
-  if (${getUniform("enableCollisions")} > 0.0 && hasJoint) {
+  if (${getUniform("enableJointCollisions")} > 0.0 && hasJoint) {
     let stepsJS: u32 = max(1u, u32(${getUniform("steps")}));
     for (var j0 = 0u; j0 < jointCount; j0++) {
       let a0 = u32(${getUniform("aIndexes", "j0")});
@@ -742,8 +768,9 @@ export class Joints extends Module<"joints", JointsInputs> {
         }
 
         // Optional collision handling
-        const enableCollisions = input.enableCollisions;
-        if (enableCollisions > 0 && particle.mass > 0) {
+        const enableParticleCollisions = input.enableParticleCollisions;
+        const enableJointCollisions = input.enableJointCollisions;
+        if (enableParticleCollisions > 0 && particle.mass > 0) {
           // Particle vs Joint: deepest overlap
           let bestOverlap = 0;
           let bestNx = 0;
@@ -802,78 +829,80 @@ export class Joints extends Module<"joints", JointsInputs> {
           }
 
           // Joint vs Joint: for joints incident to this particle, nudge on intersection
-          for (let j3 = 0; j3 < count; j3++) {
-            const ia3 = a[j3] >>> 0;
-            const ib3 = b[j3] >>> 0;
-            const isIncident = ia3 === index || ib3 === index;
-            if (!isIncident) continue;
-            const A1 = particles[ia3];
-            const B1 = particles[ib3];
-            if (!A1 || !B1) continue;
-            const x1 = A1.position.x,
-              y1 = A1.position.y;
-            const x2 = B1.position.x,
-              y2 = B1.position.y;
-            for (let k = 0; k < count; k++) {
-              if (k === j3) continue;
-              const ia4 = a[k] >>> 0;
-              const ib4 = b[k] >>> 0;
-              if (ia4 === ia3 || ia4 === ib3 || ib4 === ia3 || ib4 === ib3)
-                continue;
-              // Skip same rigid body using groupIds
-              const gidA = (input.groupIds as number[])[ia3] ?? -1;
-              const gidB = (input.groupIds as number[])[ib3] ?? -1;
-              const gidC = (input.groupIds as number[])[ia4] ?? -1;
-              const gidD = (input.groupIds as number[])[ib4] ?? -1;
-              if (
-                (gidA >= 0 && gidC >= 0 && gidA === gidC) ||
-                (gidA >= 0 && gidD >= 0 && gidA === gidD) ||
-                (gidB >= 0 && gidC >= 0 && gidB === gidC) ||
-                (gidB >= 0 && gidD >= 0 && gidB === gidD)
-              ) {
-                continue;
-              }
-              const A2 = particles[ia4];
-              const B2 = particles[ib4];
-              if (!A2 || !B2) continue;
-              const x3 = A2.position.x,
-                y3 = A2.position.y;
-              const x4 = B2.position.x,
-                y4 = B2.position.y;
-              const dx1 = x2 - x1,
-                dy1 = y2 - y1;
-              const dx2 = x4 - x3,
-                dy2 = y4 - y3;
-              const denom = dx1 * dy2 - dy1 * dx2;
-              if (Math.abs(denom) < 1e-6) continue;
-              const t = ((x3 - x1) * dy2 - (y3 - y1) * dx2) / denom;
-              const u = ((x3 - x1) * dy1 - (y3 - y1) * dx1) / denom;
-              if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-                const m1x = (x1 + x2) * 0.5,
-                  m1y = (y1 + y2) * 0.5;
-                const m2x = (x3 + x4) * 0.5,
-                  m2y = (y3 + y4) * 0.5;
-                let nx = m1x - m2x;
-                let ny = m1y - m2y;
-                const n2 = nx * nx + ny * ny;
-                if (n2 < 1e-6) {
-                  const ang =
-                    (Math.sin(index * 12.9898) -
-                      Math.floor(Math.sin(index * 12.9898))) *
-                    Math.PI *
-                    2;
-                  nx = Math.cos(ang);
-                  ny = Math.sin(ang);
-                } else {
-                  const nlen = Math.sqrt(n2);
-                  nx /= nlen;
-                  ny /= nlen;
+          if (enableJointCollisions > 0) {
+            for (let j3 = 0; j3 < count; j3++) {
+              const ia3 = a[j3] >>> 0;
+              const ib3 = b[j3] >>> 0;
+              const isIncident = ia3 === index || ib3 === index;
+              if (!isIncident) continue;
+              const A1 = particles[ia3];
+              const B1 = particles[ib3];
+              if (!A1 || !B1) continue;
+              const x1 = A1.position.x,
+                y1 = A1.position.y;
+              const x2 = B1.position.x,
+                y2 = B1.position.y;
+              for (let k = 0; k < count; k++) {
+                if (k === j3) continue;
+                const ia4 = a[k] >>> 0;
+                const ib4 = b[k] >>> 0;
+                if (ia4 === ia3 || ia4 === ib3 || ib4 === ia3 || ib4 === ib3)
+                  continue;
+                // Skip same rigid body using groupIds
+                const gidA = (input.groupIds as number[])[ia3] ?? -1;
+                const gidB = (input.groupIds as number[])[ib3] ?? -1;
+                const gidC = (input.groupIds as number[])[ia4] ?? -1;
+                const gidD = (input.groupIds as number[])[ib4] ?? -1;
+                if (
+                  (gidA >= 0 && gidC >= 0 && gidA === gidC) ||
+                  (gidA >= 0 && gidD >= 0 && gidA === gidD) ||
+                  (gidB >= 0 && gidC >= 0 && gidB === gidC) ||
+                  (gidB >= 0 && gidD >= 0 && gidB === gidD)
+                ) {
+                  continue;
                 }
-                const sep = (input.separation as number) ?? 0.12;
-                particle.position.x += nx * sep;
-                particle.position.y += ny * sep;
-                // no velocity impulse; rely on positional nudge and engine iterations
-                break;
+                const A2 = particles[ia4];
+                const B2 = particles[ib4];
+                if (!A2 || !B2) continue;
+                const x3 = A2.position.x,
+                  y3 = A2.position.y;
+                const x4 = B2.position.x,
+                  y4 = B2.position.y;
+                const dx1 = x2 - x1,
+                  dy1 = y2 - y1;
+                const dx2 = x4 - x3,
+                  dy2 = y4 - y3;
+                const denom = dx1 * dy2 - dy1 * dx2;
+                if (Math.abs(denom) < 1e-6) continue;
+                const t = ((x3 - x1) * dy2 - (y3 - y1) * dx2) / denom;
+                const u = ((x3 - x1) * dy1 - (y3 - y1) * dx1) / denom;
+                if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+                  const m1x = (x1 + x2) * 0.5,
+                    m1y = (y1 + y2) * 0.5;
+                  const m2x = (x3 + x4) * 0.5,
+                    m2y = (y3 + y4) * 0.5;
+                  let nx = m1x - m2x;
+                  let ny = m1y - m2y;
+                  const n2 = nx * nx + ny * ny;
+                  if (n2 < 1e-6) {
+                    const ang =
+                      (Math.sin(index * 12.9898) -
+                        Math.floor(Math.sin(index * 12.9898))) *
+                      Math.PI *
+                      2;
+                    nx = Math.cos(ang);
+                    ny = Math.sin(ang);
+                  } else {
+                    const nlen = Math.sqrt(n2);
+                    nx /= nlen;
+                    ny /= nlen;
+                  }
+                  const sep = (input.separation as number) ?? 0.12;
+                  particle.position.x += nx * sep;
+                  particle.position.y += ny * sep;
+                  // no velocity impulse; rely on positional nudge and engine iterations
+                  break;
+                }
               }
             }
           }
@@ -884,8 +913,9 @@ export class Joints extends Module<"joints", JointsInputs> {
       correct: ({ particle, getState, dt, prevPos, particles, input }) => {
         if (dt <= 0) return;
         // Substep CCD on CPU path
-        const enableCollisions = input.enableCollisions as number;
-        if (enableCollisions > 0) {
+        const enableParticleCollisions =
+          input.enableParticleCollisions as number;
+        if (enableParticleCollisions > 0) {
           const a = input.aIndexes;
           const b = input.bIndexes;
           const count = Math.min(a.length, b.length);
@@ -951,7 +981,8 @@ export class Joints extends Module<"joints", JointsInputs> {
         }
 
         // Joint-segment CCD for joints incident to this particle against other joints (CPU)
-        if (enableCollisions > 0) {
+        const enableJointCollisions = input.enableJointCollisions as number;
+        if (enableJointCollisions > 0) {
           const steps = Math.max(
             1,
             Math.min(128, Math.floor((input.steps as number) || 1))

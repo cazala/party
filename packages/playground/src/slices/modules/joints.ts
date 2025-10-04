@@ -1,24 +1,37 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { Joint } from "@cazala/party";
+import {
+  DEFAULT_JOINTS_ENABLE_JOINT_COLLISIONS,
+  DEFAULT_JOINTS_ENABLE_PARTICLE_COLLISIONS,
+  DEFAULT_JOINTS_STEPS,
+  DEFAULT_JOINTS_SEPARATION,
+  DEFAULT_JOINTS_MOMENTUM,
+  DEFAULT_JOINTS_RESTITUTION,
+  Joint,
+  DEFAULT_JOINTS_FRICTION,
+} from "@cazala/party";
 
 export interface JointsModuleState {
   enabled: boolean;
-  enableCollisions: boolean;
+  enableParticleCollisions: boolean;
+  enableJointCollisions: boolean;
   list: Joint[];
   momentum: number;
   restitution: number;
   separation: number;
+  steps: number;
   friction: number;
 }
 
 const initialState: JointsModuleState = {
   enabled: true,
-  enableCollisions: true,
+  enableParticleCollisions: !!DEFAULT_JOINTS_ENABLE_PARTICLE_COLLISIONS,
+  enableJointCollisions: !!DEFAULT_JOINTS_ENABLE_JOINT_COLLISIONS,
   list: [],
-  momentum: 0.7,
-  restitution: 0.9,
-  separation: 0.5,
-  friction: 0.01,
+  momentum: DEFAULT_JOINTS_MOMENTUM,
+  restitution: DEFAULT_JOINTS_RESTITUTION,
+  separation: DEFAULT_JOINTS_SEPARATION,
+  steps: DEFAULT_JOINTS_STEPS,
+  friction: DEFAULT_JOINTS_FRICTION,
 };
 
 export const jointsSlice = createSlice({
@@ -28,8 +41,11 @@ export const jointsSlice = createSlice({
     setEnabled: (state, action: PayloadAction<boolean>) => {
       state.enabled = action.payload;
     },
-    setEnableCollisions: (state, action: PayloadAction<boolean>) => {
-      state.enableCollisions = action.payload;
+    setEnableParticleCollisions: (state, action: PayloadAction<boolean>) => {
+      state.enableParticleCollisions = action.payload;
+    },
+    setEnableJointCollisions: (state, action: PayloadAction<boolean>) => {
+      state.enableJointCollisions = action.payload;
     },
     setMomentum: (state, action: PayloadAction<number>) => {
       state.momentum = Math.max(0, Math.min(1, action.payload)); // Clamp between 0 and 1
@@ -43,6 +59,9 @@ export const jointsSlice = createSlice({
     setSeparation: (state, action: PayloadAction<number>) => {
       state.separation = Math.max(0, Math.min(0.5, action.payload));
     },
+    setSteps: (state, action: PayloadAction<number>) => {
+      state.steps = Math.max(0, Math.min(100, Math.floor(action.payload)));
+    },
     setFriction: (state, action: PayloadAction<number>) => {
       state.friction = Math.max(0, Math.min(1, action.payload));
     },
@@ -54,11 +73,13 @@ export const jointsSlice = createSlice({
 
 export const {
   setEnabled: setJointsEnabled,
-  setEnableCollisions,
+  setEnableParticleCollisions,
+  setEnableJointCollisions,
   setMomentum,
   setJoints,
   setRestitution,
   setSeparation,
+  setSteps,
   setFriction,
   importSettings: importJointsSettings,
 } = jointsSlice.actions;
