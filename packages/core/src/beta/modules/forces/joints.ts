@@ -299,41 +299,116 @@ export class Joints extends Module<"joints", JointsInputs> {
   }
 }`,
 
-      // v1: constrain in per-particle pass, linear scan over joints for simplicity
+      // Constrain: per-particle correction with forward+reverse passes to reduce order bias
       constrain: ({ particleVar, getUniform, getLength }) => `{
   let jointCount = ${getLength("aIndexes")};
   if (jointCount == 0u) { return; }
   
-  // For v1: linear scan joints; future: binary search over sorted aIndexes
-  for (var j = 0u; j < jointCount; j++) {
-    let a = u32(${getUniform("aIndexes", "j")});
-    let b = u32(${getUniform("bIndexes", "j")});
-    let rest = ${getUniform("restLengths", "j")};
-    if (rest <= 0.0) { continue; }
-    var selfIndex = index;
-    var otherIndex = 0xffffffffu;
-    if (a == selfIndex) {
-      otherIndex = b;
-    } else if (b == selfIndex) {
-      otherIndex = a;
+  let forwardFirst = (index & 1u) == 0u;
+  let half: f32 = 0.5;
+  if (forwardFirst) {
+    // Forward pass
+    for (var j = 0u; j < jointCount; j++) {
+      let a = u32(${getUniform("aIndexes", "j")});
+      let b = u32(${getUniform("bIndexes", "j")});
+      let rest = ${getUniform("restLengths", "j")};
+      if (rest <= 0.0) { continue; }
+      var otherIndex: u32 = 0xffffffffu;
+      if (a == index) { otherIndex = b; } else if (b == index) { otherIndex = a; }
+      if (otherIndex == 0xffffffffu) { continue; }
+      var other = particles[otherIndex];
+      if (${particleVar}.mass == 0.0 || other.mass == 0.0) { continue; }
+      let delta = other.position - ${particleVar}.position;
+      let dist2 = dot(delta, delta);
+      if (dist2 < 1e-8) { continue; }
+      let dist = sqrt(dist2);
+      let dir = delta / dist;
+      let diff = dist - rest;
+      if (abs(diff) < 1e-6) { continue; }
+      let invM_self = select(0.0, 1.0 / ${particleVar}.mass, ${particleVar}.mass > 0.0);
+      let invM_other = select(0.0, 1.0 / other.mass, other.mass > 0.0);
+      let invSum = invM_self + invM_other;
+      if (invSum <= 0.0) { continue; }
+      let corr = dir * (diff * (invM_self / invSum)) * half;
+      ${particleVar}.position = ${particleVar}.position + corr;
     }
-    if (otherIndex == 0xffffffffu) { continue; }
-    var other = particles[otherIndex];
-    // Skip removed
-    if (${particleVar}.mass == 0.0 || other.mass == 0.0) { continue; }
-    let delta = other.position - ${particleVar}.position;
-    let dist2 = dot(delta, delta);
-    if (dist2 < 1e-8) { continue; }
-    let dist = sqrt(dist2);
-    let dir = delta / dist;
-    let diff = dist - rest;
-    if (abs(diff) < 1e-6) { continue; }
-    let invM_self = select(0.0, 1.0 / ${particleVar}.mass, ${particleVar}.mass > 0.0);
-    let invM_other = select(0.0, 1.0 / other.mass, other.mass > 0.0);
-    let invSum = invM_self + invM_other;
-    if (invSum <= 0.0) { continue; }
-    let corr = dir * (diff * (invM_self / invSum));
-    ${particleVar}.position = ${particleVar}.position + corr;
+    // Reverse pass
+    for (var j2 = jointCount; j2 > 0u; j2--) {
+      let j = j2 - 1u;
+      let a = u32(${getUniform("aIndexes", "j")});
+      let b = u32(${getUniform("bIndexes", "j")});
+      let rest = ${getUniform("restLengths", "j")};
+      if (rest <= 0.0) { continue; }
+      var otherIndex: u32 = 0xffffffffu;
+      if (a == index) { otherIndex = b; } else if (b == index) { otherIndex = a; }
+      if (otherIndex == 0xffffffffu) { continue; }
+      var other = particles[otherIndex];
+      if (${particleVar}.mass == 0.0 || other.mass == 0.0) { continue; }
+      let delta = other.position - ${particleVar}.position;
+      let dist2 = dot(delta, delta);
+      if (dist2 < 1e-8) { continue; }
+      let dist = sqrt(dist2);
+      let dir = delta / dist;
+      let diff = dist - rest;
+      if (abs(diff) < 1e-6) { continue; }
+      let invM_self = select(0.0, 1.0 / ${particleVar}.mass, ${particleVar}.mass > 0.0);
+      let invM_other = select(0.0, 1.0 / other.mass, other.mass > 0.0);
+      let invSum = invM_self + invM_other;
+      if (invSum <= 0.0) { continue; }
+      let corr = dir * (diff * (invM_self / invSum)) * half;
+      ${particleVar}.position = ${particleVar}.position + corr;
+    }
+  } else {
+    // Reverse then forward
+    for (var j2 = jointCount; j2 > 0u; j2--) {
+      let j = j2 - 1u;
+      let a = u32(${getUniform("aIndexes", "j")});
+      let b = u32(${getUniform("bIndexes", "j")});
+      let rest = ${getUniform("restLengths", "j")};
+      if (rest <= 0.0) { continue; }
+      var otherIndex: u32 = 0xffffffffu;
+      if (a == index) { otherIndex = b; } else if (b == index) { otherIndex = a; }
+      if (otherIndex == 0xffffffffu) { continue; }
+      var other = particles[otherIndex];
+      if (${particleVar}.mass == 0.0 || other.mass == 0.0) { continue; }
+      let delta = other.position - ${particleVar}.position;
+      let dist2 = dot(delta, delta);
+      if (dist2 < 1e-8) { continue; }
+      let dist = sqrt(dist2);
+      let dir = delta / dist;
+      let diff = dist - rest;
+      if (abs(diff) < 1e-6) { continue; }
+      let invM_self = select(0.0, 1.0 / ${particleVar}.mass, ${particleVar}.mass > 0.0);
+      let invM_other = select(0.0, 1.0 / other.mass, other.mass > 0.0);
+      let invSum = invM_self + invM_other;
+      if (invSum <= 0.0) { continue; }
+      let corr = dir * (diff * (invM_self / invSum)) * half;
+      ${particleVar}.position = ${particleVar}.position + corr;
+    }
+    for (var j = 0u; j < jointCount; j++) {
+      let a = u32(${getUniform("aIndexes", "j")});
+      let b = u32(${getUniform("bIndexes", "j")});
+      let rest = ${getUniform("restLengths", "j")};
+      if (rest <= 0.0) { continue; }
+      var otherIndex: u32 = 0xffffffffu;
+      if (a == index) { otherIndex = b; } else if (b == index) { otherIndex = a; }
+      if (otherIndex == 0xffffffffu) { continue; }
+      var other = particles[otherIndex];
+      if (${particleVar}.mass == 0.0 || other.mass == 0.0) { continue; }
+      let delta = other.position - ${particleVar}.position;
+      let dist2 = dot(delta, delta);
+      if (dist2 < 1e-8) { continue; }
+      let dist = sqrt(dist2);
+      let dir = delta / dist;
+      let diff = dist - rest;
+      if (abs(diff) < 1e-6) { continue; }
+      let invM_self = select(0.0, 1.0 / ${particleVar}.mass, ${particleVar}.mass > 0.0);
+      let invM_other = select(0.0, 1.0 / other.mass, other.mass > 0.0);
+      let invSum = invM_self + invM_other;
+      if (invSum <= 0.0) { continue; }
+      let corr = dir * (diff * (invM_self / invSum)) * half;
+      ${particleVar}.position = ${particleVar}.position + corr;
+    }
   }
 
   // Optional collision handling with joints (particle vs joint, joint vs joint)
@@ -621,38 +696,49 @@ export class Joints extends Module<"joints", JointsInputs> {
         }
       },
 
-      // Force part: apply distance constraints with inverse-mass split
+      // Force part: per-particle two-pass correction (forward + reverse) to reduce order bias
       constrain: ({ particle, index, particles, input }) => {
         if (particle.mass === 0) return;
         const a = input.aIndexes;
         const b = input.bIndexes;
         const rest = input.restLengths;
         const count = Math.min(a.length, b.length, rest.length);
-        for (let j = 0; j < count; j++) {
+        const half = 0.5;
+        const forwardFirst = (index & 1) === 0;
+
+        const applyForJ = (j: number) => {
           const ia = a[j] >>> 0;
           const ib = b[j] >>> 0;
-          if (ia !== index && ib !== index) continue;
+          if (ia !== index && ib !== index) return;
           const otherIndex = ia === index ? ib : ia;
           const other = particles[otherIndex];
-          if (!other) continue;
-          if (other.mass === 0) continue; // removed
+          if (!other) return;
+          if (other.mass === 0 || particle.mass === 0) return; // immovable or removed
           const dx = other.position.x - particle.position.x;
           const dy = other.position.y - particle.position.y;
           const dist2 = dx * dx + dy * dy;
-          if (dist2 < 1e-8) continue;
+          if (dist2 < 1e-8) return;
           const dist = Math.sqrt(dist2);
           const rl = rest[j] ?? dist;
           const diff = dist - rl;
-          if (Math.abs(diff) < 1e-6) continue;
+          if (Math.abs(diff) < 1e-6) return;
           const invM_self = particle.mass > 0 ? 1 / particle.mass : 0;
           const invM_other = other.mass > 0 ? 1 / other.mass : 0;
           const invSum = invM_self + invM_other;
-          if (invSum <= 0) continue; // both pinned
+          if (invSum <= 0) return; // both pinned
           const nx = dx / dist;
           const ny = dy / dist;
-          const corrMag = diff * (invM_self / invSum);
+          const corrMag = diff * (invM_self / invSum) * half;
           particle.position.x += nx * corrMag;
           particle.position.y += ny * corrMag;
+        };
+
+        if (forwardFirst) {
+          for (let j = 0; j < count; j++) applyForJ(j);
+          for (let j = count - 1; j >= 0; j--) applyForJ(j);
+        } else {
+          for (let j = count - 1; j >= 0; j--) applyForJ(j);
+          for (let j = 0; j < count; j++) applyForJ(j);
         }
 
         // Optional collision handling
