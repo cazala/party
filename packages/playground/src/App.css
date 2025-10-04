@@ -58,6 +58,10 @@
   cursor: none; /* Hide cursor when spawn tool is active, overlay will show preview */
 }
 
+#canvas.draw-tool {
+  cursor: crosshair; /* Show crosshair cursor for precise drawing */
+}
+
 .right-sidebar {
   width: 320px;
   background: var(--color-panel);

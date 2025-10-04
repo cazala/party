@@ -1,4 +1,4 @@
-import { MousePointer, Plus, Minus, Pin, Link, Hand } from "lucide-react";
+import { MousePointer, Plus, Minus, Pin, Link, Hand, Pen } from "lucide-react";
 import { useTools } from "../hooks/useTools";
 
 import "./ToolBar.css";
@@ -11,6 +11,7 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
     isPinMode,
     isJointMode,
     isGrabMode,
+    isDrawMode,
     setToolMode,
   } = useTools();
 
@@ -69,8 +70,18 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
             <span>Grab</span>
           </button>
           <button
-            onClick={() => setToolMode("joint")}
+            onClick={() => setToolMode("draw")}
             className={`tool-mode-button tool-mode-sixth ${
+              isDrawMode ? "tool-mode-active" : ""
+            }`}
+            title="Draw"
+          >
+            <Pen width="16" height="16" />
+            <span>Draw</span>
+          </button>
+          <button
+            onClick={() => setToolMode("joint")}
+            className={`tool-mode-button tool-mode-seventh ${
               isJointMode ? "tool-mode-active" : ""
             }`}
             title="Joint"

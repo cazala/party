@@ -12,6 +12,7 @@ import { useRemoveTool } from "./individual-tools/useRemoveTool";
 import { useJointTool } from "./individual-tools/useJointTool";
 import { usePinTool } from "./individual-tools/usePinTool";
 import { useGrabTool } from "./individual-tools/useGrabTool";
+import { useDrawTool } from "./individual-tools/useDrawTool";
 import { useEmitterTool } from "./individual-tools/useEmitterTool";
 
 export function useTools(): UseToolsReturn {
@@ -26,6 +27,7 @@ export function useTools(): UseToolsReturn {
   const jointTool = useJointTool(toolManager.isJointMode);
   const pinTool = usePinTool(toolManager.isPinMode);
   const grabTool = useGrabTool(toolManager.isGrabMode);
+  const drawTool = useDrawTool(toolManager.isDrawMode);
   const emitterTool = useEmitterTool(toolManager.isEmitterMode);
 
   // Create tool handlers map
@@ -36,6 +38,7 @@ export function useTools(): UseToolsReturn {
     joint: jointTool.handlers,
     pin: pinTool.handlers,
     grab: grabTool.handlers,
+    draw: drawTool.handlers,
     emitter: emitterTool.handlers,
   };
 
@@ -77,6 +80,9 @@ export function useTools(): UseToolsReturn {
         case "grab":
           grabTool.renderOverlay(ctx, canvasSize);
           break;
+        case "draw":
+          drawTool.renderOverlay(ctx, canvasSize);
+          break;
         case "emitter":
           emitterTool.renderOverlay(ctx, canvasSize);
           break;
@@ -94,20 +100,46 @@ export function useTools(): UseToolsReturn {
       jointTool.renderOverlay,
       pinTool.renderOverlay,
       grabTool.renderOverlay,
+      drawTool.renderOverlay,
       emitterTool.renderOverlay,
     ]
   );
+
+  // Create tool-aware overlay functions that only delegate to spawn tool in spawn mode
+  const updateMousePosition = useCallback((mouseX: number, mouseY: number) => {
+    if (toolManager.isSpawnMode) {
+      spawnTool.updateMousePosition(mouseX, mouseY);
+    }
+  }, [toolManager.isSpawnMode, spawnTool.updateMousePosition]);
+
+  const startDrag = useCallback((mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed?: boolean) => {
+    if (toolManager.isSpawnMode) {
+      spawnTool.startDrag(mouseX, mouseY, ctrlPressed, shiftPressed);
+    }
+  }, [toolManager.isSpawnMode, spawnTool.startDrag]);
+
+  const updateDrag = useCallback((mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed?: boolean) => {
+    if (toolManager.isSpawnMode) {
+      spawnTool.updateDrag(mouseX, mouseY, ctrlPressed, shiftPressed);
+    }
+  }, [toolManager.isSpawnMode, spawnTool.updateDrag]);
+
+  const endDrag = useCallback(() => {
+    if (toolManager.isSpawnMode) {
+      spawnTool.endDrag();
+    }
+  }, [toolManager.isSpawnMode, spawnTool.endDrag]);
 
   return {
     // Tool mode management from toolManager
     ...toolManager,
 
-    // Overlay functions - delegate to spawn tool for now (maintains compatibility)
+    // Overlay functions - now tool-aware
     renderOverlay,
-    updateMousePosition: spawnTool.updateMousePosition,
-    startDrag: spawnTool.startDrag,
-    updateDrag: spawnTool.updateDrag,
-    endDrag: spawnTool.endDrag,
+    updateMousePosition,
+    startDrag,
+    updateDrag,
+    endDrag,
     
     // Grab tool specific state
     isGrabbing: grabTool.isGrabbing,

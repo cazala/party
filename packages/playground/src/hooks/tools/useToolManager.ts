@@ -11,6 +11,7 @@ import {
   selectIsJointMode,
   selectIsGrabMode,
   selectIsPinMode,
+  selectIsDrawMode,
   selectIsEmitterMode,
   selectIsCursorMode,
   ToolMode,
@@ -26,6 +27,7 @@ export function useToolManager() {
   const isJointMode = useAppSelector(selectIsJointMode);
   const isGrabMode = useAppSelector(selectIsGrabMode);
   const isPinMode = useAppSelector(selectIsPinMode);
+  const isDrawMode = useAppSelector(selectIsDrawMode);
   const isEmitterMode = useAppSelector(selectIsEmitterMode);
   const isCursorMode = useAppSelector(selectIsCursorMode);
 
@@ -53,6 +55,7 @@ export function useToolManager() {
     isJointMode,
     isGrabMode,
     isPinMode,
+    isDrawMode,
     isEmitterMode,
     isCursorMode,
 

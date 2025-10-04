@@ -52,23 +52,8 @@
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-.tool-mode-first {
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.tool-mode-second {
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.tool-mode-third {
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.tool-mode-fourth {
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.tool-mode-fifth {
+/* Add right border to all buttons except the last one */
+.tool-mode-button:not(:last-child) {
   border-right: 1px solid rgba(255, 255, 255, 0.15);
 }
 
