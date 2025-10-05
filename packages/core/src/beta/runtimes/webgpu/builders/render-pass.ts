@@ -38,7 +38,11 @@ function makeGetUniformExpr<Inputs extends Record<string, number | number[]>>(
     if (moduleInputs[id] === DataType.ARRAY) {
       if (index !== undefined) {
         // Use combined array with offset
-        const offsetExpr = mapping.offsetExpr?.replace(`${moduleName}_uniforms`, `module_uniforms`) || "0u";
+        const offsetExpr =
+          mapping.offsetExpr?.replace(
+            `${moduleName}_uniforms`,
+            `module_uniforms`
+          ) || "0u";
         return `${moduleName}_arrays[u32(${offsetExpr}) + u32(${index})]`;
       } else {
         // Return the array variable name itself for direct access
@@ -206,9 +210,10 @@ export function buildFullscreenPassWGSL<
     .filter(([_, type]) => type === DataType.ARRAY)
     .map(([key, _]) => key);
 
-  const arrayDeclarations = arrayInputs.length > 0 
-    ? `@group(0) @binding(5) var<storage, read> ${moduleName}_arrays: array<f32>;`
-    : "";
+  const arrayDeclarations =
+    arrayInputs.length > 0
+      ? `@group(0) @binding(5) var<storage, read> ${moduleName}_arrays: array<f32>;`
+      : "";
 
   const code = `
 struct Particle {
@@ -224,7 +229,7 @@ struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: v
 @vertex fn vs_main(@builtin(vertex_index) i: u32, @builtin(instance_index) inst: u32) -> VertexOutput {
   var out: VertexOutput;
   let qpos = array<vec2<f32>,4>(vec2<f32>(-1,-1),vec2<f32>(1,-1),vec2<f32>(-1,1),vec2<f32>(1,1));
-  let quv  = array<vec2<f32>,4>(vec2<f32>(0,0),vec2<f32>(1,0),vec2<f32>(0,1),vec2<f32>(1,1));
+  let quv  = array<vec2<f32>,4>(vec2<f32>(0,1),vec2<f32>(1,1),vec2<f32>(0,0),vec2<f32>(1,0));
   // Provide common inputs for hook body
   let instance_index = inst;
   var particle: Particle = ${
@@ -286,9 +291,10 @@ export function buildComputeImagePassWGSL<
     .filter(([_, type]) => type === DataType.ARRAY)
     .map(([key, _]) => key);
 
-  const arrayDeclarations = arrayInputs.length > 0 
-    ? `@group(0) @binding(3) var<storage, read> ${moduleName}_arrays: array<f32>;`
-    : "";
+  const arrayDeclarations =
+    arrayInputs.length > 0
+      ? `@group(0) @binding(3) var<storage, read> ${moduleName}_arrays: array<f32>;`
+      : "";
 
   // kernel
   const kernelBody = pass.kernel({

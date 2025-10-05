@@ -16,7 +16,7 @@ import {
   DataType,
 } from "../../module";
 
-export const DEFAULT_TRAILS_TRAIL_DECAY = 2;
+export const DEFAULT_TRAILS_TRAIL_DECAY = 10;
 export const DEFAULT_TRAILS_TRAIL_DIFFUSE = 0.0;
 
 type TrailsInputs = {

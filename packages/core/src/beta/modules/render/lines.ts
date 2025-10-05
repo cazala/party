@@ -36,17 +36,17 @@ export class Lines extends Module<"lines", LinesInputs> {
     lineWidth?: number;
   }) {
     super();
-    
+
     // Handle lines array if provided, otherwise use separate arrays
     let aIndexes: number[], bIndexes: number[];
     if (opts?.lines) {
-      aIndexes = opts.lines.map(l => l.aIndex);
-      bIndexes = opts.lines.map(l => l.bIndex);
+      aIndexes = opts.lines.map((l) => l.aIndex);
+      bIndexes = opts.lines.map((l) => l.bIndex);
     } else {
       aIndexes = opts?.aIndexes ?? [];
       bIndexes = opts?.bIndexes ?? [];
     }
-    
+
     this.write({
       aIndexes,
       bIndexes,
@@ -58,7 +58,7 @@ export class Lines extends Module<"lines", LinesInputs> {
   getLines(): Line[] {
     const aIndexes = this.readArray("aIndexes") as number[];
     const bIndexes = this.readArray("bIndexes") as number[];
-    
+
     const lines: Line[] = [];
     const length = Math.min(aIndexes.length, bIndexes.length);
     for (let i = 0; i < length; i++) {
@@ -72,24 +72,21 @@ export class Lines extends Module<"lines", LinesInputs> {
 
   setLines(lines: Line[]): void;
   setLines(aIndexes: number[], bIndexes: number[]): void;
-  setLines(
-    linesOrAIndexes: Line[] | number[],
-    bIndexes?: number[]
-  ): void {
+  setLines(linesOrAIndexes: Line[] | number[], bIndexes?: number[]): void {
     let aIndexes: number[], bIndexesArray: number[];
-    
+
     // Check if first argument is Line[] or number[]
     if (bIndexes === undefined) {
       // First overload: Line[]
       const lines = linesOrAIndexes as Line[];
-      aIndexes = lines.map(l => l.aIndex);
-      bIndexesArray = lines.map(l => l.bIndex);
+      aIndexes = lines.map((l) => l.aIndex);
+      bIndexesArray = lines.map((l) => l.bIndex);
     } else {
       // Second overload: separate arrays
       aIndexes = linesOrAIndexes as number[];
       bIndexesArray = bIndexes;
     }
-    
+
     this.write({ aIndexes, bIndexes: bIndexesArray });
   }
 
@@ -99,19 +96,20 @@ export class Lines extends Module<"lines", LinesInputs> {
 
   add(line: Line): void {
     const currentLines = this.getLines();
-    
+
     // Normalize line (ensure aIndex <= bIndex) and dedupe
     let { aIndex, bIndex } = line;
     if (aIndex === bIndex) return; // Skip self-lines
     if (bIndex < aIndex) [aIndex, bIndex] = [bIndex, aIndex];
-    
+
     // Check for duplicates
     for (const existing of currentLines) {
       let { aIndex: existingA, bIndex: existingB } = existing;
-      if (existingB < existingA) [existingA, existingB] = [existingB, existingA];
+      if (existingB < existingA)
+        [existingA, existingB] = [existingB, existingA];
       if (existingA === aIndex && existingB === bIndex) return;
     }
-    
+
     // Add the line
     currentLines.push({ aIndex, bIndex });
     this.setLines(currentLines);
@@ -119,18 +117,19 @@ export class Lines extends Module<"lines", LinesInputs> {
 
   remove(aIndex: number, bIndex: number): void {
     const currentLines = this.getLines();
-    
+
     // Normalize indices for comparison
-    let searchA = aIndex, searchB = bIndex;
+    let searchA = aIndex,
+      searchB = bIndex;
     if (searchB < searchA) [searchA, searchB] = [searchB, searchA];
-    
+
     // Find and remove the line (works with flipped indices too)
-    const filteredLines = currentLines.filter(line => {
+    const filteredLines = currentLines.filter((line) => {
       let { aIndex: lineA, bIndex: lineB } = line;
       if (lineB < lineA) [lineA, lineB] = [lineB, lineA];
       return !(lineA === searchA && lineB === searchB);
     });
-    
+
     this.setLines(filteredLines);
   }
 
@@ -149,7 +148,7 @@ export class Lines extends Module<"lines", LinesInputs> {
   let screen_pos = uv * render_uniforms.canvas_size;
   let world_pos = vec2<f32>(
     (screen_pos.x - render_uniforms.canvas_size.x * 0.5) / render_uniforms.zoom + render_uniforms.camera_position.x,
-    -(screen_pos.y - render_uniforms.canvas_size.y * 0.5) / render_uniforms.zoom + render_uniforms.camera_position.y
+    (screen_pos.y - render_uniforms.canvas_size.y * 0.5) / render_uniforms.zoom + render_uniforms.camera_position.y
   );
   
   // Start with existing scene color
