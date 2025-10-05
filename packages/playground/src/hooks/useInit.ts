@@ -13,6 +13,7 @@ import {
   setCornerRadius,
   setColors,
   updateVelocityConfig,
+  setGridJoints,
   selectInitState,
   InitState,
   InitVelocityConfig,
@@ -35,6 +36,7 @@ export function useInit() {
     cornerRadius,
     colors,
     velocityConfig,
+    gridJoints,
   } = initState;
 
   // Setters - wrapped dispatch functions
@@ -115,6 +117,13 @@ export function useInit() {
     [dispatch]
   );
 
+  const setGridJointsValue = useCallback(
+    (value: boolean) => {
+      dispatch(setGridJoints(value));
+    },
+    [dispatch]
+  );
+
   return {
     // State values (getters)
     numParticles,
@@ -128,6 +137,7 @@ export function useInit() {
     cornerRadius,
     colors,
     velocityConfig,
+    gridJoints,
 
     // Full state object for convenience
     initState,
@@ -144,5 +154,6 @@ export function useInit() {
     setCornerRadius: setCornerRadiusValue,
     setColors: setColorsValue,
     updateVelocityConfig: updateVelocityConfigValue,
+    setGridJoints: setGridJointsValue,
   };
 }

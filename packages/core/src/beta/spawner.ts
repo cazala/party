@@ -1,5 +1,5 @@
 /**
- * WebGPUSpawner
+ * Spawner
  *
  * Utility for generating initial `WebGPUParticle[]` configurations for common
  * shapes (grid, random, circle, donut, square) with optional initial velocity
@@ -8,7 +8,7 @@
  */
 import { IParticle } from "./interfaces";
 
-export type WebGPUVelocityDirection =
+export type VelocityDirection =
   | "random"
   | "in"
   | "out"
@@ -16,13 +16,13 @@ export type WebGPUVelocityDirection =
   | "clockwise"
   | "counter-clockwise";
 
-export interface WebGPUVelocityConfig {
+export interface VelocityConfig {
   speed: number;
-  direction: WebGPUVelocityDirection;
+  direction: VelocityDirection;
   angle?: number; // radians for custom
 }
 
-export interface WebGPUSpawnOptions {
+export interface SpawnOptions {
   count: number;
   shape: "grid" | "random" | "circle" | "donut" | "square";
   center: { x: number; y: number };
@@ -35,13 +35,13 @@ export interface WebGPUSpawnOptions {
   size?: number; // particle size
   mass?: number; // particle mass
   bounds?: { width: number; height: number }; // random
-  velocity?: WebGPUVelocityConfig;
+  velocity?: VelocityConfig;
 }
 
 function calculateVelocity(
   position: { x: number; y: number },
   center: { x: number; y: number },
-  cfg?: WebGPUVelocityConfig
+  cfg?: VelocityConfig
 ): { vx: number; vy: number } {
   if (!cfg || cfg.speed === 0) return { vx: 0, vy: 0 };
 
@@ -84,8 +84,8 @@ function calculateVelocity(
   return { vx: speed * Math.cos(angle), vy: speed * Math.sin(angle) };
 }
 
-export class WebGPUSpawner {
-  initParticles(options: WebGPUSpawnOptions): IParticle[] {
+export class Spawner {
+  initParticles(options: SpawnOptions): IParticle[] {
     const {
       count,
       shape,

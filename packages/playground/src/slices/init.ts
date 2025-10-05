@@ -43,6 +43,7 @@ const initialState: InitState = {
     direction: DEFAULT_VELOCITY_DIRECTION,
     angle: DEFAULT_VELOCITY_ANGLE,
   },
+  gridJoints: false,
 };
 
 export const initSlice = createSlice({
@@ -91,6 +92,9 @@ export const initSlice = createSlice({
         ...action.payload,
       };
     },
+    setGridJoints: (state, action: PayloadAction<boolean>) => {
+      state.gridJoints = action.payload;
+    },
     setState: (state, action: PayloadAction<Partial<InitState>>) => {
       Object.assign(state, action.payload);
     },
@@ -111,6 +115,7 @@ export const {
   setColors,
   setVelocityConfig,
   updateVelocityConfig,
+  setGridJoints,
   setState,
   resetToDefaults,
 } = initSlice.actions;
@@ -130,3 +135,5 @@ export const selectParticleMass = (state: { init: InitState }) =>
 export const selectColors = (state: { init: InitState }) => state.init.colors;
 export const selectVelocityConfig = (state: { init: InitState }) =>
   state.init.velocityConfig;
+export const selectGridJoints = (state: { init: InitState }) =>
+  state.init.gridJoints;

@@ -3,6 +3,7 @@ import { MultiColorPicker } from "./ui/MultiColorPicker";
 import { calculateMassFromSize } from "../utils/particle";
 import { Slider } from "./ui/Slider";
 import { Dropdown } from "./ui/Dropdown";
+import { Checkbox } from "./ui/Checkbox";
 import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
 import { useJoints } from "../hooks/modules/useJoints";
@@ -12,8 +13,12 @@ import "./InitControls.css";
 
 export function InitControls() {
   const { spawnParticles, isInitialized } = useEngine();
-  const { removeAllJoints } = useJoints();
-  const { removeAllLines } = useLines();
+  const {
+    removeAllJoints,
+    setJoints,
+    setEnabled: setJointsEnabled,
+  } = useJoints();
+  const { removeAllLines, setLines, setEnabled: setLinesEnabled } = useLines();
   const {
     numParticles,
     shape,
@@ -26,6 +31,7 @@ export function InitControls() {
     cornerRadius,
     colors,
     velocityConfig,
+    gridJoints: joints,
     setNumParticles,
     setSpawnShape,
     setSpacing,
@@ -37,6 +43,7 @@ export function InitControls() {
     setCornerRadius,
     setColors,
     updateVelocityConfig,
+    setGridJoints,
     initState,
   } = useInit();
 
@@ -69,6 +76,7 @@ export function InitControls() {
       squareSize,
       cornerRadius,
       particleMass,
+      gridJoints: joints,
     });
   }, [
     spawnParticles,
@@ -83,6 +91,7 @@ export function InitControls() {
     cornerRadius,
     colors,
     velocityConfig,
+    joints,
   ]);
 
   // Reset joints and lines when particle configuration changes (but not when engine changes)
@@ -103,6 +112,66 @@ export function InitControls() {
     cornerRadius,
     colors,
     velocityConfig,
+    joints,
+  ]);
+
+  // Create grid joints after particles are spawned
+  useEffect(() => {
+    if (joints && shape === "grid") {
+      // Use a timeout to ensure particles are set in the engine first
+      const timeout = setTimeout(() => {
+        setJointsEnabled(true);
+        setLinesEnabled(true);
+
+        const cols = Math.ceil(Math.sqrt(numParticles));
+        const rows = Math.ceil(numParticles / cols);
+
+        const jointsToCreate = [];
+        const linesToCreate = [];
+
+        for (let i = 0; i < numParticles; i++) {
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+
+          // Connect to right neighbor
+          if (col < cols - 1 && i + 1 < numParticles) {
+            const rightIndex = i + 1;
+            const restLength = spacing;
+            jointsToCreate.push({ aIndex: i, bIndex: rightIndex, restLength });
+            linesToCreate.push({ aIndex: i, bIndex: rightIndex });
+          }
+
+          // Connect to bottom neighbor
+          if (row < rows - 1) {
+            const bottomIndex = i + cols;
+            if (bottomIndex < numParticles) {
+              const restLength = spacing;
+              jointsToCreate.push({
+                aIndex: i,
+                bIndex: bottomIndex,
+                restLength,
+              });
+              linesToCreate.push({ aIndex: i, bIndex: bottomIndex });
+            }
+          }
+        }
+
+        // Set all joints and lines at once
+        setJoints(jointsToCreate);
+        setLines(linesToCreate);
+      }, 100); // Small delay to ensure particles are spawned
+
+      return () => clearTimeout(timeout);
+    }
+  }, [
+    joints,
+    shape,
+    numParticles,
+    spacing,
+    setJoints,
+    setLines,
+    setJointsEnabled,
+    setLinesEnabled,
   ]);
 
   const handleSpawnChange = (
@@ -192,12 +261,19 @@ export function InitControls() {
         ]}
       />
       {shape === "grid" && (
-        <Slider
-          label="Spacing"
-          value={spacing}
-          min={particleSize * 2}
-          onChange={(value) => handleSpawnChange({ newSpacing: value })}
-        />
+        <>
+          <Slider
+            label="Spacing"
+            value={spacing}
+            min={particleSize * 2}
+            onChange={(value) => handleSpawnChange({ newSpacing: value })}
+          />
+          <Checkbox
+            label="Joints"
+            checked={joints}
+            onChange={(checked) => setGridJoints(checked)}
+          />
+        </>
       )}
 
       {shape === "donut" && (

@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import type { Engine } from "@cazala/party";
-import { WebGPUSpawner } from "@cazala/party";
+import { Spawner } from "@cazala/party";
 
 export type SpawnParticlesConfig = {
   numParticles: number;
@@ -24,6 +24,7 @@ export type SpawnParticlesConfig = {
   squareSize?: number;
   cornerRadius?: number;
   particleMass?: number;
+  gridJoints?: boolean;
 };
 
 export interface EngineState {
@@ -341,7 +342,7 @@ export const spawnParticlesThunk = createAsyncThunk(
 
     engine.clear();
 
-    const spawner = new WebGPUSpawner();
+    const spawner = new Spawner();
 
     // Get camera and bounds info for spawning
     const cam = engine.getCamera();
