@@ -13,6 +13,7 @@ import { useJointTool } from "./individual-tools/useJointTool";
 import { usePinTool } from "./individual-tools/usePinTool";
 import { useGrabTool } from "./individual-tools/useGrabTool";
 import { useDrawTool } from "./individual-tools/useDrawTool";
+import { useShapeTool } from "./individual-tools/useShapeTool";
 import { useEmitterTool } from "./individual-tools/useEmitterTool";
 
 export function useTools(): UseToolsReturn {
@@ -28,6 +29,7 @@ export function useTools(): UseToolsReturn {
   const pinTool = usePinTool(toolManager.isPinMode);
   const grabTool = useGrabTool(toolManager.isGrabMode);
   const drawTool = useDrawTool(toolManager.isDrawMode);
+  const shapeTool = useShapeTool(toolManager.isShapeMode);
   const emitterTool = useEmitterTool(toolManager.isEmitterMode);
 
   // Create tool handlers map
@@ -39,6 +41,7 @@ export function useTools(): UseToolsReturn {
     pin: pinTool.handlers,
     grab: grabTool.handlers,
     draw: drawTool.handlers,
+    shape: shapeTool.handlers,
     emitter: emitterTool.handlers,
   };
 
@@ -83,6 +86,9 @@ export function useTools(): UseToolsReturn {
         case "draw":
           drawTool.renderOverlay(ctx, canvasSize);
           break;
+        case "shape":
+          shapeTool.renderOverlay(ctx, canvasSize);
+          break;
         case "emitter":
           emitterTool.renderOverlay(ctx, canvasSize);
           break;
@@ -101,6 +107,7 @@ export function useTools(): UseToolsReturn {
       pinTool.renderOverlay,
       grabTool.renderOverlay,
       drawTool.renderOverlay,
+      shapeTool.renderOverlay,
       emitterTool.renderOverlay,
     ]
   );
