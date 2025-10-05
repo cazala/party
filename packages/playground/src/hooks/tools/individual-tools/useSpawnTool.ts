@@ -36,18 +36,14 @@ interface SpawnToolState extends ToolState {
 }
 
 export function useSpawnTool(isActive: boolean) {
-  const {
-    screenToWorld,
-    addParticle,
-    zoom,
-  } = useEngine();
+  const { screenToWorld, addParticle, zoom } = useEngine();
   const { particleSize, colors } = useInit();
 
   // Tool-specific state
   const state = useRef<SpawnToolState>({
     isActive,
     mousePosition: { x: 0, y: 0 },
-    
+
     // Mouse tracking
     mouseX: 0,
     mouseY: 0,
@@ -228,11 +224,7 @@ export function useSpawnTool(isActive: boolean) {
         }
       }
 
-      if (
-        e.key === "Escape" &&
-        isActive &&
-        state.current.dragStartTime > 0
-      ) {
+      if (e.key === "Escape" && isActive && state.current.dragStartTime > 0) {
         // Cancel current drag operation without spawning particle
         e.preventDefault();
 
@@ -466,7 +458,7 @@ export function useSpawnTool(isActive: boolean) {
         if (data.dragMode === "neutral") {
           // Draw solid particle at drag start position with dashed circle (no velocity arrow)
           ctx.globalAlpha = 1.0;
-          ctx.fillStyle = data.selectedColor;
+          ctx.fillStyle = "rgb(255, 255, 255)";
           ctx.beginPath();
           const screenSize = data.currentSize * zoom;
           ctx.arc(data.dragStartX, data.dragStartY, screenSize, 0, 2 * Math.PI);
@@ -474,7 +466,7 @@ export function useSpawnTool(isActive: boolean) {
 
           // Draw dashed circle around particle with gap
           const gap = 4; // Keep gap constant regardless of zoom
-          ctx.strokeStyle = data.selectedColor;
+          ctx.strokeStyle = "rgb(255, 255, 255)";
           ctx.lineWidth = 1;
           ctx.setLineDash([4, 4]);
           ctx.beginPath();
@@ -490,7 +482,7 @@ export function useSpawnTool(isActive: boolean) {
         } else if (data.dragMode === "velocity") {
           // Draw solid particle at drag start position
           ctx.globalAlpha = 1.0;
-          ctx.fillStyle = data.selectedColor;
+          ctx.fillStyle = "rgb(255, 255, 255)";
           ctx.beginPath();
           const screenSize = data.currentSize * zoom;
           ctx.arc(data.dragStartX, data.dragStartY, screenSize, 0, 2 * Math.PI);
@@ -498,7 +490,7 @@ export function useSpawnTool(isActive: boolean) {
 
           // Draw dashed circle around particle with gap
           const gap = 4; // Keep gap constant regardless of zoom
-          ctx.strokeStyle = data.selectedColor;
+          ctx.strokeStyle = "rgb(255, 255, 255)";
           ctx.lineWidth = 1;
           ctx.setLineDash([4, 4]);
           ctx.beginPath();
@@ -533,7 +525,7 @@ export function useSpawnTool(isActive: boolean) {
             endY = data.dragStartY + dy * scale;
           }
 
-          ctx.strokeStyle = data.selectedColor;
+          ctx.strokeStyle = "rgb(255, 255, 255)";
           ctx.lineWidth = 1; // Match the dashed circle line width
           ctx.setLineDash([4, 4]); // Match the dashed circle pattern
           ctx.beginPath();
@@ -546,7 +538,7 @@ export function useSpawnTool(isActive: boolean) {
           const arrowHeadLength = 8;
           const arrowAngle = Math.PI / 6;
 
-          ctx.fillStyle = data.selectedColor;
+          ctx.fillStyle = "rgb(255, 255, 255)";
           ctx.setLineDash([]); // Ensure no dashes for arrowhead
           ctx.beginPath();
           ctx.moveTo(endX, endY); // Arrow tip
@@ -563,7 +555,7 @@ export function useSpawnTool(isActive: boolean) {
         } else {
           // Draw solid particle with current size at drag start position
           ctx.globalAlpha = 1.0;
-          ctx.fillStyle = data.selectedColor;
+          ctx.fillStyle = "rgb(255, 255, 255)";
           ctx.beginPath();
           const screenSize = data.currentSize * zoom;
           ctx.arc(data.dragStartX, data.dragStartY, screenSize, 0, 2 * Math.PI);
@@ -571,7 +563,7 @@ export function useSpawnTool(isActive: boolean) {
 
           // Draw dashed circle around particle with gap
           const gap = 4; // Keep gap constant regardless of zoom
-          ctx.strokeStyle = data.selectedColor;
+          ctx.strokeStyle = "rgb(255, 255, 255)";
           ctx.lineWidth = 1;
           ctx.setLineDash([4, 4]);
           ctx.beginPath();
@@ -611,7 +603,7 @@ export function useSpawnTool(isActive: boolean) {
               endY = data.dragStartY + dy * scale;
             }
 
-            ctx.strokeStyle = data.selectedColor;
+            ctx.strokeStyle = "rgb(255, 255, 255)";
             ctx.lineWidth = 1;
             ctx.setLineDash([4, 4]);
             ctx.beginPath();
@@ -621,7 +613,7 @@ export function useSpawnTool(isActive: boolean) {
             ctx.setLineDash([]);
 
             // Draw small circle at line end position
-            ctx.fillStyle = data.selectedColor;
+            ctx.fillStyle = "rgb(255, 255, 255)";
             ctx.beginPath();
             ctx.arc(endX, endY, headCircleRadius, 0, 2 * Math.PI);
             ctx.fill();
@@ -633,14 +625,14 @@ export function useSpawnTool(isActive: boolean) {
 
         // Draw solid particle
         ctx.globalAlpha = 1.0;
-        ctx.fillStyle = data.selectedColor;
+        ctx.fillStyle = "rgb(255, 255, 255)";
         ctx.beginPath();
         ctx.arc(data.dragStartX, data.dragStartY, hoverSize, 0, 2 * Math.PI);
         ctx.fill();
 
         // Draw dashed circle around particle with gap
         const gap = 4; // Keep gap constant regardless of zoom
-        ctx.strokeStyle = data.selectedColor;
+        ctx.strokeStyle = "rgb(255, 255, 255)";
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -659,14 +651,14 @@ export function useSpawnTool(isActive: boolean) {
 
         // Draw solid particle
         ctx.globalAlpha = 1.0;
-        ctx.fillStyle = data.selectedColor;
+        ctx.fillStyle = "rgb(255, 255, 255)";
         ctx.beginPath();
         ctx.arc(data.mouseX, data.mouseY, hoverSize, 0, 2 * Math.PI);
         ctx.fill();
 
         // Draw dashed circle around particle with gap
         const gap = 4; // Keep gap constant regardless of zoom
-        ctx.strokeStyle = data.selectedColor;
+        ctx.strokeStyle = "rgb(255, 255, 255)";
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
