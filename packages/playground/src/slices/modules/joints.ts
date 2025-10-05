@@ -23,7 +23,7 @@ export interface JointsModuleState {
 }
 
 const initialState: JointsModuleState = {
-  enabled: true,
+  enabled: false,
   enableParticleCollisions: !!DEFAULT_JOINTS_ENABLE_PARTICLE_COLLISIONS,
   enableJointCollisions: !!DEFAULT_JOINTS_ENABLE_JOINT_COLLISIONS,
   list: [],
