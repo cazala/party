@@ -195,7 +195,13 @@ export class RenderPipeline {
     clearColor: { r: number; g: number; b: number; a: number }
   ): void {
     // Generate WGSL for the fullscreen pass
-    const wgsl = buildFullscreenPassWGSL(pass as FullscreenRenderPass, module.name, layout, module.inputs, clearColor);
+    const wgsl = buildFullscreenPassWGSL(
+      pass as FullscreenRenderPass,
+      module.name,
+      layout,
+      module.inputs,
+      clearColor
+    );
 
     // Get array inputs for this module
     const arrayInputs = Object.entries(module.inputs)
@@ -206,7 +212,11 @@ export class RenderPipeline {
     const fragmentParticleAccess = pass.instanced === false;
 
     // Acquire or create a cached render pipeline for the generated WGSL
-    const pipeline = resources.getOrCreateFullscreenRenderPipeline(wgsl, arrayInputs, fragmentParticleAccess);
+    const pipeline = resources.getOrCreateFullscreenRenderPipeline(
+      wgsl,
+      arrayInputs,
+      fragmentParticleAccess
+    );
 
     // Create bind group with particle data, global render uniforms, scene sampler/texture, and module uniforms
     const bindGroup = resources.createFullscreenBindGroup(
@@ -236,14 +246,14 @@ export class RenderPipeline {
     renderPass.setPipeline(pipeline);
     renderPass.setBindGroup(0, bindGroup);
     const instanced = pass.instanced ?? true;
-    
+
     // Skip drawing when there are no particles to render
     if (instanced && particleCount > 0) {
       renderPass.draw(4, particleCount);
     } else if (!instanced) {
       renderPass.draw(4, 1);
     }
-    
+
     renderPass.end();
   }
 
@@ -262,13 +272,19 @@ export class RenderPipeline {
     clearColor: { r: number; g: number; b: number; a: number }
   ): void {
     // Generate WGSL for the compute pass
-    const wgsl = buildComputeImagePassWGSL(pass as ComputeRenderPass, module.name, layout, module.inputs, clearColor);
-    
+    const wgsl = buildComputeImagePassWGSL(
+      pass as ComputeRenderPass,
+      module.name,
+      layout,
+      module.inputs,
+      clearColor
+    );
+
     // Get array inputs for this module
     const arrayInputs = Object.entries(module.inputs)
       .filter(([_, type]) => type === DataType.ARRAY)
       .map(([key, _]) => key);
-    
+
     // Acquire or create a cached compute pipeline
     const pipeline = resources.getOrCreateImageComputePipeline(wgsl);
     const muf = resources

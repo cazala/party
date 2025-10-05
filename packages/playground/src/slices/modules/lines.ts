@@ -8,7 +8,7 @@ export interface LinesModuleState {
 }
 
 const initialState: LinesModuleState = {
-  enabled: true,
+  enabled: false,
   list: [],
   lineWidth: 1.5,
 };
