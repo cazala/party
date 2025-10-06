@@ -136,7 +136,7 @@ export function useGrabTool(isActive: boolean) {
         setGrabEnabled(false);
 
         const particles = await engine.getParticles();
-        if (particles[grabbedIndex] && originalMassRef.current !== null) {
+        if (grabbedIndex >= 0 && grabbedIndex < particles.length && particles[grabbedIndex] && originalMassRef.current !== null) {
           // Check if Ctrl/Cmd is held to keep particle pinned
           const keepPinned = ev && (ev.ctrlKey || ev.metaKey);
 

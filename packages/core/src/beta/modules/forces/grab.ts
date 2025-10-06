@@ -110,7 +110,8 @@ export class Grab extends Module<"grab", GrabInputs> {
     return {
       correct: ({ getUniform }) => `{
   let grabbedIndex = ${getUniform("grabbedIndex")};
-  if (grabbedIndex >= 0.0 && u32(grabbedIndex) < arrayLength(&particles)) {
+  let particleCount = arrayLength(&particles);
+  if (grabbedIndex >= 0.0 && u32(grabbedIndex) < particleCount && particleCount > 0u) {
     let idx = u32(grabbedIndex);
     if (particles[idx].mass > 0.0) {
       // Position the grabbed particle at the target position
@@ -131,11 +132,11 @@ export class Grab extends Module<"grab", GrabInputs> {
       correct: ({ particles, input }) => {
         const grabbedIndex = Math.floor(input.grabbedIndex);
 
-        if (grabbedIndex >= 0 && grabbedIndex < particles.length) {
+        if (grabbedIndex >= 0 && grabbedIndex < particles.length && particles.length > 0) {
           const particle = particles[grabbedIndex];
 
           // Only grab particles that are not pinned (mass > 0)
-          if (particle.mass > 0) {
+          if (particle && particle.mass > 0) {
             // Position the grabbed particle at the target position
             particle.position.x = input.positionX;
             particle.position.y = input.positionY;

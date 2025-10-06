@@ -54,6 +54,11 @@ export const grabSlice = createSlice({
       state.grabbedIndex = -1;
     },
     reset: () => initialState,
+    clearGrab: (state) => {
+      state.grabbedIndex = -1;
+      state.positionX = DEFAULT_GRAB_POSITION_X;
+      state.positionY = DEFAULT_GRAB_POSITION_Y;
+    },
     importSettings: (state, action: PayloadAction<GrabModuleState>) => {
       return { ...state, ...action.payload };
     },
@@ -69,6 +74,7 @@ export const {
   grabParticle,
   releaseGrab,
   reset: resetGrab,
+  clearGrab,
   importSettings: importGrabSettings,
 } = grabSlice.actions;
 

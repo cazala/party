@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import type { Engine } from "@cazala/party";
 import { Spawner } from "@cazala/party";
+import { clearGrab } from "./modules/grab";
 
 export type SpawnParticlesConfig = {
   numParticles: number;
@@ -173,6 +174,9 @@ export const clearThunk = createAsyncThunk(
       engine.play();
       dispatch(engineSlice.actions.setPlaying(true));
       dispatch(engineSlice.actions.setParticleCount(0));
+      
+      // Clear grab module state since all particles are gone
+      dispatch(clearGrab());
     }
   }
 );

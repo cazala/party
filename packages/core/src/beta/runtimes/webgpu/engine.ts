@@ -171,6 +171,8 @@ export class WebGPUEngine extends AbstractEngine {
     this.render.clearTargets(this.resources);
     // Reset maxSize tracking
     this.resetMaxSize();
+    // Sync module uniforms to GPU (important for grab module reset)
+    this.registry.writeAllModuleUniforms();
   }
 
   private animate = async (): Promise<void> => {
