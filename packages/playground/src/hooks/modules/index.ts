@@ -10,3 +10,4 @@ export { useInteraction } from "./useInteraction";
 export { useParticle } from "./useParticle";
 export { useJoints } from "./useJoints";
 export { useLines } from "./useLines";
+export { useGrab } from "./useGrab";

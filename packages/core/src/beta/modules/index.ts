@@ -6,6 +6,7 @@ export * from "./forces/behavior";
 export * from "./forces/sensors";
 export * from "./forces/interaction";
 export * from "./forces/joints";
+export * from "./forces/grab";
 export * from "./render/trails";
 export * from "./render/lines";
 export * from "./render/particle";

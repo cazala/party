@@ -1,12 +1,20 @@
 import { useCallback, useRef } from "react";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 import { useEngine } from "../../useEngine";
+import { useGrab } from "../../modules/useGrab";
 
 export function useGrabTool(isActive: boolean) {
   const { engine, screenToWorld, zoom } = useEngine();
+  const {
+    setEnabled: setGrabEnabled,
+    grabParticle,
+    updatePosition,
+    releaseParticle,
+    isGrabbing,
+    grabbedIndex,
+  } = useGrab();
 
   // State for grabbed particle
-  const grabbedParticleIndex = useRef<number | null>(null);
   const grabbedParticleOffset = useRef<{ x: number; y: number }>({
     x: 0,
     y: 0,
@@ -55,12 +63,10 @@ export function useGrabTool(isActive: boolean) {
       }
 
       if (bestI !== -1) {
-        grabbedParticleIndex.current = bestI;
         const particle = particles[bestI];
 
         // Store original mass and pin the particle to prevent joint constraints
         originalMassRef.current = particle.mass;
-        particle.mass = -1; // Pin the particle (mass = -1 means pinned)
 
         // Store offset from mouse to particle center
         grabbedParticleOffset.current = {
@@ -68,8 +74,13 @@ export function useGrabTool(isActive: boolean) {
           y: particle.position.y - w.y,
         };
 
-        // Update particles array with pinned particle
-        engine.setParticles(particles);
+        // Use grab module to handle the grabbed particle
+        setGrabEnabled(true);
+        const targetPos = {
+          x: w.x + grabbedParticleOffset.current.x,
+          y: w.y + grabbedParticleOffset.current.y,
+        };
+        grabParticle(bestI, targetPos);
 
         isDraggingRef.current = true;
         velocityHistoryRef.current = [{ x: 0, y: 0, timestamp: Date.now() }];
@@ -90,22 +101,17 @@ export function useGrabTool(isActive: boolean) {
 
       mousePosRef.current = { x: sx, y: sy };
 
-      if (isDraggingRef.current && grabbedParticleIndex.current !== null) {
+      if (isDraggingRef.current && isGrabbing()) {
         const w = screenToWorld(sx, sy);
 
-        // Move particle to mouse position plus offset
+        // Move particle to mouse position plus offset using grab module
         const newPos = {
           x: w.x + grabbedParticleOffset.current.x,
           y: w.y + grabbedParticleOffset.current.y,
         };
 
-        // Update particle position and set velocity to 0 while dragging
-        const particles = await engine.getParticles();
-        if (particles[grabbedParticleIndex.current]) {
-          particles[grabbedParticleIndex.current].position = newPos;
-          particles[grabbedParticleIndex.current].velocity = { x: 0, y: 0 };
-          engine.setParticles(particles);
-        }
+        // Use grab module to update position (no particle array sync needed)
+        updatePosition(newPos);
 
         // Track velocity for momentum
         velocityHistoryRef.current.push({
@@ -122,21 +128,21 @@ export function useGrabTool(isActive: boolean) {
     },
 
     onMouseUp: async (ev) => {
-      if (!engine || !isActive || grabbedParticleIndex.current === null) return;
+      if (!engine || !isActive || !isGrabbing()) return;
 
       if (isDraggingRef.current) {
+        // Release grab using grab module
+        releaseParticle();
+        setGrabEnabled(false);
+
         const particles = await engine.getParticles();
-        if (
-          particles[grabbedParticleIndex.current] &&
-          originalMassRef.current !== null
-        ) {
+        if (particles[grabbedIndex] && originalMassRef.current !== null) {
           // Check if Ctrl/Cmd is held to keep particle pinned
           const keepPinned = ev && (ev.ctrlKey || ev.metaKey);
-          
+
           // Restore original mass only if it wasn't originally pinned AND Ctrl/Cmd is not held
           if (originalMassRef.current > 0 && !keepPinned) {
-            particles[grabbedParticleIndex.current].mass =
-              originalMassRef.current;
+            particles[grabbedIndex].mass = originalMassRef.current;
           }
 
           // Calculate momentum velocity from recent mouse movement
@@ -166,16 +172,16 @@ export function useGrabTool(isActive: boolean) {
 
             // Apply velocity to particle (only if not originally pinned and not keeping pinned)
             if (originalMassRef.current > 0 && !keepPinned) {
-              particles[grabbedParticleIndex.current].velocity = throwVelocity;
+              particles[grabbedIndex].velocity = throwVelocity;
             }
           }
 
+          // Single particle array sync for throw velocity (acceptable performance cost)
           engine.setParticles(particles);
         }
       }
 
       // Reset grab state
-      grabbedParticleIndex.current = null;
       originalMassRef.current = null;
       isDraggingRef.current = false;
       velocityHistoryRef.current = [];
@@ -185,6 +191,6 @@ export function useGrabTool(isActive: boolean) {
   return {
     renderOverlay,
     handlers,
-    isGrabbing: isDraggingRef.current,
+    isGrabbing: isGrabbing(),
   };
 }

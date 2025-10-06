@@ -12,6 +12,7 @@ import {
   Particle,
   Joints,
   Lines,
+  Grab,
 } from "@cazala/party";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
@@ -111,6 +112,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const particleRef = useRef<Particle | null>(null);
   const jointsRef = useRef<Joints | null>(null);
   const linesRef = useRef<Lines | null>(null);
+  const grabRef = useRef<Grab | null>(null);
 
   // Local state for engine initialization
   const [isAutoMode, setIsAutoMode] = useState(true);
@@ -226,6 +228,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const trails = new Trails({ enabled: false });
         const joints = new Joints({ enabled: false });
         const lines = new Lines({ enabled: false });
+        const grab = new Grab({ enabled: false });
 
         // Create particle renderer
         const particle = new Particle();
@@ -239,6 +242,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           sensors,
           interaction,
           joints,
+          grab,
         ];
         const render = [trails, lines, particle];
 
@@ -265,6 +269,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         particleRef.current = particle;
         jointsRef.current = joints;
         linesRef.current = lines;
+        grabRef.current = grab;
         // Register engine for thunks
         registerEngine(engine);
 
@@ -683,5 +688,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     particle: particleRef.current,
     joints: jointsRef.current,
     lines: linesRef.current,
+    grab: grabRef.current,
   };
 }
