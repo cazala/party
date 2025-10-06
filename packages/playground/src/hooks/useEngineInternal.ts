@@ -24,8 +24,6 @@ import {
   selectError,
   selectConstrainIterations,
   selectGridCellSize,
-  selectParticleCount,
-  selectFPS,
   selectCamera,
   selectZoom,
   selectSize,
@@ -44,8 +42,6 @@ import {
   spawnParticlesThunk,
   handleWheelThunk,
   registerEngine,
-  setParticleCount,
-  setFPS,
   setWebGPU,
   setInitialized,
   setInitializing,
@@ -56,8 +52,6 @@ import {
   setCamera as setCameraAction,
   setZoom as setZoomAction,
   SpawnParticlesConfig,
-  setParticleCount as setParticleCountAction,
-  setFPS as setFPSAction,
 } from "../slices/engine";
 import {
   selectModules,
@@ -91,8 +85,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const error = useAppSelector(selectError);
   const constrainIterations = useAppSelector(selectConstrainIterations);
   const gridCellSize = useAppSelector(selectGridCellSize);
-  const particleCount = useAppSelector(selectParticleCount);
-  const fps = useAppSelector(selectFPS);
   const camera = useAppSelector(selectCamera);
   const zoom = useAppSelector(selectZoom);
   const size = useAppSelector(selectSize);
@@ -283,8 +275,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const actualClearColor = engine.getClearColor();
         const actualCamera = engine.getCamera();
         const actualZoom = engine.getZoom();
-        const actualParticleCount = engine.getCount();
-        const actualFPS = engine.getFPS();
 
         // Update Redux with actual engine defaults (sync only, don't call engine methods)
         dispatch(setConstrainIterationsAction(actualConstrainIterations));
@@ -292,8 +282,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         dispatch(setClearColorAction(actualClearColor));
         dispatch(setCameraAction({ x: actualCamera.x, y: actualCamera.y }));
         dispatch(setZoomAction(actualZoom));
-        dispatch(setParticleCount(actualParticleCount));
-        dispatch(setFPS(actualFPS));
         dispatch(setWebGPU(shouldUseWebGPU));
 
         // Restore preserved state if we had one (during engine type toggle)
@@ -308,7 +296,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
               "particles"
             );
             engine.setParticles(preservedState.particles);
-            dispatch(setParticleCount(preservedState.particles.length));
           }
 
           // Restore engine settings
@@ -477,23 +464,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     modulesState.lines.enabled,
   ]);
 
-  // Periodic updates for particle count and FPS
-  useEffect(() => {
-    if (!engineRef.current || !isInitialized) return;
-
-    const interval = setInterval(() => {
-      const engine = engineRef.current;
-      if (engine) {
-        const currentParticleCount = engine.getCount();
-        const currentFPS = engine.getFPS();
-
-        dispatch(setParticleCount(currentParticleCount));
-        dispatch(setFPS(currentFPS));
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isInitialized, dispatch]);
 
   // Action functions (wrapped thunks)
   const play = useCallback(() => {
@@ -617,25 +587,15 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     return module !== null;
   }, []);
 
-  // Getter functions that return current values
-  const getParticleCount = useCallback(() => particleCount, [particleCount]);
-  const getFPS = useCallback(() => fps, [fps]);
+  // Getter functions that call engine methods directly
+  const getCount = useCallback(() => {
+    return engineRef.current?.getCount() || 0;
+  }, []);
+  
+  const getFPS = useCallback(() => {
+    return engineRef.current?.getFPS() || 0;
+  }, []);
 
-  // Periodic updates for particle count and FPS
-  useEffect(() => {
-    const engine = engineRef.current;
-    if (!engine || !isInitialized) return;
-
-    const interval = setInterval(() => {
-      const particleCount = engine.getCount();
-      const fps = engine.getFPS();
-
-      dispatch(setParticleCountAction(particleCount));
-      dispatch(setFPSAction(fps));
-    }, 100); // Update every 100ms
-
-    return () => clearInterval(interval);
-  }, [engineRef, isInitialized, dispatch]);
 
   return {
     // State values (from Redux selectors)
@@ -646,8 +606,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     error,
     constrainIterations,
     gridCellSize,
-    particleCount,
-    fps,
     clearColor,
     size,
     camera,
@@ -672,7 +630,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     handleWheel,
     screenToWorld,
     isSupported,
-    getParticleCount,
+    getCount,
     getFPS,
 
     // Module references (direct access to engine instances)

@@ -37,8 +37,6 @@ export interface EngineState {
   error: string | null;
   constrainIterations: number;
   gridCellSize: number;
-  particleCount: number;
-  fps: number;
   clearColor: { r: number; g: number; b: number; a: number };
   size: { width: number; height: number };
   camera: { x: number; y: number };
@@ -63,8 +61,6 @@ const initialState: EngineState = {
   error: null,
   constrainIterations: 1,
   gridCellSize: 16,
-  particleCount: 0,
-  fps: 0,
   clearColor: { r: 0, g: 0, b: 0, a: 1 },
   size: { width: 800, height: 600 },
   camera: { x: 0, y: 0 },
@@ -104,12 +100,6 @@ export const engineSlice = createSlice({
     },
     setGridCellSize: (state, action: PayloadAction<number>) => {
       state.gridCellSize = action.payload;
-    },
-    setParticleCount: (state, action: PayloadAction<number>) => {
-      state.particleCount = action.payload;
-    },
-    setFPS: (state, action: PayloadAction<number>) => {
-      state.fps = action.payload;
     },
     setClearColor: (
       state,
@@ -173,7 +163,7 @@ export const clearThunk = createAsyncThunk(
       // Ensure the loop continues so the cleared scene is presented
       engine.play();
       dispatch(engineSlice.actions.setPlaying(true));
-      dispatch(engineSlice.actions.setParticleCount(0));
+      // Note: Particle count now tracked via refs in useEngineInternal
       
       // Clear grab module state since all particles are gone
       dispatch(clearGrab());
@@ -304,22 +294,17 @@ export const toggleRuntimeThunk = createAsyncThunk(
 // Particle management thunks
 export const addParticleThunk = createAsyncThunk(
   "engine/addParticle",
-  async (
-    particle: {
-      position: { x: number; y: number };
-      velocity: { x: number; y: number };
-      size: number;
-      mass: number;
-      color: { r: number; g: number; b: number; a: number };
-    },
-    { dispatch }
-  ) => {
+  async (particle: {
+    position: { x: number; y: number };
+    velocity: { x: number; y: number };
+    size: number;
+    mass: number;
+    color: { r: number; g: number; b: number; a: number };
+  }) => {
     const engine = getEngine();
     if (engine) {
       engine.addParticle(particle);
-      // Update particle count
-      const newCount = engine.getCount();
-      dispatch(engineSlice.actions.setParticleCount(newCount));
+      // Note: Particle count now tracked via refs in useEngineInternal
     }
   }
 );
@@ -382,7 +367,7 @@ export const spawnParticlesThunk = createAsyncThunk(
 
     engine.setParticles(particles);
     engine.play(); // Actually start the engine loop
-    dispatch(engineSlice.actions.setParticleCount(particles.length));
+    // Note: Particle count now tracked via refs in useEngineInternal
     dispatch(engineSlice.actions.setPlaying(true));
   }
 );
@@ -481,8 +466,6 @@ export const {
   setError,
   setConstrainIterations,
   setGridCellSize,
-  setParticleCount,
-  setFPS,
   setClearColor,
   setSize,
   setCamera,
@@ -511,9 +494,6 @@ export const selectConstrainIterations = (state: { engine: EngineState }) =>
   state.engine.constrainIterations;
 export const selectGridCellSize = (state: { engine: EngineState }) =>
   state.engine.gridCellSize;
-export const selectParticleCount = (state: { engine: EngineState }) =>
-  state.engine.particleCount;
-export const selectFPS = (state: { engine: EngineState }) => state.engine.fps;
 export const selectCamera = (state: { engine: EngineState }) =>
   state.engine.camera;
 export const selectZoom = (state: { engine: EngineState }) => state.engine.zoom;

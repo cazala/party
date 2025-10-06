@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Checkbox } from "./ui/Checkbox";
 import { Slider } from "./ui/Slider";
 import { Field } from "./ui/Field";
@@ -11,16 +12,30 @@ export function PerformanceControls() {
   const dispatch = useAppDispatch();
   const showGrid = useAppSelector(selectShowGrid);
 
+  // Local state for FPS and particle count (updated via interval)
+  const [particleCount, setParticleCount] = useState(0);
+  const [fps, setFPS] = useState(0);
+
   const {
     isWebGPU,
     constrainIterations,
     gridCellSize,
-    particleCount,
-    fps,
     setConstrainIterations,
     setCellSize,
     toggleRuntime,
+    getFPS,
+    getCount,
   } = useEngine();
+
+  // Interval to update local state from engine getter functions
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setParticleCount(getCount());
+      setFPS(getFPS());
+    }, 100); // Update every 100ms
+
+    return () => clearInterval(interval);
+  }, [getFPS, getCount]);
   return (
     <>
       <Checkbox

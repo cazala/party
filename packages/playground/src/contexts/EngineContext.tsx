@@ -41,8 +41,6 @@ export interface EngineContextType {
   error: string | null;
   constrainIterations: number;
   gridCellSize: number;
-  particleCount: number;
-  fps: number;
   clearColor: { r: number; g: number; b: number; a: number };
   size: { width: number; height: number };
   camera: { x: number; y: number };
@@ -78,7 +76,7 @@ export interface EngineContextType {
   handleWheel: (deltaY: number, centerX: number, centerY: number) => void;
   screenToWorld: (sx: number, sy: number) => { x: number; y: number };
   isSupported: (module: any) => boolean;
-  getParticleCount: () => number;
+  getCount: () => number;
   getFPS: () => number;
 
   // Module references
