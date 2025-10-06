@@ -33,6 +33,7 @@ export class WebGPUEngine extends AbstractEngine {
   private maxParticles: number;
   private workgroupSize: number;
   private simStrideValue: number = 0;
+  private shouldSyncNextTick: boolean = false;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -172,8 +173,14 @@ export class WebGPUEngine extends AbstractEngine {
     this.resetMaxSize();
   }
 
-  private animate = (): void => {
-    if (!this.playing) return;
+  private animate = async (): Promise<void> => {
+    if (!this.playing) {
+      if (!this.shouldSyncNextTick) {
+        this.shouldSyncNextTick = true;
+        await this.particles.syncFromGPU(this.resources);
+      }
+      return;
+    }
 
     const dt = this.getTimeDelta();
     this.updateFPS(dt);
@@ -206,13 +213,23 @@ export class WebGPUEngine extends AbstractEngine {
       constrainIterations: this.constrainIterations,
     });
 
+    const particleCount = this.particles.getCount();
+
+    if (this.shouldSyncNextTick) {
+      // Sync to GPU on next tick
+      this.waitForNextTick().then(() =>
+        this.particles.syncToGPU(this.resources)
+      );
+      this.shouldSyncNextTick = false;
+    }
+
     const lastView = this.render.runPasses(
       encoder,
       this.registry.getEnabledRenderModules(),
       this.registry.getProgram(),
       this.resources,
       this.view.getSize(),
-      this.particles.getCount(),
+      particleCount,
       this.clearColor
     );
 
@@ -221,6 +238,14 @@ export class WebGPUEngine extends AbstractEngine {
 
     requestAnimationFrame(this.animate);
   };
+
+  private waitForNextTick(): Promise<void> {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        resolve();
+      });
+    });
+  }
 
   // Override export to use module registry
   export(): Record<string, Record<string, number>> {

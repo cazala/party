@@ -108,7 +108,7 @@ export class Grab extends Module<"grab", GrabInputs> {
 
   webgpu(): WebGPUDescriptor<GrabInputs> {
     return {
-      apply: ({ getUniform }) => `{
+      correct: ({ getUniform }) => `{
   let grabbedIndex = ${getUniform("grabbedIndex")};
   if (grabbedIndex >= 0.0 && u32(grabbedIndex) < arrayLength(&particles)) {
     let idx = u32(grabbedIndex);
@@ -128,7 +128,7 @@ export class Grab extends Module<"grab", GrabInputs> {
 
   cpu(): CPUDescriptor<GrabInputs> {
     return {
-      apply: ({ particles, input }) => {
+      correct: ({ particles, input }) => {
         const grabbedIndex = Math.floor(input.grabbedIndex);
 
         if (grabbedIndex >= 0 && grabbedIndex < particles.length) {
