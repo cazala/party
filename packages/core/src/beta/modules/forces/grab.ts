@@ -108,20 +108,20 @@ export class Grab extends Module<"grab", GrabInputs> {
 
   webgpu(): WebGPUDescriptor<GrabInputs> {
     return {
-      correct: ({ getUniform }) => `{
-  let grabbedIndex = ${getUniform("grabbedIndex")};
-  let particleCount = arrayLength(&particles);
-  if (grabbedIndex >= 0.0 && u32(grabbedIndex) < particleCount && particleCount > 0u) {
-    let idx = u32(grabbedIndex);
-    if (particles[idx].mass > 0.0) {
-      // Position the grabbed particle at the target position
-      particles[idx].position.x = ${getUniform("positionX")};
-      particles[idx].position.y = ${getUniform("positionY")};
-      
-      // Set velocity to zero to prevent drift
-      particles[idx].velocity.x = 0.0;
-      particles[idx].velocity.y = 0.0;
-    }
+      correct: ({ particleVar, getUniform }) => `{
+  // Only the invocation matching the grabbed index should apply the correction
+  let gi_f = ${getUniform("grabbedIndex")};
+  let gi = u32(gi_f);
+  if (gi != index) { return; }
+  let count = arrayLength(&particles);
+  if (gi < 0 || gi >= count || count == 0u) { return; }
+  
+  // Update only this particle (current invocation)
+  if (${particleVar}.mass > 0.0) {
+    ${particleVar}.position.x = ${getUniform("positionX")};
+    ${particleVar}.position.y = ${getUniform("positionY")};
+    ${particleVar}.velocity.x = 0.0;
+    ${particleVar}.velocity.y = 0.0;
   }
 }`,
     };
@@ -129,22 +129,26 @@ export class Grab extends Module<"grab", GrabInputs> {
 
   cpu(): CPUDescriptor<GrabInputs> {
     return {
-      correct: ({ particles, input }) => {
+      correct: ({ particle, particles, input, index }) => {
         const grabbedIndex = Math.floor(input.grabbedIndex);
+        if (
+          grabbedIndex != index ||
+          grabbedIndex < 0 ||
+          grabbedIndex >= particles.length ||
+          particles.length == 0
+        ) {
+          return;
+        }
 
-        if (grabbedIndex >= 0 && grabbedIndex < particles.length && particles.length > 0) {
-          const particle = particles[grabbedIndex];
+        // Only grab particles that are not pinned (mass > 0)
+        if (particle.mass > 0) {
+          // Position the grabbed particle at the target position
+          particle.position.x = input.positionX;
+          particle.position.y = input.positionY;
 
-          // Only grab particles that are not pinned (mass > 0)
-          if (particle && particle.mass > 0) {
-            // Position the grabbed particle at the target position
-            particle.position.x = input.positionX;
-            particle.position.y = input.positionY;
-
-            // Set velocity to zero to prevent drift
-            particle.velocity.x = 0;
-            particle.velocity.y = 0;
-          }
+          // Set velocity to zero to prevent drift
+          particle.velocity.x = 0;
+          particle.velocity.y = 0;
         }
       },
     };
