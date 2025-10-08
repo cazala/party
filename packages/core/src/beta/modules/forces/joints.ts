@@ -25,6 +25,8 @@ type JointsInputs = {
   aIndexes: number[];
   bIndexes: number[];
   restLengths: number[];
+  incidentJointOffsets: number[];
+  incidentJointIndices: number[];
   enableParticleCollisions: number;
   enableJointCollisions: number;
   momentum: number;
@@ -42,6 +44,8 @@ export class Joints extends Module<"joints", JointsInputs> {
     aIndexes: DataType.ARRAY,
     bIndexes: DataType.ARRAY,
     restLengths: DataType.ARRAY,
+    incidentJointOffsets: DataType.ARRAY,
+    incidentJointIndices: DataType.ARRAY,
     enableParticleCollisions: DataType.NUMBER,
     enableJointCollisions: DataType.NUMBER,
     momentum: DataType.NUMBER,
@@ -84,6 +88,8 @@ export class Joints extends Module<"joints", JointsInputs> {
       aIndexes,
       bIndexes,
       restLengths,
+      incidentJointOffsets: [],
+      incidentJointIndices: [],
       enableParticleCollisions:
         opts?.enableParticleCollisions ??
         DEFAULT_JOINTS_ENABLE_PARTICLE_COLLISIONS,
@@ -96,6 +102,17 @@ export class Joints extends Module<"joints", JointsInputs> {
       friction: opts?.friction ?? DEFAULT_JOINTS_FRICTION,
       groupIds: [],
     });
+    // Build CSR/groupIds immediately so GPU path has valid incident lists on first frame
+    if (aIndexes.length > 0 && bIndexes.length > 0) {
+      this.setJoints(aIndexes, bIndexes, restLengths);
+    } else {
+      // Ensure empty CSR when no joints provided
+      this.write({
+        groupIds: [],
+        incidentJointOffsets: [],
+        incidentJointIndices: [],
+      });
+    }
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
 
@@ -192,9 +209,29 @@ export class Joints extends Module<"joints", JointsInputs> {
         }
         gid++;
       }
-      this.write({ groupIds });
+      // Build CSR adjacency of incident joints per particle using degrees
+      const offsets = new Array<number>(n + 1).fill(0);
+      for (let i = 0; i < n; i++) offsets[i + 1] = offsets[i] + deg[i];
+      const totalInc = offsets[n];
+      const incidentJointIndices = new Array<number>(totalInc);
+      const cursor = offsets.slice();
+      for (let j = 0; j < validLen; j++) {
+        const ua = aIndexes[j] >>> 0;
+        const vb = bIndexesArray[j] >>> 0;
+        if (ua < n) incidentJointIndices[cursor[ua]++] = j;
+        if (vb < n) incidentJointIndices[cursor[vb]++] = j;
+      }
+      this.write({
+        groupIds,
+        incidentJointOffsets: offsets,
+        incidentJointIndices,
+      });
     } else {
-      this.write({ groupIds: [] });
+      this.write({
+        groupIds: [],
+        incidentJointOffsets: [],
+        incidentJointIndices: [],
+      });
     }
   }
 
@@ -313,26 +350,42 @@ export class Joints extends Module<"joints", JointsInputs> {
     return {
       states: ["prevX", "prevY"] as const,
 
-      // Store pre-physics positions for momentum preservation
-      state: ({ particleVar, getLength, setState }) => `{
-  let jointCount = ${getLength("aIndexes")};
-  if (jointCount > 0u) {
-    // Store current position before physics integration
-    ${setState("prevX", `${particleVar}.position.x`)};
-    ${setState("prevY", `${particleVar}.position.y`)};
+      // Store pre-physics positions for momentum preservation, only if this particle has an incident joint
+      state: ({ particleVar, getLength, setState, getUniform }) => `{
+  let offLen = ${getLength("incidentJointOffsets")};
+  if (offLen > 1u) {
+    let idx1 = index + 1u;
+    if (idx1 < offLen) {
+      let s = u32(${getUniform("incidentJointOffsets", "index")});
+      let e = u32(${getUniform("incidentJointOffsets", "idx1")});
+      if (e > s) {
+        ${setState("prevX", `${particleVar}.position.x`)};
+        ${setState("prevY", `${particleVar}.position.y`)};
+      }
+    }
   }
 }`,
 
-      // Constrain: per-particle correction with forward+reverse passes to reduce order bias
+      // Constrain: per-particle correction using CSR only
       constrain: ({ particleVar, getUniform, getLength }) => `{
-  let jointCount = ${getLength("aIndexes")};
+  let lenA = ${getLength("aIndexes")};
+  let lenB = ${getLength("bIndexes")};
+  let lenR = ${getLength("restLengths")};
+  let jointCount = min(lenA, min(lenB, lenR));
   if (jointCount == 0u) { return; }
+  let offsetsLen = ${getLength("incidentJointOffsets")};
+  let idx1 = index + 1u;
   
-  let forwardFirst = (index & 1u) == 0u;
+  if (offsetsLen <= 1u || idx1 >= offsetsLen) { return; }
+  let start = u32(${getUniform("incidentJointOffsets", "index")});
+  let end = u32(${getUniform("incidentJointOffsets", "idx1")});
+  if (end <= start) { return; }
   let half: f32 = 0.5;
+  let forwardFirst = (index & 1u) == 0u;
   if (forwardFirst) {
-    // Forward pass
-    for (var j = 0u; j < jointCount; j++) {
+    for (var k = start; k < end; k++) {
+      let j = u32(${getUniform("incidentJointIndices", "k")});
+      if (j >= jointCount) { continue; }
       let a = u32(${getUniform("aIndexes", "j")});
       let b = u32(${getUniform("bIndexes", "j")});
       let rest = ${getUniform("restLengths", "j")};
@@ -347,7 +400,8 @@ export class Joints extends Module<"joints", JointsInputs> {
       if (dist2 < 1e-8) { continue; }
       let dist = sqrt(dist2);
       let dir = delta / dist;
-      let diff = dist - rest;
+      let rl = select(dist, rest, rest > 0.0);
+      let diff = dist - rl;
       if (abs(diff) < 1e-6) { continue; }
       let invM_self = select(0.0, 1.0 / ${particleVar}.mass, ${particleVar}.mass > 0.0);
       let invM_other = select(0.0, 1.0 / other.mass, other.mass > 0.0);
@@ -356,9 +410,10 @@ export class Joints extends Module<"joints", JointsInputs> {
       let corr = dir * (diff * (invM_self / invSum)) * half;
       ${particleVar}.position = ${particleVar}.position + corr;
     }
-    // Reverse pass
-    for (var j2 = jointCount; j2 > 0u; j2--) {
-      let j = j2 - 1u;
+    for (var k2 = end; k2 > start; k2--) {
+      let k = k2 - 1u;
+      let j = u32(${getUniform("incidentJointIndices", "k")});
+      if (j >= jointCount) { continue; }
       let a = u32(${getUniform("aIndexes", "j")});
       let b = u32(${getUniform("bIndexes", "j")});
       let rest = ${getUniform("restLengths", "j")};
@@ -373,7 +428,8 @@ export class Joints extends Module<"joints", JointsInputs> {
       if (dist2 < 1e-8) { continue; }
       let dist = sqrt(dist2);
       let dir = delta / dist;
-      let diff = dist - rest;
+      let rl = select(dist, rest, rest > 0.0);
+      let diff = dist - rl;
       if (abs(diff) < 1e-6) { continue; }
       let invM_self = select(0.0, 1.0 / ${particleVar}.mass, ${particleVar}.mass > 0.0);
       let invM_other = select(0.0, 1.0 / other.mass, other.mass > 0.0);
@@ -383,9 +439,10 @@ export class Joints extends Module<"joints", JointsInputs> {
       ${particleVar}.position = ${particleVar}.position + corr;
     }
   } else {
-    // Reverse then forward
-    for (var j2 = jointCount; j2 > 0u; j2--) {
-      let j = j2 - 1u;
+    for (var k2 = end; k2 > start; k2--) {
+      let k = k2 - 1u;
+      let j = u32(${getUniform("incidentJointIndices", "k")});
+      if (j >= jointCount) { continue; }
       let a = u32(${getUniform("aIndexes", "j")});
       let b = u32(${getUniform("bIndexes", "j")});
       let rest = ${getUniform("restLengths", "j")};
@@ -400,7 +457,8 @@ export class Joints extends Module<"joints", JointsInputs> {
       if (dist2 < 1e-8) { continue; }
       let dist = sqrt(dist2);
       let dir = delta / dist;
-      let diff = dist - rest;
+      let rl = select(dist, rest, rest > 0.0);
+      let diff = dist - rl;
       if (abs(diff) < 1e-6) { continue; }
       let invM_self = select(0.0, 1.0 / ${particleVar}.mass, ${particleVar}.mass > 0.0);
       let invM_other = select(0.0, 1.0 / other.mass, other.mass > 0.0);
@@ -409,7 +467,9 @@ export class Joints extends Module<"joints", JointsInputs> {
       let corr = dir * (diff * (invM_self / invSum)) * half;
       ${particleVar}.position = ${particleVar}.position + corr;
     }
-    for (var j = 0u; j < jointCount; j++) {
+    for (var k = start; k < end; k++) {
+      let j = u32(${getUniform("incidentJointIndices", "k")});
+      if (j >= jointCount) { continue; }
       let a = u32(${getUniform("aIndexes", "j")});
       let b = u32(${getUniform("bIndexes", "j")});
       let rest = ${getUniform("restLengths", "j")};
@@ -424,7 +484,8 @@ export class Joints extends Module<"joints", JointsInputs> {
       if (dist2 < 1e-8) { continue; }
       let dist = sqrt(dist2);
       let dir = delta / dist;
-      let diff = dist - rest;
+      let rl = select(dist, rest, rest > 0.0);
+      let diff = dist - rl;
       if (abs(diff) < 1e-6) { continue; }
       let invM_self = select(0.0, 1.0 / ${particleVar}.mass, ${particleVar}.mass > 0.0);
       let invM_other = select(0.0, 1.0 / other.mass, other.mass > 0.0);
@@ -438,11 +499,16 @@ export class Joints extends Module<"joints", JointsInputs> {
   // Optional collision handling with joints (particle vs joint, joint vs joint)
   // Only for particles that are part of at least one joint
   var hasJoint = false;
-  for (var jj = 0u; jj < jointCount; jj++) {
-    let ja = u32(${getUniform("aIndexes", "jj")});
-    let jb = u32(${getUniform("bIndexes", "jj")});
-    if (ja == index || jb == index) { hasJoint = true; break; }
+  let offLenColl = ${getLength("incidentJointOffsets")};
+  if (offLenColl > 1u) {
+    let idx1h = index + 1u;
+    if (idx1h < offLenColl) {
+      let s = u32(${getUniform("incidentJointOffsets", "index")});
+      let e = u32(${getUniform("incidentJointOffsets", "idx1h")});
+      hasJoint = (e > s);
+    }
   }
+  // jointCount already defined above
   if (${getUniform(
     "enableParticleCollisions"
   )} > 0.0 && ${particleVar}.mass > 0.0 && hasJoint) {
@@ -558,12 +624,16 @@ export class Joints extends Module<"joints", JointsInputs> {
   let jointCount = ${getLength("aIndexes")};
   if (jointCount == 0u) { return; }
   
-  // Substep CCD: particle-vs-joint should run for all particles
-  var hasJoint = false; // still used below for joint-segment CCD and momentum
-  for (var jj = 0u; jj < jointCount; jj++) {
-    let ja = u32(${getUniform("aIndexes", "jj")});
-    let jb = u32(${getUniform("bIndexes", "jj")});
-    if (ja == index || jb == index) { hasJoint = true; break; }
+  // Determine if this particle has joints via CSR (used for CCD and momentum)
+  var hasJoint = false;
+  let offLen2 = ${getLength("incidentJointOffsets")};
+  if (offLen2 > 1u) {
+    let idx1c = index + 1u;
+    if (idx1c < offLen2) {
+      let s2 = u32(${getUniform("incidentJointOffsets", "index")});
+      let e2 = u32(${getUniform("incidentJointOffsets", "idx1c")});
+      hasJoint = (e2 > s2);
+    }
   }
   if (${getUniform("enableParticleCollisions")} > 0.0) {
     // Substep CCD: sweep particle (as a circle of radius r) from previous to current position
@@ -708,15 +778,10 @@ export class Joints extends Module<"joints", JointsInputs> {
     return {
       states: ["prevX", "prevY"] as const,
 
-      // Store pre-physics positions for momentum preservation
-      state: ({ particle, setState, input }) => {
-        // Store current position before physics integration (only for particles with joints)
-        const jointCount = Math.min(
-          input.aIndexes.length,
-          input.bIndexes.length
-        );
-
-        if (jointCount > 0) {
+      // Store pre-physics positions for momentum preservation (only for particles with incident joints via CSR)
+      state: ({ particle, setState, input, index }) => {
+        const offsets = (input.incidentJointOffsets as number[]) || [];
+        if (index + 1 < offsets.length && offsets[index] < offsets[index + 1]) {
           setState("prevX", particle.position.x);
           setState("prevY", particle.position.y);
         }
@@ -728,14 +793,18 @@ export class Joints extends Module<"joints", JointsInputs> {
         const a = input.aIndexes;
         const b = input.bIndexes;
         const rest = input.restLengths;
+        const offsets = (input.incidentJointOffsets as number[]) || [];
+        const inc = (input.incidentJointIndices as number[]) || [];
+        const start = index + 1 < offsets.length ? offsets[index] >>> 0 : 0;
+        const end = index + 1 < offsets.length ? offsets[index + 1] >>> 0 : 0;
         const count = Math.min(a.length, b.length, rest.length);
         const half = 0.5;
         const forwardFirst = (index & 1) === 0;
 
-        const applyForJ = (j: number) => {
+        const applyForInc = (k: number) => {
+          const j = inc[k] >>> 0;
           const ia = a[j] >>> 0;
           const ib = b[j] >>> 0;
-          if (ia !== index && ib !== index) return;
           const otherIndex = ia === index ? ib : ia;
           const other = particles[otherIndex];
           if (!other) return;
@@ -760,11 +829,11 @@ export class Joints extends Module<"joints", JointsInputs> {
         };
 
         if (forwardFirst) {
-          for (let j = 0; j < count; j++) applyForJ(j);
-          for (let j = count - 1; j >= 0; j--) applyForJ(j);
+          for (let k = start; k < end; k++) applyForInc(k);
+          for (let k = end - 1; k >= start; k--) applyForInc(k);
         } else {
-          for (let j = count - 1; j >= 0; j--) applyForJ(j);
-          for (let j = 0; j < count; j++) applyForJ(j);
+          for (let k = end - 1; k >= start; k--) applyForInc(k);
+          for (let k = start; k < end; k++) applyForInc(k);
         }
 
         // Optional collision handling
@@ -920,10 +989,14 @@ export class Joints extends Module<"joints", JointsInputs> {
         index,
       }) => {
         if (dt <= 0) return;
+        // Determine CSR-based incident joints once for this particle
+        const offsets = (input.incidentJointOffsets as number[]) || [];
+        const hasJoints =
+          index + 1 < offsets.length && offsets[index] < offsets[index + 1];
         // Substep CCD on CPU path
         const enableParticleCollisions =
           input.enableParticleCollisions as number;
-        if (enableParticleCollisions > 0) {
+        if (enableParticleCollisions > 0 && hasJoints) {
           const a = input.aIndexes;
           const b = input.bIndexes;
           const count = Math.min(a.length, b.length);
@@ -990,7 +1063,7 @@ export class Joints extends Module<"joints", JointsInputs> {
 
         // Joint-segment CCD for joints incident to this particle against other joints (CPU)
         const enableJointCollisions = input.enableJointCollisions as number;
-        if (enableJointCollisions > 0) {
+        if (enableJointCollisions > 0 && hasJoints) {
           const steps = Math.max(
             1,
             Math.min(128, Math.floor((input.steps as number) || 1))
@@ -1084,14 +1157,7 @@ export class Joints extends Module<"joints", JointsInputs> {
         }
 
         const momentum = this.readValue("momentum") as number;
-        if (momentum <= 0) return;
-
-        // Check if this particle has any joints
-        const a = (this.readArray("aIndexes") as number[]) || [];
-        const b = (this.readArray("bIndexes") as number[]) || [];
-        const hasJoints = a.includes(index) || b.includes(index);
-
-        if (!hasJoints) return;
+        if (momentum <= 0 || !hasJoints) return;
 
         // Get stored pre-physics position
         const prevX = getState("prevX");
