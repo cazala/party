@@ -95,3 +95,44 @@
 .oscillation-indicator:hover {
   transform: scale(1.2);
 }
+
+/* Slider container for handles */
+.slider-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Oscillation handles */
+.oscillation-handle {
+  position: absolute;
+  top: 8px; /* Middle position between previous locations */
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: ew-resize;
+  z-index: 10;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  background: #666; /* Grey palette */
+}
+
+.oscillation-handle-min {
+  background: #555; /* Darker grey for min */
+}
+
+.oscillation-handle-max {
+  background: #777; /* Lighter grey for max */
+}
+
+.oscillation-handle:hover {
+  transform: translateX(-50%) scale(1.2);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  background: #888; /* Lighter on hover */
+}
+
+.oscillation-handle:active {
+  transform: translateX(-50%) scale(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}

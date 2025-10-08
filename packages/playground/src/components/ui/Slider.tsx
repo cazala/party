@@ -29,9 +29,14 @@ export function Slider({
 }: SliderProps) {
   const [oscillationSpeed, setOscillationSpeed] =
     useState<OscillationSpeed>("none");
+  const [oscillationMin, setOscillationMin] = useState<number>(min);
+  const [oscillationMax, setOscillationMax] = useState<number>(max);
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const phaseOffsetRef = useRef<number>(0);
+  const sliderRef = useRef<HTMLInputElement | null>(null);
+  const isDraggingHandleRef = useRef<'min' | 'max' | null>(null);
+  const pausedOscillationSpeedRef = useRef<OscillationSpeed>('none');
 
   const speedMultipliers = {
     none: 0,
@@ -72,8 +77,8 @@ export function Slider({
       }
 
       // Calculate phase offset to start from current value
-      const range = max - min;
-      const center = min + range / 2;
+      const range = oscillationMax - oscillationMin;
+      const center = oscillationMin + range / 2;
       const amplitude = range / 2;
 
       // Find the phase that would give us the current value
@@ -121,6 +126,11 @@ export function Slider({
 
   const handleSliderClick = useCallback(
     (e: React.MouseEvent<HTMLInputElement>) => {
+      // Don't handle clicks if we're dragging a handle
+      if (isDraggingHandleRef.current) {
+        return;
+      }
+      
       if (e.metaKey || e.ctrlKey) {
         e.preventDefault();
         cycleOscillationSpeed();
@@ -132,9 +142,115 @@ export function Slider({
     [cycleOscillationSpeed, oscillationSpeed, stopOscillation]
   );
 
+  const getSliderPosition = useCallback((value: number) => {
+    const percentage = ((value - min) / (max - min)) * 100;
+    return Math.max(0, Math.min(100, percentage));
+  }, [min, max]);
+
+  const getValueFromPosition = useCallback((clientX: number) => {
+    if (!sliderRef.current) return min;
+    
+    const rect = sliderRef.current.getBoundingClientRect();
+    const percentage = (clientX - rect.left) / rect.width;
+    const rawValue = min + percentage * (max - min);
+    
+    // Round to nearest step
+    const steppedValue = Math.round((rawValue - min) / step) * step + min;
+    return Math.max(min, Math.min(max, steppedValue));
+  }, [min, max, step]);
+
+  const handleHandleMouseDown = useCallback((handleType: 'min' | 'max') => {
+    return (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Pause oscillation while dragging
+      if (oscillationSpeed !== 'none') {
+        pausedOscillationSpeedRef.current = oscillationSpeed;
+        setOscillationSpeed('none'); // Actually pause the oscillation
+      }
+      isDraggingHandleRef.current = handleType;
+      
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const newValue = getValueFromPosition(moveEvent.clientX);
+        
+        if (handleType === 'min') {
+          const newMin = Math.min(newValue, oscillationMax - step);
+          setOscillationMin(newMin);
+        } else {
+          const newMax = Math.max(newValue, oscillationMin + step);
+          setOscillationMax(newMax);
+        }
+      };
+      
+      const handleMouseUp = (upEvent: MouseEvent) => {
+        upEvent.preventDefault();
+        upEvent.stopPropagation();
+        
+        // Check if current value is outside new bounds and snap if needed
+        let adjustedValue = value;
+        let needsSnap = false;
+        
+        if (value < oscillationMin) {
+          adjustedValue = oscillationMin;
+          needsSnap = true;
+        } else if (value > oscillationMax) {
+          adjustedValue = oscillationMax;
+          needsSnap = true;
+        }
+        
+        if (needsSnap) {
+          onChange(adjustedValue);
+        }
+        
+        // Resume oscillation with new bounds if it was previously oscillating
+        if (pausedOscillationSpeedRef.current !== 'none') {
+          // Recalculate phase offset for current position within new bounds
+          const range = oscillationMax - oscillationMin;
+          const center = oscillationMin + range / 2;
+          const amplitude = range / 2;
+          const normalizedValue = (adjustedValue - center) / amplitude;
+          const clampedNormalized = Math.max(-1, Math.min(1, normalizedValue));
+          
+          let targetSin;
+          if (Math.abs(clampedNormalized) < 1e-10) {
+            targetSin = 0;
+          } else {
+            targetSin = Math.sign(clampedNormalized) * Math.pow(Math.abs(clampedNormalized), 1 / MULTIPLIER);
+          }
+          targetSin = Math.max(-1, Math.min(1, targetSin));
+          
+          if (targetSin >= 0) {
+            phaseOffsetRef.current = Math.asin(targetSin);
+          } else {
+            phaseOffsetRef.current = -Math.asin(-targetSin);
+          }
+          
+          // Reset timing to restart smooth oscillation
+          startTimeRef.current = null;
+          
+          // Actually resume the oscillation by setting the speed back
+          const resumeSpeed = pausedOscillationSpeedRef.current;
+          pausedOscillationSpeedRef.current = 'none';
+          
+          // Resume oscillation immediately
+          setOscillationSpeed(resumeSpeed);
+        }
+        
+        isDraggingHandleRef.current = null;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+      
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    };
+  }, [getValueFromPosition, oscillationMin, oscillationMax, step, value, onChange, oscillationSpeed]);
+
   const animate = useCallback(
     (timestamp: number) => {
-      if (oscillationSpeed === "none") return;
+      // Don't animate if dragging handles or oscillation is off
+      if (oscillationSpeed === "none" || isDraggingHandleRef.current) return;
 
       if (startTimeRef.current === null) {
         startTimeRef.current = timestamp;
@@ -143,8 +259,8 @@ export function Slider({
       const elapsed = timestamp - startTimeRef.current;
       const speedMultiplier = speedMultipliers[oscillationSpeed];
       const frequency = speedMultiplier * 0.001; // Convert to Hz
-      const range = max - min;
-      const center = min + range / 2;
+      const range = oscillationMax - oscillationMin;
+      const center = oscillationMin + range / 2;
       const amplitude = range / 2;
 
       // Apply phase offset to start from current position
@@ -156,7 +272,7 @@ export function Slider({
       const customCurve =
         Math.sign(sinValue) * Math.pow(Math.abs(sinValue), MULTIPLIER);
       const oscillatedValue = center + customCurve * amplitude;
-      const clampedValue = Math.max(min, Math.min(max, oscillatedValue));
+      const clampedValue = Math.max(oscillationMin, Math.min(oscillationMax, oscillatedValue));
 
       // Round to nearest step
       const steppedValue = Math.round((clampedValue - min) / step) * step + min;
@@ -166,7 +282,7 @@ export function Slider({
 
       animationFrameRef.current = requestAnimationFrame(animate);
     },
-    [oscillationSpeed, min, max, step, onChange, speedMultipliers]
+    [oscillationSpeed, oscillationMin, oscillationMax, min, max, step, onChange, speedMultipliers]
   );
 
   useEffect(() => {
@@ -186,6 +302,12 @@ export function Slider({
       }
     };
   }, [oscillationSpeed]);
+
+  // Initialize oscillation bounds when slider props change
+  useEffect(() => {
+    setOscillationMin(min);
+    setOscillationMax(max);
+  }, [min, max]);
 
   useEffect(() => {
     return () => {
@@ -214,17 +336,38 @@ export function Slider({
             />
           )}
         </div>
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={handleChange}
-          onClick={handleSliderClick}
-          disabled={disabled}
-          className={`slider ${disabled ? "disabled" : ""}`}
-        />
+        <div className="slider-container">
+          <input
+            ref={sliderRef}
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={handleChange}
+            onClick={handleSliderClick}
+            disabled={disabled}
+            className={`slider ${disabled ? "disabled" : ""}`}
+          />
+          {(oscillationSpeed !== "none" || isDraggingHandleRef.current || pausedOscillationSpeedRef.current !== 'none') && (
+            <>
+              <div
+                className="oscillation-handle oscillation-handle-min"
+                style={{ left: `${getSliderPosition(oscillationMin)}%` }}
+                onMouseDown={handleHandleMouseDown('min')}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                title={`Min: ${formatValue(oscillationMin)}`}
+              />
+              <div
+                className="oscillation-handle oscillation-handle-max"
+                style={{ left: `${getSliderPosition(oscillationMax)}%` }}
+                onMouseDown={handleHandleMouseDown('max')}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                title={`Max: ${formatValue(oscillationMax)}`}
+              />
+            </>
+          )}
+        </div>
       </label>
     </Field>
   );
