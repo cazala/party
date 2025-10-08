@@ -161,6 +161,8 @@ export function buildFullscreenPassWGSL<
   );
 
   const instanced = pass.instanced ?? true;
+  const useParticleInVertex =
+    instanced && !("instanceFrom" in pass && pass.instanceFrom);
 
   const fragment = pass.fragment({
     getUniform: getUniformForFullscreen<Inputs>(uniformExpr, clearColor),
@@ -233,12 +235,12 @@ struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: v
   // Provide common inputs for hook body
   let instance_index = inst;
   var particle: Particle = ${
-    instanced
+    useParticleInVertex
       ? `particles[inst]`
-      : `Particle(vec2<f32>(0.0), vec2<f32>(0.0), vec2<f32>(0.0), 0.0, 0.0, vec4<f32>(0.0))`
+      : `Particle(vec2<f32>(0.0), vec2<f32>(0.0), vec2<f32>(0.0), 0.0, 0.0, vec4<f32>(1.0))`
   };
   ${
-    instanced
+    useParticleInVertex
       ? `if (particle.mass == 0.0) { out.position = vec4<f32>(2,2,1,1); out.uv = vec2<f32>(0,0); out.color = vec4<f32>(0); return out; }`
       : ``
   }
@@ -246,9 +248,9 @@ struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: v
   var li: u32 = i & 3u;
   out.uv = quv[li];
   out.index = instance_index;
-  out.color = ${instanced ? `particle.color` : `vec4<f32>(1.0)`};
+  out.color = ${useParticleInVertex ? `particle.color` : `vec4<f32>(1.0)`};
   // Pass pinned flag to fragment (1 if mass < 0)
-  ${instanced ? `out.mass = particle.mass;` : `out.mass = 0.0;`}
+  ${useParticleInVertex ? `out.mass = particle.mass;` : `out.mass = 0.0;`}
 ${vertexBody}
   return out;
 }

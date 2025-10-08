@@ -246,10 +246,16 @@ export class RenderPipeline {
     renderPass.setPipeline(pipeline);
     renderPass.setBindGroup(0, bindGroup);
     const instanced = pass.instanced ?? true;
-
-    // Skip drawing when there are no particles to render
-    if (instanced && particleCount > 0) {
-      renderPass.draw(4, particleCount);
+    // Support instanceFrom to drive instance count from an array input length
+    let instanceCount = particleCount;
+    if (pass.instanceFrom) {
+      const inputs = module.read();
+      const arr = (inputs[pass.instanceFrom] as number[]) || [];
+      instanceCount = arr.length >>> 0;
+    }
+    // Draw
+    if (instanced && instanceCount > 0) {
+      renderPass.draw(4, instanceCount);
     } else if (!instanced) {
       renderPass.draw(4, 1);
     }

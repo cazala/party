@@ -194,6 +194,8 @@ export type FullscreenRenderPass<
   readsScene?: boolean;
   writesScene?: true;
   instanced?: boolean;
+  // Optional: override instance count by the length of this array input
+  instanceFrom?: keyof Inputs;
 };
 
 export enum RenderPassKind {

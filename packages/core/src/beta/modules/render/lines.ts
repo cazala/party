@@ -142,61 +142,47 @@ export class Lines extends Module<"lines", LinesInputs> {
       passes: [
         {
           kind: RenderPassKind.Fullscreen,
-          instanced: false,
-          fragment: ({ getUniform, getLength, sampleScene }) => `{
-  // Convert screen UV to world coordinates using render uniforms
-  let screen_pos = uv * render_uniforms.canvas_size;
-  let world_pos = vec2<f32>(
-    (screen_pos.x - render_uniforms.canvas_size.x * 0.5) / render_uniforms.zoom + render_uniforms.camera_position.x,
-    (screen_pos.y - render_uniforms.canvas_size.y * 0.5) / render_uniforms.zoom + render_uniforms.camera_position.y
-  );
-  
-  // Start with existing scene color
-  var scene_color = ${sampleScene("uv")};
-  
-  let jointCount = ${getLength("aIndexes")};
-  let lineWidth = ${getUniform("lineWidth")};
-  
-  if (jointCount > 0u && lineWidth > 0.0) {
-    // Check each joint to see if this pixel should be part of a line
-    for (var j = 0u; j < jointCount; j++) {
-      let ia = u32(${getUniform("aIndexes", "j")});
-      let ib = u32(${getUniform("bIndexes", "j")});
-      
-      // Get particle positions
-      let pa = particles[ia];
-      let pb = particles[ib];
-      
-      // Skip if either particle is removed
-      if (pa.mass == 0.0 || pb.mass == 0.0) { continue; }
-      
-      // Calculate distance from point to line segment
-      let line_vec = pb.position - pa.position;
-      let line_len_sq = dot(line_vec, line_vec);
-      
-      if (line_len_sq < 1e-8) { continue; } // Skip zero-length lines
-      
-      let point_vec = world_pos - pa.position;
-      let t = clamp(dot(point_vec, line_vec) / line_len_sq, 0.0, 1.0);
-      let closest_point = pa.position + t * line_vec;
-      let dist_to_line = distance(world_pos, closest_point);
-      
-      // Convert line width from screen space to world space
-      let world_line_width = lineWidth / render_uniforms.zoom;
-      
-      if (dist_to_line <= world_line_width * 0.5) {
-        // Use color of particle A for the line
-        let line_alpha = 1.0 - smoothstep(0.0, world_line_width * 0.5, dist_to_line);
-        let line_color = vec4<f32>(pa.color.rgb, pa.color.a * line_alpha);
-        
-        // Blend line color with existing scene
-        scene_color = scene_color + line_color * (1.0 - scene_color.a);
-        scene_color.a = min(1.0, scene_color.a + line_color.a);
-      }
-    }
+          instanced: true,
+          instanceFrom: "aIndexes",
+          // Vertex: position quad in NDC for a line instance, minimal work in fragment
+          vertex: ({ getUniform }) => `{
+  let ia = u32(${getUniform("aIndexes", "instance_index")});
+  let ib = u32(${getUniform("bIndexes", "instance_index")});
+  let pa = particles[ia];
+  let pb = particles[ib];
+  // Cull if either endpoint is removed (mass == 0)
+  if (pa.mass == 0.0 || pb.mass == 0.0) {
+    out.position = vec4<f32>(2.0, 2.0, 1.0, 1.0);
+  } else {
+    let a = (pa.position - render_uniforms.camera_position) * render_uniforms.zoom;
+    let b = (pb.position - render_uniforms.camera_position) * render_uniforms.zoom;
+    let lw = max(1.0, ${getUniform("lineWidth")});
+    let dir = normalize(b - a + vec2<f32>(1e-6, 0.0));
+    let n = vec2<f32>(-dir.y, dir.x);
+    let halfW = (lw * 0.5);
+    let ax = (a.x * 2.0) / render_uniforms.canvas_size.x;
+    let ay = (-a.y * 2.0) / render_uniforms.canvas_size.y;
+    let bx = (b.x * 2.0) / render_uniforms.canvas_size.x;
+    let by = (-b.y * 2.0) / render_uniforms.canvas_size.y;
+    let nx = (n.x * halfW * 2.0) / render_uniforms.canvas_size.x;
+    let ny = (-n.y * halfW * 2.0) / render_uniforms.canvas_size.y;
+    let quad = array<vec2<f32>,4>(
+      vec2<f32>(ax - nx, ay - ny),
+      vec2<f32>(bx - nx, by - ny),
+      vec2<f32>(ax + nx, ay + ny),
+      vec2<f32>(bx + nx, by + ny)
+    );
+    // Pass color from particle A
+    out.color = pa.color;
+    out.position = vec4<f32>(quad[li], 0.0, 1.0);
   }
-  
-  return scene_color;
+}`,
+          fragment: ({ sampleScene }) => `{
+  // Simple overwrite blend with alpha compositing
+  var dst = ${sampleScene("uv")};
+  let src = color;
+  let outc = dst + src * (1.0 - dst.a);
+  return vec4<f32>(outc.rgb, min(1.0, outc.a));
 }`,
           bindings: ["lineWidth"] as const,
           readsScene: true,
