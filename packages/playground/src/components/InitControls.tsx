@@ -31,7 +31,7 @@ export function InitControls() {
     cornerRadius,
     colors,
     velocityConfig,
-    gridJoints: joints,
+    gridJoints,
     setNumParticles,
     setSpawnShape,
     setSpacing,
@@ -76,7 +76,7 @@ export function InitControls() {
       squareSize,
       cornerRadius,
       particleMass,
-      gridJoints: joints,
+      gridJoints,
     });
   }, [
     spawnParticles,
@@ -91,7 +91,7 @@ export function InitControls() {
     cornerRadius,
     colors,
     velocityConfig,
-    joints,
+    gridJoints,
   ]);
 
   // Reset joints and lines when particle configuration changes (but not when engine changes)
@@ -112,12 +112,12 @@ export function InitControls() {
     cornerRadius,
     colors,
     velocityConfig,
-    joints,
+    gridJoints,
   ]);
 
   // Create grid joints after particles are spawned
   useEffect(() => {
-    if (joints && shape === "grid") {
+    if (gridJoints && shape === "grid") {
       // Use a timeout to ensure particles are set in the engine first
       const timeout = setTimeout(() => {
         setJointsEnabled(true);
@@ -164,7 +164,7 @@ export function InitControls() {
       return () => clearTimeout(timeout);
     }
   }, [
-    joints,
+    gridJoints,
     shape,
     numParticles,
     spacing,
@@ -269,8 +269,8 @@ export function InitControls() {
             onChange={(value) => handleSpawnChange({ newSpacing: value })}
           />
           <Checkbox
-            label="Grid Joints"
-            checked={joints}
+            label="Join Rows and Columns"
+            checked={gridJoints}
             onChange={(checked) => setGridJoints(checked)}
           />
         </>

@@ -8,7 +8,7 @@ import "./TopBar.css";
 
 export function TopBar() {
   const { isPlaying, play, pause, clear, spawnParticles } = useEngine();
-  const { initState } = useInit();
+  const { initState, gridJoints, setGridJoints } = useInit();
   const { removeAllJoints } = useJoints();
   const { removeAllLines } = useLines();
 
@@ -33,7 +33,13 @@ export function TopBar() {
     // Re-spawn particles using current INIT panel config from Redux
     spawnParticles(initState);
     play();
-  }, [removeAllJoints, removeAllLines, spawnParticles, play, initState]);
+    
+    // If gridJoints is enabled, force re-creation by toggling the state
+    if (gridJoints && initState.shape === 'grid') {
+      setGridJoints(false);
+      setTimeout(() => setGridJoints(true), 0);
+    }
+  }, [removeAllJoints, removeAllLines, spawnParticles, play, initState, gridJoints, setGridJoints]);
 
   return (
     <div className="top-bar">
