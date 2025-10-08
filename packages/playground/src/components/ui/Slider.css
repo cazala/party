@@ -72,3 +72,26 @@
   opacity: 0.5;
   color: #666;
 }
+
+/* Slider label container for oscillation indicator */
+.slider-label-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* Oscillation speed indicator */
+.oscillation-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.oscillation-indicator:hover {
+  transform: scale(1.2);
+}

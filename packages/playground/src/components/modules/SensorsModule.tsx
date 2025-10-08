@@ -73,6 +73,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         min={0.01}
         max={0.2}
         step={0.01}
+        formatValue={(v) => v.toFixed(2)}
         onChange={setThreshold}
         disabled={!enabled}
       />
@@ -88,7 +89,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
       <Dropdown
         label="Follow Behavior"
         value={followValue}
-        onChange={setFollowValue}
+        onChange={setFollowValue as (value: string) => void}
         disabled={!enabled}
         options={[
           { value: "none", label: "None" },
@@ -100,7 +101,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
       <Dropdown
         label="Flee Behavior"
         value={fleeValue}
-        onChange={setFleeValue}
+        onChange={setFleeValue as (value: string) => void}
         disabled={!enabled}
         options={[
           { value: "none", label: "None" },
@@ -116,6 +117,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
           min={0}
           max={1}
           step={0.01}
+          formatValue={(v) => v.toFixed(2)}
           onChange={setColorSimilarityThreshold}
           disabled={!enabled}
         />

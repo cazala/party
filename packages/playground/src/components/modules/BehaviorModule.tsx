@@ -35,6 +35,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={100}
         step={0.1}
+        formatValue={(v) => v.toFixed(1)}
         onChange={setWander}
         disabled={!enabled}
       />
@@ -45,6 +46,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
+        formatValue={(v) => v.toFixed(1)}
         onChange={setCohesion}
         disabled={!enabled}
       />
@@ -55,6 +57,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
+        formatValue={(v) => v.toFixed(1)}
         onChange={setAlignment}
         disabled={!enabled}
       />
@@ -65,6 +68,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
+        formatValue={(v) => v.toFixed(1)}
         onChange={setRepulsion}
         disabled={!enabled}
       />
@@ -82,6 +86,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
+        formatValue={(v) => v.toFixed(1)}
         onChange={setChase}
         disabled={!enabled}
       />
@@ -92,6 +97,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.1}
+        formatValue={(v) => v.toFixed(1)}
         onChange={setAvoid}
         disabled={!enabled}
       />

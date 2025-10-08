@@ -1,4 +1,4 @@
-import { radToDeg } from "@cazala/party";
+import { radToDeg, GravityDirection } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
 import { useEnvironment } from "../../hooks/modules/useEnvironment";
@@ -49,7 +49,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
         label="Gravity Direction"
         value={direction}
         onChange={(dir) => {
-          setMode(dir);
+          setMode(dir as GravityDirection);
         }}
         options={[
           { value: "down", label: "Down" },

@@ -37,6 +37,7 @@ export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={1}
         step={0.01}
+        formatValue={(v) => v.toFixed(2)}
         onChange={setRestitution}
         disabled={!enabled}
       />

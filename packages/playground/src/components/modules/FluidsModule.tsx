@@ -48,6 +48,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={5}
         step={0.01}
+        formatValue={(v) => v.toFixed(2)}
         onChange={setTargetDensity}
         disabled={!enabled}
       />
@@ -66,6 +67,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         min={0}
         max={10}
         step={0.01}
+        formatValue={(v) => v.toFixed(2)}
         onChange={setViscosity}
         disabled={!enabled}
       />
