@@ -34,6 +34,7 @@ export class WebGPUEngine extends AbstractEngine {
   private workgroupSize: number;
   private simStrideValue: number = 0;
   private shouldSyncNextTick: boolean = false;
+  private animationId: number | null = null;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -94,6 +95,10 @@ export class WebGPUEngine extends AbstractEngine {
 
   // Implement abstract methods for animation loop
   protected startAnimationLoop(): void {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
     this.animate();
   }
 
@@ -176,14 +181,6 @@ export class WebGPUEngine extends AbstractEngine {
   }
 
   private animate = async (): Promise<void> => {
-    if (!this.playing) {
-      if (!this.shouldSyncNextTick) {
-        this.shouldSyncNextTick = true;
-        await this.particles.syncFromGPU(this.resources);
-      }
-      return;
-    }
-
     const dt = this.getTimeDelta();
     this.updateFPS(dt);
 
@@ -198,33 +195,45 @@ export class WebGPUEngine extends AbstractEngine {
       this.registry.getProgram()
     );
 
-    // Update simulation uniforms (dt, count, simStride, maxSize)
-    this.resources.writeSimulationUniform(this.registry.getProgram(), {
-      dt,
-      count: this.particles.getCount(),
-      simStride: this.simStrideValue,
-      maxSize: this.getMaxSize(),
-    });
-
-    // Encode simulation + render
+    // Encode command buffer
     const encoder = this.resources.getDevice().createCommandEncoder();
-    this.sim.runPasses(encoder, this.resources, {
-      particleCount: this.particles.getCount(),
-      gridCellCount: this.grid.getCellCount(),
-      workgroupSize: this.workgroupSize,
-      constrainIterations: this.constrainIterations,
-    });
+
+    // Only run simulation passes when playing
+    if (this.playing) {
+      // Update simulation uniforms (dt, count, simStride, maxSize)
+      this.resources.writeSimulationUniform(this.registry.getProgram(), {
+        dt,
+        count: this.particles.getCount(),
+        simStride: this.simStrideValue,
+        maxSize: this.getMaxSize(),
+      });
+
+      // Run simulation passes
+      this.sim.runPasses(encoder, this.resources, {
+        particleCount: this.particles.getCount(),
+        gridCellCount: this.grid.getCellCount(),
+        workgroupSize: this.workgroupSize,
+        constrainIterations: this.constrainIterations,
+      });
+
+      if (this.shouldSyncNextTick) {
+        // Sync to GPU on next tick
+        this.waitForNextTick().then(() =>
+          this.particles.syncToGPU(this.resources)
+        );
+        this.shouldSyncNextTick = false;
+      }
+    } else {
+      // When paused, handle particle sync but skip simulation
+      if (!this.shouldSyncNextTick) {
+        this.shouldSyncNextTick = true;
+        await this.particles.syncFromGPU(this.resources);
+      }
+    }
 
     const particleCount = this.particles.getCount();
 
-    if (this.shouldSyncNextTick) {
-      // Sync to GPU on next tick
-      this.waitForNextTick().then(() =>
-        this.particles.syncToGPU(this.resources)
-      );
-      this.shouldSyncNextTick = false;
-    }
-
+    // Always run render passes to keep displaying current state
     const lastView = this.render.runPasses(
       encoder,
       this.registry.getEnabledRenderModules(),
@@ -238,7 +247,8 @@ export class WebGPUEngine extends AbstractEngine {
     this.render.present(encoder, this.resources, lastView);
     this.resources.getDevice().queue.submit([encoder.finish()]);
 
-    requestAnimationFrame(this.animate);
+    // Continue animation loop regardless of playing state
+    this.animationId = requestAnimationFrame(this.animate);
   };
 
   private waitForNextTick(): Promise<void> {

@@ -18,6 +18,7 @@ export interface IEngine {
   initialize(): Promise<void>;
   play(): void;
   pause(): void;
+  stop(): void;
   toggle(): void;
   isPlaying(): boolean;
   destroy(): void;
@@ -99,6 +100,10 @@ export abstract class AbstractEngine implements IEngine {
 
   pause(): void {
     this.playing = false;
+  }
+
+  stop(): void {
+    this.pause();
     this.stopAnimationLoop();
   }
 
