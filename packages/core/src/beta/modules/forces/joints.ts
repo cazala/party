@@ -910,7 +910,15 @@ export class Joints extends Module<"joints", JointsInputs> {
       },
 
       // CCD against joints with substeps, then apply momentum preservation after constraint solving
-      correct: ({ particle, getState, dt, prevPos, particles, input }) => {
+      correct: ({
+        particle,
+        getState,
+        dt,
+        prevPos,
+        particles,
+        input,
+        index,
+      }) => {
         if (dt <= 0) return;
         // Substep CCD on CPU path
         const enableParticleCollisions =
@@ -935,7 +943,7 @@ export class Joints extends Module<"joints", JointsInputs> {
             for (let j = 0; j < count; j++) {
               const ia = a[j] >>> 0;
               const ib = b[j] >>> 0;
-              if (ia === particle.id || ib === particle.id) continue;
+              if (ia === index || ib === index) continue;
               const A = particles[ia];
               const B = particles[ib];
               if (!A || !B) continue;
@@ -993,14 +1001,15 @@ export class Joints extends Module<"joints", JointsInputs> {
           for (let j0 = 0; j0 < count2; j0++) {
             const a0 = a2[j0] >>> 0;
             const b0 = b2[j0] >>> 0;
-            const incident = a0 === particle.id || b0 === particle.id;
+            const incident = a0 === index || b0 === index;
             if (!incident) continue;
-            const otherIdx = a0 === particle.id ? b0 : a0;
+            const otherIdx = a0 === index ? b0 : a0;
 
             const prevAx = getState("prevX");
             const prevAy = getState("prevY");
-            const prevBx = getState("prevX", otherIdx);
-            const prevBy = getState("prevY", otherIdx);
+            const otherPid = particles[otherIdx]?.id;
+            const prevBx = getState("prevX", otherPid);
+            const prevBy = getState("prevY", otherPid);
 
             outer2: for (let s = 1; s <= steps; s++) {
               const t = s / steps;
@@ -1080,7 +1089,7 @@ export class Joints extends Module<"joints", JointsInputs> {
         // Check if this particle has any joints
         const a = (this.readArray("aIndexes") as number[]) || [];
         const b = (this.readArray("bIndexes") as number[]) || [];
-        const hasJoints = a.includes(particle.id) || b.includes(particle.id);
+        const hasJoints = a.includes(index) || b.includes(index);
 
         if (!hasJoints) return;
 
