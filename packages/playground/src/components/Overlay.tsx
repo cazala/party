@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useEngine } from "../hooks/useEngine";
 import { useTools } from "../hooks/useTools";
 
@@ -15,6 +15,7 @@ export function Overlay() {
   } = useTools();
   const animationFrameRef = useRef<number>();
   const isDragging = useRef(false);
+  const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false);
 
   // Render function
   const render = useCallback(() => {
@@ -24,9 +25,14 @@ export function Overlay() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Render overlay content
-    renderOverlay(ctx, { width: size.width, height: size.height });
-  }, [renderOverlay, size]);
+    // Clear canvas first
+    ctx.clearRect(0, 0, size.width, size.height);
+
+    // Only render overlay content when mouse is over canvas
+    if (isMouseOverCanvas) {
+      renderOverlay(ctx, { width: size.width, height: size.height });
+    }
+  }, [renderOverlay, size, isMouseOverCanvas]);
 
   // Setup canvas and start render loop
   useEffect(() => {
@@ -67,6 +73,19 @@ export function Overlay() {
     const mainCanvas = mainCanvasRef?.current;
     if (!mainCanvas) return;
 
+    const handleMouseEnter = () => {
+      setIsMouseOverCanvas(true);
+    };
+
+    const handleMouseLeave = () => {
+      setIsMouseOverCanvas(false);
+      // Also handle mouse up for spawn mode when leaving canvas
+      if (isSpawnMode) {
+        isDragging.current = false;
+        endDrag();
+      }
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!isSpawnMode) return; // Only handle mouse events in spawn mode
       const rect = mainCanvas.getBoundingClientRect();
@@ -96,16 +115,18 @@ export function Overlay() {
       endDrag();
     };
 
+    mainCanvas.addEventListener("mouseenter", handleMouseEnter);
+    mainCanvas.addEventListener("mouseleave", handleMouseLeave);
     mainCanvas.addEventListener("mousemove", handleMouseMove);
     mainCanvas.addEventListener("mousedown", handleMouseDown);
     mainCanvas.addEventListener("mouseup", handleMouseUp);
-    mainCanvas.addEventListener("mouseleave", handleMouseUp);
 
     return () => {
+      mainCanvas.removeEventListener("mouseenter", handleMouseEnter);
+      mainCanvas.removeEventListener("mouseleave", handleMouseLeave);
       mainCanvas.removeEventListener("mousemove", handleMouseMove);
       mainCanvas.removeEventListener("mousedown", handleMouseDown);
       mainCanvas.removeEventListener("mouseup", handleMouseUp);
-      mainCanvas.removeEventListener("mouseleave", handleMouseUp);
     };
   }, [
     mainCanvasRef,
