@@ -269,7 +269,7 @@ export function InitControls() {
             onChange={(value) => handleSpawnChange({ newSpacing: value })}
           />
           <Checkbox
-            label="Joints"
+            label="Grid Joints"
             checked={joints}
             onChange={(checked) => setGridJoints(checked)}
           />
