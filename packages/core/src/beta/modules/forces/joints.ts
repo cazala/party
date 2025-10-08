@@ -523,6 +523,15 @@ export class Joints extends Module<"joints", JointsInputs> {
       var B = particles[b2];
       // Guard
       if (A.mass == 0.0 || B.mass == 0.0) { continue; }
+      // Broadphase AABB reject using particle radius
+      let r = ${particleVar}.size;
+      let minx = min(A.position.x, B.position.x) - r;
+      let maxx = max(A.position.x, B.position.x) + r;
+      let miny = min(A.position.y, B.position.y) - r;
+      let maxy = max(A.position.y, B.position.y) + r;
+      let px = ${particleVar}.position.x;
+      let py = ${particleVar}.position.y;
+      if (px < minx || px > maxx || py < miny || py > maxy) { continue; }
       let AB = B.position - A.position;
       let AB2 = dot(AB, AB);
       if (AB2 < 1e-8) { continue; }
@@ -531,7 +540,6 @@ export class Joints extends Module<"joints", JointsInputs> {
       let closest = A.position + AB * t;
       let pc = ${particleVar}.position - closest;
       let d2 = dot(pc, pc);
-      let r = ${particleVar}.size;
       if (d2 < r * r && d2 > 1e-8) {
         let d = sqrt(d2);
         let overlap = r - d;
@@ -589,6 +597,12 @@ export class Joints extends Module<"joints", JointsInputs> {
         var B2 = particles[b4];
         let x3 = A2.position.x; let y3 = A2.position.y;
         let x4 = B2.position.x; let y4 = B2.position.y;
+        // Broadphase AABB overlap test for segments (no thickness)
+        let min1x = min(x1, x2); let max1x = max(x1, x2);
+        let min1y = min(y1, y2); let max1y = max(y1, y2);
+        let min2x = min(x3, x4); let max2x = max(x3, x4);
+        let min2y = min(y3, y4); let max2y = max(y3, y4);
+        if (max1x < min2x || max2x < min1x || max1y < min2y || max2y < min1y) { continue; }
         let dx1 = x2 - x1; let dy1 = y2 - y1;
         let dx2 = x4 - x3; let dy2 = y4 - y3;
         let denom = dx1 * dy2 - dy1 * dx2;
@@ -856,6 +870,15 @@ export class Joints extends Module<"joints", JointsInputs> {
             const ABy = B.position.y - A.position.y;
             const AB2 = ABx * ABx + ABy * ABy;
             if (AB2 < 1e-8) continue;
+            // Broadphase AABB reject using particle radius
+            const radiusP = particle.size;
+            const minx = Math.min(A.position.x, B.position.x) - radiusP;
+            const maxx = Math.max(A.position.x, B.position.x) + radiusP;
+            const miny = Math.min(A.position.y, B.position.y) - radiusP;
+            const maxy = Math.max(A.position.y, B.position.y) + radiusP;
+            const px = particle.position.x;
+            const py = particle.position.y;
+            if (px < minx || px > maxx || py < miny || py > maxy) continue;
             const APx = particle.position.x - A.position.x;
             const APy = particle.position.y - A.position.y;
             let t = (APx * ABx + APy * ABy) / AB2;
@@ -1024,6 +1047,22 @@ export class Joints extends Module<"joints", JointsInputs> {
               const aby = B.position.y - A.position.y;
               const ab2 = abx * abx + aby * aby;
               if (ab2 < 1e-8) continue;
+              // (Optional) Light AABB reject around segment using particle's swept AABB
+              const sweepMinX = Math.min(p0x, p1x) - r;
+              const sweepMaxX = Math.max(p0x, p1x) + r;
+              const sweepMinY = Math.min(p0y, p1y) - r;
+              const sweepMaxY = Math.max(p0y, p1y) + r;
+              const segMinX = Math.min(A.position.x, B.position.x);
+              const segMaxX = Math.max(A.position.x, B.position.x);
+              const segMinY = Math.min(A.position.y, B.position.y);
+              const segMaxY = Math.max(A.position.y, B.position.y);
+              if (
+                segMaxX < sweepMinX ||
+                sweepMaxX < segMinX ||
+                segMaxY < sweepMinY ||
+                sweepMaxY < segMinY
+              )
+                continue;
               const apx = psx - A.position.x;
               const apy = psy - A.position.y;
               let u = (apx * abx + apy * aby) / ab2;
