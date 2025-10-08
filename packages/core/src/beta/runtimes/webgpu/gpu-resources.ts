@@ -56,6 +56,7 @@ export class GPUResources {
   private currentScene: "A" | "B" = "A";
   private sceneSize: { width: number; height: number } | null = null;
   private copyPipelines: Map<string, GPURenderPipeline> = new Map();
+  private simUniformCache: Float32Array | null = null;
   private fullscreenPipelines: Map<string, GPURenderPipeline> = new Map();
   private imageComputePipelines: Map<string, GPUComputePipeline> = new Map();
   private hashWGSL(code: string): string {
@@ -287,13 +288,18 @@ export class GPUResources {
       count?: number;
       simStride?: number;
       maxSize?: number;
+      iteration?: number;
     }
   ): void {
     const idx = program.layouts.findIndex((l) => l.moduleName === "simulation");
     if (idx === -1) return;
     const layout = program.layouts[idx];
     const map = layout.mapping as Record<string, { flatIndex: number }>;
-    const data = new Float32Array(layout.vec4Count * 4);
+    // Start from cache to preserve previously written fields across partial updates
+    const data =
+      this.simUniformCache?.length === layout.vec4Count * 4
+        ? new Float32Array(this.simUniformCache)
+        : new Float32Array(layout.vec4Count * 4);
     if (values.dt !== undefined && map.dt) data[map.dt.flatIndex] = values.dt;
     if (values.count !== undefined && map.count)
       data[map.count.flatIndex] = values.count;
@@ -301,7 +307,10 @@ export class GPUResources {
       data[map.simStride.flatIndex] = values.simStride;
     if (values.maxSize !== undefined && map.maxSize)
       data[map.maxSize.flatIndex] = values.maxSize;
+    if (values.iteration !== undefined && map.iteration)
+      data[map.iteration.flatIndex] = values.iteration;
     this.writeModuleUniform(idx, data);
+    this.simUniformCache = data;
   }
 
   ensureSceneTextures(width: number, height: number): void {
@@ -385,10 +394,15 @@ export class GPUResources {
     this.currentScene = this.currentScene === "A" ? "B" : "A";
   }
 
-  getRenderBindGroupLayout(arrayInputs?: string[], fragmentParticleAccess?: boolean): GPUBindGroupLayout {
+  getRenderBindGroupLayout(
+    arrayInputs?: string[],
+    fragmentParticleAccess?: boolean
+  ): GPUBindGroupLayout {
     // Create a cache key based on array inputs and fragment access
     const cacheKey = arrayInputs
-      ? `render_${arrayInputs.sort().join("_")}_frag_${fragmentParticleAccess || false}`
+      ? `render_${arrayInputs.sort().join("_")}_frag_${
+          fragmentParticleAccess || false
+        }`
       : `render_basic_frag_${fragmentParticleAccess || false}`;
 
     // Check if we have a cached layout for this configuration
@@ -402,7 +416,7 @@ export class GPUResources {
     const entries: GPUBindGroupLayoutEntry[] = [
       {
         binding: 0,
-        visibility: fragmentParticleAccess 
+        visibility: fragmentParticleAccess
           ? GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT
           : GPUShaderStage.VERTEX,
         buffer: { type: "read-only-storage" },
@@ -607,7 +621,9 @@ export class GPUResources {
     fragmentParticleAccess?: boolean
   ): GPURenderPipeline {
     const arrayKey = arrayInputs?.sort().join("_") || "";
-    const key = `fs:${this.hashWGSL(shaderCode)}:${arrayKey}:frag_${fragmentParticleAccess || false}`;
+    const key = `fs:${this.hashWGSL(shaderCode)}:${arrayKey}:frag_${
+      fragmentParticleAccess || false
+    }`;
     const cached = this.fullscreenPipelines.get(key);
     if (cached) return cached;
     const shaderModule = this.getDevice().createShaderModule({
@@ -615,7 +631,9 @@ export class GPUResources {
     });
     const pipeline = this.getDevice().createRenderPipeline({
       layout: this.getDevice().createPipelineLayout({
-        bindGroupLayouts: [this.getRenderBindGroupLayout(arrayInputs, fragmentParticleAccess)],
+        bindGroupLayouts: [
+          this.getRenderBindGroupLayout(arrayInputs, fragmentParticleAccess),
+        ],
       }),
       vertex: { module: shaderModule, entryPoint: "vs_main" },
       fragment: {
@@ -675,7 +693,8 @@ export class GPUResources {
 
     // Add combined array storage buffer entry if module has arrays
     if (arrayInputs && arrayInputs.length > 0) {
-      const combinedArrayBuffer = this.combinedArrayStorageBuffers.get(moduleName);
+      const combinedArrayBuffer =
+        this.combinedArrayStorageBuffers.get(moduleName);
       if (combinedArrayBuffer) {
         entries.push({
           binding: 5,
@@ -685,7 +704,10 @@ export class GPUResources {
     }
 
     return this.getDevice().createBindGroup({
-      layout: this.getRenderBindGroupLayout(arrayInputs, fragmentParticleAccess),
+      layout: this.getRenderBindGroupLayout(
+        arrayInputs,
+        fragmentParticleAccess
+      ),
       entries,
     });
   }
@@ -723,7 +745,8 @@ export class GPUResources {
       for (const [moduleName, bindings] of Object.entries(
         compute.extraBindings.arrays
       )) {
-        const combinedArrayBuffer = this.combinedArrayStorageBuffers.get(moduleName);
+        const combinedArrayBuffer =
+          this.combinedArrayStorageBuffers.get(moduleName);
 
         if (combinedArrayBuffer) {
           entries.push({
@@ -785,7 +808,8 @@ export class GPUResources {
 
     // Add combined array storage buffer entry if module has arrays
     if (arrayInputs && arrayInputs.length > 0) {
-      const combinedArrayBuffer = this.combinedArrayStorageBuffers.get(moduleName);
+      const combinedArrayBuffer =
+        this.combinedArrayStorageBuffers.get(moduleName);
       if (combinedArrayBuffer) {
         entries.push({
           binding: 3,
@@ -803,7 +827,10 @@ export class GPUResources {
   /**
    * Create combined array storage buffer for a module's array inputs
    */
-  createCombinedArrayStorageBuffer(moduleName: string, arrayInputs: string[]): void {
+  createCombinedArrayStorageBuffer(
+    moduleName: string,
+    arrayInputs: string[]
+  ): void {
     // Clean up old combined buffer for this module
     const existingBuffer = this.combinedArrayStorageBuffers.get(moduleName);
     if (existingBuffer) {
@@ -876,9 +903,9 @@ export class GPUResources {
       const offset = arrayOffsets[arrayKey] || 0;
       maxOffset = Math.max(maxOffset, offset + data.length);
     }
-    
+
     const requiredSize = maxOffset * 4; // 4 bytes per float
-    
+
     // Check if we need to resize the buffer
     if (requiredSize > combinedBuffer.size) {
       // Recreate with larger size
@@ -889,7 +916,7 @@ export class GPUResources {
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       });
       this.combinedArrayStorageBuffers.set(moduleName, newBuffer);
-      
+
       // Write all array data to new buffer
       for (const [arrayKey, data] of Object.entries(arrayDataMap)) {
         const offset = arrayOffsets[arrayKey] || 0;

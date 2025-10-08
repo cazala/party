@@ -20,14 +20,6 @@ export class Particle implements IParticle {
     this.size = options.size;
     this.mass = options.mass;
     this.color = options.color;
-    
-    // Debug particle construction issues
-    if (this.id < 5 && (isNaN(options.position.y) || options.position.y === undefined || options.position.y === 0)) {
-      console.warn(`Particle ${this.id} constructed with suspect Y position:`, {
-        input: options.position,
-        result: { x: this.position.x, y: this.position.y }
-      });
-    }
   }
 
   toJSON(): IParticle {

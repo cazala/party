@@ -229,16 +229,6 @@ export function useShapeTool(isActive: boolean) {
       }
     }
 
-    // Debug logging
-    console.log("Shape overlay render:", {
-      centerX,
-      centerY,
-      radius,
-      sides,
-      isAdjustingSize,
-      isAdjustingSides,
-    });
-
     ctx.restore();
   };
 
@@ -261,7 +251,6 @@ export function useShapeTool(isActive: boolean) {
       const isShift = ev.shiftKey;
 
       if (isCtrl) {
-        console.log("Starting size adjustment");
         // Start size adjustment
         state.isAdjustingRadius = true;
         state.adjustStartX = sx;

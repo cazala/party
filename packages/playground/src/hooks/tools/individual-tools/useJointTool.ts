@@ -16,13 +16,13 @@ export function useJointTool(isActive: boolean) {
   const worldToScreen = useCallback(
     (worldX: number, worldY: number) => {
       if (!engine) return { x: worldX, y: worldY };
-      
+
       const centerX = size.width / 2;
       const centerY = size.height / 2;
-      
+
       const screenX = centerX + (worldX - camera.x) * zoom;
       const screenY = centerY + (worldY - camera.y) * zoom;
-      
+
       return { x: screenX, y: screenY };
     },
     [engine, camera, zoom, size]
@@ -52,7 +52,7 @@ export function useJointTool(isActive: boolean) {
       if (!engine) return;
       const sel = selectedIndexRef.current;
       if (sel == null) return;
-      
+
       const mp = mousePosRef.current;
       const circleRadius = 6;
 
@@ -60,16 +60,16 @@ export function useJointTool(isActive: boolean) {
       const selectedPos = selectedParticlePos.current;
       if (selectedPos) {
         const particleScreen = worldToScreen(selectedPos.x, selectedPos.y);
-        
+
         // Calculate direction from particle to mouse to find circle edge
         const dx = mp.x - particleScreen.x;
         const dy = mp.y - particleScreen.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        
+
         // Calculate point on circle edge closest to particle
         const circleEdgeX = mp.x - (dx / distance) * circleRadius;
         const circleEdgeY = mp.y - (dy / distance) * circleRadius;
-        
+
         ctx.save();
         ctx.strokeStyle = "rgba(255,255,255,1)";
         ctx.lineWidth = 2;
@@ -130,26 +130,21 @@ export function useJointTool(isActive: boolean) {
             const dx = pb.position.x - pa.position.x;
             const dy = pb.position.y - pa.position.y;
             const rest = Math.sqrt(dx * dx + dy * dy);
-            console.log("🔗 Creating joint:", { a, b, rest });
 
             // Enable joints module if not already enabled
             if (!joints.enabled) {
-              console.log("🔗 Enabling joints module");
               joints.setEnabled(true);
             }
 
             // Enable joint lines module if not already enabled
             if (!lines.enabled) {
-              console.log("📏 Enabling joint lines module");
               lines.setEnabled(true);
             }
 
             joints.addJoint({ aIndex: a, bIndex: b, restLength: rest });
-            // Also add joint line using the new helper method
             lines.addLine({ aIndex: a, bIndex: b });
-            console.log("📏 Added joint line:", { a, b });
           }
-          
+
           // Check if ctrl/cmd is pressed to chain joints
           if (ev.ctrlKey || ev.metaKey) {
             // Start new joint with the second particle as the first

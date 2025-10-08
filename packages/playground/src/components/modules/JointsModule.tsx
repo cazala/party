@@ -49,7 +49,7 @@ export function JointsModule({ enabled = true }: { enabled?: boolean }) {
       <Slider
         label="Steps"
         value={steps}
-        min={0}
+        min={1}
         max={100}
         step={1}
         onChange={setSteps}

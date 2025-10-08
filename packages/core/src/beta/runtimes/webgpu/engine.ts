@@ -48,7 +48,7 @@ export class WebGPUEngine extends AbstractEngine {
   }) {
     super({
       ...options,
-      constrainIterations: options.constrainIterations ?? 50, // Higher default for WebGPU
+      constrainIterations: options.constrainIterations ?? 50,
     });
     this.maxParticles = options.maxParticles ?? 100000;
     this.workgroupSize = options.workgroupSize ?? 64;
@@ -206,6 +206,7 @@ export class WebGPUEngine extends AbstractEngine {
         count: this.particles.getCount(),
         simStride: this.simStrideValue,
         maxSize: this.getMaxSize(),
+        iteration: 0,
       });
 
       // Run simulation passes

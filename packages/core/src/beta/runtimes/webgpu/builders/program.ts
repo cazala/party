@@ -45,7 +45,10 @@ export interface ModuleUniformLayout {
   structName: string;
   sizeBytes: number;
   vec4Count: number;
-  mapping: Record<string, { flatIndex: number; expr: string; offsetExpr?: string }>;
+  mapping: Record<
+    string,
+    { flatIndex: number; expr: string; offsetExpr?: string }
+  >;
 }
 
 export interface Program {
@@ -75,7 +78,10 @@ export function buildProgram(modules: readonly Module[]): Program {
     const structName = `Uniforms_${cap(name)}`;
     const idsLocal = [...fieldIds] as string[];
     const vec4Count = Math.max(1, Math.ceil(idsLocal.length / 4));
-    const mapping: Record<string, { flatIndex: number; expr: string; offsetExpr?: string }> = {};
+    const mapping: Record<
+      string,
+      { flatIndex: number; expr: string; offsetExpr?: string }
+    > = {};
     idsLocal.forEach((id, i) => {
       const v = Math.floor(i / 4),
         c = i % 4;
@@ -106,7 +112,7 @@ export function buildProgram(modules: readonly Module[]): Program {
   // Internal: simulation + grid
   pushUniformLayout(
     "simulation",
-    ["dt", "count", "simStride", "maxSize"] as const,
+    ["dt", "count", "simStride", "maxSize", "iteration"] as const,
     1
   );
   pushUniformLayout(
@@ -151,7 +157,10 @@ export function buildProgram(modules: readonly Module[]): Program {
     // Create uniform buffer for number inputs
     const bindingIndex = nextBindingIndex++;
     const vec4Count = Math.max(1, Math.ceil(allNumberInputs.length / 4));
-    const mapping: Record<string, { flatIndex: number; expr: string; offsetExpr?: string }> = {};
+    const mapping: Record<
+      string,
+      { flatIndex: number; expr: string; offsetExpr?: string }
+    > = {};
 
     allNumberInputs.forEach((id, i) => {
       const v = Math.floor(i / 4),
@@ -197,7 +206,9 @@ export function buildProgram(modules: readonly Module[]): Program {
         const offsetKey = `${arrayKey}_offset`;
         const offsetMapping = {
           flatIndex: offsetIndex,
-          expr: `${uniformsVar}.v${Math.floor(offsetIndex / 4)}.${['x', 'y', 'z', 'w'][offsetIndex % 4]}`,
+          expr: `${uniformsVar}.v${Math.floor(offsetIndex / 4)}.${
+            ["x", "y", "z", "w"][offsetIndex % 4]
+          }`,
         };
         mapping[offsetKey] = offsetMapping;
         offsetIndex++;
@@ -206,17 +217,17 @@ export function buildProgram(modules: readonly Module[]): Program {
       // Update vec4Count to include offset fields
       const totalNumberInputs = allNumberInputs.length + arrayInputs.length;
       const updatedVec4Count = Math.max(1, Math.ceil(totalNumberInputs / 4));
-      
+
       // Re-generate the struct with additional offset fields
       const updatedStructWGSL = `struct ${structName} {\n${Array.from(
         { length: updatedVec4Count },
         (_, i) => `  v${i}: vec4<f32>,`
       ).join("\n")}\n}`;
-      
+
       // Update the layout
       layouts[layouts.length - 1].vec4Count = updatedVec4Count;
       layouts[layouts.length - 1].sizeBytes = updatedVec4Count * 16;
-      
+
       // Replace the last struct declaration
       uniformDecls[uniformDecls.length - 2] = updatedStructWGSL;
 
@@ -244,7 +255,7 @@ export function buildProgram(modules: readonly Module[]): Program {
           expr: combinedArrayVar, // Base array reference, offset will be added by getUniform
           offsetExpr, // Store offset expression for getUniform to use
         };
-        
+
         // Ensure length mapping exists
         if (!mapping[lengthKey] || mapping[lengthKey].flatIndex === -1) {
           mapping[lengthKey] = {
@@ -333,6 +344,7 @@ export function buildProgram(modules: readonly Module[]): Program {
   globals.push(
     `fn SIM_STATE_STRIDE() -> u32 { return u32(${simLayout.mapping.simStride.expr}); }
 fn SIM_COUNT() -> u32 { return u32(${simLayout.mapping.count.expr}); }
+fn SIM_ITERATION() -> u32 { return u32(${simLayout.mapping.iteration.expr}); }
 fn sim_state_index(pid: u32, slot: u32) -> u32 { return pid * SIM_STATE_STRIDE() + slot; }
 fn sim_state_read(pid: u32, slot: u32) -> f32 { return SIM_STATE[sim_state_index(pid, slot)]; }
 fn sim_state_write(pid: u32, slot: u32, value: f32) { SIM_STATE[sim_state_index(pid, slot)] = value; }`

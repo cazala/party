@@ -90,6 +90,8 @@ export class SimulationPipeline {
       if (groups > 0 && pipelines.constrain) {
         const iterations = Math.max(1, params.constrainIterations ?? 1);
         for (let i = 0; i < iterations; i++) {
+          // update simulation iteration uniform each loop
+          resources.writeSimulationUniform(this.program, { iteration: i });
           const pass = encoder.beginComputePass();
           pass.setBindGroup(0, bindGroup);
           pass.setPipeline(pipelines.constrain);

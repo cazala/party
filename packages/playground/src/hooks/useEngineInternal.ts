@@ -117,11 +117,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     let cleanup: (() => void) | null = null;
 
     const initEngine = async () => {
-      console.log("🔄 useEngine: initEngine called", {
-        isWebGPU,
-        canvasRef: !!canvasRef.current,
-      });
-
       // Preserve state from existing engine before cleanup
       let preservedState: any = null;
       if (engineRef.current) {
@@ -286,15 +281,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
         // Restore preserved state if we had one (during engine type toggle)
         if (preservedState) {
-          console.log("🔄 Restoring state from previous engine");
-
           // Restore particles if we had them
           if (preservedState.particles && preservedState.particles.length > 0) {
-            console.log(
-              "🔄 Restoring",
-              preservedState.particles.length,
-              "particles"
-            );
             engine.setParticles(preservedState.particles);
           }
 
@@ -308,7 +296,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
           // Restore module states in Redux
           if (preservedState.modulesState) {
-            console.log("🔄 Restoring module states");
             const modules = preservedState.modulesState;
             dispatch(importEnvironmentSettings(modules.environment));
             dispatch(importBoundarySettings(modules.boundary));
@@ -435,18 +422,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       if (lines && lines.setEnabled) {
         lines.setEnabled(modulesState.lines.enabled);
       }
-
-      console.log("🔄 Applied module states to engine:", {
-        environment: modulesState.environment.enabled,
-        boundary: modulesState.boundary.enabled,
-        collisions: modulesState.collisions.enabled,
-        fluids: modulesState.fluids.enabled,
-        behavior: modulesState.behavior.enabled,
-        sensors: modulesState.sensors.enabled,
-        trails: modulesState.trails.enabled,
-        interaction: modulesState.interaction.enabled,
-        particle: modulesState.particle.enabled,
-      });
     } catch (err) {
       console.warn("Error applying module states:", err);
     }
@@ -463,7 +438,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     modulesState.joints.enabled,
     modulesState.lines.enabled,
   ]);
-
 
   // Action functions (wrapped thunks)
   const play = useCallback(() => {
@@ -591,11 +565,10 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const getCount = useCallback(() => {
     return engineRef.current?.getCount() || 0;
   }, []);
-  
+
   const getFPS = useCallback(() => {
     return engineRef.current?.getFPS() || 0;
   }, []);
-
 
   return {
     // State values (from Redux selectors)

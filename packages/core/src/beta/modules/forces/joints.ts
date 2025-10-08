@@ -9,7 +9,7 @@ import {
 // Default configuration values for joints module
 export const DEFAULT_JOINTS_RESTITUTION = 0.9;
 export const DEFAULT_JOINTS_SEPARATION = 0.5;
-export const DEFAULT_JOINTS_STEPS = 48;
+export const DEFAULT_JOINTS_STEPS = 1;
 export const DEFAULT_JOINTS_FRICTION = 0.01;
 export const DEFAULT_JOINTS_MOMENTUM = 0.7;
 export const DEFAULT_JOINTS_ENABLE_PARTICLE_COLLISIONS = 0;
@@ -398,8 +398,9 @@ export class Joints extends Module<"joints", JointsInputs> {
       let delta = other.position - ${particleVar}.position;
       let dist2 = dot(delta, delta);
       if (dist2 < 1e-8) { continue; }
-      let dist = sqrt(dist2);
-      let dir = delta / dist;
+      let invDist = inverseSqrt(dist2);
+      let dist = 1.0 / max(invDist, 1e-8);
+      let dir = delta * invDist;
       let rl = select(dist, rest, rest > 0.0);
       let diff = dist - rl;
       if (abs(diff) < 1e-6) { continue; }
@@ -426,8 +427,9 @@ export class Joints extends Module<"joints", JointsInputs> {
       let delta = other.position - ${particleVar}.position;
       let dist2 = dot(delta, delta);
       if (dist2 < 1e-8) { continue; }
-      let dist = sqrt(dist2);
-      let dir = delta / dist;
+      let invDist = inverseSqrt(dist2);
+      let dist = 1.0 / max(invDist, 1e-8);
+      let dir = delta * invDist;
       let rl = select(dist, rest, rest > 0.0);
       let diff = dist - rl;
       if (abs(diff) < 1e-6) { continue; }
@@ -455,8 +457,9 @@ export class Joints extends Module<"joints", JointsInputs> {
       let delta = other.position - ${particleVar}.position;
       let dist2 = dot(delta, delta);
       if (dist2 < 1e-8) { continue; }
-      let dist = sqrt(dist2);
-      let dir = delta / dist;
+      let invDist = inverseSqrt(dist2);
+      let dist = 1.0 / max(invDist, 1e-8);
+      let dir = delta * invDist;
       let rl = select(dist, rest, rest > 0.0);
       let diff = dist - rl;
       if (abs(diff) < 1e-6) { continue; }
@@ -482,8 +485,9 @@ export class Joints extends Module<"joints", JointsInputs> {
       let delta = other.position - ${particleVar}.position;
       let dist2 = dot(delta, delta);
       if (dist2 < 1e-8) { continue; }
-      let dist = sqrt(dist2);
-      let dir = delta / dist;
+      let invDist = inverseSqrt(dist2);
+      let dist = 1.0 / max(invDist, 1e-8);
+      let dir = delta * invDist;
       let rl = select(dist, rest, rest > 0.0);
       let diff = dist - rl;
       if (abs(diff) < 1e-6) { continue; }
