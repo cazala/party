@@ -116,12 +116,18 @@ export function Slider({
   );
 
   const cycleOscillationSpeed = useCallback(() => {
-    const speeds: OscillationSpeed[] = ["none", "slow", "normal", "fast"];
-    const currentIndex = speeds.indexOf(oscillationSpeed);
-    const nextIndex = (currentIndex + 1) % speeds.length;
-    const nextSpeed = speeds[nextIndex];
-
-    startOscillation(nextSpeed);
+    const speeds: OscillationSpeed[] = ["slow", "normal", "fast"];
+    
+    if (oscillationSpeed === "none") {
+      // If not oscillating, start with slow
+      startOscillation("slow");
+    } else {
+      // Cycle through the speeds
+      const currentIndex = speeds.indexOf(oscillationSpeed);
+      const nextIndex = (currentIndex + 1) % speeds.length;
+      const nextSpeed = speeds[nextIndex];
+      startOscillation(nextSpeed);
+    }
   }, [oscillationSpeed, startOscillation]);
 
   const handleSliderClick = useCallback(
