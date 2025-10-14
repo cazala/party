@@ -28,10 +28,12 @@ export function Overlay() {
     // Clear canvas first
     ctx.clearRect(0, 0, size.width, size.height);
 
-    // Only render overlay content when mouse is over canvas
-    if (isMouseOverCanvas) {
-      renderOverlay(ctx, { width: size.width, height: size.height });
-    }
+    // Render grid always; tools decide based on isMouseOverCanvas
+    renderOverlay(
+      ctx,
+      { width: size.width, height: size.height },
+      isMouseOverCanvas
+    );
   }, [renderOverlay, size, isMouseOverCanvas]);
 
   // Setup canvas and start render loop

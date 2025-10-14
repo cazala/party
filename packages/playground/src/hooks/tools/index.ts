@@ -56,45 +56,48 @@ export function useTools(): UseToolsReturn {
   const renderOverlay = useCallback(
     (
       ctx: CanvasRenderingContext2D,
-      canvasSize: { width: number; height: number }
+      canvasSize: { width: number; height: number },
+      isMouseOver: boolean
     ) => {
       ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
 
       // Render grid first (background layer)
       overlay.renderGrid(ctx, canvasSize);
 
-      // Render active tool overlay
-      switch (toolManager.toolMode) {
-        case "spawn":
-          spawnTool.renderOverlay(ctx, canvasSize);
-          break;
-        case "cursor":
-          cursorTool.renderOverlay(ctx, canvasSize);
-          break;
-        case "remove":
-          removeTool.renderOverlay(ctx, canvasSize);
-          break;
-        case "joint":
-          jointTool.renderOverlay(ctx, canvasSize);
-          break;
-        case "pin":
-          pinTool.renderOverlay(ctx, canvasSize);
-          break;
-        case "grab":
-          grabTool.renderOverlay(ctx, canvasSize);
-          break;
-        case "draw":
-          drawTool.renderOverlay(ctx, canvasSize);
-          break;
-        case "shape":
-          shapeTool.renderOverlay(ctx, canvasSize);
-          break;
-        case "emitter":
-          emitterTool.renderOverlay(ctx, canvasSize);
-          break;
-        default:
-          // No overlay for unknown tools
-          break;
+      // Render active tool overlay only when mouse is over canvas
+      if (isMouseOver) {
+        switch (toolManager.toolMode) {
+          case "spawn":
+            spawnTool.renderOverlay(ctx, canvasSize);
+            break;
+          case "cursor":
+            cursorTool.renderOverlay(ctx, canvasSize);
+            break;
+          case "remove":
+            removeTool.renderOverlay(ctx, canvasSize);
+            break;
+          case "joint":
+            jointTool.renderOverlay(ctx, canvasSize);
+            break;
+          case "pin":
+            pinTool.renderOverlay(ctx, canvasSize);
+            break;
+          case "grab":
+            grabTool.renderOverlay(ctx, canvasSize);
+            break;
+          case "draw":
+            drawTool.renderOverlay(ctx, canvasSize);
+            break;
+          case "shape":
+            shapeTool.renderOverlay(ctx, canvasSize);
+            break;
+          case "emitter":
+            emitterTool.renderOverlay(ctx, canvasSize);
+            break;
+          default:
+            // No overlay for unknown tools
+            break;
+        }
       }
     },
     [
@@ -113,23 +116,42 @@ export function useTools(): UseToolsReturn {
   );
 
   // Create tool-aware overlay functions that only delegate to spawn tool in spawn mode
-  const updateMousePosition = useCallback((mouseX: number, mouseY: number) => {
-    if (toolManager.isSpawnMode) {
-      spawnTool.updateMousePosition(mouseX, mouseY);
-    }
-  }, [toolManager.isSpawnMode, spawnTool.updateMousePosition]);
+  const updateMousePosition = useCallback(
+    (mouseX: number, mouseY: number) => {
+      if (toolManager.isSpawnMode) {
+        spawnTool.updateMousePosition(mouseX, mouseY);
+      }
+    },
+    [toolManager.isSpawnMode, spawnTool.updateMousePosition]
+  );
 
-  const startDrag = useCallback((mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed?: boolean) => {
-    if (toolManager.isSpawnMode) {
-      spawnTool.startDrag(mouseX, mouseY, ctrlPressed, shiftPressed);
-    }
-  }, [toolManager.isSpawnMode, spawnTool.startDrag]);
+  const startDrag = useCallback(
+    (
+      mouseX: number,
+      mouseY: number,
+      ctrlPressed: boolean,
+      shiftPressed?: boolean
+    ) => {
+      if (toolManager.isSpawnMode) {
+        spawnTool.startDrag(mouseX, mouseY, ctrlPressed, shiftPressed);
+      }
+    },
+    [toolManager.isSpawnMode, spawnTool.startDrag]
+  );
 
-  const updateDrag = useCallback((mouseX: number, mouseY: number, ctrlPressed: boolean, shiftPressed?: boolean) => {
-    if (toolManager.isSpawnMode) {
-      spawnTool.updateDrag(mouseX, mouseY, ctrlPressed, shiftPressed);
-    }
-  }, [toolManager.isSpawnMode, spawnTool.updateDrag]);
+  const updateDrag = useCallback(
+    (
+      mouseX: number,
+      mouseY: number,
+      ctrlPressed: boolean,
+      shiftPressed?: boolean
+    ) => {
+      if (toolManager.isSpawnMode) {
+        spawnTool.updateDrag(mouseX, mouseY, ctrlPressed, shiftPressed);
+      }
+    },
+    [toolManager.isSpawnMode, spawnTool.updateDrag]
+  );
 
   const endDrag = useCallback(() => {
     if (toolManager.isSpawnMode) {
@@ -147,7 +169,7 @@ export function useTools(): UseToolsReturn {
     startDrag,
     updateDrag,
     endDrag,
-    
+
     // Grab tool specific state
     isGrabbing: grabTool.isGrabbing,
   };

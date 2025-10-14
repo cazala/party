@@ -15,9 +15,11 @@ export interface ToolHandlers {
 }
 
 export interface ToolRenderFunction {
-  (ctx: CanvasRenderingContext2D, canvasSize: {width: number, height: number}): void;
+  (
+    ctx: CanvasRenderingContext2D,
+    canvasSize: { width: number; height: number }
+  ): void;
 }
-
 
 // Main useTools return interface
 export interface UseToolsReturn {
@@ -42,7 +44,8 @@ export interface UseToolsReturn {
   // Overlay functions
   renderOverlay: (
     ctx: CanvasRenderingContext2D,
-    canvasSize: { width: number; height: number }
+    canvasSize: { width: number; height: number },
+    isMouseOver: boolean
   ) => void;
   updateMousePosition: (mouseX: number, mouseY: number) => void;
   startDrag: (
