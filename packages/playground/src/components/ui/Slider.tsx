@@ -7,6 +7,23 @@ import "./Slider.css";
 
 const MULTIPLIER = 2;
 
+// Deterministic pseudo-random helpers based on a string key (sliderId)
+function fnv1a32(str: string): number {
+  let hash = 0x811c9dc5; // FNV-1a 32-bit offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    // 32-bit multiply by FNV prime (0x01000193). Using >>> 0 to stay in uint32 space.
+    hash = (hash >>> 0) * 0x01000193;
+    hash >>>= 0;
+  }
+  return hash >>> 0;
+}
+
+function hashToUnitInterval(input: string): number {
+  // Map uint32 to [0, 1)
+  return fnv1a32(input) / 4294967296; // 2^32
+}
+
 type ExtendedOscillationSpeed = OscillationSpeed | "none";
 
 interface SliderProps {
@@ -113,6 +130,25 @@ export function Slider({
   // Keep a ref of the isPlaying state to avoid re-rendering when it changes
   const { isPlaying } = useEngine();
 
+  // Derive deterministic jitter and initial direction from sliderId
+  const { speedJitterMultiplier, initialDirectionSign } = React.useMemo(() => {
+    if (!sliderId) {
+      return {
+        speedJitterMultiplier: 1,
+        initialDirectionSign: 0 as -1 | 0 | 1,
+      };
+    }
+    const r = hashToUnitInterval(sliderId);
+    const rDir = hashToUnitInterval(sliderId + "::dir");
+    // Jitter in [-0.2, +0.2] applied multiplicatively to base speed
+    const jitter = 1 + (r * 0.4 - 0.2);
+    const dir = rDir < 0.5 ? -1 : 1;
+    return {
+      speedJitterMultiplier: jitter,
+      initialDirectionSign: dir as -1 | 1,
+    };
+  }, [sliderId]);
+
   const speedMultipliers = {
     none: 0,
     slow: 0.01,
@@ -181,7 +217,12 @@ export function Slider({
       const asinVal = Math.asin(targetSin);
       const candidate0 = asinVal; // in [-pi/2, pi/2]
       const candidate1 = Math.PI - asinVal; // the other sine solution
-      const desiredDir = lastDirectionRef.current;
+      let desiredDir = lastDirectionRef.current;
+      // Seed initial direction deterministically if we have no prior direction
+      if (desiredDir === 0 && initialDirectionSign !== 0) {
+        desiredDir = initialDirectionSign;
+        lastDirectionRef.current = desiredDir;
+      }
       const cos0 = Math.cos(candidate0);
       if (desiredDir < 0) {
         // choose decreasing branch (cos negative)
@@ -208,7 +249,14 @@ export function Slider({
         customMax: oscillationMax,
       });
     },
-    [value, sliderId, oscillationMin, oscillationMax, setOscillator]
+    [
+      value,
+      sliderId,
+      oscillationMin,
+      oscillationMax,
+      setOscillator,
+      initialDirectionSign,
+    ]
   );
 
   const cycleOscillationSpeed = useCallback(() => {
@@ -476,8 +524,8 @@ export function Slider({
       }
 
       const elapsed = timestamp - startTimeRef.current;
-      const speedMultiplier = speedMultipliers[oscillationSpeed];
-      const frequency = speedMultiplier * 0.001; // Convert to Hz
+      const baseSpeedMultiplier = speedMultipliers[oscillationSpeed];
+      const frequency = baseSpeedMultiplier * speedJitterMultiplier * 0.001; // Convert to Hz
       const range = oscillationMax - oscillationMin;
       const center = oscillationMin + range / 2;
       const amplitude = range / 2;
@@ -519,6 +567,7 @@ export function Slider({
       step,
       onChange,
       speedMultipliers,
+      speedJitterMultiplier,
     ]
   );
 
