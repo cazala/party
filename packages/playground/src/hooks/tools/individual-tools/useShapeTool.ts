@@ -124,7 +124,11 @@ export function useShapeTool(isActive: boolean) {
     if (!isActive) return;
     const centerX = state.mouseX;
     const centerY = state.mouseY;
-    const radius = state.radius;
+    const zoom = engine?.getZoom() ?? 1;
+    // Match the on-screen size of the shape spawned at current zoom
+    // Spawn uses worldRadius = state.radius / Math.sqrt(zoom), which results in
+    // a screen-space radius of state.radius * Math.sqrt(zoom). Use same here.
+    const radius = state.radius * Math.sqrt(zoom);
     const sides = state.sides;
     const isAdjustingSize = state.isAdjustingRadius;
     const isAdjustingSides = state.isAdjustingSides;
@@ -143,7 +147,8 @@ export function useShapeTool(isActive: boolean) {
 
     vertices.forEach((vertex) => {
       ctx.beginPath();
-      ctx.arc(vertex.x, vertex.y, particleSize / 2, 0, Math.PI * 2);
+      // Scale preview particle marker with zoom so it matches on-screen particle size
+      ctx.arc(vertex.x, vertex.y, (particleSize / 2) * zoom, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     });

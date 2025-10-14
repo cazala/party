@@ -75,7 +75,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         label="Threshold"
         value={sensorThreshold}
         min={0.01}
-        max={0.2}
+        max={1}
         step={0.01}
         formatValue={(v) => v.toFixed(2)}
         onChange={setThreshold}
