@@ -275,12 +275,15 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const actualZoom = engine.getZoom();
 
         // Update Redux with actual engine defaults (sync only, don't call engine methods)
+        // Note: clearColor will be restored from preservedState below when toggling runtime
         dispatch(setConstrainIterationsAction(actualConstrainIterations));
         dispatch(setGridCellSizeAction(actualCellSize));
-        dispatch(setClearColorAction(actualClearColor));
         dispatch(setCameraAction({ x: actualCamera.x, y: actualCamera.y }));
         dispatch(setZoomAction(actualZoom));
         dispatch(setWebGPU(shouldUseWebGPU));
+        if (!preservedState) {
+          dispatch(setClearColorAction(actualClearColor));
+        }
 
         // Restore preserved state if we had one (during engine type toggle)
         if (preservedState) {
@@ -296,6 +299,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           engine.setCamera(preservedState.camera.x, preservedState.camera.y);
           engine.setZoom(preservedState.zoom);
           engine.setSize(preservedState.size.width, preservedState.size.height);
+
+          // Also restore Redux clear color so the apply-config effect does not overwrite it
+          dispatch(setClearColorAction(preservedState.clearColor));
 
           // Restore module states in Redux
           if (preservedState.modulesState) {

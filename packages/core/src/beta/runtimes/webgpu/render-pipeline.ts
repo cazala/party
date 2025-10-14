@@ -44,14 +44,22 @@ export class RenderPipeline {
     resources.ensureSceneTextures(width, height);
   }
 
-  clearTargets(resources: GPUResources): void {
+  clearTargets(
+    resources: GPUResources,
+    color: { r: number; g: number; b: number; a: number } = {
+      r: 0,
+      g: 0,
+      b: 0,
+      a: 0,
+    }
+  ): void {
     try {
       const encoder = resources.getDevice().createCommandEncoder();
       const passA = encoder.beginRenderPass({
         colorAttachments: [
           {
             view: resources.getCurrentSceneTextureView(),
-            clearValue: { r: 0, g: 0, b: 0, a: 0 },
+            clearValue: color,
             loadOp: "clear",
             storeOp: "store",
           },
@@ -62,7 +70,7 @@ export class RenderPipeline {
         colorAttachments: [
           {
             view: resources.getOtherSceneTextureView(),
-            clearValue: { r: 0, g: 0, b: 0, a: 0 },
+            clearValue: color,
             loadOp: "clear",
             storeOp: "store",
           },

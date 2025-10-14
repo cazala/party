@@ -174,7 +174,7 @@ export class WebGPUEngine extends AbstractEngine {
   clear(): void {
     this.particles.clear();
     // Clear scene textures proactively
-    this.render.clearTargets(this.resources);
+    this.render.clearTargets(this.resources, this.clearColor);
     // Reset maxSize tracking
     this.resetMaxSize();
     // Sync module uniforms to GPU (important for grab module reset)

@@ -602,13 +602,7 @@ export class GPUResources {
         targets: [
           {
             format,
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-              },
-              alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
-            },
+            // No blending: present should overwrite canvas with scene texture
           },
         ],
       },
