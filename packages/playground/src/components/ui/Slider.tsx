@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Field } from "./Field";
 import { useOscillators } from "../../hooks/useOscillators";
+import { useEngine } from "../../hooks/useEngine";
 import { OscillationSpeed } from "../../slices/oscillators";
 import "./Slider.css";
 
@@ -108,6 +109,9 @@ export function Slider({
       }
     }
   }, [reduxCustomMin, reduxCustomMax, draggingMin, draggingMax, min, max]);
+
+  // Keep a ref of the isPlaying state to avoid re-rendering when it changes
+  const { isPlaying } = useEngine();
 
   const speedMultipliers = {
     none: 0,
@@ -535,6 +539,68 @@ export function Slider({
       }
     };
   }, [oscillationSpeed]);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      animationFrameRef.current = null;
+      // reset timing so resume doesn't include paused time
+      startTimeRef.current = null;
+      return;
+    }
+
+    // Only resume animation if oscillation is active
+    if (oscillationSpeed !== "none") {
+      // Recompute phase to continue from current value and prior direction
+      const range = oscillationMax - oscillationMin;
+      const center = oscillationMin + range / 2;
+      const amplitude = range / 2;
+      const normalizedValue =
+        amplitude === 0 ? 0 : (value - center) / amplitude;
+      const clampedNormalized = Math.max(-1, Math.min(1, normalizedValue));
+
+      let targetSin;
+      if (Math.abs(clampedNormalized) < 1e-10) {
+        targetSin = 0;
+      } else {
+        targetSin =
+          Math.sign(clampedNormalized) *
+          Math.pow(Math.abs(clampedNormalized), 1 / MULTIPLIER);
+      }
+      targetSin = Math.max(-1, Math.min(1, targetSin));
+
+      const asinVal = Math.asin(targetSin);
+      const candidate0 = asinVal;
+      const candidate1 = Math.PI - asinVal;
+      const desiredDir = lastDirectionRef.current;
+      const cos0 = Math.cos(candidate0);
+      if (desiredDir < 0) {
+        phaseOffsetRef.current = cos0 < 0 ? candidate0 : candidate1;
+      } else if (desiredDir > 0) {
+        phaseOffsetRef.current = cos0 >= 0 ? candidate0 : candidate1;
+      } else {
+        phaseOffsetRef.current = candidate0;
+      }
+      // Nudge away from extrema to avoid zero-derivative stalls on resume
+      if (Math.abs(Math.cos(phaseOffsetRef.current)) < 1e-6) {
+        const epsilon = 1e-3;
+        phaseOffsetRef.current += (desiredDir >= 0 ? 1 : -1) * epsilon;
+      }
+
+      // Reset timing and sync last value before scheduling
+      startTimeRef.current = null;
+      lastValueRef.current = value;
+
+      // Cancel any pending RAF before starting
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      animationFrameRef.current = requestAnimationFrame(animate);
+    }
+  }, [isPlaying]);
 
   useEffect(() => {
     return () => {
