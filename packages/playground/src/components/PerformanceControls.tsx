@@ -20,8 +20,10 @@ export function PerformanceControls() {
     isWebGPU,
     constrainIterations,
     gridCellSize,
+    maxNeighbors,
     setConstrainIterations,
     setCellSize,
+    setMaxNeighbors,
     toggleRuntime,
     getFPS,
     getCount,
@@ -51,6 +53,15 @@ export function PerformanceControls() {
         max={100}
         step={1}
         onChange={setConstrainIterations}
+      />
+
+      <Slider
+        label="Max Neighbors"
+        value={maxNeighbors}
+        min={1}
+        max={10000}
+        step={1}
+        onChange={setMaxNeighbors}
       />
 
       <Slider

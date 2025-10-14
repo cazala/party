@@ -43,6 +43,8 @@ export interface IEngine {
   setClearColor(color: { r: number; g: number; b: number; a: number }): void;
   getCellSize(): number;
   setCellSize(size: number): void;
+  getMaxNeighbors(): number;
+  setMaxNeighbors(size: number): void;
   getConstrainIterations(): number;
   setConstrainIterations(iterations: number): void;
   getModule(name: string): Module | undefined;
@@ -56,6 +58,7 @@ export abstract class AbstractEngine implements IEngine {
   protected constrainIterations: number;
   protected clearColor: { r: number; g: number; b: number; a: number };
   protected cellSize: number;
+  protected maxNeighbors: number;
   protected view: View;
   protected modules: Module[];
   protected maxSize: number = 0;
@@ -67,12 +70,14 @@ export abstract class AbstractEngine implements IEngine {
     constrainIterations?: number;
     clearColor?: { r: number; g: number; b: number; a: number };
     cellSize?: number;
+    maxNeighbors?: number;
   }) {
     this.view = new View(options.canvas.width, options.canvas.height);
     this.modules = [...options.forces, ...options.render];
     this.constrainIterations = options.constrainIterations ?? 5;
     this.clearColor = options.clearColor ?? { r: 0, g: 0, b: 0, a: 1 };
     this.cellSize = options.cellSize ?? 16;
+    this.maxNeighbors = options.maxNeighbors ?? 100;
   }
 
   // Abstract methods that must be implemented by subclasses
@@ -219,6 +224,18 @@ export abstract class AbstractEngine implements IEngine {
     this.onCellSizeChanged();
   }
 
+  getMaxNeighbors(): number {
+    return this.maxNeighbors;
+  }
+
+  setMaxNeighbors(size: number): void {
+    if (size <= 0) {
+      throw new Error("Max neighbors must be greater than 0");
+    }
+    this.maxNeighbors = size;
+    this.onMaxNeighborsChanged();
+  }
+
   getConstrainIterations(): number {
     return this.constrainIterations;
   }
@@ -254,6 +271,10 @@ export abstract class AbstractEngine implements IEngine {
   }
 
   protected onConstrainIterationsChanged(): void {
+    // Override in subclasses if needed
+  }
+
+  protected onMaxNeighborsChanged(): void {
     // Override in subclasses if needed
   }
 

@@ -24,6 +24,7 @@ import {
   selectError,
   selectConstrainIterations,
   selectGridCellSize,
+  selectMaxNeighbors,
   selectCamera,
   selectZoom,
   selectSize,
@@ -36,6 +37,7 @@ import {
   setZoomThunk,
   setConstrainIterationsThunk,
   setCellSizeThunk,
+  setMaxNeighborsThunk,
   setClearColorThunk,
   toggleRuntime as toggleRuntimeAction,
   addParticleThunk,
@@ -85,6 +87,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const error = useAppSelector(selectError);
   const constrainIterations = useAppSelector(selectConstrainIterations);
   const gridCellSize = useAppSelector(selectGridCellSize);
+  const maxNeighbors = useAppSelector(selectMaxNeighbors);
   const camera = useAppSelector(selectCamera);
   const zoom = useAppSelector(selectZoom);
   const size = useAppSelector(selectSize);
@@ -357,10 +360,17 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       engine.setConstrainIterations(constrainIterations);
       engine.setCellSize(gridCellSize);
       engine.setClearColor(clearColor);
+      engine.setMaxNeighbors(maxNeighbors);
     } catch (err) {
       console.warn("Error applying engine configuration:", err);
     }
-  }, [isInitialized, constrainIterations, gridCellSize, clearColor]);
+  }, [
+    isInitialized,
+    constrainIterations,
+    gridCellSize,
+    clearColor,
+    maxNeighbors,
+  ]);
 
   // Apply module states from Redux to engine modules
   useEffect(() => {
@@ -493,6 +503,12 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     },
     [dispatch]
   );
+  const setMaxNeighbors = useCallback(
+    (value: number) => {
+      dispatch(setMaxNeighborsThunk(value));
+    },
+    [dispatch]
+  );
 
   const addParticle = useCallback(
     (particle: {
@@ -584,6 +600,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     camera,
     zoom,
     runtime,
+    maxNeighbors,
 
     // Action functions (wrapped thunks)
     play,
@@ -595,6 +612,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     setConstrainIterations,
     setCellSize,
     setClearColor,
+    setMaxNeighbors,
     addParticle,
     spawnParticles,
     toggleRuntime,

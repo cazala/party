@@ -13,6 +13,7 @@ export type EngineOptions = {
   cellSize?: number;
   maxParticles?: number;
   workgroupSize?: number;
+  maxNeighbors?: number;
 };
 
 export class Engine implements IEngine {
@@ -96,6 +97,9 @@ export class Engine implements IEngine {
   }
   pause(): void {
     this.engine.pause();
+  }
+  stop(): void {
+    this.engine.stop();
   }
   isPlaying(): boolean {
     return this.engine.isPlaying();
@@ -199,6 +203,12 @@ export class Engine implements IEngine {
   }
   setConstrainIterations(iterations: number): void {
     this.engine.setConstrainIterations(iterations);
+  }
+  getMaxNeighbors(): number {
+    return this.engine.getMaxNeighbors();
+  }
+  setMaxNeighbors(size: number): void {
+    this.engine.setMaxNeighbors(size);
   }
   getModule(name: string): Module | undefined {
     return this.engine.getModule(name);

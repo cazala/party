@@ -37,6 +37,7 @@ export interface EngineState {
   error: string | null;
   constrainIterations: number;
   gridCellSize: number;
+  maxNeighbors: number;
   clearColor: { r: number; g: number; b: number; a: number };
   size: { width: number; height: number };
   camera: { x: number; y: number };
@@ -61,6 +62,7 @@ const initialState: EngineState = {
   error: null,
   constrainIterations: 1,
   gridCellSize: 16,
+  maxNeighbors: 1000,
   clearColor: { r: 0, g: 0, b: 0, a: 1 },
   size: { width: 800, height: 600 },
   camera: { x: 0, y: 0 },
@@ -100,6 +102,9 @@ export const engineSlice = createSlice({
     },
     setGridCellSize: (state, action: PayloadAction<number>) => {
       state.gridCellSize = action.payload;
+    },
+    setMaxNeighbors: (state, action: PayloadAction<number>) => {
+      state.maxNeighbors = action.payload;
     },
     setClearColor: (
       state,
@@ -164,7 +169,7 @@ export const clearThunk = createAsyncThunk(
       engine.play();
       dispatch(engineSlice.actions.setPlaying(true));
       // Note: Particle count now tracked via refs in useEngineInternal
-      
+
       // Clear grab module state since all particles are gone
       dispatch(clearGrab());
     }
@@ -226,6 +231,17 @@ export const setCellSizeThunk = createAsyncThunk(
   }
 );
 
+export const setMaxNeighborsThunk = createAsyncThunk(
+  "engine/setMaxNeighbors",
+  async (maxNeighbors: number, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.setMaxNeighbors(maxNeighbors);
+      dispatch(engineSlice.actions.setMaxNeighbors(maxNeighbors));
+    }
+  }
+);
+
 export const setClearColorThunk = createAsyncThunk(
   "engine/setClearColor",
   async (
@@ -254,6 +270,7 @@ export const toggleRuntimeThunk = createAsyncThunk(
           particles,
           constrainIterations: currentEngine.getConstrainIterations(),
           cellSize: currentEngine.getCellSize(),
+          maxNeighbors: currentEngine.getMaxNeighbors(),
           clearColor: currentEngine.getClearColor(),
           camera: currentEngine.getCamera(),
           zoom: currentEngine.getZoom(),
@@ -275,6 +292,7 @@ export const toggleRuntimeThunk = createAsyncThunk(
         }
         newEngine.setConstrainIterations(capturedState.constrainIterations);
         newEngine.setCellSize(capturedState.cellSize);
+        newEngine.setMaxNeighbors(capturedState.maxNeighbors ?? 100);
         newEngine.setClearColor(capturedState.clearColor);
         newEngine.setCamera(capturedState.camera.x, capturedState.camera.y);
         newEngine.setZoom(capturedState.zoom);
@@ -466,6 +484,7 @@ export const {
   setError,
   setConstrainIterations,
   setGridCellSize,
+  setMaxNeighbors,
   setClearColor,
   setSize,
   setCamera,
@@ -494,6 +513,8 @@ export const selectConstrainIterations = (state: { engine: EngineState }) =>
   state.engine.constrainIterations;
 export const selectGridCellSize = (state: { engine: EngineState }) =>
   state.engine.gridCellSize;
+export const selectMaxNeighbors = (state: { engine: EngineState }) =>
+  state.engine.maxNeighbors;
 export const selectCamera = (state: { engine: EngineState }) =>
   state.engine.camera;
 export const selectZoom = (state: { engine: EngineState }) => state.engine.zoom;

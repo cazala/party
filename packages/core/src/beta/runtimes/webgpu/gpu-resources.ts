@@ -289,6 +289,7 @@ export class GPUResources {
       simStride?: number;
       maxSize?: number;
       iteration?: number;
+      maxNeighbors?: number;
     }
   ): void {
     const idx = program.layouts.findIndex((l) => l.moduleName === "simulation");
@@ -309,6 +310,8 @@ export class GPUResources {
       data[map.maxSize.flatIndex] = values.maxSize;
     if (values.iteration !== undefined && map.iteration)
       data[map.iteration.flatIndex] = values.iteration;
+    if (values.maxNeighbors !== undefined && map.maxNeighbors)
+      data[map.maxNeighbors.flatIndex] = values.maxNeighbors;
     this.writeModuleUniform(idx, data);
     this.simUniformCache = data;
   }

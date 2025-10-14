@@ -41,6 +41,7 @@ export interface EngineContextType {
   error: string | null;
   constrainIterations: number;
   gridCellSize: number;
+  maxNeighbors: number;
   clearColor: { r: number; g: number; b: number; a: number };
   size: { width: number; height: number };
   camera: { x: number; y: number };
@@ -56,6 +57,7 @@ export interface EngineContextType {
   setZoom: (newZoom: number) => void;
   setConstrainIterations: (iterations: number) => void;
   setCellSize: (cellSize: number) => void;
+  setMaxNeighbors: (value: number) => void;
   setClearColor: (color: {
     r: number;
     g: number;

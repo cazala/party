@@ -143,7 +143,11 @@ export class SpatialGrid {
     });
   }
 
-  getParticles(point: Vector, radius: number): Particle[] {
+  getParticles(
+    point: Vector,
+    radius: number,
+    maxNeighbors?: number
+  ): Particle[] {
     const neighbors: Particle[] = [];
     // Convert world coordinates to grid coordinates with offset
     const centerCol = Math.floor((point.x - this.minX) / this.cellSize);
@@ -157,17 +161,29 @@ export class SpatialGrid {
       row <= centerRow + cellRadius;
       row++
     ) {
+      if (maxNeighbors !== undefined && neighbors.length >= maxNeighbors) {
+        return neighbors;
+      }
       for (
         let col = centerCol - cellRadius;
         col <= centerCol + cellRadius;
         col++
       ) {
+        if (maxNeighbors !== undefined && neighbors.length >= maxNeighbors) {
+          return neighbors;
+        }
         if (row >= 0 && row < this.rows && col >= 0 && col < this.cols) {
           const cellParticles = this.grid[row][col];
           for (const candidate of cellParticles) {
             const distance = point.distance(candidate.position);
             if (distance < radius) {
               neighbors.push(candidate);
+              if (
+                maxNeighbors !== undefined &&
+                neighbors.length >= maxNeighbors
+              ) {
+                return neighbors;
+              }
             }
           }
         }

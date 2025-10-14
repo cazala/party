@@ -112,7 +112,14 @@ export function buildProgram(modules: readonly Module[]): Program {
   // Internal: simulation + grid
   pushUniformLayout(
     "simulation",
-    ["dt", "count", "simStride", "maxSize", "iteration"] as const,
+    [
+      "dt",
+      "count",
+      "simStride",
+      "maxSize",
+      "iteration",
+      "maxNeighbors",
+    ] as const,
     1
   );
   pushUniformLayout(
@@ -345,6 +352,7 @@ export function buildProgram(modules: readonly Module[]): Program {
     `fn SIM_STATE_STRIDE() -> u32 { return u32(${simLayout.mapping.simStride.expr}); }
 fn SIM_COUNT() -> u32 { return u32(${simLayout.mapping.count.expr}); }
 fn SIM_ITERATION() -> u32 { return u32(${simLayout.mapping.iteration.expr}); }
+fn SIM_MAX_NEIGHBORS() -> u32 { return u32(${simLayout.mapping.maxNeighbors.expr}); }
 fn sim_state_index(pid: u32, slot: u32) -> u32 { return pid * SIM_STATE_STRIDE() + slot; }
 fn sim_state_read(pid: u32, slot: u32) -> f32 { return SIM_STATE[sim_state_index(pid, slot)]; }
 fn sim_state_write(pid: u32, slot: u32, value: f32) { SIM_STATE[sim_state_index(pid, slot)] = value; }`
@@ -363,9 +371,9 @@ fn GRID_CELL_SIZE() -> f32 { return ${gridLayout.mapping.cellSize.expr}; }
 fn GRID_MAX_PER_CELL() -> u32 { return u32(${gridLayout.mapping.maxPerCell.expr}); }
 fn grid_cell_index(pos: vec2<f32>) -> u32 { let col = i32(floor((pos.x - GRID_MINX()) / GRID_CELL_SIZE())); let row = i32(floor((pos.y - GRID_MINY()) / GRID_CELL_SIZE())); let c = max(0, min(col, i32(GRID_COLS()) - 1)); let r = max(0, min(row, i32(GRID_ROWS()) - 1)); return u32(r) * GRID_COLS() + u32(c); }
 fn grid_cell_index_from_rc(r: i32, c: i32) -> u32 { let rr = max(0, min(r, i32(GRID_ROWS()) - 1)); let cc = max(0, min(c, i32(GRID_COLS()) - 1)); return u32(rr) * GRID_COLS() + u32(cc); }
-struct NeighborIter { cx: i32, cy: i32, r: i32, c: i32, k: u32, reach: i32, maxK: u32, base: u32 }
-fn neighbor_iter_init(pos: vec2<f32>, radius: f32) -> NeighborIter { let cx = i32(floor((pos.x - GRID_MINX()) / GRID_CELL_SIZE())); let cy = i32(floor((pos.y - GRID_MINY()) / GRID_CELL_SIZE())); let reach = max(1, i32(ceil(radius / GRID_CELL_SIZE()))); var it: NeighborIter; it.cx = cx; it.cy = cy; it.reach = reach; it.r = cy - reach; it.c = cx - reach; let firstCell = grid_cell_index_from_rc(it.r, it.c); let cnt = atomicLoad(&GRID_COUNTS[firstCell]); it.maxK = min(cnt, GRID_MAX_PER_CELL()); it.base = firstCell * GRID_MAX_PER_CELL(); it.k = 0u; return it; }
-fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { loop { if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } if ((*it).k < (*it).maxK) { let id = GRID_INDICES[(*it).base + (*it).k]; (*it).k = (*it).k + 1u; if (id != selfIndex) { return id; } else { continue; } } (*it).c = (*it).c + 1; if ((*it).c > (*it).cx + (*it).reach) { (*it).c = (*it).cx - (*it).reach; (*it).r = (*it).r + 1; } if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } let cell = grid_cell_index_from_rc((*it).r, (*it).c); let cnt = atomicLoad(&GRID_COUNTS[cell]); (*it).maxK = min(cnt, GRID_MAX_PER_CELL()); (*it).base = cell * GRID_MAX_PER_CELL(); (*it).k = 0u; } }`
+struct NeighborIter { cx: i32, cy: i32, r: i32, c: i32, k: u32, reach: i32, maxK: u32, base: u32, emitted: u32, maxEmit: u32 }
+fn neighbor_iter_init(pos: vec2<f32>, radius: f32) -> NeighborIter { let cx = i32(floor((pos.x - GRID_MINX()) / GRID_CELL_SIZE())); let cy = i32(floor((pos.y - GRID_MINY()) / GRID_CELL_SIZE())); let reach = max(1, i32(ceil(radius / GRID_CELL_SIZE()))); var it: NeighborIter; it.cx = cx; it.cy = cy; it.reach = reach; it.r = cy - reach; it.c = cx - reach; let firstCell = grid_cell_index_from_rc(it.r, it.c); let cnt = atomicLoad(&GRID_COUNTS[firstCell]); it.maxK = min(cnt, GRID_MAX_PER_CELL()); it.base = firstCell * GRID_MAX_PER_CELL(); it.k = 0u; it.emitted = 0u; it.maxEmit = max(1u, SIM_MAX_NEIGHBORS()); return it; }
+fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { loop { if ((*it).emitted >= (*it).maxEmit) { return NEIGHBOR_NONE; } if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } if ((*it).k < (*it).maxK) { let id = GRID_INDICES[(*it).base + (*it).k]; (*it).k = (*it).k + 1u; if (id != selfIndex) { (*it).emitted = (*it).emitted + 1u; return id; } else { continue; } } (*it).c = (*it).c + 1; if ((*it).c > (*it).cx + (*it).reach) { (*it).c = (*it).cx - (*it).reach; (*it).r = (*it).r + 1; } if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } let cell = grid_cell_index_from_rc((*it).r, (*it).c); let cnt = atomicLoad(&GRID_COUNTS[cell]); (*it).maxK = min(cnt, GRID_MAX_PER_CELL()); (*it).base = cell * GRID_MAX_PER_CELL(); (*it).k = 0u; } }`
   );
 
   // Optional: allow force modules to inject globals

@@ -146,6 +146,10 @@ export class CPUEngine extends AbstractEngine {
     // The new value will be used in the next simulation pass
   }
 
+  protected onMaxNeighborsChanged(): void {
+    // No additional state to update on CPU when max neighbors changes
+  }
+
   private animate = (): void => {
     const dt = this.getTimeDelta();
     this.updateFPS(dt);
@@ -160,7 +164,11 @@ export class CPUEngine extends AbstractEngine {
   };
 
   private getNeighbors(position: { x: number; y: number }, radius: number) {
-    return this.grid.getParticles(new Vector(position.x, position.y), radius);
+    return this.grid.getParticles(
+      new Vector(position.x, position.y),
+      radius,
+      this.getMaxNeighbors()
+    );
   }
 
   private getImageData(

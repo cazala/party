@@ -45,6 +45,7 @@ export class WebGPUEngine extends AbstractEngine {
     cellSize?: number;
     maxParticles?: number;
     workgroupSize?: number;
+    maxNeighbors?: number;
   }) {
     super({
       ...options,
@@ -207,6 +208,7 @@ export class WebGPUEngine extends AbstractEngine {
         simStride: this.simStrideValue,
         maxSize: this.getMaxSize(),
         iteration: 0,
+        maxNeighbors: this.getMaxNeighbors(),
       });
 
       // Run simulation passes
@@ -299,5 +301,9 @@ export class WebGPUEngine extends AbstractEngine {
   protected onConstrainIterationsChanged(): void {
     // Constrain iterations changes don't require any immediate system updates
     // The new value will be used in the next simulation pass
+  }
+
+  protected onMaxNeighborsChanged(): void {
+    // Max neighbors affects only simulation-side neighbor iterator cap; no immediate rebuild needed
   }
 }
