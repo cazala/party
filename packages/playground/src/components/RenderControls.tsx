@@ -1,8 +1,11 @@
 import { ColorPicker } from "./ui/ColorPicker";
 import { Checkbox } from "./ui/Checkbox";
 import { Slider } from "./ui/Slider";
+import { Dropdown } from "./ui/Dropdown";
 import { useEngine } from "../hooks/useEngine";
 import { useLines } from "../hooks/modules/useLines";
+import { useParticle } from "../hooks/modules/useParticle";
+import { ParticleColorType } from "@cazala/party";
 
 interface RenderControlsProps {
   disabled?: boolean;
@@ -16,6 +19,16 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
     setEnabled: setLinesEnabled,
     setLineWidth,
   } = useLines();
+  const {
+    isEnabled: particlesEnabled,
+    colorType,
+    customColor,
+    hue,
+    setEnabled: setParticlesEnabled,
+    setColorType,
+    setCustomColor,
+    setHue,
+  } = useParticle();
 
   // Convert RGBA to hex
   const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
@@ -40,18 +53,55 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
   };
 
   const clearColorHex = rgbaToHex(clearColor);
+  const particleCustomColorHex = rgbaToHex(customColor);
   return (
     <div>
-      <ColorPicker
-        label="Clear Color"
-        value={clearColorHex}
-        onChange={(hex) => {
-          const rgba = hexToRgba(hex, 1);
-          setClearColor(rgba);
-        }}
+      {/* Particle controls first */}
+      <Checkbox
+        label="Show Particles"
+        checked={particlesEnabled}
+        onChange={setParticlesEnabled}
         disabled={disabled}
       />
 
+      {particlesEnabled && (
+        <Dropdown
+          label="Particle Color Type"
+          value={String(colorType)}
+          onChange={(v) => setColorType(Number(v) as ParticleColorType)}
+          options={[
+            { value: String(ParticleColorType.Default), label: "Default" },
+            { value: String(ParticleColorType.Custom), label: "Custom" },
+            { value: String(ParticleColorType.Hue), label: "Hue" },
+          ]}
+          disabled={disabled}
+        />
+      )}
+
+      {particlesEnabled && colorType === ParticleColorType.Custom && (
+        <ColorPicker
+          label="Particle Color"
+          value={particleCustomColorHex}
+          onChange={(hex) => setCustomColor(hexToRgba(hex, 1))}
+          disabled={disabled}
+        />
+      )}
+
+      {particlesEnabled && colorType === ParticleColorType.Hue && (
+        <Slider
+          sliderId="render.particleHue"
+          label="Particle Hue"
+          value={hue * 100}
+          min={0}
+          max={100}
+          step={1}
+          onChange={(val) => setHue(val / 100)}
+          disabled={disabled}
+          formatValue={(v) => v.toFixed(0)}
+        />
+      )}
+
+      {/* Lines controls after particles */}
       <Checkbox
         label="Show Lines"
         checked={linesEnabled}
@@ -72,6 +122,17 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
           formatValue={(v) => v.toFixed(1)}
         />
       )}
+
+      {/* Clear color stays at bottom */}
+      <ColorPicker
+        label="Clear Color"
+        value={clearColorHex}
+        onChange={(hex) => {
+          const rgba = hexToRgba(hex, 1);
+          setClearColor(rgba);
+        }}
+        disabled={disabled}
+      />
     </div>
   );
 }

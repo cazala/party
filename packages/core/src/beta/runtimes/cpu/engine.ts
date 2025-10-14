@@ -495,7 +495,13 @@ export class CPUEngine extends AbstractEngine {
       return descriptor.composition === CanvasComposition.HandlesBackground;
     });
 
-    // Only clear canvas if no module handles background AND some module requires clearing
+    // Determine if there are any enabled renderers
+    const hasEnabledRenderer = this.modules.some(
+      (module) => module.isEnabled() && module.role === ModuleRole.Render
+    );
+
+    // Only clear canvas if no module handles background AND either some module requires clearing
+    // or there are no enabled renderers (to avoid leaving a stale frame on canvas)
     if (!hasBackgroundHandler) {
       const needsClearing = this.modules.some((module) => {
         if (!module.isEnabled() || module.role !== ModuleRole.Render)
@@ -504,7 +510,7 @@ export class CPUEngine extends AbstractEngine {
         return descriptor.composition === CanvasComposition.RequiresClear;
       });
 
-      if (needsClearing) {
+      if (needsClearing || !hasEnabledRenderer) {
         context.fillStyle = `rgba(${this.clearColor.r * 255}, ${
           this.clearColor.g * 255
         }, ${this.clearColor.b * 255}, ${this.clearColor.a})`;

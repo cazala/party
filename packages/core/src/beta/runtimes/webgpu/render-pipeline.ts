@@ -143,7 +143,23 @@ export class RenderPipeline {
         }
       }
     }
-    // return last written view
+    // If no render pass wrote to the scene this frame, explicitly clear the current view
+    if (!anyWrites) {
+      const pass = encoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: currentView,
+            clearValue: clearColor,
+            loadOp: "clear",
+            storeOp: "store",
+          },
+        ],
+      });
+      pass.end();
+      lastWritten = currentView;
+    }
+
+    // Return the last written (or cleared) view
     return lastWritten ?? currentView;
   }
 

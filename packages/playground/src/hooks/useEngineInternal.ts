@@ -445,6 +445,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     modulesState.sensors.enabled,
     modulesState.trails.enabled,
     modulesState.interaction.enabled,
+    modulesState.particle.enabled,
     modulesState.joints.enabled,
     modulesState.lines.enabled,
   ]);

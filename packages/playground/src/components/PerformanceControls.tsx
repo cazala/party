@@ -67,7 +67,7 @@ export function PerformanceControls() {
       <Slider
         label="Grid Cell Size"
         value={gridCellSize}
-        min={8}
+        min={16}
         max={128}
         step={8}
         onChange={setCellSize}
