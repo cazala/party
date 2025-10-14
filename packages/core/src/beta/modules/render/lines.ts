@@ -17,6 +17,9 @@ type LinesInputs = {
   aIndexes: number[];
   bIndexes: number[];
   lineWidth: number;
+  lineColorR: number;
+  lineColorG: number;
+  lineColorB: number;
 };
 
 export class Lines extends Module<"lines", LinesInputs> {
@@ -26,6 +29,9 @@ export class Lines extends Module<"lines", LinesInputs> {
     aIndexes: DataType.ARRAY,
     bIndexes: DataType.ARRAY,
     lineWidth: DataType.NUMBER,
+    lineColorR: DataType.NUMBER,
+    lineColorG: DataType.NUMBER,
+    lineColorB: DataType.NUMBER,
   } as const;
 
   constructor(opts?: {
@@ -51,6 +57,9 @@ export class Lines extends Module<"lines", LinesInputs> {
       aIndexes,
       bIndexes,
       lineWidth: opts?.lineWidth ?? 1.5,
+      lineColorR: -1,
+      lineColorG: -1,
+      lineColorB: -1,
     });
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
@@ -92,6 +101,28 @@ export class Lines extends Module<"lines", LinesInputs> {
 
   setLineWidth(value: number): void {
     this.write({ lineWidth: value });
+  }
+
+  setLineColor(
+    color: { r: number; g: number; b: number; a: number } | null
+  ): void {
+    if (color) {
+      this.write({
+        lineColorR: color.r,
+        lineColorG: color.g,
+        lineColorB: color.b,
+      });
+    } else {
+      this.write({ lineColorR: -1, lineColorG: -1, lineColorB: -1 });
+    }
+  }
+
+  getLineColor(): { r: number; g: number; b: number; a: number } | null {
+    const r = this.readValue("lineColorR");
+    const g = this.readValue("lineColorG");
+    const b = this.readValue("lineColorB");
+    if (r >= 0 && g >= 0 && b >= 0) return { r, g, b, a: 1 };
+    return null;
   }
 
   add(line: Line): void {
@@ -177,14 +208,28 @@ export class Lines extends Module<"lines", LinesInputs> {
     out.position = vec4<f32>(quad[li], 0.0, 1.0);
   }
 }`,
-          fragment: ({ sampleScene }) => `{
+          fragment: ({ sampleScene, getUniform }) => `{
   // Simple overwrite blend with alpha compositing
   var dst = ${sampleScene("uv")};
-  let src = color;
+  let lc = vec3<f32>(
+    ${getUniform("lineColorR")},
+    ${getUniform("lineColorG")},
+    ${getUniform("lineColorB")}
+  );
+  let useOverride = ${getUniform("lineColorR")} >= 0.0;
+  var src: vec4<f32> = color;
+  if (useOverride) {
+    src = vec4<f32>(lc, 1.0);
+  }
   let outc = dst + src * (1.0 - dst.a);
   return vec4<f32>(outc.rgb, min(1.0, outc.a));
 }`,
-          bindings: ["lineWidth"] as const,
+          bindings: [
+            "lineWidth",
+            "lineColorR",
+            "lineColorG",
+            "lineColorB",
+          ] as const,
           readsScene: true,
           writesScene: true,
         },
@@ -199,6 +244,11 @@ export class Lines extends Module<"lines", LinesInputs> {
         const a = (this.readArray("aIndexes") as number[]) || [];
         const b = (this.readArray("bIndexes") as number[]) || [];
         const lw = typeof input.lineWidth === "number" ? input.lineWidth : 1.5;
+        const r = (input as any).lineColorR as number;
+        const g = (input as any).lineColorG as number;
+        const bcol = (input as any).lineColorB as number;
+        const overrideColor =
+          r >= 0 && g >= 0 && bcol >= 0 ? { r, g, b: bcol, a: 1 } : null;
 
         const camera = view.getCamera();
         const zoom = view.getZoom();
@@ -222,10 +272,10 @@ export class Lines extends Module<"lines", LinesInputs> {
           const ay = centerY + (pa.position.y - camera.y) * zoom;
           const bx = centerX + (pb.position.x - camera.x) * zoom;
           const by = centerY + (pb.position.y - camera.y) * zoom;
-          // Stroke color = color of particle A
-          context.strokeStyle = `rgba(${pa.color.r * 255}, ${
-            pa.color.g * 255
-          }, ${pa.color.b * 255}, ${pa.color.a})`;
+          const c = overrideColor ?? pa.color;
+          context.strokeStyle = `rgba(${c.r * 255}, ${c.g * 255}, ${
+            c.b * 255
+          }, ${c.a})`;
           context.beginPath();
           context.moveTo(ax, ay);
           context.lineTo(bx, by);

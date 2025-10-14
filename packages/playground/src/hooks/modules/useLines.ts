@@ -9,6 +9,7 @@ import {
   setLinesEnabled,
   setLineWidth as setLineWidthAction,
   setLines as setLinesAction,
+  setLineColor as setLineColorAction,
 } from "../../slices/modules/lines";
 
 export function useLines() {
@@ -20,7 +21,7 @@ export function useLines() {
   const state = useMemo(() => selectLines(modulesState), [modulesState]);
 
   // Destructure individual properties
-  const { enabled, lineWidth, list } = state;
+  const { enabled, lineWidth, list, lineColor } = state;
   const isEnabled = state.enabled;
 
   // Sync Redux state to engine module when they change
@@ -28,6 +29,7 @@ export function useLines() {
     if (lines) {
       lines.setLineWidth(state.lineWidth);
       lines.setLines(state.list);
+      lines.setLineColor(state.lineColor);
     }
   }, [lines, state]);
 
@@ -43,6 +45,14 @@ export function useLines() {
     (value: number) => {
       dispatch(setLineWidthAction(value));
       lines?.setLineWidth(value);
+    },
+    [dispatch, lines]
+  );
+
+  const setLineColor = useCallback(
+    (color: { r: number; g: number; b: number; a: number } | null) => {
+      dispatch(setLineColorAction(color));
+      lines?.setLineColor(color);
     },
     [dispatch, lines]
   );
@@ -85,10 +95,12 @@ export function useLines() {
     enabled,
     lineWidth,
     list,
+    lineColor,
     isEnabled,
     // Actions
     setEnabled,
     setLineWidth,
+    setLineColor,
     setLines,
     // Helper methods
     addLine,

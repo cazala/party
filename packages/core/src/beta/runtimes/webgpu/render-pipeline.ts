@@ -59,7 +59,7 @@ export class RenderPipeline {
         colorAttachments: [
           {
             view: resources.getCurrentSceneTextureView(),
-            clearValue: color,
+            clearValue: { r: color.r, g: color.g, b: color.b, a: 0 },
             loadOp: "clear",
             storeOp: "store",
           },
@@ -70,7 +70,7 @@ export class RenderPipeline {
         colorAttachments: [
           {
             view: resources.getOtherSceneTextureView(),
-            clearValue: color,
+            clearValue: { r: color.r, g: color.g, b: color.b, a: 0 },
             loadOp: "clear",
             storeOp: "store",
           },

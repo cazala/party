@@ -5,12 +5,14 @@ export interface LinesModuleState {
   enabled: boolean;
   list: Line[];
   lineWidth: number;
+  lineColor: { r: number; g: number; b: number; a: number } | null;
 }
 
 const initialState: LinesModuleState = {
   enabled: false,
   list: [],
   lineWidth: 1.5,
+  lineColor: null,
 };
 
 export const linesSlice = createSlice({
@@ -22,6 +24,17 @@ export const linesSlice = createSlice({
     },
     setLineWidth: (state, action: PayloadAction<number>) => {
       state.lineWidth = action.payload;
+    },
+    setLineColor: (
+      state,
+      action: PayloadAction<{
+        r: number;
+        g: number;
+        b: number;
+        a: number;
+      } | null>
+    ) => {
+      state.lineColor = action.payload;
     },
     setLines: (state, action: PayloadAction<Line[]>) => {
       state.list = action.payload;
@@ -36,6 +49,7 @@ export const linesSlice = createSlice({
 export const {
   setEnabled: setLinesEnabled,
   setLineWidth: setLineWidth,
+  setLineColor: setLineColor,
   setLines: setLines,
   reset: resetLines,
   importSettings: importLinesSettings,

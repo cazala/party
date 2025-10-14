@@ -18,6 +18,8 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
     lineWidth,
     setEnabled: setLinesEnabled,
     setLineWidth,
+    lineColor,
+    setLineColor,
   } = useLines();
   const {
     isEnabled: particlesEnabled,
@@ -54,6 +56,9 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
 
   const clearColorHex = rgbaToHex(clearColor);
   const particleCustomColorHex = rgbaToHex(customColor);
+  const lineColorHex = lineColor
+    ? rgbaToHex(lineColor)
+    : rgbaToHex({ r: 1, g: 1, b: 1, a: 1 });
   return (
     <div>
       {/* Particle controls first */}
@@ -108,6 +113,18 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
         onChange={setLinesEnabled}
         disabled={disabled}
       />
+
+      {linesEnabled && (
+        <ColorPicker
+          label="Line Color"
+          value={lineColorHex}
+          onChange={(hex) => {
+            const rgba = hexToRgba(hex, 1);
+            setLineColor(rgba);
+          }}
+          disabled={disabled}
+        />
+      )}
 
       {linesEnabled && (
         <Slider
