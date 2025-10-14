@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 export interface UIState {
   showGrid: boolean;
@@ -9,7 +9,7 @@ const initialState: UIState = {
 };
 
 export const uiSlice = createSlice({
-  name: 'ui',
+  name: "ui",
   initialState,
   reducers: {
     setShowGrid: (state, action: PayloadAction<boolean>) => {
@@ -26,4 +26,4 @@ export const { setShowGrid, toggleShowGrid } = uiSlice.actions;
 // Selectors
 export const selectShowGrid = (state: { ui: UIState }) => state.ui.showGrid;
 
-export default uiSlice.reducer;
+export const uiReducer = uiSlice.reducer;

@@ -3,7 +3,8 @@ import { initReducer } from "./init";
 import { engineReducer } from "./engine";
 import { toolsReducer } from "./tools";
 import { modulesReducer } from "./modules";
-import { uiSlice } from "./ui";
+import { uiReducer } from "./ui";
+import { oscillatorsReducer } from "./oscillators";
 
 export const store = configureStore({
   reducer: {
@@ -11,7 +12,8 @@ export const store = configureStore({
     engine: engineReducer,
     tools: toolsReducer,
     modules: modulesReducer,
-    ui: uiSlice.reducer,
+    ui: uiReducer,
+    oscillators: oscillatorsReducer,
   },
   devTools: import.meta.env.DEV,
 });

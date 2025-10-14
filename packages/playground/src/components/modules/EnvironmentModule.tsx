@@ -36,6 +36,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
   return (
     <>
       <Slider
+        sliderId="environment.gravityStrength"
         label="Gravity Strength"
         value={gravityStrength}
         onChange={setGravityStrength}

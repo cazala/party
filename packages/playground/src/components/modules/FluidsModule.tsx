@@ -25,6 +25,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
   return (
     <>
       <Slider
+        sliderId="fluids.influenceRadius"
         label="Influence Radius"
         value={influenceRadius}
         min={1}
@@ -43,6 +44,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="fluids.targetDensity"
         label="Density"
         value={targetDensity}
         min={0}
