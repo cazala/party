@@ -7,6 +7,7 @@ export function TrailsModule({ enabled = true }: { enabled?: boolean }) {
   return (
     <>
       <Slider
+        sliderId="trails.trailDecay"
         label="Trail Decay"
         value={trailDecay}
         min={2}
@@ -16,6 +17,7 @@ export function TrailsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="trails.trailDiffuse"
         label="Trail Diffuse"
         value={trailDiffuse}
         min={0}

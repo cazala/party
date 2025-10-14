@@ -45,7 +45,6 @@ export function PerformanceControls() {
       />
 
       <Slider
-        sliderId="performance.constrainIterations"
         label="Constrain Iterations"
         value={constrainIterations}
         min={1}

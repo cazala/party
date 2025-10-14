@@ -32,6 +32,7 @@ export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
         ]}
       />
       <Slider
+        sliderId="boundary.restitution"
         label="Restitution"
         value={restitution}
         min={0}
@@ -42,12 +43,18 @@ export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="boundary.friction"
         label="Friction"
         value={friction}
+        min={0}
+        max={1}
+        step={0.01}
+        formatValue={(v) => v.toFixed(2)}
         onChange={setFriction}
         disabled={!enabled}
       />
       <Slider
+        sliderId="boundary.repelDistance"
         label="Repel Distance"
         value={repelDistance}
         min={0}
@@ -57,6 +64,7 @@ export function BoundaryModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="boundary.repelStrength"
         label="Repel Strength"
         value={repelStrength}
         min={0}

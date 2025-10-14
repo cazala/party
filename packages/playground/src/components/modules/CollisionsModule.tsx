@@ -7,6 +7,7 @@ export function CollisionsModule({ enabled = true }: { enabled?: boolean }) {
   return (
     <>
       <Slider
+        sliderId="collisions.restitution"
         label="Restitution"
         value={restitution}
         min={0}

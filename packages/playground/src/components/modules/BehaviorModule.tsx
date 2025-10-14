@@ -30,6 +30,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
   return (
     <>
       <Slider
+        sliderId="behavior.wander"
         label="Wander"
         value={wander}
         min={0}
@@ -41,6 +42,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="behavior.cohesion"
         label="Cohesion"
         value={cohesion}
         min={0}
@@ -52,6 +54,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="behavior.alignment"
         label="Alignment"
         value={alignment}
         min={0}
@@ -63,6 +66,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="behavior.repulsion"
         label="Repulsion"
         value={repulsion}
         min={0}
@@ -74,6 +78,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="behavior.separation"
         label="Separation"
         value={separation}
         onChange={setSeparation}
@@ -81,6 +86,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="behavior.chase"
         label="Chase"
         value={chase}
         min={0}
@@ -92,6 +98,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="behavior.avoid"
         label="Avoid"
         value={avoid}
         min={0}
@@ -103,6 +110,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="behavior.viewRadius"
         label="View Radius"
         value={viewRadius}
         min={0}
@@ -113,6 +121,7 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="behavior.viewAngle"
         label="View Angle"
         value={viewAngleDegrees}
         min={0}

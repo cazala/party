@@ -10,7 +10,12 @@ interface RenderControlsProps {
 
 export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
   const { clearColor, setClearColor } = useEngine();
-  const { enabled: linesEnabled, lineWidth, setEnabled: setLinesEnabled, setLineWidth } = useLines();
+  const {
+    enabled: linesEnabled,
+    lineWidth,
+    setEnabled: setLinesEnabled,
+    setLineWidth,
+  } = useLines();
 
   // Convert RGBA to hex
   const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
@@ -46,16 +51,17 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
         }}
         disabled={disabled}
       />
-      
+
       <Checkbox
         label="Show Lines"
         checked={linesEnabled}
         onChange={setLinesEnabled}
         disabled={disabled}
       />
-      
+
       {linesEnabled && (
         <Slider
+          sliderId="render.lineWidth"
           label="Line Width"
           value={lineWidth}
           min={0.1}

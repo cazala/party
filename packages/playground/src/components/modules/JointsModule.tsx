@@ -23,6 +23,7 @@ export function JointsModule({ enabled = true }: { enabled?: boolean }) {
   return (
     <>
       <Slider
+        sliderId="joints.momentum"
         label="Momentum"
         value={momentum}
         min={0}
@@ -48,6 +49,7 @@ export function JointsModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="joints.steps"
         label="Steps"
         value={steps}
         min={1}
@@ -60,6 +62,7 @@ export function JointsModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="joints.friction"
         label="Friction"
         value={friction}
         min={0}
@@ -71,6 +74,7 @@ export function JointsModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="joints.restitution"
         label="Restitution"
         value={restitution}
         min={0}
@@ -82,6 +86,7 @@ export function JointsModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="joints.separation"
         label="Separation"
         value={separation}
         min={0}

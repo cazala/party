@@ -35,6 +35,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="fluids.maxAcceleration"
         label="Max Acceleration"
         value={maxAcceleration}
         min={0}
@@ -55,6 +56,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="fluids.pressureMultiplier"
         label="Pressure"
         value={pressureMultiplier}
         min={0}
@@ -64,6 +66,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="fluids.viscosity"
         label="Viscosity"
         value={viscosity}
         min={0}
@@ -80,6 +83,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="fluids.nearPressureMultiplier"
         label="Near Pressure"
         value={nearPressureMultiplier}
         min={0}
@@ -89,6 +93,7 @@ export function FluidsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled || !enableNearPressure}
       />
       <Slider
+        sliderId="fluids.nearThreshold"
         label="Near Threshold"
         value={nearThreshold}
         min={0}

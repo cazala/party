@@ -217,7 +217,6 @@ export function InitControls() {
   return (
     <div>
       <Slider
-        sliderId="init.particleCount"
         label="Number of Particles"
         value={numParticles}
         min={100}

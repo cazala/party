@@ -40,6 +40,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
   return (
     <>
       <Slider
+        sliderId="sensors.distance"
         label="Distance"
         min={3}
         max={100}
@@ -49,6 +50,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="sensors.angle"
         label="Angle"
         value={sensorAngleDegrees}
         min={2}
@@ -59,6 +61,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="sensors.radius"
         label="Radius"
         value={sensorRadius}
         min={0}
@@ -68,6 +71,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="sensors.threshold"
         label="Threshold"
         value={sensorThreshold}
         min={0.01}
@@ -78,6 +82,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="sensors.strength"
         label="Strength"
         value={sensorStrength}
         min={0}
@@ -112,6 +117,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
       />
       {showColorSimilarity && (
         <Slider
+          sliderId="sensors.colorSimilarityThreshold"
           label="Color Similarity Threshold"
           value={colorSimilarityThreshold}
           min={0}
@@ -124,6 +130,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
       )}
       {showFleeAngle && (
         <Slider
+          sliderId="sensors.fleeAngle"
           label="Flee Angle"
           value={fleeAngleDegrees}
           onChange={(v) => setFleeAngle(degToRad(v))}

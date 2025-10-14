@@ -3,14 +3,8 @@ import { Slider } from "../ui/Slider";
 import { useInteraction } from "../../hooks/modules/useInteraction";
 
 export function InteractionModule({ enabled = true }: { enabled?: boolean }) {
-  const {
-    mode,
-    strength,
-    radius,
-    setMode,
-    setStrength,
-    setRadius,
-  } = useInteraction();
+  const { mode, strength, radius, setMode, setStrength, setRadius } =
+    useInteraction();
 
   return (
     <>
@@ -25,6 +19,7 @@ export function InteractionModule({ enabled = true }: { enabled?: boolean }) {
         ]}
       />
       <Slider
+        sliderId="interaction.strength"
         label="Strength"
         value={strength}
         min={0}
@@ -34,6 +29,7 @@ export function InteractionModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
+        sliderId="interaction.radius"
         label="Radius"
         value={radius}
         min={0}

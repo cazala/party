@@ -66,6 +66,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
 
       {direction === "custom" && (
         <Slider
+          sliderId="environment.gravityAngle"
           label="Gravity Angle"
           value={angle}
           onChange={setCustomAngleDegrees}
@@ -78,6 +79,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
       )}
 
       <Slider
+        sliderId="environment.inertia"
         label="Inertia"
         value={inertia}
         onChange={setInertia}
@@ -89,6 +91,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="environment.friction"
         label="Friction"
         value={friction}
         onChange={setFriction}
@@ -100,6 +103,7 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
       />
 
       <Slider
+        sliderId="environment.damping"
         label="Damping"
         value={damping}
         onChange={setDamping}
