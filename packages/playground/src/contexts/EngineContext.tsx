@@ -9,7 +9,7 @@ import {
   Sensors,
   Trails,
   Interaction,
-  Particle,
+  Particles,
   Joints,
   Lines,
   Grab,
@@ -91,7 +91,7 @@ export interface EngineContextType {
   sensors: Sensors | null;
   trails: Trails | null;
   interaction: Interaction | null;
-  particle: Particle | null;
+  particles: Particles | null;
   joints: Joints | null;
   lines: Lines | null;
   grab: Grab | null;

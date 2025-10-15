@@ -1,11 +1,11 @@
+import { ParticlesColorType } from "@cazala/party";
 import { ColorPicker } from "./ui/ColorPicker";
 import { Checkbox } from "./ui/Checkbox";
 import { Slider } from "./ui/Slider";
 import { Dropdown } from "./ui/Dropdown";
 import { useEngine } from "../hooks/useEngine";
 import { useLines } from "../hooks/modules/useLines";
-import { useParticle } from "../hooks/modules/useParticle";
-import { ParticleColorType } from "@cazala/party";
+import { useParticles } from "../hooks/modules/useParticles";
 
 interface RenderControlsProps {
   disabled?: boolean;
@@ -30,7 +30,7 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
     setColorType,
     setCustomColor,
     setHue,
-  } = useParticle();
+  } = useParticles();
 
   // Convert RGBA to hex
   const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
@@ -73,17 +73,17 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
         <Dropdown
           label="Particle Color Type"
           value={String(colorType)}
-          onChange={(v) => setColorType(Number(v) as ParticleColorType)}
+          onChange={(v) => setColorType(Number(v) as ParticlesColorType)}
           options={[
-            { value: String(ParticleColorType.Default), label: "Default" },
-            { value: String(ParticleColorType.Custom), label: "Custom" },
-            { value: String(ParticleColorType.Hue), label: "Hue" },
+            { value: String(ParticlesColorType.Default), label: "Default" },
+            { value: String(ParticlesColorType.Custom), label: "Custom" },
+            { value: String(ParticlesColorType.Hue), label: "Hue" },
           ]}
           disabled={disabled}
         />
       )}
 
-      {particlesEnabled && colorType === ParticleColorType.Custom && (
+      {particlesEnabled && colorType === ParticlesColorType.Custom && (
         <ColorPicker
           label="Particle Color"
           value={particleCustomColorHex}
@@ -92,7 +92,7 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
         />
       )}
 
-      {particlesEnabled && colorType === ParticleColorType.Hue && (
+      {particlesEnabled && colorType === ParticlesColorType.Hue && (
         <Slider
           sliderId="render.particleHue"
           label="Particle Hue"

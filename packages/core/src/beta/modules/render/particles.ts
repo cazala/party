@@ -1,5 +1,5 @@
 /**
- * Particle (Render Module)
+ * Particles (Render Module)
  *
  * Single fullscreen pass that instanced-draws particle quads into the scene.
  * Fragment shader renders a soft-disc using the particle color and alpha falloff.
@@ -14,55 +14,58 @@ import {
   DataType,
 } from "../../module";
 
-export enum ParticleColorType {
+export enum ParticlesColorType {
   Default = 0,
   Custom = 1,
   Hue = 2,
 }
 
-type ParticleInputs = {
+type ParticlesInputs = {
   colorType: number; // ParticleColorType enum value
-  customColor: number[]; // [r,g,b,a] 0..1
+  customColorR: number; // 0..1
+  customColorG: number; // 0..1
+  customColorB: number; // 0..1
   hue: number; // 0..1
 };
 
-export class Particle extends Module<"particles", ParticleInputs> {
+export class Particles extends Module<"particles", ParticlesInputs> {
   readonly name = "particles" as const;
   readonly role = ModuleRole.Render;
   readonly inputs = {
     colorType: DataType.NUMBER,
-    customColor: DataType.ARRAY,
+    customColorR: DataType.NUMBER,
+    customColorG: DataType.NUMBER,
+    customColorB: DataType.NUMBER,
     hue: DataType.NUMBER,
   } as const;
 
   constructor(opts?: {
     enabled?: boolean;
-    colorType?: ParticleColorType;
+    colorType?: ParticlesColorType;
     customColor?: { r: number; g: number; b: number; a: number };
     hue?: number;
   }) {
     super();
     this.write({
-      colorType: opts?.colorType ?? ParticleColorType.Default,
-      customColor: opts?.customColor
-        ? [
-            opts.customColor.r,
-            opts.customColor.g,
-            opts.customColor.b,
-            opts.customColor.a,
-          ]
-        : [1, 1, 1, 1],
+      colorType: opts?.colorType ?? ParticlesColorType.Default,
+      customColorR: opts?.customColor?.r ?? 1,
+      customColorG: opts?.customColor?.g ?? 1,
+      customColorB: opts?.customColor?.b ?? 1,
       hue: Math.min(1, Math.max(0, opts?.hue ?? 0)),
     });
     if (opts?.enabled !== undefined) this.setEnabled(!!opts.enabled);
   }
 
-  setColorType(type: ParticleColorType): void {
+  setColorType(type: ParticlesColorType): void {
     this.write({ colorType: type });
   }
 
   setCustomColor(color: { r: number; g: number; b: number; a: number }): void {
-    this.write({ customColor: [color.r, color.g, color.b, color.a] });
+    this.write({
+      customColorR: color.r,
+      customColorG: color.g,
+      customColorB: color.b,
+    });
   }
 
   setHue(hue: number): void {
@@ -70,7 +73,7 @@ export class Particle extends Module<"particles", ParticleInputs> {
     this.write({ hue: clamped });
   }
 
-  webgpu(): WebGPUDescriptor<ParticleInputs> {
+  webgpu(): WebGPUDescriptor<ParticlesInputs> {
     return {
       // Single fullscreen pass that draws particles into the scene texture
       passes: [
@@ -82,16 +85,15 @@ export class Particle extends Module<"particles", ParticleInputs> {
   
   // Fetch uniforms
   let colorType = ${getUniform("colorType")};
-  let custom = vec4<f32>(
-    ${getUniform("customColor", 0)},
-    ${getUniform("customColor", 1)},
-    ${getUniform("customColor", 2)},
-    ${getUniform("customColor", 3)}
+  let custom = vec3<f32>(
+    ${getUniform("customColorR")},
+    ${getUniform("customColorG")},
+    ${getUniform("customColorB")}
   );
   let hue = ${getUniform("hue")};
   var baseColor = color;
   if (colorType == 1.0) {
-    baseColor = custom; // Custom RGBA
+    baseColor = vec4<f32>(custom, 1.0); // Custom RGB with alpha 1
   } else if (colorType == 2.0) {
     // Inline hue->RGB conversion at full saturation/value
     let h = fract(hue) * 6.0;
@@ -137,7 +139,13 @@ export class Particle extends Module<"particles", ParticleInputs> {
   
   return vec4<f32>(finalColor, finalAlpha);
 }`,
-          bindings: ["colorType", "customColor", "hue"] as const,
+          bindings: [
+            "colorType",
+            "customColorR",
+            "customColorG",
+            "customColorB",
+            "hue",
+          ] as const,
           readsScene: false,
           writesScene: true,
         },
@@ -145,7 +153,7 @@ export class Particle extends Module<"particles", ParticleInputs> {
     };
   }
 
-  cpu(): CPUDescriptor<ParticleInputs> {
+  cpu(): CPUDescriptor<ParticlesInputs> {
     return {
       composition: CanvasComposition.RequiresClear,
       render: ({
@@ -161,15 +169,10 @@ export class Particle extends Module<"particles", ParticleInputs> {
         const type = typeof input.colorType === "number" ? input.colorType : 0;
         let rgba = particle.color;
         if (type === 1) {
-          const arr = Array.isArray(input.customColor)
-            ? (input.customColor as number[])
-            : [1, 1, 1, 1];
-          rgba = {
-            r: arr[0] ?? 1,
-            g: arr[1] ?? 1,
-            b: arr[2] ?? 1,
-            a: arr[3] ?? 1,
-          };
+          const r = (input as any).customColorR as number;
+          const g = (input as any).customColorG as number;
+          const b = (input as any).customColorB as number;
+          rgba = { r: r ?? 1, g: g ?? 1, b: b ?? 1, a: 1 };
         } else if (type === 2) {
           const h = Math.min(
             1,

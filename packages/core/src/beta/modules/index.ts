@@ -9,4 +9,4 @@ export * from "./forces/joints";
 export * from "./forces/grab";
 export * from "./render/trails";
 export * from "./render/lines";
-export * from "./render/particle";
+export * from "./render/particles";

@@ -7,7 +7,7 @@ import { behaviorReducer, BehaviorModuleState } from "./behavior";
 import { sensorsReducer, SensorsModuleState } from "./sensors";
 import { trailsReducer, TrailsModuleState } from "./trails";
 import { interactionReducer, InteractionModuleState } from "./interaction";
-import { particleReducer, ParticleModuleState } from "./particle";
+import { particlesReducer, ParticlesModuleState } from "./particles";
 import { jointsReducer, JointsModuleState } from "./joints";
 import { linesReducer, LinesModuleState } from "./lines";
 import { grabReducer, GrabModuleState } from "./grab";
@@ -22,7 +22,7 @@ export type {
   SensorsModuleState,
   TrailsModuleState,
   InteractionModuleState,
-  ParticleModuleState,
+  ParticlesModuleState,
   JointsModuleState,
   LinesModuleState,
   GrabModuleState,
@@ -37,7 +37,7 @@ export * from "./behavior";
 export * from "./sensors";
 export * from "./trails";
 export * from "./interaction";
-export * from "./particle";
+export * from "./particles";
 export * from "./joints";
 export * from "./lines";
 export * from "./grab";
@@ -52,7 +52,7 @@ export interface ModulesState {
   sensors: SensorsModuleState;
   trails: TrailsModuleState;
   interaction: InteractionModuleState;
-  particle: ParticleModuleState;
+  particles: ParticlesModuleState;
   joints: JointsModuleState;
   lines: LinesModuleState;
   grab: GrabModuleState;
@@ -67,7 +67,7 @@ export const modulesReducer = combineReducers({
   sensors: sensorsReducer,
   trails: trailsReducer,
   interaction: interactionReducer,
-  particle: particleReducer,
+  particles: particlesReducer,
   joints: jointsReducer,
   lines: linesReducer,
   grab: grabReducer,

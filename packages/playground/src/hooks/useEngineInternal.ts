@@ -9,7 +9,7 @@ import {
   Trails,
   Interaction,
   Engine,
-  Particle,
+  Particles,
   Joints,
   Lines,
   Grab,
@@ -65,7 +65,7 @@ import {
   importSensorsSettings,
   importTrailsSettings,
   importInteractionSettings,
-  importParticleSettings,
+  importParticlesSettings,
   importLinesSettings,
   importJointsSettings,
 } from "../slices/modules";
@@ -104,7 +104,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const sensorsRef = useRef<Sensors | null>(null);
   const trailsRef = useRef<Trails | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
-  const particleRef = useRef<Particle | null>(null);
+  const particlesRef = useRef<Particles | null>(null);
   const jointsRef = useRef<Joints | null>(null);
   const linesRef = useRef<Lines | null>(null);
   const grabRef = useRef<Grab | null>(null);
@@ -150,7 +150,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           sensorsRef.current = null;
           trailsRef.current = null;
           interactionRef.current = null;
-          particleRef.current = null;
+          particlesRef.current = null;
+          particlesRef.current = null;
           jointsRef.current = null;
           linesRef.current = null;
           registerEngine(null);
@@ -220,8 +221,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const lines = new Lines({ enabled: false });
         const grab = new Grab({ enabled: false });
 
-        // Create particle renderer
-        const particle = new Particle();
+        // Create particles renderer
+        const particles = new Particles();
 
         const forces = [
           environment,
@@ -234,7 +235,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           joints,
           grab,
         ];
-        const render = [trails, lines, particle];
+        const render = [trails, lines, particles];
 
         // Create engine
         const engine = new Engine({
@@ -256,7 +257,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         sensorsRef.current = sensors;
         trailsRef.current = trails;
         interactionRef.current = interaction;
-        particleRef.current = particle;
+        particlesRef.current = particles;
         jointsRef.current = joints;
         linesRef.current = lines;
         grabRef.current = grab;
@@ -316,7 +317,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
             dispatch(importInteractionSettings(modules.interaction));
             dispatch(importJointsSettings(modules.joints));
             dispatch(importLinesSettings(modules.lines));
-            dispatch(importParticleSettings(modules.particle));
+            dispatch(importParticlesSettings(modules.particles));
           }
         }
 
@@ -338,7 +339,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           sensorsRef.current = null;
           trailsRef.current = null;
           interactionRef.current = null;
-          particleRef.current = null;
+          particlesRef.current = null;
           jointsRef.current = null;
           linesRef.current = null;
           registerEngine(null);
@@ -390,7 +391,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     const sensors = sensorsRef.current;
     const trails = trailsRef.current;
     const interaction = interactionRef.current;
-    const particle = particleRef.current;
+    const particles = particlesRef.current;
     const joints = jointsRef.current;
     const lines = linesRef.current;
     try {
@@ -427,8 +428,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         interaction.setEnabled(modulesState.interaction.enabled);
       }
 
-      if (particle && particle.setEnabled) {
-        particle.setEnabled(modulesState.particle.enabled);
+      if (particles && particles.setEnabled) {
+        particles.setEnabled(modulesState.particles.enabled);
       }
 
       if (joints && joints.setEnabled) {
@@ -451,7 +452,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     modulesState.sensors.enabled,
     modulesState.trails.enabled,
     modulesState.interaction.enabled,
-    modulesState.particle.enabled,
+    modulesState.particles.enabled,
     modulesState.joints.enabled,
     modulesState.lines.enabled,
   ]);
@@ -641,7 +642,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     sensors: sensorsRef.current,
     trails: trailsRef.current,
     interaction: interactionRef.current,
-    particle: particleRef.current,
+    particles: particlesRef.current,
     joints: jointsRef.current,
     lines: linesRef.current,
     grab: grabRef.current,
