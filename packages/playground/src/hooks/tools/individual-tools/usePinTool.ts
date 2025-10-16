@@ -11,6 +11,10 @@ export function usePinTool(isActive: boolean) {
 
   // Fixed screen radius for pin circle (25px)
   const SCREEN_RADIUS = 25;
+  // Adjustable screen radius state and size-dragging control
+  const screenRadiusRef = useRef(SCREEN_RADIUS);
+  const isAdjustingSize = useRef(false);
+  const adjustStart = useRef({ x: 0, y: 0 });
 
   // Manage cursor visibility (apply only to canvas to avoid global flicker)
   useEffect(() => {
@@ -34,25 +38,59 @@ export function usePinTool(isActive: boolean) {
     ) => {
       if (!isActive) return;
 
-      // Draw dashed yellow circle at mouse position
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 4]);
-      ctx.beginPath();
-      ctx.arc(
-        mousePosition.current.x,
-        mousePosition.current.y,
-        SCREEN_RADIUS,
-        0,
-        2 * Math.PI
-      );
-      ctx.stroke();
-      ctx.setLineDash([]); // Reset dash pattern
+      const radius = screenRadiusRef.current;
+
+      if (isAdjustingSize.current) {
+        const startX = adjustStart.current.x;
+        const startY = adjustStart.current.y;
+        const mouseX = mousePosition.current.x;
+        const mouseY = mousePosition.current.y;
+
+        // Circle centered at current mouse position (dashed)
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Dashed line from original mousedown to current mouse position
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(mouseX, mouseY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Tiny circle at cursor
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      } else {
+        // Draw dashed circle at current mouse position
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.arc(
+          mousePosition.current.x,
+          mousePosition.current.y,
+          radius,
+          0,
+          2 * Math.PI
+        );
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     },
-    [isActive, SCREEN_RADIUS]
+    [isActive]
   );
 
-  // Pin or unpin particles at current mouse position (unpin when ctrl/cmd pressed)
+  // Pin or unpin particles at current mouse position (unpin when shift pressed)
   const pinOrUnpinAtPosition = useCallback(
     async (unpin: boolean) => {
       if (!isActive || !screenToWorld) return;
@@ -64,7 +102,7 @@ export function usePinTool(isActive: boolean) {
       );
 
       // Calculate world radius based on current zoom
-      const worldRadius = SCREEN_RADIUS / zoom;
+      const worldRadius = screenRadiusRef.current / zoom;
 
       if (!engine) return;
       const particles = await engine.getParticles();
@@ -93,24 +131,49 @@ export function usePinTool(isActive: boolean) {
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
       if (!isActive) return;
-      isDragging.current = true;
-      const unpin = !!(e.ctrlKey || e.metaKey);
-      pinOrUnpinAtPosition(unpin);
+
+      const ctrlOrMeta = !!(e.ctrlKey || e.metaKey);
+      const unpin = !!e.shiftKey;
+
+      const canvas = e.target as HTMLCanvasElement;
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+
+      if (ctrlOrMeta) {
+        // Start size adjustment mode
+        isAdjustingSize.current = true;
+        adjustStart.current = { x: sx, y: sy };
+      } else {
+        isDragging.current = true;
+        pinOrUnpinAtPosition(unpin);
+      }
     },
     [isActive, pinOrUnpinAtPosition]
   );
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      // Always update mouse position
       const canvas = e.target as HTMLCanvasElement;
       const rect = canvas.getBoundingClientRect();
-      mousePosition.current.x = e.clientX - rect.left;
-      mousePosition.current.y = e.clientY - rect.top;
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      mousePosition.current.x = sx;
+      mousePosition.current.y = sy;
+
+      if (isAdjustingSize.current) {
+        // Set radius to distance from start to current pointer (screen px)
+        const dx = sx - adjustStart.current.x;
+        const dy = sy - adjustStart.current.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        // Match spawn tool behavior: radius grows slower than drag distance
+        screenRadiusRef.current = Math.max(10, Math.min(distance / 2, 200));
+        return;
+      }
 
       // If dragging, continuously pin/unpin
       if (isDragging.current) {
-        const unpin = !!(e.ctrlKey || e.metaKey);
+        const unpin = !!e.shiftKey;
         pinOrUnpinAtPosition(unpin);
       }
     },
@@ -118,6 +181,10 @@ export function usePinTool(isActive: boolean) {
   );
 
   const handleMouseUp = useCallback(() => {
+    if (isAdjustingSize.current) {
+      isAdjustingSize.current = false;
+      return;
+    }
     isDragging.current = false;
   }, []);
 
