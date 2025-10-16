@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useEngine } from "../useEngine";
 import { useToolManager } from "./useToolManager";
 import { useOverlay } from "./useOverlay";
@@ -17,7 +17,7 @@ import { useShapeTool } from "./individual-tools/useShapeTool";
 import { useEmitterTool } from "./individual-tools/useEmitterTool";
 
 export function useTools(): UseToolsReturn {
-  const { isInitialized } = useEngine();
+  const { isInitialized, canvasRef } = useEngine();
   const toolManager = useToolManager();
   const overlay = useOverlay();
 
@@ -57,7 +57,8 @@ export function useTools(): UseToolsReturn {
     (
       ctx: CanvasRenderingContext2D,
       canvasSize: { width: number; height: number },
-      isMouseOver: boolean
+      isMouseOver: boolean,
+      mouse?: { x: number; y: number }
     ) => {
       ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
 
@@ -68,31 +69,31 @@ export function useTools(): UseToolsReturn {
       if (isMouseOver) {
         switch (toolManager.toolMode) {
           case "spawn":
-            spawnTool.renderOverlay(ctx, canvasSize);
+            spawnTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           case "cursor":
-            cursorTool.renderOverlay(ctx, canvasSize);
+            cursorTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           case "remove":
-            removeTool.renderOverlay(ctx, canvasSize);
+            removeTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           case "joint":
-            jointTool.renderOverlay(ctx, canvasSize);
+            jointTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           case "pin":
-            pinTool.renderOverlay(ctx, canvasSize);
+            pinTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           case "grab":
-            grabTool.renderOverlay(ctx, canvasSize);
+            grabTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           case "draw":
-            drawTool.renderOverlay(ctx, canvasSize);
+            drawTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           case "shape":
-            shapeTool.renderOverlay(ctx, canvasSize);
+            shapeTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           case "emitter":
-            emitterTool.renderOverlay(ctx, canvasSize);
+            emitterTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           default:
             // No overlay for unknown tools
@@ -114,6 +115,83 @@ export function useTools(): UseToolsReturn {
       emitterTool.renderOverlay,
     ]
   );
+
+  // Also seed overlay position immediately on tool changes based on last known mouse
+  useEffect(() => {
+    const canvas = canvasRef?.current as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx =
+      typeof (window as any)._lastMouseX === "number"
+        ? (window as any)._lastMouseX
+        : rect.width / 2;
+    const my =
+      typeof (window as any)._lastMouseY === "number"
+        ? (window as any)._lastMouseY
+        : rect.height / 2;
+    switch (toolManager.toolMode) {
+      case "spawn":
+        spawnTool.updateMousePosition(mx, my);
+        break;
+      case "remove":
+        (removeTool as any).setMousePosition?.(mx, my);
+        break;
+      case "pin":
+        (pinTool as any).setMousePosition?.(mx, my);
+        break;
+      case "draw":
+        (drawTool as any).setMousePosition?.(mx, my);
+        break;
+      case "shape":
+        (shapeTool as any).setMousePosition?.(mx, my);
+        break;
+      default:
+        break;
+    }
+  }, [toolManager.toolMode, canvasRef, spawnTool.updateMousePosition]);
+
+  // Seed overlay mouse coordinates immediately when tool changes (via custom event)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ x: number; y: number }>).detail;
+      if (!detail) return;
+      switch (toolManager.toolMode) {
+        case "spawn":
+          spawnTool.updateMousePosition(detail.x, detail.y);
+          break;
+        case "remove":
+          (removeTool as any).setMousePosition?.(detail.x, detail.y);
+          break;
+        case "pin":
+          (pinTool as any).setMousePosition?.(detail.x, detail.y);
+          break;
+        case "draw":
+          (drawTool as any).setMousePosition?.(detail.x, detail.y);
+          break;
+        case "shape":
+          (shapeTool as any).setMousePosition?.(detail.x, detail.y);
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener(
+      "party-overlay-update-mouse",
+      handler as EventListener
+    );
+    return () =>
+      window.removeEventListener(
+        "party-overlay-update-mouse",
+        handler as EventListener
+      );
+  }, [
+    toolManager.toolMode,
+    spawnTool.updateMousePosition,
+    removeTool.renderOverlay,
+    pinTool.renderOverlay,
+    drawTool.renderOverlay,
+    shapeTool.renderOverlay,
+  ]);
 
   // Create tool-aware overlay functions that only delegate to spawn tool in spawn mode
   const updateMousePosition = useCallback(

@@ -16,6 +16,7 @@ export function Overlay() {
   const animationFrameRef = useRef<number>();
   const isDragging = useRef(false);
   const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false);
+  const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Render function
   const render = useCallback(() => {
@@ -32,7 +33,8 @@ export function Overlay() {
     renderOverlay(
       ctx,
       { width: size.width, height: size.height },
-      isMouseOverCanvas
+      isMouseOverCanvas,
+      mouseRef.current
     );
   }, [renderOverlay, size, isMouseOverCanvas]);
 
@@ -89,15 +91,27 @@ export function Overlay() {
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isSpawnMode) return; // Only handle mouse events in spawn mode
       const rect = mainCanvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
-      updateMousePosition(mouseX, mouseY);
+      mouseRef.current = { x: mouseX, y: mouseY };
+      if (isSpawnMode) {
+        updateMousePosition(mouseX, mouseY);
+      }
 
       // If we're dragging, also call updateDrag
       if (isDragging.current) {
         updateDrag(mouseX, mouseY, e.ctrlKey || e.metaKey, e.shiftKey);
+      }
+    };
+
+    // Allow external callers (GlobalHotkeys) to seed overlay mouse position on tool switch
+    const handleExternalOverlayUpdate = (e: Event) => {
+      const detail = (e as CustomEvent<{ x: number; y: number }>).detail;
+      if (!detail) return;
+      mouseRef.current = { x: detail.x, y: detail.y };
+      if (isSpawnMode) {
+        updateMousePosition(detail.x, detail.y);
       }
     };
 
@@ -122,6 +136,10 @@ export function Overlay() {
     mainCanvas.addEventListener("mousemove", handleMouseMove);
     mainCanvas.addEventListener("mousedown", handleMouseDown);
     mainCanvas.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener(
+      "party-overlay-update-mouse",
+      handleExternalOverlayUpdate as EventListener
+    );
 
     return () => {
       mainCanvas.removeEventListener("mouseenter", handleMouseEnter);
@@ -129,6 +147,10 @@ export function Overlay() {
       mainCanvas.removeEventListener("mousemove", handleMouseMove);
       mainCanvas.removeEventListener("mousedown", handleMouseDown);
       mainCanvas.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener(
+        "party-overlay-update-mouse",
+        handleExternalOverlayUpdate as EventListener
+      );
     };
   }, [
     mainCanvasRef,

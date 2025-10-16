@@ -23,7 +23,6 @@ export function useDrawTool(isActive: boolean) {
   const isProcessingRef = useRef<boolean>(false); // Prevent concurrent operations
   const lastParticleIndexRef = useRef<number | null>(null);
   const lastPositionRef = useRef<{ x: number; y: number } | null>(null);
-  const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const selectedColorRef = useRef<string>("#ffffff");
 
   // Use module-level state (like shape tool) to prevent re-render issues
@@ -32,15 +31,15 @@ export function useDrawTool(isActive: boolean) {
   const selectRandomColor = useRandomColorSelector(colors);
 
   const renderOverlay: ToolRenderFunction = useCallback(
-    (ctx) => {
+    (ctx, _size, mouse) => {
       if (!isActive) return;
 
       // Size adjustment overlay
       if (state.isAdjustingSize) {
         const startX = state.adjustStartX;
         const startY = state.adjustStartY;
-        const mouseX = state.mouseX;
-        const mouseY = state.mouseY;
+        const mouseX = mouse?.x ?? state.mouseX;
+        const mouseY = mouse?.y ?? state.mouseY;
 
         // Dashed line from start to cursor
         ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
@@ -136,7 +135,6 @@ export function useDrawTool(isActive: boolean) {
       const rect = (ev.target as HTMLCanvasElement).getBoundingClientRect();
       const sx = ev.clientX - rect.left;
       const sy = ev.clientY - rect.top;
-      mousePosRef.current = { x: sx, y: sy };
 
       const isCtrl = ev.ctrlKey || ev.metaKey;
       const isShift = ev.shiftKey;
@@ -192,7 +190,6 @@ export function useDrawTool(isActive: boolean) {
       const rect = (ev.target as HTMLCanvasElement).getBoundingClientRect();
       const sx = ev.clientX - rect.left;
       const sy = ev.clientY - rect.top;
-      mousePosRef.current = { x: sx, y: sy };
 
       // Handle size adjustment mode
       if (state.isAdjustingSize) {
@@ -294,6 +291,11 @@ export function useDrawTool(isActive: boolean) {
   return {
     renderOverlay,
     handlers,
+    setMousePosition: (x: number, y: number) => {
+      // Keep mouse state in sync for immediate overlay after tool switch
+      drawToolState.mouseX = x;
+      drawToolState.mouseY = y;
+    },
   };
 }
 

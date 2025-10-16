@@ -5,6 +5,7 @@ import { TopBar } from "./components/TopBar";
 import { ModulesSidebar } from "./components/ModulesSidebar";
 import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
+import { GlobalHotkeys } from "./components/GlobalHotkeys";
 import { Provider } from "react-redux";
 import { store } from "./slices/store";
 
@@ -15,6 +16,7 @@ function AppContent() {
   return (
     <div className="app">
       <TopBar />
+      <GlobalHotkeys />
       <div className="app-content">
         <SystemSidebar />
         <div className="playground">

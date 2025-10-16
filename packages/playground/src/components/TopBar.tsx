@@ -1,12 +1,14 @@
-import { useCallback } from "react";
-import { RefreshCw, Trash2 } from "lucide-react";
+import { useCallback, useState } from "react";
+import { RefreshCw, Trash2, HelpCircle } from "lucide-react";
 import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
 import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
 import "./TopBar.css";
+import { HelpModal } from "./HelpModal";
 
 export function TopBar() {
+  const [helpOpen, setHelpOpen] = useState(false);
   const { isPlaying, play, pause, clear, spawnParticles } = useEngine();
   const { initState, gridJoints, setGridJoints } = useInit();
   const { removeAllJoints } = useJoints();
@@ -33,13 +35,21 @@ export function TopBar() {
     // Re-spawn particles using current INIT panel config from Redux
     spawnParticles(initState);
     play();
-    
+
     // If gridJoints is enabled, force re-creation by toggling the state
-    if (gridJoints && initState.shape === 'grid') {
+    if (gridJoints && initState.shape === "grid") {
       setGridJoints(false);
       setTimeout(() => setGridJoints(true), 0);
     }
-  }, [removeAllJoints, removeAllLines, spawnParticles, play, initState, gridJoints, setGridJoints]);
+  }, [
+    removeAllJoints,
+    removeAllLines,
+    spawnParticles,
+    play,
+    initState,
+    gridJoints,
+    setGridJoints,
+  ]);
 
   return (
     <div className="top-bar">
@@ -83,8 +93,18 @@ export function TopBar() {
             <span>Restart</span>
           </button>
         </div>
-        <div className="topbar-right"></div>
+        <div className="topbar-right">
+          <button
+            className="help-button"
+            aria-label="Help"
+            title="Help & Shortcuts"
+            onClick={() => setHelpOpen(true)}
+          >
+            <HelpCircle width="18" height="18" />
+          </button>
+        </div>
       </div>
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

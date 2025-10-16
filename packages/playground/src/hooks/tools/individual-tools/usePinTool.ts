@@ -5,8 +5,7 @@ import { ToolHandlers, ToolRenderFunction } from "../types";
 export function usePinTool(isActive: boolean) {
   const { engine, screenToWorld, zoom, canvasRef } = useEngine();
 
-  // Track mouse position and drag state
-  const mousePosition = useRef({ x: 0, y: 0 });
+  // Drag state
   const isDragging = useRef(false);
 
   // Fixed screen radius for pin circle (25px)
@@ -34,17 +33,20 @@ export function usePinTool(isActive: boolean) {
   const renderOverlay: ToolRenderFunction = useCallback(
     (
       ctx: CanvasRenderingContext2D,
-      _canvasSize: { width: number; height: number }
+      _canvasSize: { width: number; height: number },
+      mouse
     ) => {
       if (!isActive) return;
 
       const radius = screenRadiusRef.current;
+      const currentX = mouse?.x ?? 0;
+      const currentY = mouse?.y ?? 0;
 
       if (isAdjustingSize.current) {
         const startX = adjustStart.current.x;
         const startY = adjustStart.current.y;
-        const mouseX = mousePosition.current.x;
-        const mouseY = mousePosition.current.y;
+        const mouseX = currentX;
+        const mouseY = currentY;
 
         // Circle centered at current mouse position (dashed)
         ctx.strokeStyle = "#ffffff";
@@ -76,13 +78,7 @@ export function usePinTool(isActive: boolean) {
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 4]);
         ctx.beginPath();
-        ctx.arc(
-          mousePosition.current.x,
-          mousePosition.current.y,
-          radius,
-          0,
-          2 * Math.PI
-        );
+        ctx.arc(currentX, currentY, radius, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -92,14 +88,11 @@ export function usePinTool(isActive: boolean) {
 
   // Pin or unpin particles at current mouse position (unpin when shift pressed)
   const pinOrUnpinAtPosition = useCallback(
-    async (unpin: boolean) => {
+    async (unpin: boolean, screenX: number, screenY: number) => {
       if (!isActive || !screenToWorld) return;
 
       // Get world coordinates of current mouse position
-      const worldCenter = screenToWorld(
-        mousePosition.current.x,
-        mousePosition.current.y
-      );
+      const worldCenter = screenToWorld(screenX, screenY);
 
       // Calculate world radius based on current zoom
       const worldRadius = screenRadiusRef.current / zoom;
@@ -146,7 +139,7 @@ export function usePinTool(isActive: boolean) {
         adjustStart.current = { x: sx, y: sy };
       } else {
         isDragging.current = true;
-        pinOrUnpinAtPosition(unpin);
+        pinOrUnpinAtPosition(unpin, sx, sy);
       }
     },
     [isActive, pinOrUnpinAtPosition]
@@ -158,8 +151,6 @@ export function usePinTool(isActive: boolean) {
       const rect = canvas.getBoundingClientRect();
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
-      mousePosition.current.x = sx;
-      mousePosition.current.y = sy;
 
       if (isAdjustingSize.current) {
         // Set radius to distance from start to current pointer (screen px)
@@ -174,7 +165,7 @@ export function usePinTool(isActive: boolean) {
       // If dragging, continuously pin/unpin
       if (isDragging.current) {
         const unpin = !!e.shiftKey;
-        pinOrUnpinAtPosition(unpin);
+        pinOrUnpinAtPosition(unpin, sx, sy);
       }
     },
     [pinOrUnpinAtPosition]

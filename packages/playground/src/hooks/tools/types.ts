@@ -17,7 +17,8 @@ export interface ToolHandlers {
 export interface ToolRenderFunction {
   (
     ctx: CanvasRenderingContext2D,
-    canvasSize: { width: number; height: number }
+    canvasSize: { width: number; height: number },
+    mouse?: { x: number; y: number }
   ): void;
 }
 
@@ -45,7 +46,8 @@ export interface UseToolsReturn {
   renderOverlay: (
     ctx: CanvasRenderingContext2D,
     canvasSize: { width: number; height: number },
-    isMouseOver: boolean
+    isMouseOver: boolean,
+    mouse?: { x: number; y: number }
   ) => void;
   updateMousePosition: (mouseX: number, mouseY: number) => void;
   startDrag: (

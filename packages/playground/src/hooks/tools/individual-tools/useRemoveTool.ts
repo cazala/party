@@ -8,8 +8,7 @@ export function useRemoveTool(isActive: boolean) {
   const dispatch = useAppDispatch();
   const { screenToWorld, zoom, canvasRef } = useEngine();
 
-  // Track mouse position and drag state
-  const mousePosition = useRef({ x: 0, y: 0 });
+  // Drag state
   const isDragging = useRef(false);
 
   // Fixed screen radius for removal circle (25px)
@@ -37,17 +36,20 @@ export function useRemoveTool(isActive: boolean) {
   const renderOverlay: ToolRenderFunction = useCallback(
     (
       ctx: CanvasRenderingContext2D,
-      _canvasSize: { width: number; height: number }
+      _canvasSize: { width: number; height: number },
+      mouse
     ) => {
       if (!isActive) return;
 
       const radius = screenRadiusRef.current;
+      const currentX = mouse?.x ?? 0;
+      const currentY = mouse?.y ?? 0;
 
       if (isAdjustingSize.current) {
         const startX = adjustStart.current.x;
         const startY = adjustStart.current.y;
-        const mouseX = mousePosition.current.x;
-        const mouseY = mousePosition.current.y;
+        const mouseX = currentX;
+        const mouseY = currentY;
 
         // Circle centered at current mouse position (dashed)
         ctx.strokeStyle = "#ffffff";
@@ -79,13 +81,7 @@ export function useRemoveTool(isActive: boolean) {
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 4]);
         ctx.beginPath();
-        ctx.arc(
-          mousePosition.current.x,
-          mousePosition.current.y,
-          radius,
-          0,
-          2 * Math.PI
-        );
+        ctx.arc(currentX, currentY, radius, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -94,26 +90,26 @@ export function useRemoveTool(isActive: boolean) {
   );
 
   // Remove particles at current mouse position
-  const removeParticlesAtPosition = useCallback(() => {
-    if (!isActive || !screenToWorld) return;
+  const removeParticlesAtPosition = useCallback(
+    (screenX: number, screenY: number) => {
+      if (!isActive || !screenToWorld) return;
 
-    // Get world coordinates of current mouse position
-    const worldCenter = screenToWorld(
-      mousePosition.current.x,
-      mousePosition.current.y
-    );
+      // Get world coordinates of current mouse position
+      const worldCenter = screenToWorld(screenX, screenY);
 
-    // Calculate world radius based on current zoom
-    const worldRadius = screenRadiusRef.current / zoom;
+      // Calculate world radius based on current zoom
+      const worldRadius = screenRadiusRef.current / zoom;
 
-    // Dispatch remove particles thunk
-    dispatch(
-      removeParticlesThunk({
-        center: worldCenter,
-        radius: worldRadius,
-      })
-    );
-  }, [isActive, screenToWorld, zoom, dispatch]);
+      // Dispatch remove particles thunk
+      dispatch(
+        removeParticlesThunk({
+          center: worldCenter,
+          radius: worldRadius,
+        })
+      );
+    },
+    [isActive, screenToWorld, zoom, dispatch]
+  );
 
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
@@ -131,7 +127,7 @@ export function useRemoveTool(isActive: boolean) {
         adjustStart.current = { x: sx, y: sy };
       } else {
         isDragging.current = true;
-        removeParticlesAtPosition();
+        removeParticlesAtPosition(sx, sy);
       }
     },
     [isActive, removeParticlesAtPosition]
@@ -143,8 +139,6 @@ export function useRemoveTool(isActive: boolean) {
       const rect = canvas.getBoundingClientRect();
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
-      mousePosition.current.x = sx;
-      mousePosition.current.y = sy;
 
       if (isAdjustingSize.current) {
         // Set radius to distance from start to current pointer (screen px)
@@ -158,7 +152,7 @@ export function useRemoveTool(isActive: boolean) {
 
       // If dragging, continuously remove particles
       if (isDragging.current) {
-        removeParticlesAtPosition();
+        removeParticlesAtPosition(sx, sy);
       }
     },
     [removeParticlesAtPosition]

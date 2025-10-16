@@ -120,10 +120,10 @@ export function useShapeTool(isActive: boolean) {
     ]
   );
 
-  const renderOverlay: ToolRenderFunction = (ctx) => {
+  const renderOverlay: ToolRenderFunction = (ctx, _size, mouse) => {
     if (!isActive) return;
-    const centerX = state.mouseX;
-    const centerY = state.mouseY;
+    const centerX = mouse?.x ?? state.mouseX;
+    const centerY = mouse?.y ?? state.mouseY;
     const zoom = engine?.getZoom() ?? 1;
     // Match the on-screen size of the shape spawned at current zoom
     // Spawn uses worldRadius = state.radius / Math.sqrt(zoom), which results in
@@ -316,6 +316,11 @@ export function useShapeTool(isActive: boolean) {
   return {
     renderOverlay,
     handlers,
+    setMousePosition: (x: number, y: number) => {
+      // Seed overlay mouse immediately after tool switch
+      shapeToolState.mouseX = x;
+      shapeToolState.mouseY = y;
+    },
   };
 }
 
