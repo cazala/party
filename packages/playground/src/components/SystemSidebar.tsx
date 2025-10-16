@@ -21,12 +21,12 @@ export function SystemSidebar() {
         <InitControls />
       </CollapsibleSection>
 
-      <CollapsibleSection title="PERFORMANCE" defaultOpen={true}>
-        <PerformanceControls />
-      </CollapsibleSection>
-
       <CollapsibleSection title="RENDER" defaultOpen={true}>
         <RenderControls disabled={!isInitialized || isInitializing} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="PERFORMANCE" defaultOpen={true}>
+        <PerformanceControls />
       </CollapsibleSection>
     </div>
   );

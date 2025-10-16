@@ -4,7 +4,6 @@ import { CollisionsModule } from "./modules/CollisionsModule";
 import { FluidsModule } from "./modules/FluidsModule";
 import { BehaviorModule } from "./modules/BehaviorModule";
 import { SensorsModule } from "./modules/SensorsModule";
-import { TrailsModule } from "./modules/TrailsModule";
 import { InteractionModule } from "./modules/InteractionModule";
 import { JointsModule } from "./modules/JointsModule";
 import { ModuleWrapper } from "./ModuleWrapper";
@@ -16,7 +15,6 @@ import {
   useFluids,
   useBehavior,
   useSensors,
-  useTrails,
   useInteraction,
   useJoints,
 } from "../hooks/modules";
@@ -30,21 +28,28 @@ export function ModulesSidebar() {
     fluids,
     behavior,
     sensors,
-    trails,
+
     interaction,
     joints,
     isSupported,
   } = useEngine();
 
-  const { isEnabled: isEnvironmentEnabled, setEnabled: setEnvironmentEnabled } = useEnvironment();
-  const { isEnabled: isBoundaryEnabled, setEnabled: setBoundaryEnabled } = useBoundary();
-  const { isEnabled: isCollisionsEnabled, setEnabled: setCollisionsEnabled } = useCollisions();
-  const { isEnabled: isFluidsEnabled, setEnabled: setFluidsEnabled } = useFluids();
-  const { isEnabled: isBehaviorEnabled, setEnabled: setBehaviorEnabled } = useBehavior();
-  const { isEnabled: isSensorsEnabled, setEnabled: setSensorsEnabled } = useSensors();
-  const { isEnabled: isTrailsEnabled, setEnabled: setTrailsEnabled } = useTrails();
-  const { isEnabled: isInteractionEnabled, setEnabled: setInteractionEnabled } = useInteraction();
-  const { isEnabled: isJointsEnabled, setEnabled: setJointsEnabled } = useJoints();
+  const { isEnabled: isEnvironmentEnabled, setEnabled: setEnvironmentEnabled } =
+    useEnvironment();
+  const { isEnabled: isBoundaryEnabled, setEnabled: setBoundaryEnabled } =
+    useBoundary();
+  const { isEnabled: isCollisionsEnabled, setEnabled: setCollisionsEnabled } =
+    useCollisions();
+  const { isEnabled: isFluidsEnabled, setEnabled: setFluidsEnabled } =
+    useFluids();
+  const { isEnabled: isBehaviorEnabled, setEnabled: setBehaviorEnabled } =
+    useBehavior();
+  const { isEnabled: isSensorsEnabled, setEnabled: setSensorsEnabled } =
+    useSensors();
+  const { isEnabled: isInteractionEnabled, setEnabled: setInteractionEnabled } =
+    useInteraction();
+  const { isEnabled: isJointsEnabled, setEnabled: setJointsEnabled } =
+    useJoints();
 
   return (
     <div className="controls-panel">
@@ -100,16 +105,6 @@ export function ModulesSidebar() {
         setEnabled={setBehaviorEnabled}
       >
         <BehaviorModule />
-      </ModuleWrapper>
-
-      <ModuleWrapper
-        title="Trails"
-        module={trails}
-        isSupported={isSupported(trails)}
-        enabled={isTrailsEnabled}
-        setEnabled={setTrailsEnabled}
-      >
-        <TrailsModule />
       </ModuleWrapper>
 
       <ModuleWrapper

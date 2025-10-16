@@ -6,6 +6,7 @@ import { Dropdown } from "./ui/Dropdown";
 import { useEngine } from "../hooks/useEngine";
 import { useLines } from "../hooks/modules/useLines";
 import { useParticles } from "../hooks/modules/useParticles";
+import { useTrails } from "../hooks/modules/useTrails";
 
 interface RenderControlsProps {
   disabled?: boolean;
@@ -31,6 +32,14 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
     setCustomColor,
     setHue,
   } = useParticles();
+  const {
+    isEnabled: trailsEnabled,
+    trailDecay,
+    trailDiffuse,
+    setEnabled: setTrailsEnabled,
+    setDecay,
+    setDiffuse,
+  } = useTrails();
 
   // Convert RGBA to hex
   const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
@@ -137,6 +146,41 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
           onChange={setLineWidth}
           disabled={disabled}
           formatValue={(v) => v.toFixed(1)}
+        />
+      )}
+
+      {/* Trails controls after lines */}
+      <Checkbox
+        label="Show Trails"
+        checked={trailsEnabled}
+        onChange={setTrailsEnabled}
+        disabled={disabled}
+      />
+
+      {trailsEnabled && (
+        <Slider
+          sliderId="trails.trailDecay"
+          label="Trail Decay"
+          value={trailDecay}
+          min={2}
+          max={20}
+          step={1}
+          onChange={setDecay}
+          disabled={disabled}
+        />
+      )}
+
+      {trailsEnabled && (
+        <Slider
+          sliderId="trails.trailDiffuse"
+          label="Trail Diffuse"
+          value={trailDiffuse}
+          min={0}
+          max={5}
+          step={1}
+          onChange={setDiffuse}
+          formatValue={(v) => `${v.toFixed(0)}px`}
+          disabled={disabled}
         />
       )}
 
