@@ -174,7 +174,7 @@ export function useShapeTool(isActive: boolean) {
       const startX = state.adjustStartX;
       const startY = state.adjustStartY;
 
-      // Dashed line from center to cursor
+      // Dashed line from start to current mouse position
       ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 6]);
@@ -184,18 +184,11 @@ export function useShapeTool(isActive: boolean) {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Circle at cursor
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Radius text
+      // Tiny solid dot at cursor
       ctx.fillStyle = "rgb(255, 255, 255)";
-      ctx.font = "14px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(`Radius: ${Math.round(radius)}`, centerX, centerY - 20);
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Sides adjustment overlay

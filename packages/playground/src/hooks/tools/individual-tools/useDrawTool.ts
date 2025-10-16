@@ -52,24 +52,22 @@ export function useDrawTool(isActive: boolean) {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Circle at cursor showing current size
+        // Circle at cursor showing current size (dashed)
         const zoom = engine?.getZoom() || 1;
         const screenRadius = state.currentSize * zoom;
         ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
         ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
         ctx.beginPath();
         ctx.arc(mouseX, mouseY, screenRadius, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.setLineDash([]);
 
-        // Size text
+        // Tiny solid dot at cursor
         ctx.fillStyle = "rgb(255, 255, 255)";
-        ctx.font = "14px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(
-          `Size: ${Math.round(state.currentSize)}`,
-          mouseX,
-          mouseY - screenRadius - 10
-        );
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 4, 0, Math.PI * 2);
+        ctx.fill();
       }
     },
     [isActive, engine]

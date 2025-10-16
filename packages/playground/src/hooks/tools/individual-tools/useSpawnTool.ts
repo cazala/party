@@ -280,8 +280,8 @@ export function useSpawnTool(isActive: boolean) {
       state.current.dragStartX = mouseX;
       state.current.dragStartY = mouseY;
       state.current.dragStartTime = Date.now();
-      state.current.currentSize = particleSize;
-      state.current.lockedSize = particleSize;
+      // Initialize current size from the last chosen size so size adjustments persist
+      state.current.currentSize = state.current.lockedSize;
       state.current.isCtrlPressed = ctrlPressed;
       state.current.previousCtrlPressed = ctrlPressed;
       state.current.isShiftPressed = shiftPressed;
@@ -382,8 +382,10 @@ export function useSpawnTool(isActive: boolean) {
     );
     const color = parseColor(state.current.selectedColor);
 
+    let didSpawn = false;
+
     if (wasClick) {
-      const size = particleSize;
+      const size = state.current.currentSize;
       const mass = calculateMassFromSize(size);
 
       addParticle({
@@ -393,15 +395,16 @@ export function useSpawnTool(isActive: boolean) {
         mass,
         color,
       });
+      didSpawn = true;
+    } else if (state.current.dragMode === "size") {
+      // Finalize size selection without spawning; lockedSize already synced in updateDrag
+      // No-op: keep currentSize/lockedSize as chosen
     } else {
       const size = state.current.currentSize;
       const mass = calculateMassFromSize(size);
 
       let velocity = { x: 0, y: 0 };
-      if (
-        !state.current.isCtrlPressed &&
-        state.current.dragMode === "velocity"
-      ) {
+      if (state.current.dragMode === "velocity") {
         const baseVelocityScale = 5.0;
         const velocityScale = baseVelocityScale / Math.sqrt(zoom); // Square root relationship for more balanced scaling
         const maxVelocityDistance = 150; // Same as maxArrowLength
@@ -423,6 +426,7 @@ export function useSpawnTool(isActive: boolean) {
         mass,
         color,
       });
+      didSpawn = true;
     }
 
     // Stop streaming if it was active
@@ -432,8 +436,11 @@ export function useSpawnTool(isActive: boolean) {
     state.current.dragStartTime = 0;
     state.current.isDragging = false;
     state.current.isShiftPressed = false;
-    state.current.currentSize = particleSize;
-    state.current.selectedColor = selectRandomColor(); // New color for next spawn
+    // Keep currentSize as chosen so it persists for future spawns
+    if (didSpawn) {
+      // Only rotate color after an actual spawn
+      state.current.selectedColor = selectRandomColor();
+    }
   }, [
     addParticle,
     screenToWorld,
@@ -621,7 +628,7 @@ export function useSpawnTool(isActive: boolean) {
         }
       } else if (data.dragStartTime > 0) {
         // Draw particle at drag start position (before reaching drag threshold)
-        const hoverSize = particleSize * zoom; // Apply zoom to hover preview
+        const hoverSize = data.currentSize * zoom; // Apply zoom to hover preview and honor persisted size
 
         // Draw solid particle
         ctx.globalAlpha = 1.0;
@@ -647,7 +654,7 @@ export function useSpawnTool(isActive: boolean) {
         ctx.setLineDash([]);
       } else {
         // Draw hover preview at mouse position - solid particle with dashed circle
-        const hoverSize = particleSize * zoom; // Apply zoom to hover preview
+        const hoverSize = data.currentSize * zoom; // Apply zoom to hover preview and honor persisted size
 
         // Draw solid particle
         ctx.globalAlpha = 1.0;
