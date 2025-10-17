@@ -15,14 +15,9 @@ export interface OscillatorData {
   jitter?: boolean | number;
 }
 
-export interface OscillatorsState {
-  // Map of sliderId -> oscillator configuration (active only)
-  oscillators: Record<string, OscillatorData>;
-}
+export type OscillatorsState = Record<string, OscillatorData>;
 
-const initialState: OscillatorsState = {
-  oscillators: {},
-};
+const initialState: OscillatorsState = {};
 
 // Helper mapping for UI presets (optional use)
 const presetToHz: Record<OscillationSpeed, number> = {
@@ -40,12 +35,12 @@ const oscillatorsSlice = createSlice({
       action: PayloadAction<{ sliderId: string; config: OscillatorData }>
     ) => {
       const { sliderId, config } = action.payload;
-      state.oscillators[sliderId] = config;
+      state[sliderId] = config;
     },
 
     removeOscillator: (state, action: PayloadAction<string>) => {
       const sliderId = action.payload;
-      delete state.oscillators[sliderId];
+      delete state[sliderId];
     },
 
     // Back-compat UI action: accepts preset labels and stores as Hz
@@ -54,8 +49,8 @@ const oscillatorsSlice = createSlice({
       action: PayloadAction<{ sliderId: string; speed: OscillationSpeed }>
     ) => {
       const { sliderId, speed } = action.payload;
-      if (state.oscillators[sliderId]) {
-        state.oscillators[sliderId].speedHz = presetToHz[speed];
+      if (state[sliderId]) {
+        state[sliderId].speedHz = presetToHz[speed];
       }
     },
 
@@ -65,8 +60,8 @@ const oscillatorsSlice = createSlice({
       action: PayloadAction<{ sliderId: string; speedHz: number }>
     ) => {
       const { sliderId, speedHz } = action.payload;
-      if (state.oscillators[sliderId]) {
-        state.oscillators[sliderId].speedHz = speedHz;
+      if (state[sliderId]) {
+        state[sliderId].speedHz = speedHz;
       }
     },
 
@@ -79,9 +74,9 @@ const oscillatorsSlice = createSlice({
       }>
     ) => {
       const { sliderId, customMin, customMax } = action.payload;
-      if (state.oscillators[sliderId]) {
-        state.oscillators[sliderId].customMin = customMin;
-        state.oscillators[sliderId].customMax = customMax;
+      if (state[sliderId]) {
+        state[sliderId].customMin = customMin;
+        state[sliderId].customMax = customMax;
       }
     },
 
@@ -90,8 +85,8 @@ const oscillatorsSlice = createSlice({
       action: PayloadAction<{ sliderId: string; customMin: number }>
     ) => {
       const { sliderId, customMin } = action.payload;
-      if (state.oscillators[sliderId]) {
-        state.oscillators[sliderId].customMin = customMin;
+      if (state[sliderId]) {
+        state[sliderId].customMin = customMin;
       }
     },
 
@@ -100,13 +95,13 @@ const oscillatorsSlice = createSlice({
       action: PayloadAction<{ sliderId: string; customMax: number }>
     ) => {
       const { sliderId, customMax } = action.payload;
-      if (state.oscillators[sliderId]) {
-        state.oscillators[sliderId].customMax = customMax;
+      if (state[sliderId]) {
+        state[sliderId].customMax = customMax;
       }
     },
 
-    clearAllOscillators: (state) => {
-      state.oscillators = {};
+    clearAllOscillators: () => {
+      return {};
     },
   },
 });
@@ -126,14 +121,14 @@ export const oscillatorsReducer = oscillatorsSlice.reducer;
 
 // Selectors
 export const selectOscillators = (state: { oscillators: OscillatorsState }) =>
-  state.oscillators.oscillators;
+  state.oscillators;
 
 export const selectOscillator = (
   state: { oscillators: OscillatorsState },
   sliderId: string
-) => state.oscillators.oscillators[sliderId];
+) => state.oscillators[sliderId];
 
 export const selectIsOscillating = (
   state: { oscillators: OscillatorsState },
   sliderId: string
-) => !!state.oscillators.oscillators[sliderId];
+) => !!state.oscillators[sliderId];

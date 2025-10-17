@@ -6,7 +6,7 @@ import { Metrics } from "./ui/Metrics";
 import { useEngine } from "../hooks/useEngine";
 import { useAppSelector } from "../hooks/useAppSelector";
 import { useAppDispatch } from "../hooks/useAppDispatch";
-import { selectShowGrid, setShowGrid } from "../slices/ui";
+import { selectShowGrid, setShowGrid } from "../slices/performance";
 
 export function PerformanceControls() {
   const dispatch = useAppDispatch();

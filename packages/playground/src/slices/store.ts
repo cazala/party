@@ -3,7 +3,7 @@ import { initReducer } from "./init";
 import { engineReducer } from "./engine";
 import { toolsReducer } from "./tools";
 import { modulesReducer } from "./modules";
-import { uiReducer } from "./ui";
+import { performanceReducer } from "./performance";
 import { oscillatorsReducer } from "./oscillators";
 
 export const store = configureStore({
@@ -12,7 +12,7 @@ export const store = configureStore({
     engine: engineReducer,
     tools: toolsReducer,
     modules: modulesReducer,
-    ui: uiReducer,
+    performance: performanceReducer,
     oscillators: oscillatorsReducer,
   },
   devTools: import.meta.env.DEV,
