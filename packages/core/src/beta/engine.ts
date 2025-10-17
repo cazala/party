@@ -128,6 +128,59 @@ export class Engine implements IEngine {
   getZoom(): number {
     return this.engine.getZoom();
   }
+  // Oscillator API passthroughs
+  addOscillator(params: {
+    moduleName: string;
+    inputName: string;
+    min: number;
+    max: number;
+    speedHz: number;
+    options?: any;
+  }): string {
+    return this.engine.addOscillator(params);
+  }
+  removeOscillator(moduleName: string, inputName: string): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (this.engine as any).removeOscillator(moduleName, inputName);
+  }
+  updateOscillatorSpeed(
+    moduleName: string,
+    inputName: string,
+    speedHz: number
+  ): void {
+    this.engine.updateOscillatorSpeed(moduleName, inputName, speedHz);
+  }
+  updateOscillatorBounds(
+    moduleName: string,
+    inputName: string,
+    min: number,
+    max: number
+  ): void {
+    this.engine.updateOscillatorBounds(moduleName, inputName, min, max);
+  }
+  hasOscillator(moduleName: string, inputName: string): boolean {
+    return this.engine.hasOscillator(moduleName, inputName);
+  }
+  getOscillator(moduleName: string, inputName: string) {
+    return this.engine.getOscillator(moduleName, inputName);
+  }
+  clearOscillators(): void {
+    this.engine.clearOscillators();
+  }
+  addOscillatorListener(
+    moduleName: string,
+    inputName: string,
+    handler: (value: number) => void
+  ): void {
+    this.engine.addOscillatorListener(moduleName, inputName, handler);
+  }
+  removeOscillatorListener(
+    moduleName: string,
+    inputName: string,
+    handler: (value: number) => void
+  ): void {
+    this.engine.removeOscillatorListener(moduleName, inputName, handler);
+  }
   setParticles(p: IParticle[]): void {
     this.engine.setParticles(p);
   }

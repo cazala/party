@@ -1,21 +1,34 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export type OscillationSpeed = 'slow' | 'normal' | 'fast';
+export type OscillationSpeed = "slow" | "normal" | "fast";
 
 export interface OscillatorData {
-  speed: OscillationSpeed;
+  // Core values
+  speedHz: number;
   customMin: number;
   customMax: number;
+  // Optional mapping to engine input
+  moduleName?: string;
+  inputName?: string;
+  // Optional per-oscillator options
+  curveExponent?: number;
+  jitter?: boolean | number;
 }
 
 export interface OscillatorsState {
-  // Map of sliderId -> oscillator configuration
-  // Only contains entries for active oscillators (speed !== 'none')
+  // Map of sliderId -> oscillator configuration (active only)
   oscillators: Record<string, OscillatorData>;
 }
 
 const initialState: OscillatorsState = {
   oscillators: {},
+};
+
+// Helper mapping for UI presets (optional use)
+const presetToHz: Record<OscillationSpeed, number> = {
+  slow: 0.01,
+  normal: 0.05,
+  fast: 0.2,
 };
 
 const oscillatorsSlice = createSlice({
@@ -35,19 +48,35 @@ const oscillatorsSlice = createSlice({
       delete state.oscillators[sliderId];
     },
 
+    // Back-compat UI action: accepts preset labels and stores as Hz
     updateOscillatorSpeed: (
       state,
       action: PayloadAction<{ sliderId: string; speed: OscillationSpeed }>
     ) => {
       const { sliderId, speed } = action.payload;
       if (state.oscillators[sliderId]) {
-        state.oscillators[sliderId].speed = speed;
+        state.oscillators[sliderId].speedHz = presetToHz[speed];
+      }
+    },
+
+    // New numeric-speed action
+    updateOscillatorSpeedHz: (
+      state,
+      action: PayloadAction<{ sliderId: string; speedHz: number }>
+    ) => {
+      const { sliderId, speedHz } = action.payload;
+      if (state.oscillators[sliderId]) {
+        state.oscillators[sliderId].speedHz = speedHz;
       }
     },
 
     updateOscillatorBounds: (
       state,
-      action: PayloadAction<{ sliderId: string; customMin: number; customMax: number }>
+      action: PayloadAction<{
+        sliderId: string;
+        customMin: number;
+        customMax: number;
+      }>
     ) => {
       const { sliderId, customMin, customMax } = action.payload;
       if (state.oscillators[sliderId]) {
@@ -86,6 +115,7 @@ export const {
   setOscillator,
   removeOscillator,
   updateOscillatorSpeed,
+  updateOscillatorSpeedHz,
   updateOscillatorBounds,
   updateOscillatorMin,
   updateOscillatorMax,
@@ -98,8 +128,12 @@ export const oscillatorsReducer = oscillatorsSlice.reducer;
 export const selectOscillators = (state: { oscillators: OscillatorsState }) =>
   state.oscillators.oscillators;
 
-export const selectOscillator = (state: { oscillators: OscillatorsState }, sliderId: string) =>
-  state.oscillators.oscillators[sliderId];
+export const selectOscillator = (
+  state: { oscillators: OscillatorsState },
+  sliderId: string
+) => state.oscillators.oscillators[sliderId];
 
-export const selectIsOscillating = (state: { oscillators: OscillatorsState }, sliderId: string) =>
-  !!state.oscillators.oscillators[sliderId];
+export const selectIsOscillating = (
+  state: { oscillators: OscillatorsState },
+  sliderId: string
+) => !!state.oscillators.oscillators[sliderId];

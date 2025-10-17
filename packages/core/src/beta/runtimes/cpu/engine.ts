@@ -155,6 +155,8 @@ export class CPUEngine extends AbstractEngine {
     this.updateFPS(dt);
 
     if (this.playing) {
+      // Update engine-owned oscillators before module updates
+      this.updateOscillators(dt);
       this.update(dt);
     }
 

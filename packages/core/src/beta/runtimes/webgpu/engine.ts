@@ -199,8 +199,10 @@ export class WebGPUEngine extends AbstractEngine {
     // Encode command buffer
     const encoder = this.resources.getDevice().createCommandEncoder();
 
-    // Only run simulation passes when playing
+    // Only run simulation/oscillators when playing
     if (this.playing) {
+      // Update engine-owned oscillators before simulation uniforms are written
+      this.updateOscillators(dt);
       // Update simulation uniforms (dt, count, simStride, maxSize)
       this.resources.writeSimulationUniform(this.registry.getProgram(), {
         dt,

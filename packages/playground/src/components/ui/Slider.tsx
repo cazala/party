@@ -1,28 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Field } from "./Field";
 import { useOscillators } from "../../hooks/useOscillators";
-import { useEngine } from "../../hooks/useEngine";
 import { OscillationSpeed } from "../../slices/oscillators";
+import { useEngine } from "../../hooks/useEngine";
 import "./Slider.css";
 
-const MULTIPLIER = 2;
-
-// Deterministic pseudo-random helpers based on a string key (sliderId)
-function fnv1a32(str: string): number {
-  let hash = 0x811c9dc5; // FNV-1a 32-bit offset basis
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    // 32-bit multiply by FNV prime (0x01000193). Using >>> 0 to stay in uint32 space.
-    hash = (hash >>> 0) * 0x01000193;
-    hash >>>= 0;
-  }
-  return hash >>> 0;
-}
-
-function hashToUnitInterval(input: string): number {
-  // Map uint32 to [0, 1)
-  return fnv1a32(input) / 4294967296; // 2^32
-}
+// Engine owns oscillation; Slider only updates Redux and shows UI affordances
 
 type ExtendedOscillationSpeed = OscillationSpeed | "none";
 
@@ -62,15 +45,14 @@ export function Slider({
   } = useOscillators(sliderId);
 
   // Local state for animation and UI
-  const animationFrameRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number | null>(null);
-  const phaseOffsetRef = useRef<number>(0);
+  // Legacy refs kept only for drag/hint logic; RAF removed
   const lastValueRef = useRef<number>(value);
-  const lastDirectionRef = useRef<-1 | 0 | 1>(0);
+  const [displayValue, setDisplayValue] = useState<number>(value);
   const sliderRef = useRef<HTMLInputElement | null>(null);
   const isDraggingHandleRef = useRef<"min" | "max" | null>(null);
   const pausedOscillationSpeedRef = useRef<ExtendedOscillationSpeed>("none");
   const activePointerIdRef = useRef<number | null>(null);
+  const { engine: engineInstance } = useEngine();
 
   // Local dragging state for handles (using state to trigger re-renders)
   const [draggingMin, setDraggingMin] = useState<number | null>(null);
@@ -78,7 +60,7 @@ export function Slider({
 
   // Current oscillation state (from Redux or 'none' if no sliderId)
   const oscillationSpeed: ExtendedOscillationSpeed = sliderId
-    ? reduxOscillationSpeed
+    ? reduxOscillationSpeed ?? "none"
     : "none";
   // Use dragging values if they exist, otherwise use Redux values
   const oscillationMin =
@@ -127,39 +109,11 @@ export function Slider({
     }
   }, [reduxCustomMin, reduxCustomMax, draggingMin, draggingMax, min, max]);
 
-  // Keep a ref of the isPlaying state to avoid re-rendering when it changes
-  const { isPlaying } = useEngine();
-
-  // Derive deterministic jitter and initial direction from sliderId
-  const { speedJitterMultiplier, initialDirectionSign } = React.useMemo(() => {
-    if (!sliderId) {
-      return {
-        speedJitterMultiplier: 1,
-        initialDirectionSign: 0 as -1 | 0 | 1,
-      };
-    }
-    const r = hashToUnitInterval(sliderId);
-    const rDir = hashToUnitInterval(sliderId + "::dir");
-    // Jitter in [-0.2, +0.2] applied multiplicatively to base speed
-    const jitter = 1 + (r * 0.4 - 0.2);
-    const dir = rDir < 0.5 ? -1 : 1;
-    return {
-      speedJitterMultiplier: jitter,
-      initialDirectionSign: dir as -1 | 1,
-    };
-  }, [sliderId]);
-
-  const speedMultipliers = {
-    none: 0,
-    slow: 0.01,
-    normal: 0.05,
-    fast: 0.2,
-  };
-
+  // Indicator color by speed preset for legacy UI; engine owns motion
   const speedColors = {
-    slow: "#4ade80", // green
-    normal: "#fbbf24", // yellow
-    fast: "#ef4444", // red
+    slow: "#4ade80",
+    normal: "#fbbf24",
+    fast: "#ef4444",
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,94 +123,27 @@ export function Slider({
       stopOscillation();
     }
     lastValueRef.current = newValue;
+    setDisplayValue(newValue);
     onChange(newValue);
   };
 
   const stopOscillation = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
     if (sliderId) {
       removeOscillator();
     }
-    startTimeRef.current = null;
   }, [sliderId, removeOscillator]);
 
   const startOscillation = useCallback(
     (speed: OscillationSpeed) => {
       if (!sliderId) return;
-
-      // Calculate phase offset to start from current value
-      const range = oscillationMax - oscillationMin;
-      const center = oscillationMin + range / 2;
-      const amplitude = range / 2;
-
-      // Find the phase that would give us the current value
-      // Using inverse of our custom curve: y = center + amplitude * sign(sin(x)) * sin⁶(x)
-      const normalizedValue = (value - center) / amplitude;
-      const clampedNormalized = Math.max(-1, Math.min(1, normalizedValue));
-
-      // For our custom curve f(x) = sign(sin(x)) * sin⁶(x)
-      // We need to find x such that f(x) = normalizedValue
-      // Since sin⁶(x) = normalizedValue when sin(x) = ⁶√|normalizedValue|
-      let targetSin;
-      if (Math.abs(clampedNormalized) < 1e-10) {
-        // Very close to zero, start from center
-        targetSin = 0;
-      } else {
-        targetSin =
-          Math.sign(clampedNormalized) *
-          Math.pow(Math.abs(clampedNormalized), 1 / MULTIPLIER);
-      }
-
-      // Clamp targetSin to valid range [-1, 1]
-      targetSin = Math.max(-1, Math.min(1, targetSin));
-
-      // Calculate phase based on desired direction (preserve current direction)
-      const asinVal = Math.asin(targetSin);
-      const candidate0 = asinVal; // in [-pi/2, pi/2]
-      const candidate1 = Math.PI - asinVal; // the other sine solution
-      let desiredDir = lastDirectionRef.current;
-      // Seed initial direction deterministically if we have no prior direction
-      if (desiredDir === 0 && initialDirectionSign !== 0) {
-        desiredDir = initialDirectionSign;
-        lastDirectionRef.current = desiredDir;
-      }
-      const cos0 = Math.cos(candidate0);
-      if (desiredDir < 0) {
-        // choose decreasing branch (cos negative)
-        phaseOffsetRef.current = cos0 < 0 ? candidate0 : candidate1;
-      } else if (desiredDir > 0) {
-        // choose increasing branch (cos positive)
-        phaseOffsetRef.current = cos0 >= 0 ? candidate0 : candidate1;
-      } else {
-        // no prior direction info, keep principal value
-        phaseOffsetRef.current = candidate0;
-      }
-      // Nudge away from extrema to avoid zero derivative stalls
-      if (Math.abs(Math.cos(phaseOffsetRef.current)) < 1e-6) {
-        const epsilon = 1e-3;
-        phaseOffsetRef.current += (desiredDir >= 0 ? 1 : -1) * epsilon;
-      }
-
-      startTimeRef.current = null;
-
-      // Update Redux state
+      // Update Redux state; engine owns motion
       setOscillator({
-        speed,
+        speedHz: speed === "slow" ? 0.01 : speed === "fast" ? 0.2 : 0.05,
         customMin: oscillationMin,
         customMax: oscillationMax,
       });
     },
-    [
-      value,
-      sliderId,
-      oscillationMin,
-      oscillationMax,
-      setOscillator,
-      initialDirectionSign,
-    ]
+    [sliderId, oscillationMin, oscillationMax, setOscillator]
   );
 
   const cycleOscillationSpeed = useCallback(() => {
@@ -430,49 +317,14 @@ export function Slider({
 
       // Resume oscillation with new bounds if it was previously oscillating
       if (pausedOscillationSpeedRef.current !== "none") {
-        const range = finalMax - finalMin;
-        const center = finalMin + range / 2;
-        const amplitude = range / 2;
-        const normalizedValue = (adjustedValue - center) / amplitude;
-        const clampedNormalized = Math.max(-1, Math.min(1, normalizedValue));
-
-        let targetSin;
-        if (Math.abs(clampedNormalized) < 1e-10) {
-          targetSin = 0;
-        } else {
-          targetSin =
-            Math.sign(clampedNormalized) *
-            Math.pow(Math.abs(clampedNormalized), 1 / MULTIPLIER);
-        }
-        targetSin = Math.max(-1, Math.min(1, targetSin));
-
-        // choose phase to preserve direction when resuming
-        const asinVal = Math.asin(targetSin);
-        const candidate0 = asinVal;
-        const candidate1 = Math.PI - asinVal;
-        const desiredDir = lastDirectionRef.current;
-        const cos0 = Math.cos(candidate0);
-        if (desiredDir < 0) {
-          phaseOffsetRef.current = cos0 < 0 ? candidate0 : candidate1;
-        } else if (desiredDir > 0) {
-          phaseOffsetRef.current = cos0 >= 0 ? candidate0 : candidate1;
-        } else {
-          phaseOffsetRef.current = candidate0;
-        }
-        if (Math.abs(Math.cos(phaseOffsetRef.current)) < 1e-6) {
-          const epsilon = 1e-3;
-          phaseOffsetRef.current += (desiredDir >= 0 ? 1 : -1) * epsilon;
-        }
-
-        // Reset timing to restart smooth oscillation
-        startTimeRef.current = null;
-
         const resumeSpeed = pausedOscillationSpeedRef.current;
         pausedOscillationSpeedRef.current = "none";
 
         if (sliderId) {
+          const speedHz =
+            resumeSpeed === "slow" ? 0.01 : resumeSpeed === "fast" ? 0.2 : 0.05;
           setOscillator({
-            speed: resumeSpeed as OscillationSpeed,
+            speedHz,
             customMin: finalMin,
             customMax: finalMax,
           });
@@ -514,157 +366,46 @@ export function Slider({
     ]
   );
 
-  const animate = useCallback(
-    (timestamp: number) => {
-      // Don't animate if dragging handles or oscillation is off
-      if (oscillationSpeed === "none" || isDraggingHandleRef.current) return;
-
-      if (startTimeRef.current === null) {
-        startTimeRef.current = timestamp;
-      }
-
-      const elapsed = timestamp - startTimeRef.current;
-      const baseSpeedMultiplier = speedMultipliers[oscillationSpeed];
-      const frequency = baseSpeedMultiplier * speedJitterMultiplier * 0.001; // Convert to Hz
-      const range = oscillationMax - oscillationMin;
-      const center = oscillationMin + range / 2;
-      const amplitude = range / 2;
-
-      // Apply phase offset to start from current position
-      const phase = elapsed * frequency * 2 * Math.PI + phaseOffsetRef.current;
-
-      // Custom curve that whips through extremes and dwells in middle
-      // Uses sign(sin(x)) * sin⁶(x) which creates a very sharp whip at extremes
-      const sinValue = Math.sin(phase);
-      const customCurve =
-        Math.sign(sinValue) * Math.pow(Math.abs(sinValue), MULTIPLIER);
-      const oscillatedValue = center + customCurve * amplitude;
-      const clampedValue = Math.max(
-        oscillationMin,
-        Math.min(oscillationMax, oscillatedValue)
-      );
-
-      // Round to nearest step
-      const steppedValue = Math.round((clampedValue - min) / step) * step + min;
-      const finalValue = Math.max(min, Math.min(max, steppedValue));
-
-      // track direction for phase selection on future restarts
-      const delta = finalValue - lastValueRef.current;
-      if (Math.abs(delta) > 1e-9) {
-        lastDirectionRef.current = delta > 0 ? 1 : -1;
-      }
-      lastValueRef.current = finalValue;
-      onChange(finalValue);
-
-      animationFrameRef.current = requestAnimationFrame(animate);
-    },
-    [
-      oscillationSpeed,
-      oscillationMin,
-      oscillationMax,
-      min,
-      max,
-      step,
-      onChange,
-      speedMultipliers,
-      speedJitterMultiplier,
-    ]
-  );
-
+  // Sync slider value via engine oscillator listeners
   useEffect(() => {
-    if (oscillationSpeed !== "none") {
-      animationFrameRef.current = requestAnimationFrame(animate);
-    } else {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    }
+    if (!isOscillating || !sliderId || !engineInstance) return;
+    const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
+    if (parts.length < 2) return;
+    const [moduleName, inputName] = parts;
 
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+    const handler = (raw: number) => {
+      const clamped = Math.max(min, Math.min(max, raw));
+      const stepped = Math.round((clamped - min) / step) * step + min;
+      if (stepped !== lastValueRef.current) {
+        lastValueRef.current = stepped;
+        setDisplayValue(stepped);
       }
     };
-  }, [oscillationSpeed]);
 
-  useEffect(() => {
-    if (!isPlaying) {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      animationFrameRef.current = null;
-      // reset timing so resume doesn't include paused time
-      startTimeRef.current = null;
+    try {
+      engineInstance.addOscillatorListener(moduleName, inputName, handler);
+      return () => {
+        engineInstance.removeOscillatorListener(moduleName, inputName, handler);
+      };
+    } catch {
       return;
     }
+  }, [isOscillating, sliderId, engineInstance, min, max, step, onChange]);
 
-    // Only resume animation if oscillation is active
-    if (oscillationSpeed !== "none") {
-      // Recompute phase to continue from current value and prior direction
-      const range = oscillationMax - oscillationMin;
-      const center = oscillationMin + range / 2;
-      const amplitude = range / 2;
-      const normalizedValue =
-        amplitude === 0 ? 0 : (value - center) / amplitude;
-      const clampedNormalized = Math.max(-1, Math.min(1, normalizedValue));
-
-      let targetSin;
-      if (Math.abs(clampedNormalized) < 1e-10) {
-        targetSin = 0;
-      } else {
-        targetSin =
-          Math.sign(clampedNormalized) *
-          Math.pow(Math.abs(clampedNormalized), 1 / MULTIPLIER);
-      }
-      targetSin = Math.max(-1, Math.min(1, targetSin));
-
-      const asinVal = Math.asin(targetSin);
-      const candidate0 = asinVal;
-      const candidate1 = Math.PI - asinVal;
-      const desiredDir = lastDirectionRef.current;
-      const cos0 = Math.cos(candidate0);
-      if (desiredDir < 0) {
-        phaseOffsetRef.current = cos0 < 0 ? candidate0 : candidate1;
-      } else if (desiredDir > 0) {
-        phaseOffsetRef.current = cos0 >= 0 ? candidate0 : candidate1;
-      } else {
-        phaseOffsetRef.current = candidate0;
-      }
-      // Nudge away from extrema to avoid zero-derivative stalls on resume
-      if (Math.abs(Math.cos(phaseOffsetRef.current)) < 1e-6) {
-        const epsilon = 1e-3;
-        phaseOffsetRef.current += (desiredDir >= 0 ? 1 : -1) * epsilon;
-      }
-
-      // Reset timing and sync last value before scheduling
-      startTimeRef.current = null;
-      lastValueRef.current = value;
-
-      // Cancel any pending RAF before starting
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-      animationFrameRef.current = requestAnimationFrame(animate);
-    }
-  }, [isPlaying]);
-
+  // Sync internal display when Redux value changes (e.g., external actions)
   useEffect(() => {
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
+    if (typeof value === "number" && !Number.isNaN(value)) {
+      lastValueRef.current = value;
+      setDisplayValue(value);
+    }
+  }, [value]);
 
   return (
     <Field className="slider-field">
-      <label>
+      <label style={{ position: "relative" }}>
         <div className="slider-label-container">
           <span>
-            {label}: {formatValue(value)}
+            {label}: {formatValue(displayValue)}
           </span>
           {oscillationSpeed !== "none" && (
             <div
@@ -678,55 +419,113 @@ export function Slider({
             />
           )}
         </div>
-        <div className="slider-container">
+        <div className="slider-container" style={{ position: "relative" }}>
           <input
             ref={sliderRef}
             type="range"
             min={min}
             max={max}
             step={step}
-            value={value}
+            value={displayValue}
             onChange={handleChange}
             onClick={handleSliderClick}
             disabled={disabled}
             className={`slider ${disabled ? "disabled" : ""}`}
           />
+          {disabled && sliderId && oscillationSpeed !== "none" && (
+            <div
+              className="slider-oscillation-overlay"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                cursor: "pointer",
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                stopOscillation();
+              }}
+              title="Click to stop oscillator"
+            />
+          )}
           {sliderId &&
             (oscillationSpeed !== "none" ||
               isDraggingHandleRef.current ||
               pausedOscillationSpeedRef.current !== "none") && (
               <>
                 <div
-                  className="oscillation-handle oscillation-handle-min"
-                  style={{ left: `${getSliderPosition(oscillationMin)}%` }}
-                  onPointerDown={handleHandlePointerDown("min")}
-                  onPointerMove={handleHandlePointerMove}
-                  onPointerUp={handleHandlePointerUp}
-                  onPointerCancel={handleHandlePointerUp}
-                  onLostPointerCapture={handleHandlePointerUp}
+                  className={`oscillation-handle oscillation-handle-min ${
+                    disabled ? "disabled" : ""
+                  }`}
+                  style={{
+                    left: `${getSliderPosition(oscillationMin)}%`,
+                    pointerEvents: disabled ? "none" : undefined,
+                  }}
+                  {...(!disabled
+                    ? {
+                        onPointerDown: handleHandlePointerDown("min"),
+                        onPointerMove: handleHandlePointerMove,
+                        onPointerUp: handleHandlePointerUp,
+                        onPointerCancel: handleHandlePointerUp,
+                        onLostPointerCapture: handleHandlePointerUp,
+                      }
+                    : {})}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
+                  aria-disabled={disabled}
                   title={`Min: ${formatValue(oscillationMin)}`}
                 />
                 <div
-                  className="oscillation-handle oscillation-handle-max"
-                  style={{ left: `${getSliderPosition(oscillationMax)}%` }}
-                  onPointerDown={handleHandlePointerDown("max")}
-                  onPointerMove={handleHandlePointerMove}
-                  onPointerUp={handleHandlePointerUp}
-                  onPointerCancel={handleHandlePointerUp}
-                  onLostPointerCapture={handleHandlePointerUp}
+                  className={`oscillation-handle oscillation-handle-max ${
+                    disabled ? "disabled" : ""
+                  }`}
+                  style={{
+                    left: `${getSliderPosition(oscillationMax)}%`,
+                    pointerEvents: disabled ? "none" : undefined,
+                  }}
+                  {...(!disabled
+                    ? {
+                        onPointerDown: handleHandlePointerDown("max"),
+                        onPointerMove: handleHandlePointerMove,
+                        onPointerUp: handleHandlePointerUp,
+                        onPointerCancel: handleHandlePointerUp,
+                        onLostPointerCapture: handleHandlePointerUp,
+                      }
+                    : {})}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
+                  aria-disabled={disabled}
                   title={`Max: ${formatValue(oscillationMax)}`}
                 />
               </>
             )}
         </div>
+        {disabled && sliderId && oscillationSpeed !== "none" && (
+          <div
+            className="slider-oscillation-overlay-all"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              cursor: "pointer",
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              stopOscillation();
+            }}
+            title="Click to stop oscillator"
+          />
+        )}
       </label>
     </Field>
   );

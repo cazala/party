@@ -1,5 +1,6 @@
 import { View } from "./view";
 import type { Module } from "./module";
+import { OscillatorManager, AddOscillatorOptions } from "./oscillators";
 
 export interface IParticle {
   position: { x: number; y: number };
@@ -48,6 +49,57 @@ export interface IEngine {
   getConstrainIterations(): number;
   setConstrainIterations(iterations: number): void;
   getModule(name: string): Module | undefined;
+
+  // Oscillator API
+  addOscillator(params: {
+    moduleName: string;
+    inputName: string;
+    min: number;
+    max: number;
+    speedHz: number;
+    options?: AddOscillatorOptions;
+  }): string;
+  removeOscillator(moduleName: string, inputName: string): void;
+  updateOscillatorSpeed(
+    moduleName: string,
+    inputName: string,
+    speedHz: number
+  ): void;
+  updateOscillatorBounds(
+    moduleName: string,
+    inputName: string,
+    min: number,
+    max: number
+  ): void;
+  hasOscillator(moduleName: string, inputName: string): boolean;
+  getOscillator(
+    moduleName: string,
+    inputName: string
+  ):
+    | {
+        moduleName: string;
+        inputName: string;
+        min: number;
+        max: number;
+        speedHz: number;
+        curveExponent: number;
+        jitterMultiplier: number;
+        phaseOffset: number;
+        lastDirection: -1 | 0 | 1;
+        active: boolean;
+      }
+    | undefined;
+  clearOscillators(): void;
+  addOscillatorListener(
+    moduleName: string,
+    inputName: string,
+    handler: (value: number) => void
+  ): void;
+  removeOscillatorListener(
+    moduleName: string,
+    inputName: string,
+    handler: (value: number) => void
+  ): void;
 }
 
 export abstract class AbstractEngine implements IEngine {
@@ -62,6 +114,7 @@ export abstract class AbstractEngine implements IEngine {
   protected view: View;
   protected modules: Module[];
   protected maxSize: number = 0;
+  protected oscillatorManager: OscillatorManager;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -78,6 +131,18 @@ export abstract class AbstractEngine implements IEngine {
     this.clearColor = options.clearColor ?? { r: 0, g: 0, b: 0, a: 1 };
     this.cellSize = options.cellSize ?? 16;
     this.maxNeighbors = options.maxNeighbors ?? 100;
+    // Initialize oscillator manager with a setter bound to module input writes
+    this.oscillatorManager = new OscillatorManager(
+      (moduleName: string, inputName: string, value: number) => {
+        const module = this.getModule(moduleName);
+        if (!module) return;
+        // Write input and notify settings change
+        (module as Module<any, Record<string, number>>).write({
+          [inputName]: value,
+        } as Record<string, number>);
+        this.onModuleSettingsChanged();
+      }
+    );
   }
 
   // Abstract methods that must be implemented by subclasses
@@ -146,6 +211,76 @@ export abstract class AbstractEngine implements IEngine {
     return this.fpsEstimate;
   }
 
+  // Oscillator API implementations
+  addOscillator(params: {
+    moduleName: string;
+    inputName: string;
+    min: number;
+    max: number;
+    speedHz: number;
+    options?: AddOscillatorOptions;
+  }): string {
+    return this.oscillatorManager.addOscillator(params);
+  }
+  removeOscillator(moduleName: string, inputName: string): void {
+    this.oscillatorManager.removeOscillator(moduleName, inputName);
+  }
+  updateOscillatorSpeed(
+    moduleName: string,
+    inputName: string,
+    speedHz: number
+  ): void {
+    this.oscillatorManager.updateOscillatorSpeed(
+      moduleName,
+      inputName,
+      speedHz
+    );
+  }
+  updateOscillatorBounds(
+    moduleName: string,
+    inputName: string,
+    min: number,
+    max: number
+  ): void {
+    this.oscillatorManager.updateOscillatorBounds(
+      moduleName,
+      inputName,
+      min,
+      max
+    );
+  }
+  hasOscillator(moduleName: string, inputName: string): boolean {
+    return this.oscillatorManager.hasOscillator(moduleName, inputName);
+  }
+  getOscillator(moduleName: string, inputName: string) {
+    return this.oscillatorManager.getOscillator(moduleName, inputName);
+  }
+  clearOscillators(): void {
+    this.oscillatorManager.clear();
+  }
+  addOscillatorListener(
+    moduleName: string,
+    inputName: string,
+    handler: (value: number) => void
+  ): void {
+    this.oscillatorManager.addOscillatorListener(
+      moduleName,
+      inputName,
+      handler
+    );
+  }
+  removeOscillatorListener(
+    moduleName: string,
+    inputName: string,
+    handler: (value: number) => void
+  ): void {
+    this.oscillatorManager.removeOscillatorListener(
+      moduleName,
+      inputName,
+      handler
+    );
+  }
+
   export(): Record<string, Record<string, number>> {
     const settings: Record<string, Record<string, number>> = {};
     for (const module of this.modules) {
@@ -184,6 +319,11 @@ export abstract class AbstractEngine implements IEngine {
         this.fpsEstimate * (1 - this.fpsSmoothing) +
         instantFps * this.fpsSmoothing;
     }
+  }
+
+  protected updateOscillators(dt: number): void {
+    if (!this.playing) return; // follow global pause
+    this.oscillatorManager.updateAll(dt);
   }
 
   protected getTimeDelta(): number {

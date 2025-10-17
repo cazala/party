@@ -136,3 +136,18 @@
   transform: translateX(-50%) scale(1.1);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
+
+/* Disabled oscillation handles (match disabled slider thumb look) */
+.oscillation-handle.disabled {
+  opacity: 0.3;
+  background: #666; /* align with .slider.disabled thumb */
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.oscillation-handle.disabled:hover,
+.oscillation-handle.disabled:active {
+  transform: translateX(-50%);
+  box-shadow: none;
+  background: #666;
+}

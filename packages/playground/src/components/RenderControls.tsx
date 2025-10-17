@@ -103,15 +103,15 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
 
       {particlesEnabled && colorType === ParticlesColorType.Hue && (
         <Slider
-          sliderId="render.particleHue"
+          sliderId="particles.hue"
           label="Particle Hue"
-          value={hue * 100}
+          value={hue}
           min={0}
-          max={100}
-          step={1}
-          onChange={(val) => setHue(val / 100)}
+          max={1}
+          step={0.01}
+          onChange={(val) => setHue(val)}
           disabled={disabled}
-          formatValue={(v) => v.toFixed(0)}
+          formatValue={(v) => v.toFixed(2)}
         />
       )}
 
@@ -137,7 +137,7 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
 
       {linesEnabled && (
         <Slider
-          sliderId="render.lineWidth"
+          sliderId="lines.lineWidth"
           label="Line Width"
           value={lineWidth}
           min={0.1}
