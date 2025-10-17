@@ -32,18 +32,91 @@ import {
 const canvas = document.querySelector("canvas")!;
 
 const forces = [
-  new Environment({ gravityStrength: 0, inertia: 0.05, friction: 0.01 }),
-  new Boundary({ mode: "bounce", restitution: 0.9, friction: 0.1 }),
-  new Collisions({ restitution: 0.8 }),
-  new Behavior({ enabled: false }),
-  new Fluids({ enabled: false }),
-  new Sensors({ enabled: false }),
-  new Interaction({ enabled: false }),
-  new Joints({ enabled: false }),
-  new Grab({ enabled: false }),
+  // Environment: gravity + damping/friction/inertia
+  new Environment({
+    gravityStrength: 600,
+    gravityDirection: "down", // "up"|"down"|"left"|"right"|"inwards"|"outwards"|"custom"
+    inertia: 0.05,
+    friction: 0.01,
+    damping: 0.0,
+  }),
+
+  // Boundary: keep particles within view; small tangential friction
+  new Boundary({
+    mode: "bounce", // "bounce"|"warp"|"kill"|"none"
+    restitution: 0.9,
+    friction: 0.1,
+    repelDistance: 20,
+    repelStrength: 50,
+  }),
+
+  // Collisions: elastic-ish collisions
+  new Collisions({ restitution: 0.85 }),
+
+  // Behavior: boids-style steering
+  new Behavior({
+    cohesion: 1.5,
+    alignment: 1.2,
+    repulsion: 2.0,
+    separation: 12,
+    viewRadius: 100,
+    viewAngle: Math.PI, // 180° field of view
+    wander: 20,
+  }),
+
+  // Fluids: SPH approximation; conservative defaults
+  new Fluids({
+    influenceRadius: 80,
+    targetDensity: 1.0,
+    pressureMultiplier: 25,
+    viscosity: 0.8,
+    nearPressureMultiplier: 40,
+    nearThreshold: 18,
+    enableNearPressure: true,
+    maxAcceleration: 60,
+  }),
+
+  // Sensors: physarum polycephalum slime
+  new Sensors({
+    sensorDistance: 30,
+    sensorAngle: Math.PI / 6,
+    sensorRadius: 3,
+    sensorThreshold: 0.15,
+    sensorStrength: 800,
+    followBehavior: "any", // "any"|"same"|"different"|"none"
+    fleeBehavior: "none",
+    colorSimilarityThreshold: 0.5,
+    fleeAngle: Math.PI / 2,
+  }),
+
+  // Interaction: point attract/repel (inactive until setActive(true))
+  new Interaction({
+    mode: "attract",
+    strength: 12000,
+    radius: 300,
+    active: false,
+  }),
+
+  // Joints: constraints (no joints yet, but configure dynamics)
+  new Joints({
+    momentum: 0.7,
+    restitution: 0.9,
+    separation: 0.5,
+    steps: 2,
+    friction: 0.02,
+    enableParticleCollisions: 0,
+    enableJointCollisions: 0,
+  }),
+
+  // Grab: single-particle dragging (provide inputs at interaction time)
+  new Grab(),
 ];
 
-const render = [new Trails({ trailDecay: 8 }), new Lines(), new Particles()];
+const render = [
+  new Trails({ trailDecay: 10, trailDiffuse: 4 }),
+  new Lines({ lineWidth: 2 }),
+  new Particles({ colorType: 2, hue: 0.55 }), // 2 = Hue, try 0..1
+];
 
 const engine = new Engine({
   canvas,
@@ -79,6 +152,40 @@ Notes
 
 - When `runtime: "auto"`, the engine tries WebGPU first, then falls back to CPU if unavailable.
 - Pinned particles are represented by a negative `mass`. The top-level `Engine` also includes helpers `pinParticles([...])`, `unpinParticles([...])`, `unpinAll()` (CPU + WebGPU friendly).
+
+#### Engine methods and lifecycles
+
+- `initialize()`
+  - Creates runtime resources (GPU device/queues or CPU canvas context), binds module uniforms, and builds pipelines. Await this before `play()`.
+  - In `runtime: "auto"`, falls back to CPU if WebGPU initialization fails.
+- `play()` / `pause()` / `stop()` / `toggle()`
+  - Controls the animation loop. Per frame the engine updates oscillators, runs simulation (state → apply → constrain×N → correct), then renders.
+  - `stop()` halts and cancels the loop; `pause()` only toggles playing state.
+- `destroy()`
+  - Disposes GPU/canvas resources and detaches listeners. Call when the canvas/engine is no longer needed.
+- `getSize()` / `setSize(w, h)`
+  - Updates view and internal textures/buffers on resize. Call on window/canvas size changes.
+- `setCamera(x, y)` / `getCamera()` and `setZoom(z)` / `getZoom()`
+  - Adjusts the world-to-screen transform. Affects bounds, neighbor grid extents, and rendering.
+- `addParticle(p)` / `setParticles(p[])` / `getParticles()` / `getParticle(i)` / `clear()`
+  - Manage particle data. For bulk changes prefer `setParticles()` to minimize sync overhead.
+- `getCount()` / `getFPS()`
+  - Inspect particle count and smoothed FPS estimate.
+- `export()` / `import(settings)`
+  - Serialize/restore module inputs (including `enabled`). Great for presets and sharing scenes.
+- `getModule(name)`
+  - Fetch a module instance to tweak inputs at runtime.
+- `getActualRuntime()`
+  - Returns `"cpu" | "webgpu"` for the active runtime.
+
+Performance-critical settings
+
+- `setCellSize(size: number)`
+  - Spatial grid resolution for neighbor queries. Smaller cells improve locality but increase bookkeeping; larger cells reduce overhead but widen searches. Typical: 8–64.
+- `setMaxNeighbors(value: number)`
+  - Cap neighbors considered per particle in neighbor-based modules (collisions, behavior, fluids). Higher = more accurate in dense scenes, but slower. Typical: 64–256.
+- `setConstrainIterations(iterations: number)`
+  - Number of constraint iterations per frame (affects boundary/collision correction and joints). More = more stable/rigid, but slower. Defaults: CPU ≈ 5, WebGPU ≈ 50.
 
 ### Runtime selection
 
@@ -120,6 +227,17 @@ Modules come in two public roles:
 - **Force**: contribute to simulation (acceleration/velocity/constraints)
 - **Render**: draw into the scene texture or canvas
 
+Differences and when they run
+
+- Force modules execute during the simulation step. They may:
+  - Add forces to `particle.acceleration` (e.g., gravity, boids steering)
+  - Directly modify `particle.velocity` (e.g., viscosity, sensor steering)
+  - Adjust `particle.position` in constraint phases (e.g., collisions, joints)
+- Render modules execute after simulation each frame. They may:
+  - Draw instanced particles or lines via fullscreen passes
+  - Post-process the scene texture via compute-like passes (e.g., trails decay/diffuse)
+- Toggle modules on/off at runtime via `setEnabled(boolean)` to isolate effects and optimize performance.
+
 Each module exposes a `name` and typed `inputs`. You can toggle any module on/off with `module.setEnabled(boolean)` and read current inputs via `module.read()`; use `getModule(name)` to retrieve instances from the engine.
 
 ### Force modules
@@ -127,7 +245,13 @@ Each module exposes a `name` and typed `inputs`. You can toggle any module on/of
 #### Environment (`environment`)
 
 - Purpose: global gravity, inertia, friction, velocity damping
-- Key inputs: `gravityStrength`, `dirX`, `dirY`, `inertia`, `friction`, `damping`, `mode`
+- Inputs (defaults in parentheses):
+  - `gravityStrength` (0): magnitude of gravity acceleration applied toward a direction/origin.
+  - `dirX`, `dirY` (derived): gravity direction when `mode` is directional/custom; normalized internally.
+  - `inertia` (0): acceleration term along current velocity (`velocity * dt * inertia`) to preserve momentum.
+  - `friction` (0): deceleration opposite to velocity (`-velocity * friction`).
+  - `damping` (0): multiplicative velocity damping each step.
+  - `mode` (0): 0 directional/custom, 1 inwards (to view center), 2 outwards (from view center).
 - Helpers:
   - `setGravityStrength(v)`
   - `setGravityDirection("up"|"down"|"left"|"right"|"inwards"|"outwards"|"custom")`
@@ -147,8 +271,12 @@ env.setFriction(0.02);
 #### Boundary (`boundary`)
 
 - Purpose: enforce world bounds with optional repel force
-- Modes: `"bounce" | "warp" | "kill" | "none"`
-- Inputs: `restitution`, `friction`, `mode`, `repelDistance`, `repelStrength`
+- Inputs (defaults):
+  - `restitution` (0.9): bounce energy retention.
+  - `friction` (0.1): tangential damping on contact.
+  - `mode` ("bounce"): 0 bounce, 1 warp (wrap once fully outside), 2 kill (remove by `mass=0`), 3 none.
+  - `repelDistance` (0): inner distance from edges to start push.
+  - `repelStrength` (0): magnitude of inward push (outside=full, inside=scaled).
 
 Example
 
@@ -163,7 +291,10 @@ const boundary = new Boundary({
 #### Collisions (`collisions`)
 
 - Purpose: particle–particle collision resolution and bounce impulse
-- Input: `restitution`
+- Inputs (defaults):
+  - `restitution` (0.8): elasticity along contact normal.
+    Notes
+- Uses spatial grid neighbor iteration up to `maxNeighbors`; resolves deepest overlap and applies impulse; small jitter reduces bias.
 
 ```ts
 const collisions = new Collisions({ restitution: 0.8 });
@@ -172,7 +303,18 @@ const collisions = new Collisions({ restitution: 0.8 });
 #### Behavior (`behavior`)
 
 - Purpose: boids-like steering (separation, alignment, cohesion, chase/avoid, wander)
-- Inputs: `wander`, `cohesion`, `alignment`, `repulsion`, `chase`, `avoid`, `separation`, `viewRadius`, `viewAngle`
+- Inputs (defaults):
+  - `wander` (20): pseudo-random lateral perturbation magnitude.
+  - `cohesion` (1.5): steer toward neighbor centroid.
+  - `alignment` (1.5): steer toward neighbor average velocity.
+  - `repulsion` (2): steer away when within `separation` distance.
+  - `chase` (0): chase lighter neighbors (mass delta bias).
+  - `avoid` (0): flee heavier neighbors (within half `viewRadius`).
+  - `separation` (10): personal space radius for repulsion.
+  - `viewRadius` (100): neighbor search radius.
+  - `viewAngle` (1.5π): field-of-view in radians.
+    Notes
+- FOV uses velocity direction; falls back to a default forward if nearly zero velocity.
 
 ```ts
 const behavior = new Behavior({
@@ -185,8 +327,18 @@ const behavior = new Behavior({
 
 #### Fluids (`fluids`)
 
-- Purpose: SPH-inspired fluid approximation
-- Inputs: `influenceRadius`, `targetDensity`, `pressureMultiplier`, `viscosity`, `nearPressureMultiplier`, `nearThreshold`, `enableNearPressure`, `maxAcceleration`
+- Purpose: SPH-inspired fluid approximation (density pre-pass + pressure/viscosity apply)
+- Inputs (defaults):
+  - `influenceRadius` (100): neighbor radius for kernels.
+  - `targetDensity` (1): rest density.
+  - `pressureMultiplier` (30): scales pressure from density difference.
+  - `viscosity` (1): smooths velocity differences.
+  - `nearPressureMultiplier` (50): strong short-range pressure.
+  - `nearThreshold` (20): near-pressure distance.
+  - `enableNearPressure` (true): toggle for near-pressure.
+  - `maxAcceleration` (75): clamp for stability.
+    Notes
+- Two passes: `state` (density/near-density), `apply` (pressure/viscosity → velocity).
 
 ```ts
 const fluids = new Fluids({
@@ -199,7 +351,15 @@ const fluids = new Fluids({
 #### Sensors (`sensors`)
 
 - Purpose: trail/color sampling based steering (follow and/or flee)
-- Inputs: `sensorDistance`, `sensorAngle`, `sensorRadius`, `sensorThreshold`, `sensorStrength`, `colorSimilarityThreshold`, `followBehavior`, `fleeBehavior`, `fleeAngle`
+- Inputs (defaults):
+  - `sensorDistance` (30), `sensorAngle` (π/6), `sensorRadius` (3)
+  - `sensorThreshold` (0.1), `sensorStrength` (1000)
+  - `colorSimilarityThreshold` (0.4)
+  - `followBehavior` (any): 0 any, 1 same, 2 different, 3 none
+  - `fleeBehavior` (none): 0 any, 1 same, 2 different, 3 none
+  - `fleeAngle` (π/2)
+    Notes
+- Samples scene texture consistently across runtimes; no trails required.
 
 ```ts
 const sensors = new Sensors({
@@ -212,7 +372,9 @@ const sensors = new Sensors({
 #### Interaction (`interaction`)
 
 - Purpose: point attract/repel under user control
-- Inputs: `mode` (0 attract, 1 repel), `strength`, `radius`, `positionX`, `positionY`, `active`
+- Inputs (defaults):
+  - `mode` (attract: 0/repel: 1), `strength` (10000), `radius` (500)
+  - `positionX/Y` (0), `active` (false)
 
 ```ts
 const interaction = new Interaction({
@@ -227,7 +389,9 @@ interaction.setActive(true);
 #### Joints (`joints`)
 
 - Purpose: distance constraints between particles, optional collisions, momentum preservation
-- Inputs (arrays): `aIndexes`, `bIndexes`, `restLengths`, derived `groupIds` and CSR fields; scalars: `enableParticleCollisions`, `enableJointCollisions`, `momentum`, `restitution`, `separation`, `steps`, `friction`
+- Inputs (defaults):
+  - Arrays: `aIndexes[]`, `bIndexes[]`, `restLengths[]`, CSR `incidentJointOffsets/incidentJointIndices`, derived `groupIds[]`
+  - Scalars: `enableParticleCollisions` (0), `enableJointCollisions` (0), `momentum` (0.7), `restitution` (0.9), `separation` (0.5), `steps` (1), `friction` (0.01)
 - Helpers: `setJoints([...])`, `add({ aIndex, bIndex, restLength })`, `remove(a,b)`, `removeAll()`, setters for all scalar inputs
 
 ```ts
@@ -252,7 +416,10 @@ grab.grabParticle(42, { x: 100, y: 100 });
 #### Particles (`particles`)
 
 - Purpose: draw particles as soft discs; pinned particles render as rings
-- Inputs: `colorType` (Default|Custom|Hue), `customColorR/G/B`, `hue`
+- Inputs (defaults):
+  - `colorType` (Default: 0, Custom: 1, Hue: 2)
+  - `customColorR/G/B` (1/1/1) when `colorType=Custom`
+  - `hue` (0) when `colorType=Hue`
 
 ```ts
 const particles = new Particles();
@@ -263,7 +430,9 @@ particles.setHue(0.5);
 #### Trails (`trails`)
 
 - Purpose: decay + diffuse passes over the scene texture
-- Inputs: `trailDecay`, `trailDiffuse`
+- Inputs (defaults):
+  - `trailDecay` (10): fade speed toward clear color
+  - `trailDiffuse` (0): blur radius (0–12 typical)
 
 ```ts
 const trails = new Trails({ trailDecay: 12, trailDiffuse: 4 });
@@ -272,7 +441,10 @@ const trails = new Trails({ trailDecay: 12, trailDiffuse: 4 });
 #### Lines (`lines`)
 
 - Purpose: draw lines between particle pairs (indices)
-- Inputs: `aIndexes[]`, `bIndexes[]`, `lineWidth`, optional `lineColorR/G/B` override
+- Inputs (defaults):
+  - `aIndexes[]`, `bIndexes[]`: segment endpoints by particle index
+  - `lineWidth` (1.5)
+  - `lineColorR/G/B` (-1/-1/-1): negative = use particle color
 - Helpers: `setLines([...])`, `add({ aIndex, bIndex })`, `remove(a,b)`, `setLineWidth(v)`, `setLineColor(color|null)`
 
 ```ts
