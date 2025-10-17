@@ -13,8 +13,7 @@ import {
   selectIsPinMode,
   selectIsDrawMode,
   selectIsShapeMode,
-  selectIsEmitterMode,
-  selectIsCursorMode,
+  selectIsInteractionMode,
   ToolMode,
 } from "../../slices/tools";
 
@@ -30,8 +29,7 @@ export function useToolManager() {
   const isPinMode = useAppSelector(selectIsPinMode);
   const isDrawMode = useAppSelector(selectIsDrawMode);
   const isShapeMode = useAppSelector(selectIsShapeMode);
-  const isEmitterMode = useAppSelector(selectIsEmitterMode);
-  const isCursorMode = useAppSelector(selectIsCursorMode);
+  const isInteractionMode = useAppSelector(selectIsInteractionMode);
 
   // Redux action dispatchers
   const setToolMode = useCallback(
@@ -59,8 +57,7 @@ export function useToolManager() {
     isPinMode,
     isDrawMode,
     isShapeMode,
-    isEmitterMode,
-    isCursorMode,
+    isInteractionMode,
 
     // Tool mode actions
     setToolMode,

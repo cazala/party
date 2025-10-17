@@ -1,26 +1,25 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 export type ToolMode =
-  | "cursor"
+  | "interaction"
   | "spawn"
   | "remove"
   | "joint"
   | "grab"
   | "pin"
   | "draw"
-  | "shape"
-  | "emitter";
+  | "shape";
 
 export interface ToolsState {
   active: ToolMode;
 }
 
 const initialState: ToolsState = {
-  active: "cursor",
+  active: "interaction",
 };
 
 export const toolsSlice = createSlice({
-  name: 'tools',
+  name: "tools",
   initialState,
   reducers: {
     setTool: (state, action: PayloadAction<ToolMode>) => {
@@ -29,7 +28,7 @@ export const toolsSlice = createSlice({
     toggleTool: (state) => {
       // Cycle through tools like the original implementation
       switch (state.active) {
-        case "cursor":
+        case "interaction":
           state.active = "spawn";
           break;
         case "spawn":
@@ -51,36 +50,37 @@ export const toolsSlice = createSlice({
           state.active = "remove";
           break;
         case "remove":
-          state.active = "emitter";
-          break;
-        case "emitter":
-          state.active = "cursor";
+          state.active = "interaction";
           break;
         default:
-          state.active = "cursor";
+          state.active = "interaction";
       }
     },
     resetTool: () => initialState,
   },
 });
 
-export const {
-  setTool,
-  toggleTool,
-  resetTool,
-} = toolsSlice.actions;
+export const { setTool, toggleTool, resetTool } = toolsSlice.actions;
 
 export const toolsReducer = toolsSlice.reducer;
 
 // Selectors
 export const selectToolsState = (state: { tools: ToolsState }) => state.tools;
-export const selectActiveTool = (state: { tools: ToolsState }) => state.tools.active;
-export const selectIsSpawnMode = (state: { tools: ToolsState }) => state.tools.active === "spawn";
-export const selectIsRemoveMode = (state: { tools: ToolsState }) => state.tools.active === "remove";
-export const selectIsJointMode = (state: { tools: ToolsState }) => state.tools.active === "joint";
-export const selectIsGrabMode = (state: { tools: ToolsState }) => state.tools.active === "grab";
-export const selectIsPinMode = (state: { tools: ToolsState }) => state.tools.active === "pin";
-export const selectIsDrawMode = (state: { tools: ToolsState }) => state.tools.active === "draw";
-export const selectIsShapeMode = (state: { tools: ToolsState }) => state.tools.active === "shape";
-export const selectIsEmitterMode = (state: { tools: ToolsState }) => state.tools.active === "emitter";
-export const selectIsCursorMode = (state: { tools: ToolsState }) => state.tools.active === "cursor";
+export const selectActiveTool = (state: { tools: ToolsState }) =>
+  state.tools.active;
+export const selectIsSpawnMode = (state: { tools: ToolsState }) =>
+  state.tools.active === "spawn";
+export const selectIsRemoveMode = (state: { tools: ToolsState }) =>
+  state.tools.active === "remove";
+export const selectIsJointMode = (state: { tools: ToolsState }) =>
+  state.tools.active === "joint";
+export const selectIsGrabMode = (state: { tools: ToolsState }) =>
+  state.tools.active === "grab";
+export const selectIsPinMode = (state: { tools: ToolsState }) =>
+  state.tools.active === "pin";
+export const selectIsDrawMode = (state: { tools: ToolsState }) =>
+  state.tools.active === "draw";
+export const selectIsShapeMode = (state: { tools: ToolsState }) =>
+  state.tools.active === "shape";
+export const selectIsInteractionMode = (state: { tools: ToolsState }) =>
+  state.tools.active === "interaction";

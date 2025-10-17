@@ -4,7 +4,6 @@ import { CollisionsModule } from "./modules/CollisionsModule";
 import { FluidsModule } from "./modules/FluidsModule";
 import { BehaviorModule } from "./modules/BehaviorModule";
 import { SensorsModule } from "./modules/SensorsModule";
-import { InteractionModule } from "./modules/InteractionModule";
 import { JointsModule } from "./modules/JointsModule";
 import { ModuleWrapper } from "./ModuleWrapper";
 import { useEngine } from "../hooks/useEngine";
@@ -15,7 +14,6 @@ import {
   useFluids,
   useBehavior,
   useSensors,
-  useInteraction,
   useJoints,
 } from "../hooks/modules";
 import "./ModulesSidebar.css";
@@ -28,8 +26,6 @@ export function ModulesSidebar() {
     fluids,
     behavior,
     sensors,
-
-    interaction,
     joints,
     isSupported,
   } = useEngine();
@@ -46,8 +42,6 @@ export function ModulesSidebar() {
     useBehavior();
   const { isEnabled: isSensorsEnabled, setEnabled: setSensorsEnabled } =
     useSensors();
-  const { isEnabled: isInteractionEnabled, setEnabled: setInteractionEnabled } =
-    useInteraction();
   const { isEnabled: isJointsEnabled, setEnabled: setJointsEnabled } =
     useJoints();
 
@@ -127,15 +121,7 @@ export function ModulesSidebar() {
         <JointsModule />
       </ModuleWrapper>
 
-      <ModuleWrapper
-        title="Interaction"
-        module={interaction}
-        isSupported={isSupported(interaction)}
-        enabled={isInteractionEnabled}
-        setEnabled={setInteractionEnabled}
-      >
-        <InteractionModule />
-      </ModuleWrapper>
+      {/* Interaction controls moved into the Interact tool; module UI removed */}
     </div>
   );
 }

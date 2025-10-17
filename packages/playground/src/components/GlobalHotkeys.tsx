@@ -47,7 +47,7 @@ export function GlobalHotkeys() {
       switch (key) {
         case "a":
           e.preventDefault();
-          setToolMode("cursor");
+          setToolMode("interaction");
           updateOverlayMouseToCurrent();
           break;
         case "s":

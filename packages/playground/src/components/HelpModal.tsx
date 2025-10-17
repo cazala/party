@@ -33,7 +33,7 @@ export function HelpModal({
             <h3>Tools</h3>
             <ul>
               <li>
-                <b>Cmd/Ctrl + A</b>: Cursor
+                <b>Cmd/Ctrl + A</b>: Interact
               </li>
               <li>
                 <b>Cmd/Ctrl + S</b>: Spawn
@@ -60,10 +60,19 @@ export function HelpModal({
           </section>
 
           <section>
-            <h3>Cursor</h3>
+            <h3>Interact</h3>
             <ul>
               <li>
-                <b>Click & drag</b>: Attract/repel based on settings
+                <b>Left Click</b>: Attract
+              </li>
+              <li>
+                <b>Right Click</b>: Repel
+              </li>
+              <li>
+                <b>Ctrl/Cmd + Drag</b>: Adjust interaction radius
+              </li>
+              <li>
+                <b>Shift + Drag</b>: Adjust strength
               </li>
             </ul>
           </section>
@@ -114,6 +123,24 @@ export function HelpModal({
           </section>
 
           <section>
+            <h3>Grab</h3>
+            <ul>
+              <li>
+                <b>Click & Drag</b>: Grab and move particles
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h3>Joint</h3>
+            <ul>
+              <li>
+                <b>Click</b>: Create joints between selected particles
+              </li>
+            </ul>
+          </section>
+
+          <section>
             <h3>Draw</h3>
             <ul>
               <li>
@@ -139,24 +166,6 @@ export function HelpModal({
               </li>
               <li>
                 <b>Shift + Drag</b>: Adjust sides (3-6)
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h3>Joint</h3>
-            <ul>
-              <li>
-                <b>Click</b>: Create joints between selected particles
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h3>Grab</h3>
-            <ul>
-              <li>
-                <b>Click & Drag</b>: Grab and move particles
               </li>
             </ul>
           </section>

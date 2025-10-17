@@ -7,14 +7,13 @@ import { UseToolsReturn, ToolHandlers } from "./types";
 
 // Individual tool hooks
 import { useSpawnTool } from "./individual-tools/useSpawnTool";
-import { useCursorTool } from "./individual-tools/useCursorTool";
+import { useInteractTool } from "./individual-tools/useInteractTool";
 import { useRemoveTool } from "./individual-tools/useRemoveTool";
 import { useJointTool } from "./individual-tools/useJointTool";
 import { usePinTool } from "./individual-tools/usePinTool";
 import { useGrabTool } from "./individual-tools/useGrabTool";
 import { useDrawTool } from "./individual-tools/useDrawTool";
 import { useShapeTool } from "./individual-tools/useShapeTool";
-import { useEmitterTool } from "./individual-tools/useEmitterTool";
 
 export function useTools(): UseToolsReturn {
   const { isInitialized, canvasRef } = useEngine();
@@ -23,18 +22,17 @@ export function useTools(): UseToolsReturn {
 
   // Initialize all tool hooks
   const spawnTool = useSpawnTool(toolManager.isSpawnMode);
-  const cursorTool = useCursorTool(toolManager.isCursorMode);
+  const interactionTool = useInteractTool(toolManager.isInteractionMode);
   const removeTool = useRemoveTool(toolManager.isRemoveMode);
   const jointTool = useJointTool(toolManager.isJointMode);
   const pinTool = usePinTool(toolManager.isPinMode);
   const grabTool = useGrabTool(toolManager.isGrabMode);
   const drawTool = useDrawTool(toolManager.isDrawMode);
   const shapeTool = useShapeTool(toolManager.isShapeMode);
-  const emitterTool = useEmitterTool(toolManager.isEmitterMode);
 
   // Create tool handlers map
   const toolHandlers: Record<string, ToolHandlers> = {
-    cursor: cursorTool.handlers,
+    interaction: interactionTool.handlers,
     spawn: spawnTool.handlers,
     remove: removeTool.handlers,
     joint: jointTool.handlers,
@@ -42,7 +40,6 @@ export function useTools(): UseToolsReturn {
     grab: grabTool.handlers,
     draw: drawTool.handlers,
     shape: shapeTool.handlers,
-    emitter: emitterTool.handlers,
   };
 
   // Initialize mouse handler with tool handlers
@@ -71,8 +68,8 @@ export function useTools(): UseToolsReturn {
           case "spawn":
             spawnTool.renderOverlay(ctx, canvasSize, mouse);
             break;
-          case "cursor":
-            cursorTool.renderOverlay(ctx, canvasSize, mouse);
+          case "interaction":
+            interactionTool.renderOverlay(ctx, canvasSize, mouse);
             break;
           case "remove":
             removeTool.renderOverlay(ctx, canvasSize, mouse);
@@ -92,9 +89,6 @@ export function useTools(): UseToolsReturn {
           case "shape":
             shapeTool.renderOverlay(ctx, canvasSize, mouse);
             break;
-          case "emitter":
-            emitterTool.renderOverlay(ctx, canvasSize, mouse);
-            break;
           default:
             // No overlay for unknown tools
             break;
@@ -105,14 +99,13 @@ export function useTools(): UseToolsReturn {
       overlay.renderGrid,
       toolManager.toolMode,
       spawnTool.renderOverlay,
-      cursorTool.renderOverlay,
+      interactionTool.renderOverlay,
       removeTool.renderOverlay,
       jointTool.renderOverlay,
       pinTool.renderOverlay,
       grabTool.renderOverlay,
       drawTool.renderOverlay,
       shapeTool.renderOverlay,
-      emitterTool.renderOverlay,
     ]
   );
 

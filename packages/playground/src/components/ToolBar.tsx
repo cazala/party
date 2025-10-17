@@ -1,11 +1,20 @@
-import { MousePointer, Plus, Minus, Pin, Link, Hand, Pen, Hexagon } from "lucide-react";
+import {
+  MousePointer,
+  Plus,
+  Minus,
+  Pin,
+  Link,
+  Hand,
+  Pen,
+  Hexagon,
+} from "lucide-react";
 import { useTools } from "../hooks/useTools";
 
 import "./ToolBar.css";
 
 export function Toolbar({ style }: { style?: React.CSSProperties }) {
   const {
-    isCursorMode,
+    isInteractionMode,
     isSpawnMode,
     isRemoveMode,
     isPinMode,
@@ -21,14 +30,14 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
       <div className="toolbar-content">
         <div className="tool-mode-selector">
           <button
-            onClick={() => setToolMode("cursor")}
+            onClick={() => setToolMode("interaction")}
             className={`tool-mode-button tool-mode-first ${
-              isCursorMode ? "tool-mode-active" : ""
+              isInteractionMode ? "tool-mode-active" : ""
             }`}
-            title="Cursor"
+            title="Interact"
           >
             <MousePointer width="16" height="16" />
-            <span>Cursor</span>
+            <span>Interact</span>
           </button>
           <button
             onClick={() => setToolMode("spawn")}

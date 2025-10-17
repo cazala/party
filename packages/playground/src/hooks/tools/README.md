@@ -20,7 +20,7 @@ The tools system is now split into focused, single-responsibility modules:
 Each tool has its own dedicated hook with consistent interface:
 
 - **`useSpawnTool.ts`** - Particle spawning with streaming, drag modes, etc. (~300 lines)
-- **`useCursorTool.ts`** - Cursor/interaction tool with engine interaction module
+- **`useInteractTool.ts`** - Interact tool with engine interaction module
 - **`useRemoveTool.ts`** - Particle removal tool with brush-style continuous deletion (~95 lines)
 - **`useJointTool.ts`** - Joint creation tool (placeholder)
 - **`usePinTool.ts`** - Particle pinning tool (placeholder)
@@ -30,21 +30,25 @@ Each tool has its own dedicated hook with consistent interface:
 ## Benefits
 
 ### ✅ **Maintainability**
+
 - Each tool is self-contained in ~100-300 lines max
 - Clear separation of concerns
 - Easy to find and modify specific tool logic
 
 ### ✅ **Scalability**
+
 - Adding new tools requires only creating a new hook file
 - No modification to existing tool logic
 - Consistent patterns across all tools
 
 ### ✅ **Testability**
+
 - Each hook can be unit tested independently
 - Clear interfaces for mocking dependencies
 - Isolated tool state and behavior
 
 ### ✅ **Developer Experience**
+
 - Better code organization and navigation
 - Reduced cognitive load when working on individual tools
 - TypeScript support with shared interfaces
@@ -56,15 +60,21 @@ Each tool hook follows this consistent pattern:
 ```typescript
 export function useToolName(isActive: boolean) {
   // Tool-specific state and logic
-  
+
   const renderOverlay: ToolRenderFunction = useCallback(() => {
     // Tool-specific overlay rendering
   }, [dependencies]);
 
   const handlers: ToolHandlers = {
-    onMouseDown: () => { /* tool-specific mouse handling */ },
-    onMouseMove: () => { /* tool-specific mouse handling */ },
-    onMouseUp: () => { /* tool-specific mouse handling */ },
+    onMouseDown: () => {
+      /* tool-specific mouse handling */
+    },
+    onMouseMove: () => {
+      /* tool-specific mouse handling */
+    },
+    onMouseUp: () => {
+      /* tool-specific mouse handling */
+    },
   };
 
   return {
@@ -107,18 +117,18 @@ function MyComponent() {
 
 ## File Size Breakdown
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `index.ts` | ~90 | Main orchestrator |
-| `useToolManager.ts` | ~50 | Redux integration |
-| `useOverlay.ts` | ~60 | Grid rendering |
-| `useMouseHandler.ts` | ~60 | Mouse events |
-| `useCursorTool.ts` | ~70 | Cursor + interaction |
-| `useSpawnTool.ts` | ~300 | Spawn tool logic |
-| `useRemoveTool.ts` | ~95 | Remove tool logic |
-| `types.ts` | ~70 | Shared interfaces |
-| `utils.ts` | ~30 | Shared utilities |
-| Other tools | ~20 each | Future implementations |
+| File                 | Lines    | Purpose                                          |
+| -------------------- | -------- | ------------------------------------------------ |
+| `index.ts`           | ~90      | Main orchestrator                                |
+| `useToolManager.ts`  | ~50      | Redux integration                                |
+| `useOverlay.ts`      | ~60      | Grid rendering                                   |
+| `useMouseHandler.ts` | ~60      | Mouse events                                     |
+| `useInteractTool.ts` | ~120     | Interact tool (click attract/repel, drag adjust) |
+| `useSpawnTool.ts`    | ~300     | Spawn tool logic                                 |
+| `useRemoveTool.ts`   | ~95      | Remove tool logic                                |
+| `types.ts`           | ~70      | Shared interfaces                                |
+| `utils.ts`           | ~30      | Shared utilities                                 |
+| Other tools          | ~20 each | Future implementations                           |
 
 **Total: Same functionality, much better organized!**
 
@@ -132,6 +142,7 @@ To add a new tool:
 4. No changes needed to existing tools!
 
 Example:
+
 ```typescript
 // individual-tools/useMyTool.ts
 export function useMyTool(isActive: boolean) {
@@ -141,9 +152,15 @@ export function useMyTool(isActive: boolean) {
   }, [isActive]);
 
   const handlers = {
-    onMouseDown: () => { /* my tool logic */ },
-    onMouseMove: () => { /* my tool logic */ },
-    onMouseUp: () => { /* my tool logic */ },
+    onMouseDown: () => {
+      /* my tool logic */
+    },
+    onMouseMove: () => {
+      /* my tool logic */
+    },
+    onMouseUp: () => {
+      /* my tool logic */
+    },
   };
 
   return { renderOverlay, handlers };

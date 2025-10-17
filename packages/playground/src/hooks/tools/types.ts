@@ -36,8 +36,7 @@ export interface UseToolsReturn {
   isPinMode: boolean;
   isDrawMode: boolean;
   isShapeMode: boolean;
-  isEmitterMode: boolean;
-  isCursorMode: boolean;
+  isInteractionMode: boolean;
 
   // Tool-specific states
   isGrabbing: boolean;
