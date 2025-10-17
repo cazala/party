@@ -26,15 +26,25 @@ export function useJoints() {
   const state = useMemo(() => selectJoints(modulesState), [modulesState]);
 
   // Destructure individual properties
-  const { enabled, enableParticleCollisions, enableJointCollisions, list, momentum, restitution, separation, steps, friction } = state;
+  const {
+    enabled,
+    enableParticleCollisions,
+    enableJointCollisions,
+    list,
+    momentum,
+    restitution,
+    separation,
+    steps,
+    friction,
+  } = state;
   const isEnabled = state.enabled;
 
   // Sync Redux state to engine module when they change
   useEffect(() => {
     if (joints) {
       joints.setEnabled(state.enabled);
-      joints.setEnableParticleCollisions(state.enableParticleCollisions ? 1 : 0);
-      joints.setEnableJointCollisions(state.enableJointCollisions ? 1 : 0);
+      joints.setEnableParticleCollisions(state.enableParticleCollisions);
+      joints.setEnableJointCollisions(state.enableJointCollisions);
       joints.setMomentum(state.momentum);
       joints.setRestitution(state.restitution);
       joints.setSeparation(state.separation);
@@ -44,11 +54,10 @@ export function useJoints() {
     }
   }, [joints, state]);
 
-
   const setEnableParticleCollisions = useCallback(
     (value: boolean) => {
       dispatch(setEnableParticleCollisionsAction(value));
-      joints?.setEnableParticleCollisions(value ? 1 : 0);
+      joints?.setEnableParticleCollisions(value);
     },
     [dispatch, joints]
   );
@@ -56,7 +65,7 @@ export function useJoints() {
   const setEnableJointCollisions = useCallback(
     (value: boolean) => {
       dispatch(setEnableJointCollisionsAction(value));
-      joints?.setEnableJointCollisions(value ? 1 : 0);
+      joints?.setEnableJointCollisions(value);
     },
     [dispatch, joints]
   );

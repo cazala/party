@@ -62,8 +62,8 @@ export class Joints extends Module<"joints", JointsInputs> {
     aIndexes?: number[];
     bIndexes?: number[];
     restLengths?: number[];
-    enableParticleCollisions?: number;
-    enableJointCollisions?: number;
+    enableParticleCollisions?: boolean;
+    enableJointCollisions?: boolean;
     momentum?: number;
     restitution?: number;
     separation?: number;
@@ -91,10 +91,17 @@ export class Joints extends Module<"joints", JointsInputs> {
       incidentJointOffsets: [],
       incidentJointIndices: [],
       enableParticleCollisions:
-        opts?.enableParticleCollisions ??
-        DEFAULT_JOINTS_ENABLE_PARTICLE_COLLISIONS,
+        opts?.enableParticleCollisions !== undefined
+          ? opts.enableParticleCollisions
+            ? 1
+            : 0
+          : DEFAULT_JOINTS_ENABLE_PARTICLE_COLLISIONS,
       enableJointCollisions:
-        opts?.enableJointCollisions ?? DEFAULT_JOINTS_ENABLE_JOINT_COLLISIONS,
+        opts?.enableJointCollisions !== undefined
+          ? opts.enableJointCollisions
+            ? 1
+            : 0
+          : DEFAULT_JOINTS_ENABLE_JOINT_COLLISIONS,
       momentum: opts?.momentum ?? DEFAULT_JOINTS_MOMENTUM,
       restitution: opts?.restitution ?? DEFAULT_JOINTS_RESTITUTION,
       separation: opts?.separation ?? DEFAULT_JOINTS_SEPARATION,
@@ -239,16 +246,18 @@ export class Joints extends Module<"joints", JointsInputs> {
     return this.readValue("enableParticleCollisions");
   }
 
-  setEnableParticleCollisions(val: number): void {
-    this.write({ enableParticleCollisions: val });
+  setEnableParticleCollisions(val: number | boolean): void {
+    const numeric = typeof val === "number" ? val : val ? 1 : 0;
+    this.write({ enableParticleCollisions: numeric });
   }
 
   getEnableJointCollisions() {
     return this.readValue("enableJointCollisions");
   }
 
-  setEnableJointCollisions(val: number): void {
-    this.write({ enableJointCollisions: val });
+  setEnableJointCollisions(val: number | boolean): void {
+    const numeric = typeof val === "number" ? val : val ? 1 : 0;
+    this.write({ enableJointCollisions: numeric });
   }
 
   // Legacy method for backward compatibility
@@ -256,8 +265,12 @@ export class Joints extends Module<"joints", JointsInputs> {
     return this.readValue("enableParticleCollisions");
   }
 
-  setEnableCollisions(val: number): void {
-    this.write({ enableParticleCollisions: val, enableJointCollisions: val });
+  setEnableCollisions(val: number | boolean): void {
+    const numeric = typeof val === "number" ? val : val ? 1 : 0;
+    this.write({
+      enableParticleCollisions: numeric,
+      enableJointCollisions: numeric,
+    });
   }
 
   getMomentum() {

@@ -104,8 +104,8 @@ const forces = [
     separation: 0.5,
     steps: 2,
     friction: 0.02,
-    enableParticleCollisions: 0,
-    enableJointCollisions: 0,
+    enableParticleCollisions: false,
+    enableJointCollisions: false,
   }),
 
   // Grab: single-particle dragging (provide inputs at interaction time)
