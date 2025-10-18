@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { RefreshCw, Trash2, HelpCircle } from "lucide-react";
+import { RefreshCw, Trash2, HelpCircle, Undo, Redo } from "lucide-react";
 import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
 import { useJoints } from "../hooks/modules/useJoints";
@@ -14,7 +14,7 @@ export function TopBar() {
   const { initState, gridJoints, setGridJoints } = useInit();
   const { removeAllJoints } = useJoints();
   const { removeAllLines } = useLines();
-  const { resetHistory } = useHistory();
+  const { resetHistory, undo, redo, canUndo, canRedo } = useHistory();
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -102,6 +102,27 @@ export function TopBar() {
             <RefreshCw width="12" height="12" />
             <span>Restart</span>
           </button>
+
+          <div className="tool-group">
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              className="undo-button"
+              title="Undo (Cmd/Ctrl+Z)"
+            >
+              <Undo width="12" height="12" />
+              <span>Undo</span>
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              className="redo-button"
+              title="Redo (Shift+Cmd/Ctrl+Z or Cmd/Ctrl+Y)"
+            >
+              <Redo width="12" height="12" />
+              <span>Redo</span>
+            </button>
+          </div>
         </div>
         <div className="topbar-right">
           <button
