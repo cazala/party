@@ -4,19 +4,17 @@ import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
 import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
-import { useAppDispatch } from "../hooks/useAppDispatch";
-import { clear as clearHistory } from "../slices/history";
-import { clearRegistry as clearHistoryRegistry } from "../history/registry";
+import { useHistory } from "../hooks/useHistory";
 import "./TopBar.css";
 import { HelpModal } from "./HelpModal";
 
 export function TopBar() {
-  const dispatch = useAppDispatch();
   const [helpOpen, setHelpOpen] = useState(false);
   const { isPlaying, play, pause, clear, spawnParticles } = useEngine();
   const { initState, gridJoints, setGridJoints } = useInit();
   const { removeAllJoints } = useJoints();
   const { removeAllLines } = useLines();
+  const { resetHistory } = useHistory();
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -28,8 +26,7 @@ export function TopBar() {
 
   const handleClear = () => {
     // Reset undo/redo history
-    dispatch(clearHistory());
-    clearHistoryRegistry();
+    resetHistory();
 
     // Clear scene
     clear();
@@ -39,8 +36,7 @@ export function TopBar() {
 
   const handleReset = useCallback(() => {
     // Reset undo/redo history
-    dispatch(clearHistory());
-    clearHistoryRegistry();
+    resetHistory();
 
     // Reset joints and lines using helper methods
     removeAllJoints();
@@ -55,7 +51,7 @@ export function TopBar() {
       setTimeout(() => setGridJoints(true), 0);
     }
   }, [
-    dispatch,
+    resetHistory,
     removeAllJoints,
     removeAllLines,
     spawnParticles,
