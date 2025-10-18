@@ -1,22 +1,37 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useEngine } from "../../useEngine";
-import { useAppDispatch } from "../../useAppDispatch";
-import { removeParticlesThunk } from "../../../slices/engine";
+import { useHistory } from "../../useHistory";
+import type { Command } from "../../../types/history";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 
+// Module-level state to mirror draw tool pattern
+type RemoveToolState = {
+  mouseX: number;
+  mouseY: number;
+  isAdjustingSize: boolean;
+  adjustStartX: number;
+  adjustStartY: number;
+  currentScreenRadius: number;
+};
+const removeToolState: RemoveToolState = {
+  mouseX: 0,
+  mouseY: 0,
+  isAdjustingSize: false,
+  adjustStartX: 0,
+  adjustStartY: 0,
+  currentScreenRadius: 25,
+};
+
 export function useRemoveTool(isActive: boolean) {
-  const dispatch = useAppDispatch();
-  const { screenToWorld, zoom, canvasRef } = useEngine();
+  const { engine, screenToWorld, zoom, canvasRef } = useEngine();
+  const { executeCommand } = useHistory();
 
   // Drag state
   const isDragging = useRef(false);
 
   // Fixed screen radius for removal circle (25px)
   const SCREEN_RADIUS = 25;
-  // Adjustable screen radius state and size-dragging control
-  const screenRadiusRef = useRef(SCREEN_RADIUS);
-  const isAdjustingSize = useRef(false);
-  const adjustStart = useRef({ x: 0, y: 0 });
+  removeToolState.currentScreenRadius ||= SCREEN_RADIUS;
 
   // Manage cursor visibility only on canvas to avoid global flicker
   useEffect(() => {
@@ -41,13 +56,13 @@ export function useRemoveTool(isActive: boolean) {
     ) => {
       if (!isActive) return;
 
-      const radius = screenRadiusRef.current;
-      const currentX = mouse?.x ?? 0;
-      const currentY = mouse?.y ?? 0;
+      const radius = removeToolState.currentScreenRadius;
+      const currentX = mouse?.x ?? removeToolState.mouseX;
+      const currentY = mouse?.y ?? removeToolState.mouseY;
 
-      if (isAdjustingSize.current) {
-        const startX = adjustStart.current.x;
-        const startY = adjustStart.current.y;
+      if (removeToolState.isAdjustingSize) {
+        const startX = removeToolState.adjustStartX;
+        const startY = removeToolState.adjustStartY;
         const mouseX = currentX;
         const mouseY = currentY;
 
@@ -89,44 +104,73 @@ export function useRemoveTool(isActive: boolean) {
     [isActive]
   );
 
-  // Remove particles at current mouse position
+  // Gesture batching
+  const gestureActiveRef = useRef(false);
+  const removedSnapshotsRef = useRef<Array<{ index: number; particle: any }>>(
+    []
+  );
+  const commitInProgressRef = useRef(false);
+
+  // Remove particles at current mouse position (live), capturing snapshots for undo
   const removeParticlesAtPosition = useCallback(
-    (screenX: number, screenY: number) => {
-      if (!isActive || !screenToWorld) return;
+    async (screenX: number, screenY: number) => {
+      if (!isActive || !screenToWorld || !engine) return;
 
       // Get world coordinates of current mouse position
       const worldCenter = screenToWorld(screenX, screenY);
 
       // Calculate world radius based on current zoom
-      const worldRadius = screenRadiusRef.current / zoom;
+      const worldRadius = removeToolState.currentScreenRadius / zoom;
 
-      // Dispatch remove particles thunk
-      dispatch(
-        removeParticlesThunk({
-          center: worldCenter,
-          radius: worldRadius,
-        })
-      );
+      const particles = await engine.getParticles();
+      let didChange = false;
+      const updated = particles.map((p, index) => {
+        const dx = p.position.x - worldCenter.x;
+        const dy = p.position.y - worldCenter.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance <= worldRadius && p.mass !== 0) {
+          // Capture snapshot only once per index
+          if (!removedSnapshotsRef.current.some((s) => s.index === index)) {
+            removedSnapshotsRef.current.push({ index, particle: p });
+          }
+          didChange = true;
+          return { ...p, mass: 0 };
+        }
+        return p;
+      });
+
+      if (didChange) {
+        engine.setParticles(updated);
+      }
     },
-    [isActive, screenToWorld, zoom, dispatch]
+    [isActive, screenToWorld, zoom, engine]
   );
 
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
       if (!isActive) return;
 
+      e.preventDefault();
+      e.stopPropagation();
+
       const ctrlOrMeta = !!(e.ctrlKey || e.metaKey);
       const canvas = e.target as HTMLCanvasElement;
       const rect = canvas.getBoundingClientRect();
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
+      removeToolState.mouseX = sx;
+      removeToolState.mouseY = sy;
 
       if (ctrlOrMeta) {
         // Start size adjustment mode
-        isAdjustingSize.current = true;
-        adjustStart.current = { x: sx, y: sy };
+        removeToolState.isAdjustingSize = true;
+        removeToolState.adjustStartX = sx;
+        removeToolState.adjustStartY = sy;
       } else {
         isDragging.current = true;
+        gestureActiveRef.current = true;
+        commitInProgressRef.current = false;
+        removedSnapshotsRef.current = [];
         removeParticlesAtPosition(sx, sy);
       }
     },
@@ -140,13 +184,23 @@ export function useRemoveTool(isActive: boolean) {
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
 
-      if (isAdjustingSize.current) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      removeToolState.mouseX = sx;
+      removeToolState.mouseY = sy;
+
+      // No mid-gesture entry; only enter adjust on mousedown with Ctrl/Cmd
+      if (removeToolState.isAdjustingSize) {
         // Set radius to distance from start to current pointer (screen px)
-        const dx = sx - adjustStart.current.x;
-        const dy = sy - adjustStart.current.y;
+        const dx = sx - removeToolState.adjustStartX;
+        const dy = sy - removeToolState.adjustStartY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         // Match spawn tool behavior: radius grows slower than drag distance
-        screenRadiusRef.current = Math.max(10, Math.min(distance / 2, 200));
+        removeToolState.currentScreenRadius = Math.max(
+          10,
+          Math.min(distance / 2, 200)
+        );
         return;
       }
 
@@ -158,13 +212,59 @@ export function useRemoveTool(isActive: boolean) {
     [removeParticlesAtPosition]
   );
 
-  const handleMouseUp = useCallback(() => {
-    if (isAdjustingSize.current) {
-      isAdjustingSize.current = false;
+  const handleMouseUp = useCallback(async () => {
+    if (removeToolState.isAdjustingSize) {
+      removeToolState.isAdjustingSize = false;
       return;
     }
     isDragging.current = false;
-  }, []);
+
+    // Only commit when this gesture actually modified something
+    if (!gestureActiveRef.current) {
+      removedSnapshotsRef.current = [];
+      return;
+    }
+    gestureActiveRef.current = false;
+
+    const snapshots = removedSnapshotsRef.current.slice();
+    if (snapshots.length === 0) {
+      removedSnapshotsRef.current = [];
+      return;
+    }
+
+    if (commitInProgressRef.current) return;
+    commitInProgressRef.current = true;
+
+    const cmd: Command = {
+      id: crypto.randomUUID(),
+      label: `Remove ${snapshots.length} particles`,
+      timestamp: Date.now(),
+      do: async (ctx: { engine: typeof engine }) => {
+        if (!ctx.engine) return;
+        const particles = await ctx.engine.getParticles();
+        const updated = particles.map((p, idx) => {
+          const s = snapshots.find((x) => x.index === idx);
+          if (s) return { ...p, mass: 0 };
+          return p;
+        });
+        ctx.engine.setParticles(updated);
+      },
+      undo: async (ctx: { engine: typeof engine }) => {
+        if (!ctx.engine) return;
+        const particles = await ctx.engine.getParticles();
+        const updated = particles.map((p, idx) => {
+          const s = snapshots.find((x) => x.index === idx);
+          if (s) return s.particle;
+          return p;
+        });
+        ctx.engine.setParticles(updated);
+      },
+    } as unknown as Command;
+
+    await executeCommand(cmd);
+    commitInProgressRef.current = false;
+    removedSnapshotsRef.current = [];
+  }, [executeCommand]);
 
   // Tool handlers
   const handlers: ToolHandlers = {

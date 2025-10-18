@@ -126,18 +126,6 @@ export function useTools(): UseToolsReturn {
       case "spawn":
         spawnTool.updateMousePosition(mx, my);
         break;
-      case "remove":
-        (removeTool as any).setMousePosition?.(mx, my);
-        break;
-      case "pin":
-        (pinTool as any).setMousePosition?.(mx, my);
-        break;
-      case "draw":
-        (drawTool as any).setMousePosition?.(mx, my);
-        break;
-      case "shape":
-        (shapeTool as any).setMousePosition?.(mx, my);
-        break;
       default:
         break;
     }
@@ -148,24 +136,8 @@ export function useTools(): UseToolsReturn {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ x: number; y: number }>).detail;
       if (!detail) return;
-      switch (toolManager.toolMode) {
-        case "spawn":
-          spawnTool.updateMousePosition(detail.x, detail.y);
-          break;
-        case "remove":
-          (removeTool as any).setMousePosition?.(detail.x, detail.y);
-          break;
-        case "pin":
-          (pinTool as any).setMousePosition?.(detail.x, detail.y);
-          break;
-        case "draw":
-          (drawTool as any).setMousePosition?.(detail.x, detail.y);
-          break;
-        case "shape":
-          (shapeTool as any).setMousePosition?.(detail.x, detail.y);
-          break;
-        default:
-          break;
+      if (toolManager.toolMode === "spawn") {
+        spawnTool.updateMousePosition(detail.x, detail.y);
       }
     };
     window.addEventListener(

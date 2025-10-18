@@ -4,6 +4,8 @@ import { useEngine } from "../../useEngine";
 import { useJoints } from "../../modules/useJoints";
 import { useLines } from "../../modules/useLines";
 import { useInit } from "../../useInit";
+import { useHistory } from "../../useHistory";
+import type { Command } from "../../../types/history";
 import { calculateMassFromSize } from "../../../utils/particle";
 import { parseColor, useRandomColorSelector } from "../utils";
 
@@ -20,6 +22,7 @@ export function useShapeTool(isActive: boolean) {
   const joints = useJoints();
   const lines = useLines();
   const { particleSize, colors } = useInit();
+  const { executeCommand } = useHistory();
 
   // Shared module-level state to avoid duplicate hook instance desync between
   // event handlers and overlay renderer.
@@ -47,6 +50,9 @@ export function useShapeTool(isActive: boolean) {
     []
   );
 
+  type IndexHolder = { idx: number | null };
+  // Note: using single-command execution; no per-particle spawn results needed
+
   // Spawn shape with full mesh connectivity
   const spawnShape = useCallback(
     async (centerX: number, centerY: number) => {
@@ -66,48 +72,67 @@ export function useShapeTool(isActive: boolean) {
       const size = particleSize;
       const mass = calculateMassFromSize(size);
 
-      // Spawn all particles
-      const particleIndices: number[] = [];
-      for (const vertex of vertices) {
-        addParticle({
-          position: { x: vertex.x, y: vertex.y },
-          velocity: { x: 0, y: 0 },
-          size,
-          mass,
-          color,
-        });
-
-        // Get the index of the newly added particle
-        const particles = await engine.getParticles();
-        particleIndices.push(particles.length - 1);
-      }
-
-      // Enable joints and lines modules if not already enabled
-      if (!joints.enabled) {
-        joints.setEnabled(true);
-      }
-      if (!lines.enabled) {
-        lines.setEnabled(true);
-      }
-
-      // Create full mesh connectivity (every particle connected to every other)
-      for (let i = 0; i < particleIndices.length; i++) {
-        for (let j = i + 1; j < particleIndices.length; j++) {
-          const indexA = particleIndices[i];
-          const indexB = particleIndices[j];
-
-          // Calculate rest length as the distance between the particles
-          const vertexA = vertices[i];
-          const vertexB = vertices[j];
-          const restLength = Math.sqrt(
-            Math.pow(vertexB.x - vertexA.x, 2) +
-              Math.pow(vertexB.y - vertexA.y, 2)
+      // Execute a single undoable command that spawns the full shape and joints
+      const holders: IndexHolder[] = vertices.map(() => ({ idx: null }));
+      const shapeCmd: Command = {
+        id: crypto.randomUUID(),
+        label: `Spawn shape (${vertices.length})`,
+        timestamp: Date.now(),
+        do: async (ctx: { engine: typeof engine }) => {
+          // Spawn particles and capture indices in sequence
+          for (let i = 0; i < vertices.length; i++) {
+            const v = vertices[i];
+            addParticle({
+              position: { x: v.x, y: v.y },
+              velocity: { x: 0, y: 0 },
+              size,
+              mass,
+              color,
+            });
+            const particles = await ctx.engine?.getParticles();
+            holders[i].idx = (particles?.length ?? 1) - 1;
+          }
+          // Create joints after all indices are resolved
+          if (!joints.enabled) joints.setEnabled(true);
+          if (!lines.enabled) lines.setEnabled(true);
+          for (let i = 0; i < holders.length; i++) {
+            for (let j = i + 1; j < holders.length; j++) {
+              const a = holders[i].idx;
+              const b = holders[j].idx;
+              if (a != null && b != null) {
+                const va = vertices[i];
+                const vb = vertices[j];
+                const rest = Math.sqrt(
+                  Math.pow(vb.x - va.x, 2) + Math.pow(vb.y - va.y, 2)
+                );
+                joints.addJoint({ aIndex: a, bIndex: b, restLength: rest });
+                lines.addLine({ aIndex: a, bIndex: b });
+              }
+            }
+          }
+        },
+        undo: async (ctx: { engine: typeof engine }) => {
+          // Remove joints first
+          for (let i = 0; i < holders.length; i++) {
+            for (let j = i + 1; j < holders.length; j++) {
+              const a = holders[i].idx;
+              const b = holders[j].idx;
+              if (a != null && b != null) {
+                joints.removeJoint(a, b);
+                lines.removeLine(a, b);
+              }
+            }
+          }
+          // Then unspawn particles
+          if (!ctx.engine) return;
+          const particles = await ctx.engine.getParticles();
+          const updated = particles.map((p: any, idx: number) =>
+            holders.some((h) => h.idx === idx) ? { ...p, mass: 0 } : p
           );
-
-          joints.addJoint({ aIndex: indexA, bIndex: indexB, restLength });
-          lines.addLine({ aIndex: indexA, bIndex: indexB });
-        }
-      }
+          ctx.engine.setParticles(updated);
+        },
+      } as unknown as Command;
+      await executeCommand(shapeCmd);
     },
     [
       addParticle,
@@ -117,6 +142,7 @@ export function useShapeTool(isActive: boolean) {
       particleSize,
       joints,
       lines,
+      executeCommand,
     ]
   );
 

@@ -7,8 +7,11 @@ import {
   Hand,
   Pen,
   Hexagon,
+  Undo,
+  Redo,
 } from "lucide-react";
 import { useTools } from "../hooks/useTools";
+import { useHistory } from "../hooks/useHistory";
 
 import "./ToolBar.css";
 
@@ -24,10 +27,31 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
     isShapeMode,
     setToolMode,
   } = useTools();
+  const { undo, redo, canUndo, canRedo } = useHistory();
 
   return (
     <div className="toolbar" style={style}>
       <div className="toolbar-content">
+        <div className="history-controls" style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={undo}
+            disabled={!canUndo}
+            className="tool-mode-button"
+            title="Undo (Cmd/Ctrl+Z)"
+          >
+            <Undo width="16" height="16" />
+            <span>Undo</span>
+          </button>
+          <button
+            onClick={redo}
+            disabled={!canRedo}
+            className="tool-mode-button"
+            title="Redo (Shift+Cmd/Ctrl+Z or Cmd/Ctrl+Y)"
+          >
+            <Redo width="16" height="16" />
+            <span>Redo</span>
+          </button>
+        </div>
         <div className="tool-mode-selector">
           <button
             onClick={() => setToolMode("interaction")}

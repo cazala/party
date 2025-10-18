@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useEngine } from "../../useEngine";
+import { useHistory } from "../../useHistory";
+import type { Command } from "../../../types/history";
 import { useInit } from "../../useInit";
 import { calculateMassFromSize } from "../../../utils/particle";
 import { ToolState, ToolHandlers, ToolRenderFunction } from "../types";
@@ -37,6 +39,8 @@ interface SpawnToolState extends ToolState {
 
 export function useSpawnTool(isActive: boolean) {
   const { screenToWorld, addParticle, zoom } = useEngine();
+  const { beginTransaction, appendToTransaction, commitTransaction } =
+    useHistory();
   const { particleSize, colors } = useInit();
 
   // Tool-specific state
@@ -77,8 +81,8 @@ export function useSpawnTool(isActive: boolean) {
 
   const selectRandomColor = useRandomColorSelector(colors);
 
-  // Function to spawn a single particle with current state
-  const spawnParticleWithCurrentState = useCallback(() => {
+  // Function to spawn a single particle with current state (undoable, appended to current transaction)
+  const spawnParticleWithCurrentState = useCallback(async () => {
     if (!addParticle || !screenToWorld) return;
 
     const worldPos = screenToWorld(
@@ -107,14 +111,31 @@ export function useSpawnTool(isActive: boolean) {
       };
     }
 
-    addParticle({
-      position: worldPos,
-      velocity,
-      size,
-      mass,
-      color,
-    });
-  }, [addParticle, screenToWorld, zoom]);
+    let createdIndex: number | null = null;
+    const cmd: Command = {
+      id: crypto.randomUUID(),
+      label: "Spawn particle",
+      timestamp: Date.now(),
+      do: async (ctx: { engine: any }) => {
+        addParticle({ position: worldPos, velocity, size, mass, color });
+        // Resolve created index from engine after it applies
+        if (ctx.engine?.getParticles) {
+          const particles = await ctx.engine.getParticles();
+          createdIndex = particles.length - 1;
+        }
+      },
+      undo: async (ctx: { engine: any }) => {
+        if (!ctx.engine || createdIndex == null) return;
+        const particles = await ctx.engine.getParticles();
+        const updated = particles.map((p: any, idx: number) =>
+          idx === createdIndex ? { ...p, mass: 0 } : p
+        );
+        ctx.engine.setParticles(updated);
+      },
+    } as unknown as Command;
+
+    appendToTransaction(cmd);
+  }, [addParticle, screenToWorld, zoom, appendToTransaction]);
 
   // Calculate dynamic streaming rate based on particle size and velocity
   const calculateStreamingRate = useCallback(() => {
@@ -289,12 +310,15 @@ export function useSpawnTool(isActive: boolean) {
       state.current.dragMode = ctrlPressed ? "size" : "velocity";
       state.current.selectedColor = selectRandomColor(); // Select color for this spawn
 
+      // Begin transaction for this drag gesture
+      beginTransaction("Spawn");
+
       // Start streaming if shift is pressed
       if (shiftPressed) {
         startStreaming();
       }
     },
-    [particleSize, selectRandomColor, startStreaming]
+    [particleSize, selectRandomColor, startStreaming, beginTransaction]
   );
 
   const updateDrag = useCallback(
@@ -364,7 +388,7 @@ export function useSpawnTool(isActive: boolean) {
     [dragThreshold, startStreaming, stopStreaming, zoom]
   );
 
-  const endDrag = useCallback(() => {
+  const endDrag = useCallback(async () => {
     if (state.current.dragStartTime === 0 || !addParticle || !screenToWorld)
       return;
 
@@ -376,56 +400,16 @@ export function useSpawnTool(isActive: boolean) {
 
     const wasClick = distance < dragThreshold && clickDuration < 200;
 
-    const worldPos = screenToWorld(
-      state.current.dragStartX,
-      state.current.dragStartY
-    );
-    const color = parseColor(state.current.selectedColor);
-
     let didSpawn = false;
 
     if (wasClick) {
-      const size = state.current.currentSize;
-      const mass = calculateMassFromSize(size);
-
-      addParticle({
-        position: worldPos,
-        velocity: { x: 0, y: 0 },
-        size,
-        mass,
-        color,
-      });
+      await spawnParticleWithCurrentState();
       didSpawn = true;
     } else if (state.current.dragMode === "size") {
       // Finalize size selection without spawning; lockedSize already synced in updateDrag
       // No-op: keep currentSize/lockedSize as chosen
     } else {
-      const size = state.current.currentSize;
-      const mass = calculateMassFromSize(size);
-
-      let velocity = { x: 0, y: 0 };
-      if (state.current.dragMode === "velocity") {
-        const baseVelocityScale = 5.0;
-        const velocityScale = baseVelocityScale / Math.sqrt(zoom); // Square root relationship for more balanced scaling
-        const maxVelocityDistance = 150; // Same as maxArrowLength
-        const clampedDistance = Math.min(distance, maxVelocityDistance);
-        const normalizedDx =
-          distance > 0 ? (dx / distance) * clampedDistance : 0;
-        const normalizedDy =
-          distance > 0 ? (dy / distance) * clampedDistance : 0;
-        velocity = {
-          x: normalizedDx * velocityScale,
-          y: normalizedDy * velocityScale,
-        };
-      }
-
-      addParticle({
-        position: worldPos,
-        velocity,
-        size,
-        mass,
-        color,
-      });
+      await spawnParticleWithCurrentState();
       didSpawn = true;
     }
 
@@ -441,6 +425,9 @@ export function useSpawnTool(isActive: boolean) {
       // Only rotate color after an actual spawn
       state.current.selectedColor = selectRandomColor();
     }
+
+    // Commit transaction for this gesture
+    commitTransaction();
   }, [
     addParticle,
     screenToWorld,
@@ -449,6 +436,8 @@ export function useSpawnTool(isActive: boolean) {
     zoom,
     selectRandomColor,
     stopStreaming,
+    commitTransaction,
+    spawnParticleWithCurrentState,
   ]);
 
   // Render function for spawn tool overlay

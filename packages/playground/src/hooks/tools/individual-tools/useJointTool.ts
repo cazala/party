@@ -1,6 +1,8 @@
 import { useCallback, useRef, useEffect } from "react";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 import { useEngine } from "../../useEngine";
+import { useHistory } from "../../useHistory";
+import type { Command } from "../../../types/history";
 import { useJoints } from "../../modules/useJoints";
 import { useLines } from "../../modules/useLines";
 
@@ -8,6 +10,7 @@ export function useJointTool(isActive: boolean) {
   const { engine, screenToWorld, camera, zoom, size } = useEngine();
   const joints = useJoints();
   const lines = useLines();
+  const { executeCommand } = useHistory();
   const selectedIndexRef = useRef<number | null>(null);
   const selectedParticlePos = useRef<{ x: number; y: number } | null>(null);
   const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -141,8 +144,21 @@ export function useJointTool(isActive: boolean) {
               lines.setEnabled(true);
             }
 
-            joints.addJoint({ aIndex: a, bIndex: b, restLength: rest });
-            lines.addLine({ aIndex: a, bIndex: b });
+            // Execute as undoable command
+            const cmd: Command = {
+              id: crypto.randomUUID(),
+              label: `Create joint (${a} - ${b})`,
+              timestamp: Date.now(),
+              do: () => {
+                joints.addJoint({ aIndex: a, bIndex: b, restLength: rest });
+                lines.addLine({ aIndex: a, bIndex: b });
+              },
+              undo: () => {
+                joints.removeJoint(a, b);
+                lines.removeLine(a, b);
+              },
+            } as unknown as Command;
+            await executeCommand(cmd);
           }
 
           // Check if ctrl/cmd is pressed to chain joints

@@ -9,12 +9,13 @@ interface MouseHandlerProps {
   toolHandlers: Record<ToolMode, ToolHandlers>;
 }
 
-export function useMouseHandler({ 
-  toolMode, 
-  isInitialized, 
-  toolHandlers 
+export function useMouseHandler({
+  toolMode,
+  isInitialized,
+  toolHandlers,
 }: MouseHandlerProps) {
   const { canvasRef } = useEngine();
+  const handlerId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
@@ -58,8 +59,19 @@ export function useMouseHandler({
 
   // Wire mouse input to tools (interaction module is handled by cursor tool)
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current as
+      | (HTMLCanvasElement & { dataset?: DOMStringMap })
+      | null;
     if (!canvas || !isInitialized) return;
+
+    // Deduplicate: only one instance attaches listeners to the canvas at a time
+    const ownerKey = "partyMouseHandlerOwner";
+    const ds = canvas.dataset ?? (canvas.dataset = {} as any);
+    if (ds[ownerKey]) {
+      // Another instance already attached; skip attaching listeners
+      return;
+    }
+    ds[ownerKey] = handlerId;
 
     const onMouseMove = (e: MouseEvent) => {
       handleMouseMove(e);
@@ -84,11 +96,15 @@ export function useMouseHandler({
     canvas.addEventListener("contextmenu", onContextMenu);
 
     return () => {
-      canvas.removeEventListener("mousemove", onMouseMove);
-      canvas.removeEventListener("mousedown", onMouseDown);
-      canvas.removeEventListener("mouseup", onMouseUp);
-      canvas.removeEventListener("mouseleave", onMouseUp);
-      canvas.removeEventListener("contextmenu", onContextMenu);
+      // Only the owner should remove listeners
+      if (canvas.dataset && canvas.dataset[ownerKey] === handlerId) {
+        canvas.removeEventListener("mousemove", onMouseMove);
+        canvas.removeEventListener("mousedown", onMouseDown);
+        canvas.removeEventListener("mouseup", onMouseUp);
+        canvas.removeEventListener("mouseleave", onMouseUp);
+        canvas.removeEventListener("contextmenu", onContextMenu);
+        delete canvas.dataset[ownerKey];
+      }
     };
   }, [
     canvasRef.current,

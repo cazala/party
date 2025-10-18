@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { useTools } from "../hooks/useTools";
 import { useEngine } from "../hooks/useEngine";
+import { useHistory } from "../hooks/useHistory";
 
 export function GlobalHotkeys() {
   const { setToolMode, toolMode } = useTools();
   const { canvasRef } = useEngine();
+  const { undo, redo, canUndo, canRedo } = useHistory();
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -43,6 +45,23 @@ export function GlobalHotkeys() {
         });
         window.dispatchEvent(evt);
       };
+
+      // Undo/Redo
+      if (key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          if (canRedo) redo();
+        } else {
+          if (canUndo) undo();
+        }
+        return;
+      }
+
+      if (key === "y") {
+        e.preventDefault();
+        if (canRedo) redo();
+        return;
+      }
 
       switch (key) {
         case "a":
@@ -108,7 +127,7 @@ export function GlobalHotkeys() {
       document.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("mousemove", onMouseMove);
     };
-  }, [setToolMode, canvasRef, toolMode]);
+  }, [setToolMode, canvasRef, toolMode, undo, redo, canUndo, canRedo]);
 
   return null;
 }

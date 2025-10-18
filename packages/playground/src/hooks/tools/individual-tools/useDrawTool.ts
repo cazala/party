@@ -6,6 +6,8 @@ import { useLines } from "../../modules/useLines";
 import { useInit } from "../../useInit";
 import { calculateMassFromSize } from "../../../utils/particle";
 import { parseColor, useRandomColorSelector } from "../utils";
+import { useHistory } from "../../useHistory";
+import type { Command } from "../../../types/history";
 
 // Configurable constants
 const DRAW_STEP_SIZE = 20; // pixels - distance between particles when drawing
@@ -17,11 +19,13 @@ export function useDrawTool(isActive: boolean) {
   const joints = useJoints();
   const lines = useLines();
   const { colors } = useInit();
+  const { beginTransaction, appendToTransaction, commitTransaction } =
+    useHistory();
 
   // Drawing state
   const isDrawingRef = useRef<boolean>(false);
   const isProcessingRef = useRef<boolean>(false); // Prevent concurrent operations
-  const lastParticleIndexRef = useRef<number | null>(null);
+  const lastHolderRef = useRef<{ idx: number | null } | null>(null);
   const lastPositionRef = useRef<{ x: number; y: number } | null>(null);
   const selectedColorRef = useRef<string>("#ffffff");
 
@@ -73,32 +77,64 @@ export function useDrawTool(isActive: boolean) {
   );
 
   // Helper function to spawn a particle at given position
+  type IndexHolder = { idx: number | null };
+  type SpawnResult = { holder: IndexHolder; ready: Promise<void> };
+
   const spawnParticle = useCallback(
-    async (worldX: number, worldY: number, isPinned: boolean) => {
+    async (
+      worldX: number,
+      worldY: number,
+      isPinned: boolean
+    ): Promise<SpawnResult | null> => {
       if (!addParticle || !engine) return null;
 
       const color = parseColor(selectedColorRef.current);
       const size = state.currentSize; // Use current selected size
       const mass = isPinned ? -1 : calculateMassFromSize(size);
 
-      addParticle({
-        position: { x: worldX, y: worldY },
-        velocity: { x: 0, y: 0 },
-        size,
-        mass,
-        color,
+      const holder: IndexHolder = { idx: null };
+      let resolveReady: (() => void) | null = null;
+      const ready = new Promise<void>((resolve) => {
+        resolveReady = resolve;
       });
-
-      // Get the index of the newly added particle (should be the last one)
-      const particles = await engine.getParticles();
-      return particles.length - 1;
+      const cmd: Command = {
+        id: crypto.randomUUID(),
+        label: "Draw: spawn",
+        timestamp: Date.now(),
+        do: async (ctx: { engine: typeof engine }) => {
+          addParticle({
+            position: { x: worldX, y: worldY },
+            velocity: { x: 0, y: 0 },
+            size,
+            mass,
+            color,
+          });
+          const particles = await ctx.engine?.getParticles();
+          holder.idx = (particles?.length ?? 1) - 1;
+          if (resolveReady) resolveReady();
+        },
+        undo: async (ctx: { engine: typeof engine }) => {
+          if (!ctx.engine || holder.idx == null) return;
+          const particles = await ctx.engine.getParticles();
+          const updated = particles.map((p: any, idx: number) =>
+            idx === holder.idx ? { ...p, mass: 0 } : p
+          );
+          ctx.engine.setParticles(updated);
+        },
+      } as unknown as Command;
+      appendToTransaction(cmd);
+      return { holder, ready };
     },
-    [addParticle, engine]
+    [addParticle, engine, appendToTransaction]
   );
 
   // Helper function to create joint between two particles
   const createJoint = useCallback(
-    (indexA: number, indexB: number, restLength: number) => {
+    (
+      holderA: { idx: number | null },
+      holderB: { idx: number | null },
+      restLength: number
+    ) => {
       // Enable joints module if not already enabled
       if (!joints.enabled) {
         joints.setEnabled(true);
@@ -109,10 +145,32 @@ export function useDrawTool(isActive: boolean) {
         lines.setEnabled(true);
       }
 
-      joints.addJoint({ aIndex: indexA, bIndex: indexB, restLength });
-      lines.addLine({ aIndex: indexA, bIndex: indexB });
+      const cmd: Command = {
+        id: crypto.randomUUID(),
+        label: "Draw: joint",
+        timestamp: Date.now(),
+        do: () => {
+          if (!joints.enabled) joints.setEnabled(true);
+          if (!lines.enabled) lines.setEnabled(true);
+          if (holderA.idx != null && holderB.idx != null) {
+            joints.addJoint({
+              aIndex: holderA.idx,
+              bIndex: holderB.idx,
+              restLength,
+            });
+            lines.addLine({ aIndex: holderA.idx, bIndex: holderB.idx });
+          }
+        },
+        undo: () => {
+          if (holderA.idx != null && holderB.idx != null) {
+            joints.removeJoint(holderA.idx, holderB.idx);
+            lines.removeLine(holderA.idx, holderB.idx);
+          }
+        },
+      } as unknown as Command;
+      appendToTransaction(cmd);
     },
-    [joints, lines]
+    [joints, lines, appendToTransaction]
   );
 
   const handlers: ToolHandlers = {
@@ -162,16 +220,16 @@ export function useDrawTool(isActive: boolean) {
       // Select new color for this drawing session
       selectedColorRef.current = selectRandomColor();
 
+      // Begin a transaction for the drawing stroke
+      beginTransaction("Draw stroke");
+
       // Start drawing - spawn first particle
       isDrawingRef.current = true;
-      const particleIndex = await spawnParticle(
-        worldPos.x,
-        worldPos.y,
-        isPinned
-      );
+      const firstResult = await spawnParticle(worldPos.x, worldPos.y, isPinned);
 
-      if (particleIndex !== null) {
-        lastParticleIndexRef.current = particleIndex;
+      if (firstResult) {
+        await firstResult.ready;
+        lastHolderRef.current = firstResult.holder;
         lastPositionRef.current = { x: sx, y: sy };
       }
 
@@ -212,7 +270,7 @@ export function useDrawTool(isActive: boolean) {
       if (!isDrawingRef.current || isProcessingRef.current) return;
 
       const lastPos = lastPositionRef.current;
-      if (!lastPos || lastParticleIndexRef.current === null) return;
+      if (!lastPos || !lastHolderRef.current) return;
 
       // Calculate distance from last particle position
       const dx = sx - lastPos.x;
@@ -229,16 +287,10 @@ export function useDrawTool(isActive: boolean) {
         const isPinned = ev.shiftKey; // Changed from ctrl/cmd to shift
 
         // Spawn new particle
-        const newParticleIndex = await spawnParticle(
-          worldPos.x,
-          worldPos.y,
-          isPinned
-        );
+        const newResult = await spawnParticle(worldPos.x, worldPos.y, isPinned);
 
-        if (
-          newParticleIndex !== null &&
-          lastParticleIndexRef.current !== null
-        ) {
+        if (newResult && lastHolderRef.current) {
+          await newResult.ready;
           // Create joint between last particle and new particle
           const lastWorldPos = screenToWorld(lastPos.x, lastPos.y);
           const restLength = Math.sqrt(
@@ -246,14 +298,10 @@ export function useDrawTool(isActive: boolean) {
               Math.pow(worldPos.y - lastWorldPos.y, 2)
           );
 
-          createJoint(
-            lastParticleIndexRef.current,
-            newParticleIndex,
-            restLength
-          );
+          createJoint(lastHolderRef.current, newResult.holder, restLength);
 
           // Update tracking for next particle
-          lastParticleIndexRef.current = newParticleIndex;
+          lastHolderRef.current = newResult.holder;
           lastPositionRef.current = { x: sx, y: sy };
         }
 
@@ -283,8 +331,11 @@ export function useDrawTool(isActive: boolean) {
       // End drawing session
       isDrawingRef.current = false;
       isProcessingRef.current = false;
-      lastParticleIndexRef.current = null;
+      lastHolderRef.current = null;
       lastPositionRef.current = null;
+
+      // Commit the draw stroke transaction
+      commitTransaction();
     },
   };
 

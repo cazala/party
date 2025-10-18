@@ -5,6 +5,7 @@ import { toolsReducer } from "./tools";
 import { modulesReducer } from "./modules";
 import { performanceReducer } from "./performance";
 import { oscillatorsReducer } from "./oscillators";
+import { historyReducer } from "./history";
 
 export const store = configureStore({
   reducer: {
@@ -14,8 +15,11 @@ export const store = configureStore({
     modules: modulesReducer,
     performance: performanceReducer,
     oscillators: oscillatorsReducer,
+    history: historyReducer,
   },
   devTools: import.meta.env.DEV,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({ serializableCheck: false }),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
