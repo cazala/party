@@ -4,6 +4,7 @@ import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
 import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
+import { useHistory } from "../hooks/useHistory";
 import "./TopBar.css";
 import { HelpModal } from "./HelpModal";
 
@@ -13,6 +14,7 @@ export function TopBar() {
   const { initState, gridJoints, setGridJoints } = useInit();
   const { removeAllJoints } = useJoints();
   const { removeAllLines } = useLines();
+  const { resetHistory } = useHistory();
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -23,12 +25,19 @@ export function TopBar() {
   };
 
   const handleClear = () => {
+    // Reset undo/redo history
+    resetHistory();
+
+    // Clear scene
     clear();
     removeAllJoints();
     removeAllLines();
   };
 
   const handleReset = useCallback(() => {
+    // Reset undo/redo history
+    resetHistory();
+
     // Reset joints and lines using helper methods
     removeAllJoints();
     removeAllLines();
@@ -42,6 +51,7 @@ export function TopBar() {
       setTimeout(() => setGridJoints(true), 0);
     }
   }, [
+    resetHistory,
     removeAllJoints,
     removeAllLines,
     spawnParticles,

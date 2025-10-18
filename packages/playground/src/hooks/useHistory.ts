@@ -18,6 +18,8 @@ import {
 import type { Command, HistoryContext } from "../types/history";
 import { useEngine } from "./useEngine";
 import { getCommand } from "../history/registry";
+import { clear as clearHistory } from "../slices/history";
+import { clearRegistry as clearHistoryRegistry } from "../history/registry";
 
 export function useHistory() {
   const dispatch = useAppDispatch();
@@ -118,6 +120,11 @@ export function useHistory() {
     dispatch(cancelTransactionAction());
   }, [dispatch]);
 
+  const resetHistory = useCallback(() => {
+    dispatch(clearHistory());
+    clearHistoryRegistry();
+  }, [dispatch]);
+
   return {
     canUndo,
     canRedo,
@@ -128,5 +135,6 @@ export function useHistory() {
     commitTransaction: commit,
     cancelTransaction: cancel,
     executeCommand,
+    resetHistory,
   };
 }
