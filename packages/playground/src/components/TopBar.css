@@ -37,7 +37,10 @@
 .tool-group {
   display: flex;
   align-items: center;
-  margin-left: 24px;
+  gap: 12px;
+  margin-left: 16px; /* visual separation between control groups */
+  padding-left: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .tool-mode-selector {
@@ -101,6 +104,8 @@
 .play-pause-button,
 .clear-button,
 .reset-spawn-button,
+.undo-button,
+.redo-button,
 .topbar-save-button,
 .topbar-load-button {
   display: flex;
@@ -139,6 +144,8 @@
 .play-pause-button:hover,
 .clear-button:hover,
 .reset-spawn-button:hover,
+.undo-button:hover,
+.redo-button:hover,
 .topbar-save-button:hover,
 .topbar-load-button:hover {
   background: rgba(255, 255, 255, 0.2);
