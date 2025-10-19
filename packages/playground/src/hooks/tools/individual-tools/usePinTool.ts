@@ -23,7 +23,7 @@ const pinToolState: PinToolState = {
 };
 
 export function usePinTool(isActive: boolean) {
-  const { engine, screenToWorld, zoom, canvasRef } = useEngine();
+  const { engine, screenToWorld, zoom } = useEngine();
   const { executeCommand } = useHistory();
 
   // Drag state
@@ -39,20 +39,6 @@ export function usePinTool(isActive: boolean) {
   const affectedIndicesRef = useRef<Set<number>>(new Set());
   const previousPinnedRef = useRef<Map<number, boolean>>(new Map());
   const commitInProgressRef = useRef(false);
-
-  // Manage cursor visibility (apply only to canvas to avoid global flicker)
-  useEffect(() => {
-    const canvas = canvasRef?.current as HTMLCanvasElement | null;
-    if (!canvas) return;
-    if (isActive) {
-      canvas.style.cursor = "none";
-    } else {
-      canvas.style.cursor = "";
-    }
-    return () => {
-      canvas.style.cursor = "";
-    };
-  }, [isActive, canvasRef]);
 
   // Render dashed circle overlay
   const renderOverlay: ToolRenderFunction = useCallback(
@@ -74,16 +60,16 @@ export function usePinTool(isActive: boolean) {
         const mouseY = currentY;
 
         // Circle centered at current mouse position (dashed)
-        ctx.strokeStyle = "#ffffff";
+        ctx.strokeStyle = "rgba(255,255,255,0.6)";
         ctx.lineWidth = 2;
-        ctx.setLineDash([8, 4]);
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.arc(mouseX, mouseY, radius, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.setLineDash([]);
 
         // Dashed line from original mousedown to current mouse position
-        ctx.strokeStyle = "#ffffff";
+        ctx.strokeStyle = "rgba(255,255,255,0.8)";
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 6]);
         ctx.beginPath();
@@ -93,15 +79,15 @@ export function usePinTool(isActive: boolean) {
         ctx.setLineDash([]);
 
         // Tiny circle at cursor
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
         ctx.beginPath();
         ctx.arc(mouseX, mouseY, 4, 0, 2 * Math.PI);
         ctx.fill();
       } else {
         // Draw dashed circle at current mouse position
-        ctx.strokeStyle = "#ffffff";
+        ctx.strokeStyle = "rgba(255,255,255,0.6)";
         ctx.lineWidth = 2;
-        ctx.setLineDash([8, 4]);
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.arc(currentX, currentY, radius, 0, 2 * Math.PI);
         ctx.stroke();

@@ -180,7 +180,7 @@ export function useShapeTool(isActive: boolean) {
     });
 
     // Draw preview joints (full mesh)
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
 
@@ -211,7 +211,7 @@ export function useShapeTool(isActive: boolean) {
       ctx.setLineDash([]);
 
       // Tiny solid dot at cursor
-      ctx.fillStyle = "rgb(255, 255, 255)";
+      ctx.fillStyle = "rgb(255, 255, 255, 0.8)";
       ctx.beginPath();
       ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
       ctx.fill();

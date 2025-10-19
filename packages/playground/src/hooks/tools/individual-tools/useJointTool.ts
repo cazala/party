@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 import { useEngine } from "../../useEngine";
 import { useHistory } from "../../useHistory";
@@ -6,29 +6,40 @@ import type { Command } from "../../../types/history";
 import { useJoints } from "../../modules/useJoints";
 import { useLines } from "../../modules/useLines";
 
+// Shared module-level state for joint tool to synchronize overlay and handlers across multiple hook instances
+type JointToolState = {
+  selectedIndex: number | null;
+  selectedParticlePos: { x: number; y: number } | null;
+  selectedParticleScreenPos: { x: number; y: number } | null;
+  mouseX: number;
+  mouseY: number;
+};
+
+const jointToolState: JointToolState = {
+  selectedIndex: null,
+  selectedParticlePos: null,
+  selectedParticleScreenPos: null,
+  mouseX: 0,
+  mouseY: 0,
+};
+
 export function useJointTool(isActive: boolean) {
   const { engine, screenToWorld, camera, zoom, size } = useEngine();
   const joints = useJoints();
   const lines = useLines();
   const { executeCommand } = useHistory();
-  const selectedIndexRef = useRef<number | null>(null);
-  const selectedParticlePos = useRef<{ x: number; y: number } | null>(null);
-  const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const state = jointToolState;
 
-  // Convert world coordinates to screen coordinates
+  // Convert world coordinates to screen coordinates (mirror of screenToWorld)
   const worldToScreen = useCallback(
     (worldX: number, worldY: number) => {
-      if (!engine) return { x: worldX, y: worldY };
-
       const centerX = size.width / 2;
       const centerY = size.height / 2;
-
       const screenX = centerX + (worldX - camera.x) * zoom;
       const screenY = centerY + (worldY - camera.y) * zoom;
-
       return { x: screenX, y: screenY };
     },
-    [engine, camera, zoom, size]
+    [camera, zoom, size]
   );
 
   // Global keyboard event listener for ESC key
@@ -36,10 +47,11 @@ export function useJointTool(isActive: boolean) {
     if (!isActive) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && selectedIndexRef.current !== null) {
+      if (e.key === "Escape" && state.selectedIndex !== null) {
         // Cancel joint creation
-        selectedIndexRef.current = null;
-        selectedParticlePos.current = null;
+        state.selectedIndex = null;
+        state.selectedParticlePos = null;
+        state.selectedParticleScreenPos = null;
       }
     };
 
@@ -48,62 +60,85 @@ export function useJointTool(isActive: boolean) {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isActive]);
+  }, [isActive, state]);
 
   const renderOverlay: ToolRenderFunction = useCallback(
-    (ctx) => {
-      if (!engine) return;
-      const sel = selectedIndexRef.current;
-      if (sel == null) return;
-
-      const mp = mousePosRef.current;
+    (ctx, _size, mouse) => {
+      if (!isActive) return;
+      const mp = mouse ?? { x: state.mouseX, y: state.mouseY };
       const circleRadius = 6;
 
-      // Draw line from selected particle to edge of circle (not center)
-      const selectedPos = selectedParticlePos.current;
-      if (selectedPos) {
-        const particleScreen = worldToScreen(selectedPos.x, selectedPos.y);
+      // Draw line from selected particle to mouse (center) and to circle edge
+      const selectedPos = state.selectedParticlePos;
+      const selectedScreen = state.selectedParticleScreenPos;
+      if (selectedPos || selectedScreen) {
+        const particleScreen = selectedScreen
+          ? selectedScreen
+          : worldToScreen(selectedPos!.x, selectedPos!.y);
 
         // Calculate direction from particle to mouse to find circle edge
         const dx = mp.x - particleScreen.x;
         const dy = mp.y - particleScreen.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Calculate point on circle edge closest to particle
-        const circleEdgeX = mp.x - (dx / distance) * circleRadius;
-        const circleEdgeY = mp.y - (dy / distance) * circleRadius;
-
-        ctx.save();
-        ctx.strokeStyle = "rgba(255,255,255,1)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath();
-        ctx.moveTo(particleScreen.x, particleScreen.y);
-        ctx.lineTo(circleEdgeX, circleEdgeY);
-        ctx.stroke();
-        ctx.restore();
+        // Dashed line to the circle edge for preview
+        if (distance > 0.0001) {
+          const circleEdgeX = mp.x - (dx / distance) * circleRadius;
+          const circleEdgeY = mp.y - (dy / distance) * circleRadius;
+          ctx.save();
+          ctx.strokeStyle = "rgba(255,255,255,0.6)";
+          ctx.lineWidth = 2;
+          ctx.lineCap = "round";
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(particleScreen.x, particleScreen.y);
+          ctx.lineTo(circleEdgeX, circleEdgeY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
       }
 
-      // Draw circle at mouse position with matching style
+      // Draw circle at mouse position with matching style (always show when active)
       ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,1)";
+      ctx.strokeStyle = "rgba(255,255,255,0.6)";
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
       ctx.arc(mp.x, mp.y, circleRadius, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.setLineDash([]);
       ctx.restore();
+
+      // DEBUG: show selection/mouse info to verify state flow
+      try {
+        const selIdx = state.selectedIndex;
+        const selPos = state.selectedParticleScreenPos;
+        ctx.save();
+        ctx.fillStyle = "rgba(0, 255, 128, 0.9)";
+        ctx.font = "12px sans-serif";
+        const debugText = `joint overlay | sel=${selIdx ?? "-"} | sp=(${
+          selPos?.x?.toFixed?.(1) ?? "-"
+        },${selPos?.y?.toFixed?.(1) ?? "-"}) | m=(${mp.x.toFixed(
+          1
+        )},${mp.y.toFixed(1)})`;
+        ctx.fillText(debugText, 12, 18);
+        ctx.restore();
+      } catch {}
     },
-    [engine, worldToScreen]
+    [worldToScreen, isActive, state]
   );
 
   const handlers: ToolHandlers = {
     onMouseDown: async (ev) => {
-      if (!engine) return;
+      if (!engine || !isActive) return;
+      ev.preventDefault();
+      ev.stopPropagation();
       const rect = (ev.target as HTMLCanvasElement).getBoundingClientRect();
       const sx = ev.clientX - rect.left;
       const sy = ev.clientY - rect.top;
-      mousePosRef.current = { x: sx, y: sy };
+      state.mouseX = sx;
+      state.mouseY = sy;
       const w = screenToWorld(sx, sy);
       const particles = await engine.getParticles();
       let bestI = -1;
@@ -121,11 +156,14 @@ export function useJointTool(isActive: boolean) {
         }
       }
       if (bestI !== -1) {
-        if (selectedIndexRef.current == null) {
-          selectedIndexRef.current = bestI;
-          selectedParticlePos.current = particles[bestI].position;
+        if (state.selectedIndex == null) {
+          state.selectedIndex = bestI;
+          // Copy the position to avoid depending on internal engine object references
+          const p = particles[bestI].position;
+          state.selectedParticlePos = { x: p.x, y: p.y };
+          state.selectedParticleScreenPos = { x: sx, y: sy };
         } else {
-          const a = selectedIndexRef.current;
+          const a = state.selectedIndex;
           const b = bestI;
           if (a !== b) {
             const pa = particles[a];
@@ -164,22 +202,26 @@ export function useJointTool(isActive: boolean) {
           // Check if ctrl/cmd is pressed to chain joints
           if (ev.ctrlKey || ev.metaKey) {
             // Start new joint with the second particle as the first
-            selectedIndexRef.current = b;
-            selectedParticlePos.current = particles[b].position;
+            state.selectedIndex = b;
+            const pbPos = particles[b].position;
+            state.selectedParticlePos = { x: pbPos.x, y: pbPos.y };
+            state.selectedParticleScreenPos = { x: sx, y: sy };
           } else {
             // Normal behavior - clear selection
-            selectedIndexRef.current = null;
-            selectedParticlePos.current = null;
+            state.selectedIndex = null;
+            state.selectedParticlePos = null;
+            state.selectedParticleScreenPos = null;
           }
         }
       }
     },
     onMouseMove: (ev) => {
+      if (!isActive) return;
+      ev.preventDefault();
+      ev.stopPropagation();
       const rect = (ev.target as HTMLCanvasElement).getBoundingClientRect();
-      mousePosRef.current = {
-        x: ev.clientX - rect.left,
-        y: ev.clientY - rect.top,
-      };
+      state.mouseX = ev.clientX - rect.left;
+      state.mouseY = ev.clientY - rect.top;
     },
     onMouseUp: () => {},
   };

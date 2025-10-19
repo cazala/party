@@ -11,7 +11,15 @@ export function Canvas({
   style?: React.CSSProperties;
 }) {
   const { canvasRef, size, runtime, handleWheel, isInitialized } = useEngine();
-  const { isSpawnMode, isGrabMode, isGrabbing, isDrawMode } = useTools();
+  const {
+    isSpawnMode,
+    isGrabMode,
+    isGrabbing,
+    isDrawMode,
+    isJointMode,
+    isPinMode,
+    isRemoveMode,
+  } = useTools();
 
   // Add wheel event listener for zoom
   useEffect(() => {
@@ -42,7 +50,12 @@ export function Canvas({
     isGrabMode ? "grab-tool" : "",
     isGrabbing ? "grabbing" : "",
     isDrawMode ? "draw-tool" : "",
-  ].filter(Boolean).join(" ");
+    isJointMode ? "joint-tool" : "",
+    isPinMode ? "pin-tool" : "",
+    isRemoveMode ? "remove-tool" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <canvas

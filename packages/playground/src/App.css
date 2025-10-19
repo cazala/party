@@ -58,6 +58,18 @@
   cursor: none; /* Hide cursor when spawn tool is active, overlay will show preview */
 }
 
+#canvas.joint-tool {
+  cursor: none; /* Hide cursor when spawn tool is active, overlay will show preview */
+}
+
+#canvas.pin-tool {
+  cursor: none; /* Hide cursor when pin tool is active, overlay will show preview */
+}
+
+#canvas.remove-tool {
+  cursor: none; /* Hide cursor when remove tool is active, overlay will show preview */
+}
+
 #canvas.draw-tool {
   cursor: crosshair; /* Show crosshair cursor for precise drawing */
 }
