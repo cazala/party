@@ -30,6 +30,18 @@ export function HelpModal({
         </div>
         <div className="help-modal-body">
           <section>
+            <h3>General</h3>
+            <ul>
+              <li>
+                <b>Cmd/Ctrl + Z</b>: Undo
+              </li>
+              <li>
+                <b>Cmd/Ctrl + Shift + Z</b> or <b>Cmd/Ctrl + Y</b>: Redo
+              </li>
+            </ul>
+          </section>
+
+          <section>
             <h3>Tools</h3>
             <ul>
               <li>
