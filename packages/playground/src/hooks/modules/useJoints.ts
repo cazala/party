@@ -14,6 +14,7 @@ import {
   setSeparation as setSeparationAction,
   setSteps as setStepsAction,
   setFriction as setFrictionAction,
+  resetJoints,
   selectJoints,
 } from "../../slices/modules/joints";
 
@@ -150,6 +151,10 @@ export function useJoints() {
     [dispatch, joints]
   );
 
+  const reset = useCallback(() => {
+    dispatch(resetJoints());
+  }, [dispatch]);
+
   return {
     // Individual state properties
     enabled,
@@ -176,5 +181,6 @@ export function useJoints() {
     addJoint,
     removeJoint,
     removeAllJoints,
+    reset,
   };
 }

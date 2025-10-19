@@ -206,6 +206,38 @@ export class OscillatorManager {
     this.listeners.clear();
   }
 
+  clearModule(moduleName: string): void {
+    const indicesToRemove: number[] = [];
+    for (let i = 0; i < this.oscillators.length; i++) {
+      if (this.oscillators[i].moduleName === moduleName) {
+        indicesToRemove.push(i);
+      }
+    }
+    
+    // Remove in reverse order to maintain indices
+    for (let i = indicesToRemove.length - 1; i >= 0; i--) {
+      const index = indicesToRemove[i];
+      const osc = this.oscillators[index];
+      const key = OscillatorManager.makeKey(osc.moduleName, osc.inputName);
+      
+      // Remove from keyToIndex map
+      this.keyToIndex.delete(key);
+      
+      // Remove from listeners
+      this.listeners.delete(key);
+      
+      // Swap-remove from oscillators array
+      const lastIndex = this.oscillators.length - 1;
+      if (index !== lastIndex) {
+        this.oscillators[index] = this.oscillators[lastIndex];
+        const moved = this.oscillators[index];
+        const movedKey = OscillatorManager.makeKey(moved.moduleName, moved.inputName);
+        this.keyToIndex.set(movedKey, index);
+      }
+      this.oscillators.pop();
+    }
+  }
+
   updateAll(dtSeconds: number): void {
     if (dtSeconds <= 0 || this.oscillators.length === 0) return;
     this.elapsedSeconds += dtSeconds;

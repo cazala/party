@@ -103,6 +103,27 @@ const oscillatorsSlice = createSlice({
     clearAllOscillators: () => {
       return {};
     },
+
+    clearModuleOscillators: (state, action: PayloadAction<string>) => {
+      const moduleName = action.payload;
+      const filtered: OscillatorsState = {};
+      for (const [sliderId, config] of Object.entries(state)) {
+        // Check both explicit moduleName and inferred from sliderId
+        let oscillatorModuleName = config.moduleName;
+        if (!oscillatorModuleName) {
+          // Infer module name from sliderId (e.g., "environment.gravityStrength" -> "environment")
+          const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
+          if (parts.length >= 2) {
+            oscillatorModuleName = parts[0];
+          }
+        }
+        
+        if (oscillatorModuleName !== moduleName) {
+          filtered[sliderId] = config;
+        }
+      }
+      return filtered;
+    },
   },
 });
 
@@ -115,6 +136,7 @@ export const {
   updateOscillatorMin,
   updateOscillatorMax,
   clearAllOscillators,
+  clearModuleOscillators,
 } = oscillatorsSlice.actions;
 
 export const oscillatorsReducer = oscillatorsSlice.reducer;

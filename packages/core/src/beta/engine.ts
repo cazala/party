@@ -167,6 +167,9 @@ export class Engine implements IEngine {
   clearOscillators(): void {
     this.engine.clearOscillators();
   }
+  clearModuleOscillators(moduleName: string): void {
+    this.engine.clearModuleOscillators(moduleName);
+  }
   addOscillatorListener(
     moduleName: string,
     inputName: string,

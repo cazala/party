@@ -201,6 +201,15 @@ Performance-critical settings
 
 Oscillators modulate module inputs continuously over time.
 
+#### Oscillator API
+
+- `addOscillator(params)` - Add an oscillator to animate a module input
+- `removeOscillator(moduleName, inputName)` - Remove a specific oscillator
+- `updateOscillatorSpeed(moduleName, inputName, speedHz)` - Change oscillation speed
+- `updateOscillatorBounds(moduleName, inputName, min, max)` - Change oscillation range
+- `clearOscillators()` - Remove all oscillators
+- `clearModuleOscillators(moduleName)` - Remove all oscillators for a specific module
+
 ```ts
 // Animate boundary restitution between 0.4 and 0.95 at 0.2 Hz
 const oscId = engine.addOscillator({
@@ -214,6 +223,12 @@ const oscId = engine.addOscillator({
 // Later
 engine.updateOscillatorSpeed("boundary", "restitution", 0.4);
 engine.removeOscillator("boundary", "restitution");
+
+// Clear all oscillators for a specific module
+engine.clearModuleOscillators("boundary");
+
+// Clear all oscillators
+engine.clearOscillators();
 ```
 
 Inputs are addressed by the module’s input keys (documented per module below). Oscillators write values exactly as if you had called the module’s setters.

@@ -14,6 +14,7 @@ import {
   updateOscillatorMin,
   updateOscillatorMax,
   clearAllOscillators,
+  clearModuleOscillators,
   OscillationSpeed,
   OscillatorData,
 } from "../slices/oscillators";
@@ -89,6 +90,12 @@ export function useOscillators(sliderId?: string) {
     dispatch(clearAllOscillators());
   }, [dispatch]);
 
+  const clearModule = useCallback((moduleName: string) => {
+    dispatch(clearModuleOscillators(moduleName));
+    engineInstance?.clearModuleOscillators(moduleName);
+  }, [dispatch, engineInstance]);
+
+
   // Sync Redux → Engine for this slider (if moduleName/inputName present)
   useEffect(() => {
     if (!sliderId) return;
@@ -155,5 +162,6 @@ export function useOscillators(sliderId?: string) {
     updateMin,
     updateMax,
     clearAllOscillators: clearAll,
+    clearModuleOscillators: clearModule,
   };
 }

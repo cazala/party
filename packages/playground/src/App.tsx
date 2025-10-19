@@ -1,4 +1,5 @@
 import { EngineProvider } from "./contexts/EngineContext";
+import { ResetProvider } from "./contexts/ResetContext";
 import { Canvas } from "./components/Canvas";
 import { Overlay } from "./components/Overlay";
 import { TopBar } from "./components/TopBar";
@@ -38,7 +39,9 @@ function App() {
   return (
     <Provider store={store}>
       <EngineProvider>
-        <AppContent />
+        <ResetProvider>
+          <AppContent />
+        </ResetProvider>
       </EngineProvider>
     </Provider>
   );

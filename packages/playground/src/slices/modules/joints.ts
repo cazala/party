@@ -65,6 +65,7 @@ export const jointsSlice = createSlice({
     setFriction: (state, action: PayloadAction<number>) => {
       state.friction = Math.max(0, Math.min(1, action.payload));
     },
+    resetJoints: () => initialState,
     importSettings: (state, action: PayloadAction<JointsModuleState>) => {
       return { ...state, ...action.payload };
     },
@@ -81,6 +82,7 @@ export const {
   setSeparation,
   setSteps,
   setFriction,
+  resetJoints,
   importSettings: importJointsSettings,
 } = jointsSlice.actions;
 

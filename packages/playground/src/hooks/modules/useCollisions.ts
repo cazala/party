@@ -7,6 +7,7 @@ import {
   selectCollisions,
   setCollisionsEnabled,
   setCollisionsRestitution,
+  resetCollisions,
 } from "../../slices/modules/collisions";
 
 export function useCollisions() {
@@ -44,6 +45,10 @@ export function useCollisions() {
     [dispatch, collisions]
   );
 
+  const reset = useCallback(() => {
+    dispatch(resetCollisions());
+  }, [dispatch]);
+
   return {
     // Individual state properties
     restitution,
@@ -51,5 +56,6 @@ export function useCollisions() {
     // Actions
     setEnabled,
     setRestitution,
+    reset,
   };
 }

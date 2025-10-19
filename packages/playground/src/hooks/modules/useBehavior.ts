@@ -15,6 +15,7 @@ import {
   setBehaviorSeparation,
   setBehaviorViewRadius,
   setBehaviorViewAngle,
+  resetBehavior,
 } from "../../slices/modules/behavior";
 
 export function useBehavior() {
@@ -134,6 +135,10 @@ export function useBehavior() {
     [dispatch, behavior]
   );
 
+  const reset = useCallback(() => {
+    dispatch(resetBehavior());
+  }, [dispatch]);
+
   return {
     // Individual state properties
     wander,
@@ -157,5 +162,6 @@ export function useBehavior() {
     setSeparation,
     setViewRadius,
     setViewAngle,
+    reset,
   };
 }

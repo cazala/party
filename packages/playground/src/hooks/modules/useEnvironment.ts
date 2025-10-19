@@ -13,6 +13,7 @@ import {
   setEnvironmentDamping,
   setEnvironmentDirection,
   setEnvironmentMode,
+  resetEnvironment,
 } from "../../slices/modules/environment";
 
 export function useEnvironment() {
@@ -140,6 +141,10 @@ export function useEnvironment() {
     [setCustomAngle]
   );
 
+  const reset = useCallback(() => {
+    dispatch(resetEnvironment());
+  }, [dispatch]);
+
   return {
     // Individual state properties
     gravityStrength,
@@ -161,5 +166,6 @@ export function useEnvironment() {
     setCustomDirection,
     setCustomAngle,
     setCustomAngleDegrees,
+    reset,
   };
 }

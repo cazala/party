@@ -3,6 +3,7 @@ import { Field } from "./Field";
 import { useOscillators } from "../../hooks/useOscillators";
 import { OscillationSpeed } from "../../slices/oscillators";
 import { useEngine } from "../../hooks/useEngine";
+import { useReset } from "../../contexts/ResetContext";
 import "./Slider.css";
 
 // Engine owns oscillation; Slider only updates Redux and shows UI affordances
@@ -53,6 +54,7 @@ export function Slider({
   const pausedOscillationSpeedRef = useRef<ExtendedOscillationSpeed>("none");
   const activePointerIdRef = useRef<number | null>(null);
   const { engine: engineInstance } = useEngine();
+  const { isResetting } = useReset();
 
   // Local dragging state for handles (using state to trigger re-renders)
   const [draggingMin, setDraggingMin] = useState<number | null>(null);
@@ -129,18 +131,30 @@ export function Slider({
 
   const stopOscillation = useCallback(() => {
     if (sliderId) {
+      // Only preserve current value if we're not in reset mode
+      // During reset, we want to allow jumping back to default values
+      if (!isResetting && displayValue !== value) {
+        onChange(displayValue);
+      }
       removeOscillator();
     }
-  }, [sliderId, removeOscillator]);
+  }, [sliderId, removeOscillator, displayValue, value, onChange, isResetting]);
 
   const startOscillation = useCallback(
     (speed: OscillationSpeed) => {
       if (!sliderId) return;
+      
+      // Extract module and input names from sliderId
+      const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
+      const [moduleName, inputName] = parts.length >= 2 ? parts : [undefined, undefined];
+      
       // Update Redux state; engine owns motion
       setOscillator({
         speedHz: speed === "slow" ? 0.01 : speed === "fast" ? 0.2 : 0.05,
         customMin: oscillationMin,
         customMax: oscillationMax,
+        moduleName,
+        inputName,
       });
     },
     [sliderId, oscillationMin, oscillationMax, setOscillator]
@@ -321,12 +335,18 @@ export function Slider({
         pausedOscillationSpeedRef.current = "none";
 
         if (sliderId) {
+          // Extract module and input names from sliderId
+          const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
+          const [moduleName, inputName] = parts.length >= 2 ? parts : [undefined, undefined];
+          
           const speedHz =
             resumeSpeed === "slow" ? 0.01 : resumeSpeed === "fast" ? 0.2 : 0.05;
           setOscillator({
             speedHz,
             customMin: finalMin,
             customMax: finalMax,
+            moduleName,
+            inputName,
           });
         }
       }
@@ -399,6 +419,7 @@ export function Slider({
       setDisplayValue(value);
     }
   }, [value]);
+
 
   return (
     <Field className="slider-field">

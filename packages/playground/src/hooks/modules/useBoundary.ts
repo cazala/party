@@ -11,6 +11,7 @@ import {
   setBoundaryFriction,
   setBoundaryRepelDistance,
   setBoundaryRepelStrength,
+  resetBoundary,
   BoundaryModuleState,
 } from "../../slices/modules/boundary";
 
@@ -85,6 +86,10 @@ export function useBoundary() {
     [dispatch, boundary]
   );
 
+  const reset = useCallback(() => {
+    dispatch(resetBoundary());
+  }, [dispatch]);
+
   return {
     // Individual state properties
     mode,
@@ -100,5 +105,6 @@ export function useBoundary() {
     setFriction,
     setRepelDistance,
     setRepelStrength,
+    reset,
   };
 }

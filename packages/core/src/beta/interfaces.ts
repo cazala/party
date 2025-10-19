@@ -90,6 +90,7 @@ export interface IEngine {
       }
     | undefined;
   clearOscillators(): void;
+  clearModuleOscillators(moduleName: string): void;
   addOscillatorListener(
     moduleName: string,
     inputName: string,
@@ -257,6 +258,9 @@ export abstract class AbstractEngine implements IEngine {
   }
   clearOscillators(): void {
     this.oscillatorManager.clear();
+  }
+  clearModuleOscillators(moduleName: string): void {
+    this.oscillatorManager.clearModule(moduleName);
   }
   addOscillatorListener(
     moduleName: string,

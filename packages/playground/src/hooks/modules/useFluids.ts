@@ -14,6 +14,7 @@ import {
   setFluidsNearThreshold,
   setFluidsEnableNearPressure,
   setFluidsMaxAcceleration,
+  resetFluids,
 } from "../../slices/modules/fluids";
 
 export function useFluids() {
@@ -123,6 +124,10 @@ export function useFluids() {
     [dispatch, fluids]
   );
 
+  const reset = useCallback(() => {
+    dispatch(resetFluids());
+  }, [dispatch]);
+
   return {
     // Individual state properties
     influenceRadius,
@@ -144,5 +149,6 @@ export function useFluids() {
     setNearThreshold,
     setEnableNearPressure,
     setMaxAcceleration,
+    reset,
   };
 }

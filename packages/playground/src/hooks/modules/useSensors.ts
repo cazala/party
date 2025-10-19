@@ -16,6 +16,7 @@ import {
   setSensorFleeValue,
   setSensorColorSimilarityThreshold,
   setSensorFleeAngle,
+  resetSensors,
 } from "../../slices/modules/sensors";
 
 export function useSensors() {
@@ -135,6 +136,10 @@ export function useSensors() {
     [dispatch, sensors]
   );
 
+  const reset = useCallback(() => {
+    dispatch(resetSensors());
+  }, [dispatch]);
+
   return {
     // Individual state properties
     sensorDistance,
@@ -158,5 +163,6 @@ export function useSensors() {
     setFleeValue,
     setColorSimilarityThreshold,
     setFleeAngle,
+    reset,
   };
 }

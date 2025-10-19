@@ -30,6 +30,32 @@
   font-weight: 600;
 }
 
+.reset-button {
+  background: transparent;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #ccc;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  width: 24px;
+  height: 24px;
+}
+
+.reset-button:hover {
+  background: #333;
+  border-color: #777;
+  color: #fff;
+}
+
+.reset-button:active {
+  background: #444;
+  transform: scale(0.95);
+}
+
 /* Scrollbar styling for the panel */
 .controls-panel::-webkit-scrollbar {
   width: 6px;

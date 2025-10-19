@@ -1,3 +1,4 @@
+import { RotateCcw } from "lucide-react";
 import { EnvironmentModule } from "./modules/EnvironmentModule";
 import { BoundaryModule } from "./modules/BoundaryModule";
 import { CollisionsModule } from "./modules/CollisionsModule";
@@ -7,6 +8,8 @@ import { SensorsModule } from "./modules/SensorsModule";
 import { JointsModule } from "./modules/JointsModule";
 import { ModuleWrapper } from "./ModuleWrapper";
 import { useEngine } from "../hooks/useEngine";
+import { useOscillators } from "../hooks/useOscillators";
+import { useReset } from "../contexts/ResetContext";
 import {
   useEnvironment,
   useBoundary,
@@ -30,25 +33,77 @@ export function ModulesSidebar() {
     isSupported,
   } = useEngine();
 
-  const { isEnabled: isEnvironmentEnabled, setEnabled: setEnvironmentEnabled } =
-    useEnvironment();
-  const { isEnabled: isBoundaryEnabled, setEnabled: setBoundaryEnabled } =
-    useBoundary();
-  const { isEnabled: isCollisionsEnabled, setEnabled: setCollisionsEnabled } =
-    useCollisions();
-  const { isEnabled: isFluidsEnabled, setEnabled: setFluidsEnabled } =
-    useFluids();
-  const { isEnabled: isBehaviorEnabled, setEnabled: setBehaviorEnabled } =
-    useBehavior();
-  const { isEnabled: isSensorsEnabled, setEnabled: setSensorsEnabled } =
-    useSensors();
-  const { isEnabled: isJointsEnabled, setEnabled: setJointsEnabled } =
-    useJoints();
+  const { clearModuleOscillators } = useOscillators();
+  const { setIsResetting } = useReset();
+
+  const {
+    isEnabled: isEnvironmentEnabled,
+    setEnabled: setEnvironmentEnabled,
+    reset: resetEnvironment,
+  } = useEnvironment();
+  const {
+    isEnabled: isBoundaryEnabled,
+    setEnabled: setBoundaryEnabled,
+    reset: resetBoundary,
+  } = useBoundary();
+  const {
+    isEnabled: isCollisionsEnabled,
+    setEnabled: setCollisionsEnabled,
+    reset: resetCollisions,
+  } = useCollisions();
+  const {
+    isEnabled: isFluidsEnabled,
+    setEnabled: setFluidsEnabled,
+    reset: resetFluids,
+  } = useFluids();
+  const {
+    isEnabled: isBehaviorEnabled,
+    setEnabled: setBehaviorEnabled,
+    reset: resetBehavior,
+  } = useBehavior();
+  const {
+    isEnabled: isSensorsEnabled,
+    setEnabled: setSensorsEnabled,
+    reset: resetSensors,
+  } = useSensors();
+  const {
+    isEnabled: isJointsEnabled,
+    setEnabled: setJointsEnabled,
+    reset: resetJoints,
+  } = useJoints();
 
   return (
     <div className="controls-panel">
       <div className="controls-header">
         <h3>Modules</h3>
+        <button
+          className="reset-button"
+          onClick={() => {
+            // Set reset flag to prevent oscillators from preserving current values
+            setIsResetting(true);
+            
+            // Clear oscillators for each module first
+            const moduleNames = ['environment', 'boundary', 'collisions', 'fluids', 'behavior', 'sensors', 'joints'];
+            moduleNames.forEach(moduleName => {
+              clearModuleOscillators(moduleName);
+            });
+            
+            // Then reset all module states
+            resetEnvironment();
+            resetBoundary();
+            resetCollisions();
+            resetFluids();
+            resetBehavior();
+            resetSensors();
+            resetJoints();
+            
+            // Clear reset flag after a brief delay
+            setTimeout(() => setIsResetting(false), 10);
+          }}
+          title="Reset all modules to default values"
+        >
+          <RotateCcw size={16} />
+        </button>
       </div>
 
       <ModuleWrapper
