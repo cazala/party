@@ -180,15 +180,11 @@ export function useDrawTool(isActive: boolean) {
         return;
       }
 
-      // Stop event propagation to prevent other handlers
+      // Stop event propagation to prevent other handlers (allow overlay listeners)
       ev.preventDefault();
       ev.stopPropagation();
-      ev.stopImmediatePropagation();
 
       if (!engine) return;
-
-      // Prevent concurrent mouse down events
-      if (isProcessingRef.current || isDrawingRef.current) return;
 
       const rect = (ev.target as HTMLCanvasElement).getBoundingClientRect();
       const sx = ev.clientX - rect.left;
@@ -206,6 +202,9 @@ export function useDrawTool(isActive: boolean) {
         state.mouseY = sy;
         return;
       }
+
+      // Prevent concurrent mouse down events (after handling Ctrl-size gesture)
+      if (isProcessingRef.current || isDrawingRef.current) return;
 
       // Clear any lingering size adjustment state for normal drawing
       if (state.isAdjustingSize) {
@@ -240,10 +239,9 @@ export function useDrawTool(isActive: boolean) {
       if (!isActive) return;
       if (!engine) return;
 
-      // Stop event propagation
+      // Stop event propagation (allow overlay listeners)
       ev.preventDefault();
       ev.stopPropagation();
-      ev.stopImmediatePropagation();
 
       const rect = (ev.target as HTMLCanvasElement).getBoundingClientRect();
       const sx = ev.clientX - rect.left;
@@ -312,11 +310,10 @@ export function useDrawTool(isActive: boolean) {
     onMouseUp: (ev) => {
       if (!isActive) return;
 
-      // Stop event propagation
+      // Stop event propagation (allow overlay listeners)
       if (ev) {
         ev.preventDefault();
         ev.stopPropagation();
-        ev.stopImmediatePropagation();
       }
 
       // End size adjustment mode if active
@@ -336,6 +333,10 @@ export function useDrawTool(isActive: boolean) {
 
       // Commit the draw stroke transaction
       commitTransaction();
+
+      // After finishing a draw stroke, ensure size-adjust preview anchor is cleared
+      state.adjustStartX = 0;
+      state.adjustStartY = 0;
     },
   };
 

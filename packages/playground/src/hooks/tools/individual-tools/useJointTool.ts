@@ -109,22 +109,6 @@ export function useJointTool(isActive: boolean) {
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
-
-      // DEBUG: show selection/mouse info to verify state flow
-      try {
-        const selIdx = state.selectedIndex;
-        const selPos = state.selectedParticleScreenPos;
-        ctx.save();
-        ctx.fillStyle = "rgba(0, 255, 128, 0.9)";
-        ctx.font = "12px sans-serif";
-        const debugText = `joint overlay | sel=${selIdx ?? "-"} | sp=(${
-          selPos?.x?.toFixed?.(1) ?? "-"
-        },${selPos?.y?.toFixed?.(1) ?? "-"}) | m=(${mp.x.toFixed(
-          1
-        )},${mp.y.toFixed(1)})`;
-        ctx.fillText(debugText, 12, 18);
-        ctx.restore();
-      } catch {}
     },
     [worldToScreen, isActive, state]
   );
