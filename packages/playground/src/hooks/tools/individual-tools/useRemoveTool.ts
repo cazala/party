@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
+import type { IParticle as Particle } from "@cazala/party";
+import { drawDashedCircle, drawDashedLine, drawDot } from "../shared";
 import { useEngine } from "../../useEngine";
 import { useHistory } from "../../useHistory";
 import type { Command } from "../../../types/history";
@@ -23,7 +25,7 @@ const removeToolState: RemoveToolState = {
 };
 
 export function useRemoveTool(isActive: boolean) {
-  const { engine, screenToWorld, zoom, canvasRef } = useEngine();
+  const { engine, screenToWorld, zoom } = useEngine();
   const { executeCommand } = useHistory();
 
   // Drag state
@@ -33,19 +35,7 @@ export function useRemoveTool(isActive: boolean) {
   const SCREEN_RADIUS = 25;
   removeToolState.currentScreenRadius ||= SCREEN_RADIUS;
 
-  // Manage cursor visibility only on canvas to avoid global flicker
-  useEffect(() => {
-    const canvas = canvasRef?.current as HTMLCanvasElement | null;
-    if (!canvas) return;
-    if (isActive) {
-      canvas.style.cursor = "none";
-    } else {
-      canvas.style.cursor = "";
-    }
-    return () => {
-      canvas.style.cursor = "";
-    };
-  }, [isActive, canvasRef]);
+  // Cursor handled via CSS classes in Canvas/App.css; no manipulation here
 
   // Render dashed circle overlay
   const renderOverlay: ToolRenderFunction = useCallback(
@@ -65,40 +55,32 @@ export function useRemoveTool(isActive: boolean) {
         const startY = removeToolState.adjustStartY;
         const mouseX = currentX;
         const mouseY = currentY;
-
-        // Circle centered at current mouse position (dashed)
-        ctx.strokeStyle = "rgba(255,255,255,0.6)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(mouseX, mouseY, radius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Dashed line from original mousedown to current mouse position
-        ctx.strokeStyle = "rgba(255,255,255,0.8)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(mouseX, mouseY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Tiny circle at cursor
-        ctx.fillStyle = "rgba(255,255,255,0.8)";
-        ctx.beginPath();
-        ctx.arc(mouseX, mouseY, 4, 0, 2 * Math.PI);
-        ctx.fill();
+        drawDashedCircle(
+          ctx,
+          { x: mouseX, y: mouseY },
+          radius,
+          "rgba(255,255,255,0.6)",
+          2,
+          [4, 4]
+        );
+        drawDashedLine(
+          ctx,
+          { x: startX, y: startY },
+          { x: mouseX, y: mouseY },
+          "rgba(255,255,255,0.8)",
+          2,
+          [6, 6]
+        );
+        drawDot(ctx, { x: mouseX, y: mouseY }, 4, "rgba(255,255,255,0.8)");
       } else {
-        // Draw dashed circle at current mouse position
-        ctx.strokeStyle = "rgba(255,255,255,0.6)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(currentX, currentY, radius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        drawDashedCircle(
+          ctx,
+          { x: currentX, y: currentY },
+          radius,
+          "rgba(255,255,255,0.6)",
+          2,
+          [4, 4]
+        );
       }
     },
     [isActive]
@@ -106,9 +88,9 @@ export function useRemoveTool(isActive: boolean) {
 
   // Gesture batching
   const gestureActiveRef = useRef(false);
-  const removedSnapshotsRef = useRef<Array<{ index: number; particle: any }>>(
-    []
-  );
+  const removedSnapshotsRef = useRef<
+    Array<{ index: number; particle: Particle }>
+  >([]);
   const commitInProgressRef = useRef(false);
 
   // Remove particles at current mouse position (live), capturing snapshots for undo
@@ -124,7 +106,7 @@ export function useRemoveTool(isActive: boolean) {
 
       const particles = await engine.getParticles();
       let didChange = false;
-      const updated = particles.map((p, index) => {
+      const updated = particles.map((p: Particle, index: number) => {
         const dx = p.position.x - worldCenter.x;
         const dy = p.position.y - worldCenter.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -239,27 +221,27 @@ export function useRemoveTool(isActive: boolean) {
       id: crypto.randomUUID(),
       label: `Remove ${snapshots.length} particles`,
       timestamp: Date.now(),
-      do: async (ctx: { engine: typeof engine }) => {
+      do: async (ctx) => {
         if (!ctx.engine) return;
         const particles = await ctx.engine.getParticles();
-        const updated = particles.map((p, idx) => {
+        const updated = particles.map((p: Particle, idx: number) => {
           const s = snapshots.find((x) => x.index === idx);
           if (s) return { ...p, mass: 0 };
           return p;
         });
         ctx.engine.setParticles(updated);
       },
-      undo: async (ctx: { engine: typeof engine }) => {
+      undo: async (ctx) => {
         if (!ctx.engine) return;
         const particles = await ctx.engine.getParticles();
-        const updated = particles.map((p, idx) => {
+        const updated = particles.map((p: Particle, idx: number) => {
           const s = snapshots.find((x) => x.index === idx);
           if (s) return s.particle;
           return p;
         });
         ctx.engine.setParticles(updated);
       },
-    } as unknown as Command;
+    };
 
     await executeCommand(cmd);
     commitInProgressRef.current = false;

@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
+import type { IParticle as Particle } from "@cazala/party";
+import { drawDashedCircle, drawDashedLine, drawDot } from "../shared";
 import { useEngine } from "../../useEngine";
 import { useHistory } from "../../useHistory";
 import type { Command } from "../../../types/history";
@@ -58,40 +60,32 @@ export function usePinTool(isActive: boolean) {
         const startY = pinToolState.adjustStartY;
         const mouseX = currentX;
         const mouseY = currentY;
-
-        // Circle centered at current mouse position (dashed)
-        ctx.strokeStyle = "rgba(255,255,255,0.6)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(mouseX, mouseY, radius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Dashed line from original mousedown to current mouse position
-        ctx.strokeStyle = "rgba(255,255,255,0.8)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(mouseX, mouseY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Tiny circle at cursor
-        ctx.fillStyle = "rgba(255,255,255,0.8)";
-        ctx.beginPath();
-        ctx.arc(mouseX, mouseY, 4, 0, 2 * Math.PI);
-        ctx.fill();
+        drawDashedCircle(
+          ctx,
+          { x: mouseX, y: mouseY },
+          radius,
+          "rgba(255,255,255,0.6)",
+          2,
+          [4, 4]
+        );
+        drawDashedLine(
+          ctx,
+          { x: startX, y: startY },
+          { x: mouseX, y: mouseY },
+          "rgba(255,255,255,0.8)",
+          2,
+          [6, 6]
+        );
+        drawDot(ctx, { x: mouseX, y: mouseY }, 4, "rgba(255,255,255,0.8)");
       } else {
-        // Draw dashed circle at current mouse position
-        ctx.strokeStyle = "rgba(255,255,255,0.6)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(currentX, currentY, radius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        drawDashedCircle(
+          ctx,
+          { x: currentX, y: currentY },
+          radius,
+          "rgba(255,255,255,0.6)",
+          2,
+          [4, 4]
+        );
       }
     },
     [isActive]
@@ -109,7 +103,7 @@ export function usePinTool(isActive: boolean) {
       const worldRadius = pinToolState.currentScreenRadius / zoom;
 
       if (!engine) return;
-      const particles = await engine.getParticles();
+      const particles = (await engine.getParticles()) as Particle[];
       const indexes: number[] = [];
       particles.forEach((p, idx) => {
         // Skip removed particles (mass == 0)
@@ -243,12 +237,12 @@ export function usePinTool(isActive: boolean) {
         ? `Unpin ${indices.length} particles`
         : `Pin ${indices.length} particles`,
       timestamp: Date.now(),
-      do: async (ctx: { engine: typeof engine }) => {
+      do: async (ctx) => {
         if (!ctx.engine) return;
         if (unpin) await ctx.engine.unpinParticles(indices);
         else await ctx.engine.pinParticles(indices);
       },
-      undo: async (ctx: { engine: typeof engine }) => {
+      undo: async (ctx) => {
         if (!ctx.engine) return;
         const toPin: number[] = [];
         const toUnpin: number[] = [];
@@ -260,7 +254,7 @@ export function usePinTool(isActive: boolean) {
         if (toPin.length) await ctx.engine.pinParticles(toPin);
         if (toUnpin.length) await ctx.engine.unpinParticles(toUnpin);
       },
-    } as unknown as Command;
+    };
 
     await executeCommand(cmd);
 

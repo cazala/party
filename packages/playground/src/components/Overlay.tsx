@@ -5,14 +5,7 @@ import { useTools } from "../hooks/useTools";
 export function Overlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { size, canvasRef: mainCanvasRef, runtime } = useEngine();
-  const {
-    renderOverlay,
-    updateMousePosition,
-    startDrag,
-    updateDrag,
-    endDrag,
-    isSpawnMode,
-  } = useTools();
+  const { renderOverlay, isSpawnMode } = useTools();
   const animationFrameRef = useRef<number>();
   const isDragging = useRef(false);
   const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false);
@@ -83,11 +76,7 @@ export function Overlay() {
 
     const handleMouseLeave = () => {
       setIsMouseOverCanvas(false);
-      // Also handle mouse up for spawn mode when leaving canvas
-      if (isSpawnMode) {
-        isDragging.current = false;
-        endDrag();
-      }
+      isDragging.current = false;
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -95,14 +84,7 @@ export function Overlay() {
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       mouseRef.current = { x: mouseX, y: mouseY };
-      if (isSpawnMode) {
-        updateMousePosition(mouseX, mouseY);
-      }
-
-      // If we're dragging, also call updateDrag
-      if (isDragging.current) {
-        updateDrag(mouseX, mouseY, e.ctrlKey || e.metaKey, e.shiftKey);
-      }
+      // Tools read mouse via overlay render; no extra calls needed
     };
 
     // Allow external callers (GlobalHotkeys) to seed overlay mouse position on tool switch
@@ -110,25 +92,15 @@ export function Overlay() {
       const detail = (e as CustomEvent<{ x: number; y: number }>).detail;
       if (!detail) return;
       mouseRef.current = { x: detail.x, y: detail.y };
-      if (isSpawnMode) {
-        updateMousePosition(detail.x, detail.y);
-      }
     };
 
-    const handleMouseDown = (e: MouseEvent) => {
-      if (!isSpawnMode) return; // Only handle mouse events in spawn mode
-      e.preventDefault(); // Prevent useTools from also handling this event
-      const rect = mainCanvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+    const handleMouseDown = (_e: MouseEvent) => {
+      // No spawn-specific drag from overlay; tools will handle from useMouseHandler
       isDragging.current = true;
-      startDrag(mouseX, mouseY, e.ctrlKey || e.metaKey, e.shiftKey);
     };
 
     const handleMouseUp = () => {
-      if (!isSpawnMode) return; // Only handle mouse events in spawn mode
       isDragging.current = false;
-      endDrag();
     };
 
     mainCanvas.addEventListener("mouseenter", handleMouseEnter);
@@ -152,15 +124,7 @@ export function Overlay() {
         handleExternalOverlayUpdate as EventListener
       );
     };
-  }, [
-    mainCanvasRef,
-    runtime,
-    isSpawnMode,
-    updateMousePosition,
-    startDrag,
-    updateDrag,
-    endDrag,
-  ]);
+  }, [mainCanvasRef, runtime, isSpawnMode]);
 
   return (
     <canvas

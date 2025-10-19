@@ -48,18 +48,4 @@ export interface UseToolsReturn {
     isMouseOver: boolean,
     mouse?: { x: number; y: number }
   ) => void;
-  updateMousePosition: (mouseX: number, mouseY: number) => void;
-  startDrag: (
-    mouseX: number,
-    mouseY: number,
-    ctrlPressed: boolean,
-    shiftPressed?: boolean
-  ) => void;
-  updateDrag: (
-    mouseX: number,
-    mouseY: number,
-    ctrlPressed: boolean,
-    shiftPressed?: boolean
-  ) => void;
-  endDrag: () => void;
 }

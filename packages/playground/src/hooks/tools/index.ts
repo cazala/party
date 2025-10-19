@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useEngine } from "../useEngine";
 import { useToolManager } from "./useToolManager";
 import { useOverlay } from "./useOverlay";
@@ -16,7 +16,7 @@ import { useDrawTool } from "./individual-tools/useDrawTool";
 import { useShapeTool } from "./individual-tools/useShapeTool";
 
 export function useTools(): UseToolsReturn {
-  const { isInitialized, canvasRef } = useEngine();
+  const { isInitialized } = useEngine();
   const toolManager = useToolManager();
   const overlay = useOverlay();
 
@@ -109,98 +109,11 @@ export function useTools(): UseToolsReturn {
     ]
   );
 
-  // Also seed overlay position immediately on tool changes based on last known mouse
-  useEffect(() => {
-    const canvas = canvasRef?.current as HTMLCanvasElement | null;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx =
-      typeof (window as any)._lastMouseX === "number"
-        ? (window as any)._lastMouseX
-        : rect.width / 2;
-    const my =
-      typeof (window as any)._lastMouseY === "number"
-        ? (window as any)._lastMouseY
-        : rect.height / 2;
-    switch (toolManager.toolMode) {
-      case "spawn":
-        spawnTool.updateMousePosition(mx, my);
-        break;
-      default:
-        break;
-    }
-  }, [toolManager.toolMode, canvasRef, spawnTool.updateMousePosition]);
+  // Remove per-tool mouse seeding; overlays use provided mouse param
 
-  // Seed overlay mouse coordinates immediately when tool changes (via custom event)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ x: number; y: number }>).detail;
-      if (!detail) return;
-      if (toolManager.toolMode === "spawn") {
-        spawnTool.updateMousePosition(detail.x, detail.y);
-      }
-    };
-    window.addEventListener(
-      "party-overlay-update-mouse",
-      handler as EventListener
-    );
-    return () =>
-      window.removeEventListener(
-        "party-overlay-update-mouse",
-        handler as EventListener
-      );
-  }, [
-    toolManager.toolMode,
-    spawnTool.updateMousePosition,
-    removeTool.renderOverlay,
-    pinTool.renderOverlay,
-    drawTool.renderOverlay,
-    shapeTool.renderOverlay,
-  ]);
+  // No custom mouse event seeding needed when overlays rely on passed mouse
 
-  // Create tool-aware overlay functions that only delegate to spawn tool in spawn mode
-  const updateMousePosition = useCallback(
-    (mouseX: number, mouseY: number) => {
-      if (toolManager.isSpawnMode) {
-        spawnTool.updateMousePosition(mouseX, mouseY);
-      }
-    },
-    [toolManager.isSpawnMode, spawnTool.updateMousePosition]
-  );
-
-  const startDrag = useCallback(
-    (
-      mouseX: number,
-      mouseY: number,
-      ctrlPressed: boolean,
-      shiftPressed?: boolean
-    ) => {
-      if (toolManager.isSpawnMode) {
-        spawnTool.startDrag(mouseX, mouseY, ctrlPressed, shiftPressed);
-      }
-    },
-    [toolManager.isSpawnMode, spawnTool.startDrag]
-  );
-
-  const updateDrag = useCallback(
-    (
-      mouseX: number,
-      mouseY: number,
-      ctrlPressed: boolean,
-      shiftPressed?: boolean
-    ) => {
-      if (toolManager.isSpawnMode) {
-        spawnTool.updateDrag(mouseX, mouseY, ctrlPressed, shiftPressed);
-      }
-    },
-    [toolManager.isSpawnMode, spawnTool.updateDrag]
-  );
-
-  const endDrag = useCallback(() => {
-    if (toolManager.isSpawnMode) {
-      spawnTool.endDrag();
-    }
-  }, [toolManager.isSpawnMode, spawnTool.endDrag]);
+  // Remove spawn-specific mouse delegation from the public API
 
   return {
     // Tool mode management from toolManager
@@ -208,10 +121,6 @@ export function useTools(): UseToolsReturn {
 
     // Overlay functions - now tool-aware
     renderOverlay,
-    updateMousePosition,
-    startDrag,
-    updateDrag,
-    endDrag,
 
     // Grab tool specific state
     isGrabbing: grabTool.isGrabbing,

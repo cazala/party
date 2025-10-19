@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import { useEngine } from "../../useEngine";
 import { useHistory } from "../../useHistory";
 import type { Command } from "../../../types/history";
 import { useInit } from "../../useInit";
 import { calculateMassFromSize } from "../../../utils/particle";
 import { ToolState, ToolHandlers, ToolRenderFunction } from "../types";
+import { drawDashedCircle, drawDashedLine } from "../shared";
 import { parseColor, useRandomColorSelector } from "../utils";
 
 // Spawn tool specific state interface
-interface SpawnToolState extends ToolState {
+type SpawnToolState = ToolState & {
   // Mouse tracking
   mouseX: number;
   mouseY: number;
@@ -35,7 +36,28 @@ interface SpawnToolState extends ToolState {
 
   // Color for current spawn
   selectedColor: string;
-}
+};
+
+// Shared module-level state to keep overlay and handlers in sync across instances
+const spawnToolState: SpawnToolState = {
+  isActive: false,
+  mousePosition: { x: 0, y: 0 },
+  mouseX: 0,
+  mouseY: 0,
+  isDragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  dragStartTime: 0,
+  currentSize: 5,
+  lockedSize: 5,
+  dragMode: "velocity",
+  isCtrlPressed: false,
+  previousCtrlPressed: false,
+  isShiftPressed: false,
+  isStreaming: false,
+  streamIntervalId: null,
+  selectedColor: "#ffffff",
+};
 
 export function useSpawnTool(isActive: boolean) {
   const { screenToWorld, addParticle, zoom } = useEngine();
@@ -43,38 +65,10 @@ export function useSpawnTool(isActive: boolean) {
     useHistory();
   const { particleSize, colors } = useInit();
 
-  // Tool-specific state
-  const state = useRef<SpawnToolState>({
-    isActive,
-    mousePosition: { x: 0, y: 0 },
-
-    // Mouse tracking
-    mouseX: 0,
-    mouseY: 0,
-
-    // Drag state
-    isDragging: false,
-    dragStartX: 0,
-    dragStartY: 0,
-    dragStartTime: 0,
-
-    // Size management
-    currentSize: particleSize,
-    lockedSize: particleSize,
-
-    // Mode and controls
-    dragMode: "velocity",
-    isCtrlPressed: false,
-    previousCtrlPressed: false,
-    isShiftPressed: false,
-
-    // Streaming state
-    isStreaming: false,
-    streamIntervalId: null,
-
-    // Color for current spawn
-    selectedColor: "#ffffff", // Will be set on first use
-  });
+  // Ensure state reflects active flag and initial sizes for this session
+  spawnToolState.isActive = isActive;
+  spawnToolState.currentSize = spawnToolState.currentSize || particleSize;
+  spawnToolState.lockedSize = spawnToolState.lockedSize || particleSize;
 
   const dragThreshold = 10;
   const BASE_STREAM_RATE_MS = 100; // Base streaming rate
@@ -86,17 +80,17 @@ export function useSpawnTool(isActive: boolean) {
     if (!addParticle || !screenToWorld) return;
 
     const worldPos = screenToWorld(
-      state.current.dragStartX,
-      state.current.dragStartY
+      spawnToolState.dragStartX,
+      spawnToolState.dragStartY
     );
-    const color = parseColor(state.current.selectedColor);
-    const size = state.current.currentSize;
+    const color = parseColor(spawnToolState.selectedColor);
+    const size = spawnToolState.currentSize;
     const mass = calculateMassFromSize(size);
 
     let velocity = { x: 0, y: 0 };
-    if (state.current.dragMode === "velocity") {
-      const dx = state.current.mouseX - state.current.dragStartX;
-      const dy = state.current.mouseY - state.current.dragStartY;
+    if (spawnToolState.dragMode === "velocity") {
+      const dx = spawnToolState.mouseX - spawnToolState.dragStartX;
+      const dy = spawnToolState.mouseY - spawnToolState.dragStartY;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       const baseVelocityScale = 5.0;
@@ -139,12 +133,12 @@ export function useSpawnTool(isActive: boolean) {
 
   // Calculate dynamic streaming rate based on particle size and velocity
   const calculateStreamingRate = useCallback(() => {
-    const size = state.current.currentSize;
+    const size = spawnToolState.currentSize;
     let velocity = { x: 0, y: 0 };
 
-    if (state.current.dragMode === "velocity") {
-      const dx = state.current.mouseX - state.current.dragStartX;
-      const dy = state.current.mouseY - state.current.dragStartY;
+    if (spawnToolState.dragMode === "velocity") {
+      const dx = spawnToolState.mouseX - spawnToolState.dragStartX;
+      const dy = spawnToolState.mouseY - spawnToolState.dragStartY;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       const baseVelocityScale = 5.0;
@@ -173,7 +167,7 @@ export function useSpawnTool(isActive: boolean) {
 
     const dynamicRate = Math.max(
       30,
-      state.current.dragMode === "velocity" && velocityMagnitude > 0
+      spawnToolState.dragMode === "velocity" && velocityMagnitude > 0
         ? BASE_STREAM_RATE_MS * combinedFactor * 4
         : BASE_STREAM_RATE_MS * sizeFactor
     ); // Min 30ms
@@ -182,18 +176,18 @@ export function useSpawnTool(isActive: boolean) {
 
   // Function to start streaming particles
   const startStreaming = useCallback(() => {
-    if (state.current.isStreaming) return;
+    if (spawnToolState.isStreaming) return;
 
-    state.current.isStreaming = true;
+    spawnToolState.isStreaming = true;
 
     const streamParticle = () => {
-      if (!state.current.isStreaming) return;
+      if (!spawnToolState.isStreaming) return;
 
       spawnParticleWithCurrentState();
 
       // Calculate new rate based on current state and schedule next spawn
       const nextRate = calculateStreamingRate();
-      state.current.streamIntervalId = window.setTimeout(
+      spawnToolState.streamIntervalId = window.setTimeout(
         streamParticle,
         nextRate
       );
@@ -205,19 +199,19 @@ export function useSpawnTool(isActive: boolean) {
 
   // Function to stop streaming particles
   const stopStreaming = useCallback(() => {
-    if (!state.current.isStreaming) return;
+    if (!spawnToolState.isStreaming) return;
 
-    state.current.isStreaming = false;
-    if (state.current.streamIntervalId !== null) {
-      clearTimeout(state.current.streamIntervalId);
-      state.current.streamIntervalId = null;
+    spawnToolState.isStreaming = false;
+    if (spawnToolState.streamIntervalId !== null) {
+      clearTimeout(spawnToolState.streamIntervalId);
+      spawnToolState.streamIntervalId = null;
     }
   }, []);
 
   // Set initial color when entering spawn mode and handle cleanup
   useEffect(() => {
-    if (isActive && state.current.selectedColor === "#ffffff") {
-      state.current.selectedColor = selectRandomColor();
+    if (isActive && spawnToolState.selectedColor === "#ffffff") {
+      spawnToolState.selectedColor = selectRandomColor();
     }
     // Stop streaming when exiting spawn mode
     if (!isActive) {
@@ -237,15 +231,15 @@ export function useSpawnTool(isActive: boolean) {
     if (!isActive) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Shift" && !state.current.isShiftPressed) {
-        state.current.isShiftPressed = true;
+      if (e.key === "Shift" && !spawnToolState.isShiftPressed) {
+        spawnToolState.isShiftPressed = true;
         // Start streaming if we're in spawn mode and have a valid drag position
-        if (isActive && state.current.dragStartTime > 0) {
+        if (isActive && spawnToolState.dragStartTime > 0) {
           startStreaming();
         }
       }
 
-      if (e.key === "Escape" && isActive && state.current.dragStartTime > 0) {
+      if (e.key === "Escape" && isActive && spawnToolState.dragStartTime > 0) {
         // Cancel current drag operation without spawning particle
         e.preventDefault();
 
@@ -253,17 +247,17 @@ export function useSpawnTool(isActive: boolean) {
         stopStreaming();
 
         // Reset drag state without spawning
-        state.current.dragStartTime = 0;
-        state.current.isDragging = false;
-        state.current.isShiftPressed = false;
-        state.current.currentSize = particleSize;
-        state.current.selectedColor = selectRandomColor(); // New color for next spawn
+        spawnToolState.dragStartTime = 0;
+        spawnToolState.isDragging = false;
+        spawnToolState.isShiftPressed = false;
+        spawnToolState.currentSize = particleSize;
+        spawnToolState.selectedColor = selectRandomColor(); // New color for next spawn
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === "Shift" && state.current.isShiftPressed) {
-        state.current.isShiftPressed = false;
+      if (e.key === "Shift" && spawnToolState.isShiftPressed) {
+        spawnToolState.isShiftPressed = false;
         // Stop streaming immediately when shift is released
         stopStreaming();
       }
@@ -286,9 +280,9 @@ export function useSpawnTool(isActive: boolean) {
 
   // Tool handlers
   const updateMousePosition = useCallback((mouseX: number, mouseY: number) => {
-    state.current.mouseX = mouseX;
-    state.current.mouseY = mouseY;
-    state.current.mousePosition = { x: mouseX, y: mouseY };
+    spawnToolState.mouseX = mouseX;
+    spawnToolState.mouseY = mouseY;
+    spawnToolState.mousePosition = { x: mouseX, y: mouseY };
   }, []);
 
   const startDrag = useCallback(
@@ -298,17 +292,17 @@ export function useSpawnTool(isActive: boolean) {
       ctrlPressed: boolean,
       shiftPressed: boolean = false
     ) => {
-      state.current.dragStartX = mouseX;
-      state.current.dragStartY = mouseY;
-      state.current.dragStartTime = Date.now();
+      spawnToolState.dragStartX = mouseX;
+      spawnToolState.dragStartY = mouseY;
+      spawnToolState.dragStartTime = Date.now();
       // Initialize current size from the last chosen size so size adjustments persist
-      state.current.currentSize = state.current.lockedSize;
-      state.current.isCtrlPressed = ctrlPressed;
-      state.current.previousCtrlPressed = ctrlPressed;
-      state.current.isShiftPressed = shiftPressed;
-      state.current.isDragging = false; // Wait for drag threshold
-      state.current.dragMode = ctrlPressed ? "size" : "velocity";
-      state.current.selectedColor = selectRandomColor(); // Select color for this spawn
+      spawnToolState.currentSize = spawnToolState.lockedSize;
+      spawnToolState.isCtrlPressed = ctrlPressed;
+      spawnToolState.previousCtrlPressed = ctrlPressed;
+      spawnToolState.isShiftPressed = shiftPressed;
+      spawnToolState.isDragging = false; // Wait for drag threshold
+      spawnToolState.dragMode = ctrlPressed ? "size" : "velocity";
+      spawnToolState.selectedColor = selectRandomColor(); // Select color for this spawn
 
       // Begin transaction for this drag gesture
       beginTransaction("Spawn");
@@ -329,48 +323,48 @@ export function useSpawnTool(isActive: boolean) {
       shiftPressed: boolean = false
     ) => {
       // Check if we have a valid drag start position
-      if (state.current.dragStartTime === 0) return;
+      if (spawnToolState.dragStartTime === 0) return;
 
-      const dx = mouseX - state.current.dragStartX;
-      const dy = mouseY - state.current.dragStartY;
+      const dx = mouseX - spawnToolState.dragStartX;
+      const dy = mouseY - spawnToolState.dragStartY;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       const shouldBeDragging = distance > dragThreshold;
 
-      state.current.isCtrlPressed = ctrlPressed;
-      const wasShiftPressed = state.current.isShiftPressed;
-      state.current.isShiftPressed = shiftPressed;
+      spawnToolState.isCtrlPressed = ctrlPressed;
+      const wasShiftPressed = spawnToolState.isShiftPressed;
+      spawnToolState.isShiftPressed = shiftPressed;
 
       if (shouldBeDragging) {
         const dragMode = ctrlPressed ? "size" : "velocity";
         const newSize = Math.max(3, Math.min(50, distance / 2));
 
-        state.current.isDragging = true;
-        state.current.dragMode = dragMode;
+        spawnToolState.isDragging = true;
+        spawnToolState.dragMode = dragMode;
 
         if (dragMode === "size") {
-          state.current.currentSize = newSize;
+          spawnToolState.currentSize = newSize;
           // Lock size when in size mode for future velocity mode
-          state.current.lockedSize = newSize;
+          spawnToolState.lockedSize = newSize;
         } else {
           // In velocity mode, check if mouse is within particle radius
           // Use a minimum radius of 20 pixels for better usability with small particles
           const particleRadius = Math.max(
             20,
-            state.current.lockedSize * zoom + 10
+            spawnToolState.lockedSize * zoom + 10
           );
           const isWithinParticle = distance <= particleRadius;
 
           if (isWithinParticle) {
             // Mouse is within particle - exit velocity mode (no arrow, just particle)
-            state.current.dragMode = "neutral";
+            spawnToolState.dragMode = "neutral";
           } else {
             // Mouse is outside particle - show velocity arrow
-            state.current.dragMode = "velocity";
+            spawnToolState.dragMode = "velocity";
           }
 
           // Use locked size when in velocity mode
-          state.current.currentSize = state.current.lockedSize;
+          spawnToolState.currentSize = spawnToolState.lockedSize;
         }
       }
 
@@ -383,19 +377,19 @@ export function useSpawnTool(isActive: boolean) {
         stopStreaming();
       }
 
-      state.current.previousCtrlPressed = ctrlPressed;
+      spawnToolState.previousCtrlPressed = ctrlPressed;
     },
     [dragThreshold, startStreaming, stopStreaming, zoom]
   );
 
   const endDrag = useCallback(async () => {
-    if (state.current.dragStartTime === 0 || !addParticle || !screenToWorld)
+    if (spawnToolState.dragStartTime === 0 || !addParticle || !screenToWorld)
       return;
 
     const now = Date.now();
-    const clickDuration = now - state.current.dragStartTime;
-    const dx = state.current.mouseX - state.current.dragStartX;
-    const dy = state.current.mouseY - state.current.dragStartY;
+    const clickDuration = now - spawnToolState.dragStartTime;
+    const dx = spawnToolState.mouseX - spawnToolState.dragStartX;
+    const dy = spawnToolState.mouseY - spawnToolState.dragStartY;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     const wasClick = distance < dragThreshold && clickDuration < 200;
@@ -405,7 +399,7 @@ export function useSpawnTool(isActive: boolean) {
     if (wasClick) {
       await spawnParticleWithCurrentState();
       didSpawn = true;
-    } else if (state.current.dragMode === "size") {
+    } else if (spawnToolState.dragMode === "size") {
       // Finalize size selection without spawning; lockedSize already synced in updateDrag
       // No-op: keep currentSize/lockedSize as chosen
     } else {
@@ -417,13 +411,13 @@ export function useSpawnTool(isActive: boolean) {
     stopStreaming();
 
     // Reset drag state and select new color for next spawn
-    state.current.dragStartTime = 0;
-    state.current.isDragging = false;
-    state.current.isShiftPressed = false;
+    spawnToolState.dragStartTime = 0;
+    spawnToolState.isDragging = false;
+    spawnToolState.isShiftPressed = false;
     // Keep currentSize as chosen so it persists for future spawns
     if (didSpawn) {
       // Only rotate color after an actual spawn
-      state.current.selectedColor = selectRandomColor();
+      spawnToolState.selectedColor = selectRandomColor();
     }
 
     // Commit transaction for this gesture
@@ -444,17 +438,20 @@ export function useSpawnTool(isActive: boolean) {
   const renderOverlay: ToolRenderFunction = useCallback(
     (
       ctx: CanvasRenderingContext2D,
-      _canvasSize: { width: number; height: number }
+      _canvasSize: { width: number; height: number },
+      mouse?: { x: number; y: number }
     ) => {
       if (!isActive) return;
 
-      const data = state.current;
+      const data = spawnToolState;
+      const mX = mouse?.x ?? data.mouseX;
+      const mY = mouse?.y ?? data.mouseY;
 
       if (data.isDragging) {
         if (data.dragMode === "neutral") {
           // Draw solid particle at drag start position with dashed circle (no velocity arrow)
           ctx.globalAlpha = 1.0;
-          ctx.fillStyle = "rgb(255, 255, 255)";
+          ctx.fillStyle = "rgb(255, 255, 255, 0.8)";
           ctx.beginPath();
           const screenSize = data.currentSize * zoom;
           ctx.arc(data.dragStartX, data.dragStartY, screenSize, 0, 2 * Math.PI);
@@ -462,23 +459,18 @@ export function useSpawnTool(isActive: boolean) {
 
           // Draw dashed circle around particle with gap
           const gap = 4; // Keep gap constant regardless of zoom
-          ctx.strokeStyle = "rgb(255, 255, 255)";
-          ctx.lineWidth = 1;
-          ctx.setLineDash([4, 4]);
-          ctx.beginPath();
-          ctx.arc(
-            data.dragStartX,
-            data.dragStartY,
+          drawDashedCircle(
+            ctx,
+            { x: data.dragStartX, y: data.dragStartY },
             screenSize + gap,
-            0,
-            2 * Math.PI
+            "rgb(255, 255, 255, 0.8)",
+            1,
+            [4, 4]
           );
-          ctx.stroke();
-          ctx.setLineDash([]);
         } else if (data.dragMode === "velocity") {
           // Draw solid particle at drag start position
           ctx.globalAlpha = 1.0;
-          ctx.fillStyle = "rgb(255, 255, 255)";
+          ctx.fillStyle = "rgb(255, 255, 255, 0.8)";
           ctx.beginPath();
           const screenSize = data.currentSize * zoom;
           ctx.arc(data.dragStartX, data.dragStartY, screenSize, 0, 2 * Math.PI);
@@ -486,7 +478,7 @@ export function useSpawnTool(isActive: boolean) {
 
           // Draw dashed circle around particle with gap
           const gap = 4; // Keep gap constant regardless of zoom
-          ctx.strokeStyle = "rgb(255, 255, 255)";
+          ctx.strokeStyle = "rgb(255, 255, 255, 0.8)";
           ctx.lineWidth = 1;
           ctx.setLineDash([4, 4]);
           ctx.beginPath();
@@ -501,8 +493,8 @@ export function useSpawnTool(isActive: boolean) {
           ctx.setLineDash([]);
 
           // Draw velocity arrow with capped length, starting from dashed circle edge
-          const dx = data.mouseX - data.dragStartX;
-          const dy = data.mouseY - data.dragStartY;
+          const dx = mX - data.dragStartX;
+          const dy = mY - data.dragStartY;
           const distance = Math.sqrt(dx * dx + dy * dy);
           const maxArrowLength = 150;
 
@@ -512,8 +504,8 @@ export function useSpawnTool(isActive: boolean) {
           const startX = data.dragStartX + Math.cos(angle) * circleRadius;
           const startY = data.dragStartY + Math.sin(angle) * circleRadius;
 
-          let endX = data.mouseX;
-          let endY = data.mouseY;
+          let endX = mX;
+          let endY = mY;
 
           if (distance > maxArrowLength) {
             const scale = maxArrowLength / distance;
@@ -521,20 +513,20 @@ export function useSpawnTool(isActive: boolean) {
             endY = data.dragStartY + dy * scale;
           }
 
-          ctx.strokeStyle = "rgb(255, 255, 255)";
-          ctx.lineWidth = 1; // Match the dashed circle line width
-          ctx.setLineDash([4, 4]); // Match the dashed circle pattern
-          ctx.beginPath();
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(endX, endY);
-          ctx.stroke();
-          ctx.setLineDash([]);
+          drawDashedLine(
+            ctx,
+            { x: startX, y: startY },
+            { x: endX, y: endY },
+            "rgb(255, 255, 255, 0.8)",
+            1,
+            [6, 6]
+          );
 
           // Draw solid triangle arrowhead
           const arrowHeadLength = 8;
           const arrowAngle = Math.PI / 6;
 
-          ctx.fillStyle = "rgb(255, 255, 255)";
+          ctx.fillStyle = "rgb(255, 255, 255, 0.8)";
           ctx.setLineDash([]); // Ensure no dashes for arrowhead
           ctx.beginPath();
           ctx.moveTo(endX, endY); // Arrow tip
@@ -551,7 +543,7 @@ export function useSpawnTool(isActive: boolean) {
         } else {
           // Draw solid particle with current size at drag start position
           ctx.globalAlpha = 1.0;
-          ctx.fillStyle = "rgb(255, 255, 255)";
+          ctx.fillStyle = "rgb(255, 255, 255, 0.8)";
           ctx.beginPath();
           const screenSize = data.currentSize * zoom;
           ctx.arc(data.dragStartX, data.dragStartY, screenSize, 0, 2 * Math.PI);
@@ -559,23 +551,18 @@ export function useSpawnTool(isActive: boolean) {
 
           // Draw dashed circle around particle with gap
           const gap = 4; // Keep gap constant regardless of zoom
-          ctx.strokeStyle = "rgb(255, 255, 255)";
-          ctx.lineWidth = 1;
-          ctx.setLineDash([4, 4]);
-          ctx.beginPath();
-          ctx.arc(
-            data.dragStartX,
-            data.dragStartY,
+          drawDashedCircle(
+            ctx,
+            { x: data.dragStartX, y: data.dragStartY },
             screenSize + gap,
-            0,
-            2 * Math.PI
+            "rgb(255, 255, 255, 0.8)",
+            1,
+            [4, 4]
           );
-          ctx.stroke();
-          ctx.setLineDash([]);
 
           // Draw indicator line from dashed circle edge to mouse position (capped like velocity arrow)
-          const dx = data.mouseX - data.dragStartX;
-          const dy = data.mouseY - data.dragStartY;
+          const dx = mX - data.dragStartX;
+          const dy = mY - data.dragStartY;
           const distance = Math.sqrt(dx * dx + dy * dy);
           const maxLineLength = 150; // Same as maxArrowLength in velocity mode
           const circleRadius = screenSize + gap;
@@ -590,8 +577,8 @@ export function useSpawnTool(isActive: boolean) {
             const startX = data.dragStartX + Math.cos(angle) * circleRadius;
             const startY = data.dragStartY + Math.sin(angle) * circleRadius;
 
-            let endX = data.mouseX;
-            let endY = data.mouseY;
+            let endX = mX;
+            let endY = mY;
 
             if (distance > maxLineLength) {
               const scale = maxLineLength / distance;
@@ -599,17 +586,17 @@ export function useSpawnTool(isActive: boolean) {
               endY = data.dragStartY + dy * scale;
             }
 
-            ctx.strokeStyle = "rgb(255, 255, 255)";
-            ctx.lineWidth = 1;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(endX, endY);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            drawDashedLine(
+              ctx,
+              { x: startX, y: startY },
+              { x: endX, y: endY },
+              "rgb(255, 255, 255, 0.8)",
+              1,
+              [6, 6]
+            );
 
             // Draw small circle at line end position
-            ctx.fillStyle = "rgb(255, 255, 255)";
+            ctx.fillStyle = "rgb(255, 255, 255, 0.8)";
             ctx.beginPath();
             ctx.arc(endX, endY, headCircleRadius, 0, 2 * Math.PI);
             ctx.fill();
@@ -621,14 +608,14 @@ export function useSpawnTool(isActive: boolean) {
 
         // Draw solid particle
         ctx.globalAlpha = 1.0;
-        ctx.fillStyle = "rgb(255, 255, 255)";
+        ctx.fillStyle = "rgb(255, 255, 255, 0.8)";
         ctx.beginPath();
         ctx.arc(data.dragStartX, data.dragStartY, hoverSize, 0, 2 * Math.PI);
         ctx.fill();
 
         // Draw dashed circle around particle with gap
         const gap = 4; // Keep gap constant regardless of zoom
-        ctx.strokeStyle = "rgb(255, 255, 255)";
+        ctx.strokeStyle = "rgb(255, 255, 255, 0.8)";
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -647,20 +634,21 @@ export function useSpawnTool(isActive: boolean) {
 
         // Draw solid particle
         ctx.globalAlpha = 1.0;
-        ctx.fillStyle = "rgb(255, 255, 255)";
+        ctx.fillStyle = "rgb(255, 255, 255, 0.8)";
         ctx.beginPath();
-        ctx.arc(data.mouseX, data.mouseY, hoverSize, 0, 2 * Math.PI);
+        ctx.arc(mX, mY, hoverSize, 0, 2 * Math.PI);
         ctx.fill();
 
         // Draw dashed circle around particle with gap
         const gap = 4; // Keep gap constant regardless of zoom
-        ctx.strokeStyle = "rgb(255, 255, 255)";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(data.mouseX, data.mouseY, hoverSize + gap, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        drawDashedCircle(
+          ctx,
+          { x: mX, y: mY },
+          hoverSize + gap,
+          "rgb(255, 255, 255, 0.8)",
+          1,
+          [4, 4]
+        );
       }
 
       ctx.globalAlpha = 1;
@@ -668,16 +656,42 @@ export function useSpawnTool(isActive: boolean) {
     [isActive, particleSize, zoom]
   );
 
-  // Mouse handlers - only active when spawn tool is active
+  // Mouse handlers wired through useMouseHandler
   const handlers: ToolHandlers = {
-    onMouseDown: () => {
-      // Spawn tool mouse down is handled by CanvasOverlay component
+    onMouseDown: (ev: MouseEvent) => {
+      if (!isActive) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const canvas = ev.target as HTMLCanvasElement;
+      const rect = canvas.getBoundingClientRect();
+      const sx = ev.clientX - rect.left;
+      const sy = ev.clientY - rect.top;
+      updateMousePosition(sx, sy);
+      // Seed drag start immediately so overlay switches before threshold
+      spawnToolState.dragStartX = sx;
+      spawnToolState.dragStartY = sy;
+      spawnToolState.dragStartTime = Date.now();
+      spawnToolState.isDragging = false;
+      startDrag(sx, sy, !!(ev.ctrlKey || ev.metaKey), !!ev.shiftKey);
     },
-    onMouseMove: () => {
-      // Spawn tool mouse move is handled by CanvasOverlay component
+    onMouseMove: (ev: MouseEvent) => {
+      if (!isActive) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const canvas = ev.target as HTMLCanvasElement;
+      const rect = canvas.getBoundingClientRect();
+      const sx = ev.clientX - rect.left;
+      const sy = ev.clientY - rect.top;
+      updateMousePosition(sx, sy);
+      // Reflect ctrl/shift transitions into overlay state immediately
+      spawnToolState.isCtrlPressed = !!(ev.ctrlKey || ev.metaKey);
+      spawnToolState.isShiftPressed = !!ev.shiftKey;
+      // Propagate drag updates when active
+      updateDrag(sx, sy, !!(ev.ctrlKey || ev.metaKey), !!ev.shiftKey);
     },
-    onMouseUp: () => {
-      // Spawn tool mouse up is handled by CanvasOverlay component
+    onMouseUp: (_ev: MouseEvent) => {
+      if (!isActive) return;
+      endDrag();
     },
   };
 
@@ -688,6 +702,6 @@ export function useSpawnTool(isActive: boolean) {
     endDrag,
     renderOverlay,
     handlers,
-    state: state.current,
+    state: spawnToolState,
   };
 }

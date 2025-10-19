@@ -1,5 +1,7 @@
+import type { IParticle as Particle } from "@cazala/party";
 import { useCallback } from "react";
 import { ToolHandlers, ToolRenderFunction } from "../types";
+import { drawDashedLine, drawDot } from "../shared";
 import { useEngine } from "../../useEngine";
 import { useJoints } from "../../modules/useJoints";
 import { useLines } from "../../modules/useLines";
@@ -78,7 +80,7 @@ export function useShapeTool(isActive: boolean) {
         id: crypto.randomUUID(),
         label: `Spawn shape (${vertices.length})`,
         timestamp: Date.now(),
-        do: async (ctx: { engine: typeof engine }) => {
+        do: async (ctx) => {
           // Spawn particles and capture indices in sequence
           for (let i = 0; i < vertices.length; i++) {
             const v = vertices[i];
@@ -89,7 +91,9 @@ export function useShapeTool(isActive: boolean) {
               mass,
               color,
             });
-            const particles = await ctx.engine?.getParticles();
+            const particles = (await ctx.engine?.getParticles()) as
+              | Particle[]
+              | undefined;
             holders[i].idx = (particles?.length ?? 1) - 1;
           }
           // Create joints after all indices are resolved
@@ -111,7 +115,7 @@ export function useShapeTool(isActive: boolean) {
             }
           }
         },
-        undo: async (ctx: { engine: typeof engine }) => {
+        undo: async (ctx) => {
           // Remove joints first
           for (let i = 0; i < holders.length; i++) {
             for (let j = i + 1; j < holders.length; j++) {
@@ -125,13 +129,13 @@ export function useShapeTool(isActive: boolean) {
           }
           // Then unspawn particles
           if (!ctx.engine) return;
-          const particles = await ctx.engine.getParticles();
-          const updated = particles.map((p: any, idx: number) =>
+          const particles = (await ctx.engine.getParticles()) as Particle[];
+          const updated = particles.map((p: Particle, idx: number) =>
             holders.some((h) => h.idx === idx) ? { ...p, mass: 0 } : p
           );
           ctx.engine.setParticles(updated);
         },
-      } as unknown as Command;
+      };
       await executeCommand(shapeCmd);
     },
     [
@@ -180,20 +184,18 @@ export function useShapeTool(isActive: boolean) {
     });
 
     // Draw preview joints (full mesh)
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-
     for (let i = 0; i < vertices.length; i++) {
       for (let j = i + 1; j < vertices.length; j++) {
-        ctx.beginPath();
-        ctx.moveTo(vertices[i].x, vertices[i].y);
-        ctx.lineTo(vertices[j].x, vertices[j].y);
-        ctx.stroke();
+        drawDashedLine(
+          ctx,
+          vertices[i],
+          vertices[j],
+          "rgba(255, 255, 255, 0.6)",
+          1,
+          [4, 4]
+        );
       }
     }
-
-    ctx.setLineDash([]);
 
     // Size adjustment overlay
     if (isAdjustingSize) {
@@ -201,20 +203,17 @@ export function useShapeTool(isActive: boolean) {
       const startY = state.adjustStartY;
 
       // Dashed line from start to current mouse position
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 6]);
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      ctx.lineTo(centerX, centerY);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      drawDashedLine(
+        ctx,
+        { x: startX, y: startY },
+        { x: centerX, y: centerY },
+        "rgba(255, 255, 255, 0.8)",
+        2,
+        [6, 6]
+      );
 
       // Tiny solid dot at cursor
-      ctx.fillStyle = "rgb(255, 255, 255, 0.8)";
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
-      ctx.fill();
+      drawDot(ctx, { x: centerX, y: centerY }, 4, "rgba(255, 255, 255, 0.8)");
     }
 
     // Sides adjustment overlay

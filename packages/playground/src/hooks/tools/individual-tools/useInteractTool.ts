@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useEngine } from "../../useEngine";
 import { ToolHandlers, ToolRenderFunction } from "../types";
+import { drawDashedCircle, drawDashedLine, drawDot } from "../shared";
 import { useInteraction } from "../../modules/useInteraction";
 
 // Interaction tool configuration
@@ -62,38 +63,30 @@ export function useInteractTool(isActive: boolean) {
         const startY = state.adjustStartY;
 
         // Dashed line from start to current mouse position
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(centerX, centerY);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        drawDashedLine(
+          ctx,
+          { x: startX, y: startY },
+          { x: centerX, y: centerY },
+          "rgba(255, 255, 255, 0.8)",
+          2,
+          [6, 6]
+        );
 
         // Draw preview circle for current radius
         // Convert current radius (world units) to screen units; see shape tool heuristic
         const currentRadiusWorld = radius;
         const currentRadiusScreen = currentRadiusWorld * Math.sqrt(zoom);
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(
-          centerX,
-          centerY,
+        drawDashedCircle(
+          ctx,
+          { x: centerX, y: centerY },
           Math.max(0, currentRadiusScreen),
-          0,
-          Math.PI * 2
+          "rgba(255, 255, 255, 0.8)",
+          2,
+          [4, 4]
         );
-        ctx.stroke();
-        ctx.setLineDash([]);
 
         // Tiny solid dot at cursor
-        ctx.fillStyle = "rgb(255, 255, 255)";
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
-        ctx.fill();
+        drawDot(ctx, { x: centerX, y: centerY }, 4, "rgb(255, 255, 255, 0.8)");
       }
 
       // Strength adjustment overlay
@@ -151,6 +144,8 @@ export function useInteractTool(isActive: boolean) {
   const handlers: ToolHandlers = {
     onMouseDown: (ev) => {
       if (!isActive || !interaction) return;
+      ev.preventDefault();
+      ev.stopPropagation();
       const canvas = canvasRef.current;
       if (!canvas) return;
 
@@ -193,6 +188,8 @@ export function useInteractTool(isActive: boolean) {
 
     onMouseMove: (ev) => {
       if (!isActive || !interaction) return;
+      ev.preventDefault();
+      ev.stopPropagation();
       const rect = (ev.target as HTMLCanvasElement).getBoundingClientRect();
       const sx = ev.clientX - rect.left;
       const sy = ev.clientY - rect.top;
@@ -232,8 +229,10 @@ export function useInteractTool(isActive: boolean) {
       }
     },
 
-    onMouseUp: () => {
+    onMouseUp: (ev) => {
       if (!isActive || !interaction) return;
+      ev.preventDefault();
+      ev.stopPropagation();
 
       // End adjustment modes or deactivate interaction
       if (state.isAdjustingRadius) {

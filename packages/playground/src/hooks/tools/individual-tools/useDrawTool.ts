@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import type { IParticle as Particle } from "@cazala/party";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 import { useEngine } from "../../useEngine";
 import { useJoints } from "../../modules/useJoints";
@@ -113,15 +114,15 @@ export function useDrawTool(isActive: boolean) {
           holder.idx = (particles?.length ?? 1) - 1;
           if (resolveReady) resolveReady();
         },
-        undo: async (ctx: { engine: typeof engine }) => {
+        undo: async (ctx) => {
           if (!ctx.engine || holder.idx == null) return;
-          const particles = await ctx.engine.getParticles();
-          const updated = particles.map((p: any, idx: number) =>
+          const particles = (await ctx.engine.getParticles()) as Particle[];
+          const updated = particles.map((p: Particle, idx: number) =>
             idx === holder.idx ? { ...p, mass: 0 } : p
           );
           ctx.engine.setParticles(updated);
         },
-      } as unknown as Command;
+      };
       appendToTransaction(cmd);
       return { holder, ready };
     },
@@ -167,7 +168,7 @@ export function useDrawTool(isActive: boolean) {
             lines.removeLine(holderA.idx, holderB.idx);
           }
         },
-      } as unknown as Command;
+      };
       appendToTransaction(cmd);
     },
     [joints, lines, appendToTransaction]
@@ -287,8 +288,14 @@ export function useDrawTool(isActive: boolean) {
         // Spawn new particle
         const newResult = await spawnParticle(worldPos.x, worldPos.y, isPinned);
 
-        if (newResult && lastHolderRef.current) {
+        const holderA = lastHolderRef.current;
+        if (newResult && holderA) {
           await newResult.ready;
+          // If user ended drawing meanwhile, abort
+          if (!isDrawingRef.current) {
+            isProcessingRef.current = false;
+            return;
+          }
           // Create joint between last particle and new particle
           const lastWorldPos = screenToWorld(lastPos.x, lastPos.y);
           const restLength = Math.sqrt(
@@ -296,7 +303,7 @@ export function useDrawTool(isActive: boolean) {
               Math.pow(worldPos.y - lastWorldPos.y, 2)
           );
 
-          createJoint(lastHolderRef.current, newResult.holder, restLength);
+          createJoint(holderA, newResult.holder, restLength);
 
           // Update tracking for next particle
           lastHolderRef.current = newResult.holder;

@@ -11,8 +11,8 @@ export interface Command {
   id: string;
   label: string;
   timestamp: number;
-  do(ctx: HistoryContext): void;
-  undo(ctx: HistoryContext): void;
+  do(ctx: HistoryContext): void | Promise<void>;
+  undo(ctx: HistoryContext): void | Promise<void>;
   tryMergeWith?(next: Command): Command | null;
 }
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { ToolHandlers, ToolRenderFunction } from "../types";
+import { drawDashedLine, drawDashedCircle } from "../shared";
 import { useEngine } from "../../useEngine";
 import { useHistory } from "../../useHistory";
 import type { Command } from "../../../types/history";
@@ -85,30 +86,26 @@ export function useJointTool(isActive: boolean) {
         if (distance > 0.0001) {
           const circleEdgeX = mp.x - (dx / distance) * circleRadius;
           const circleEdgeY = mp.y - (dy / distance) * circleRadius;
-          ctx.save();
-          ctx.strokeStyle = "rgba(255,255,255,0.6)";
-          ctx.lineWidth = 2;
-          ctx.lineCap = "round";
-          ctx.setLineDash([4, 4]);
-          ctx.beginPath();
-          ctx.moveTo(particleScreen.x, particleScreen.y);
-          ctx.lineTo(circleEdgeX, circleEdgeY);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.restore();
+          drawDashedLine(
+            ctx,
+            { x: particleScreen.x, y: particleScreen.y },
+            { x: circleEdgeX, y: circleEdgeY },
+            "rgba(255,255,255,0.6)",
+            2,
+            [4, 4]
+          );
         }
       }
 
       // Draw circle at mouse position with matching style (always show when active)
-      ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.6)";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
-      ctx.beginPath();
-      ctx.arc(mp.x, mp.y, circleRadius, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
+      drawDashedCircle(
+        ctx,
+        { x: mp.x, y: mp.y },
+        circleRadius,
+        "rgba(255,255,255,0.6)",
+        2,
+        [5, 5]
+      );
     },
     [worldToScreen, isActive, state]
   );
