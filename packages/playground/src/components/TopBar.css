@@ -26,7 +26,9 @@
 
 .system-controls {
   position: absolute;
-  left: calc(280px + (100vw - 280px - 320px) / 2); /* Left sidebar + half of canvas area */
+  left: calc(
+    280px + (100vw - 280px - 320px) / 2
+  ); /* Left sidebar + half of canvas area */
   transform: translateX(-50%);
   display: flex;
   gap: 12px;
@@ -34,13 +36,13 @@
   justify-content: center;
 }
 
-.tool-group {
+.button-group {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-left: 16px; /* visual separation between control groups */
-  padding-left: 16px;
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.button-group + .button-group {
+  margin-left: 24px;
 }
 
 .tool-mode-selector {
@@ -101,19 +103,12 @@
   align-items: center;
 }
 
-.play-pause-button,
-.clear-button,
-.reset-spawn-button,
-.undo-button,
-.redo-button,
-.topbar-save-button,
-.topbar-load-button {
+.button-group .button {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
   border: none;
-  border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -121,6 +116,19 @@
   background: rgba(255, 255, 255, 0.1);
   color: var(--color-text-primary);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 0.5px solid rgba(255, 255, 255, 0.2);
+  border-right: 0.5px solid rgba(255, 255, 255, 0.2);
+}
+
+.button-group .button:first-child {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.button-group .button:last-child {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
 }
 
 .topbar-right .help-button,
@@ -141,13 +149,7 @@
   margin-left: 8px;
 }
 
-.play-pause-button:hover,
-.clear-button:hover,
-.reset-spawn-button:hover,
-.undo-button:hover,
-.redo-button:hover,
-.topbar-save-button:hover,
-.topbar-load-button:hover {
+.button-group .button:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
 }
@@ -159,12 +161,12 @@
   color: var(--color-text-primary);
 }
 
-.play-pause-button.playing {
+.button-group .button.playing {
   background: rgba(255, 176, 32, 0.2);
   border-color: var(--color-active-pause);
 }
 
-.play-pause-button.paused {
+.button-group .button.paused {
   background: rgba(76, 175, 80, 0.2);
   border-color: rgba(76, 175, 80, 0.4);
 }

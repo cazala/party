@@ -1,12 +1,20 @@
 import { useCallback, useState } from "react";
-import { RefreshCw, Trash2, HelpCircle, Undo, Redo } from "lucide-react";
+import {
+  RefreshCw,
+  Trash2,
+  HelpCircle,
+  Undo,
+  Redo,
+  Save,
+  File,
+} from "lucide-react";
 import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
 import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
 import { useHistory } from "../hooks/useHistory";
-import "./TopBar.css";
 import { HelpModal } from "./HelpModal";
+import "./TopBar.css";
 
 export function TopBar() {
   const [helpOpen, setHelpOpen] = useState(false);
@@ -68,46 +76,11 @@ export function TopBar() {
           <h1>Party 🎉</h1>
         </div>
         <div className="system-controls">
-          <button
-            onClick={handlePlayPause}
-            className={`play-pause-button ${isPlaying ? "playing" : "paused"}`}
-          >
-            {isPlaying ? (
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="currentColor"
-              >
-                <rect x="2" y="1" width="3" height="10" />
-                <rect x="7" y="1" width="3" height="10" />
-              </svg>
-            ) : (
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="currentColor"
-              >
-                <polygon points="2,1 2,11 10,6" />
-              </svg>
-            )}
-            <span>{isPlaying ? "Pause" : "Play"}</span>
-          </button>
-          <button onClick={handleClear} className="clear-button">
-            <Trash2 width="12" height="12" />
-            <span>Clear</span>
-          </button>
-          <button onClick={handleReset} className="reset-spawn-button">
-            <RefreshCw width="12" height="12" />
-            <span>Restart</span>
-          </button>
-
-          <div className="tool-group">
+          <div className="button-group">
             <button
               onClick={undo}
               disabled={!canUndo}
-              className="undo-button"
+              className="button"
               title="Undo (Cmd/Ctrl+Z)"
             >
               <Undo width="12" height="12" />
@@ -116,11 +89,58 @@ export function TopBar() {
             <button
               onClick={redo}
               disabled={!canRedo}
-              className="redo-button"
+              className="button"
               title="Redo (Shift+Cmd/Ctrl+Z or Cmd/Ctrl+Y)"
             >
               <Redo width="12" height="12" />
               <span>Redo</span>
+            </button>
+          </div>
+          <div className="button-group">
+            <button
+              onClick={handlePlayPause}
+              className={`button ${isPlaying ? "playing" : "paused"}`}
+            >
+              {isPlaying ? (
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                >
+                  <rect x="2" y="1" width="3" height="10" />
+                  <rect x="7" y="1" width="3" height="10" />
+                </svg>
+              ) : (
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                >
+                  <polygon points="2,1 2,11 10,6" />
+                </svg>
+              )}
+              <span>{isPlaying ? "Pause" : "Play"}</span>
+            </button>
+            <button onClick={handleClear} className="button">
+              <Trash2 width="12" height="12" />
+              <span>Clear</span>
+            </button>
+            <button onClick={handleReset} className="button">
+              <RefreshCw width="12" height="12" />
+              <span>Restart</span>
+            </button>
+          </div>
+
+          <div className="button-group">
+            <button className="button">
+              <Save width="12" height="12" />
+              <span>Save</span>
+            </button>
+            <button className="button">
+              <File width="12" height="12" />
+              <span>Load</span>
             </button>
           </div>
         </div>
