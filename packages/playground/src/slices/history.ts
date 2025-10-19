@@ -7,6 +7,8 @@ export interface HistoryState {
   future: string[]; // command ids
   capacity: number;
   transaction: { label: string; commandIds: string[] } | null;
+  isUndoing: boolean;
+  isRedoing: boolean;
 }
 
 const initialState: HistoryState = {
@@ -14,6 +16,8 @@ const initialState: HistoryState = {
   future: [],
   capacity: 100,
   transaction: null,
+  isUndoing: false,
+  isRedoing: false,
 };
 
 export const historySlice = createSlice({
@@ -48,6 +52,18 @@ export const historySlice = createSlice({
       if (state.past.length > state.capacity) {
         state.past.shift();
       }
+    },
+    startUndo: (state) => {
+      state.isUndoing = true;
+    },
+    endUndo: (state) => {
+      state.isUndoing = false;
+    },
+    startRedo: (state) => {
+      state.isRedoing = true;
+    },
+    endRedo: (state) => {
+      state.isRedoing = false;
     },
     clear: (state) => {
       state.past = [];
@@ -104,6 +120,10 @@ export const {
   appendToTransaction,
   commitTransaction,
   cancelTransaction,
+  startUndo,
+  endUndo,
+  startRedo,
+  endRedo,
 } = historySlice.actions;
 
 export const historyReducer = historySlice.reducer;

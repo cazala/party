@@ -7,6 +7,8 @@ import {
   commitTransaction,
   cancelTransaction as cancelTransactionAction,
   redoCommit,
+  startRedo,
+  endRedo,
   selectCanRedo,
   selectCanUndo,
   selectLastPast,
@@ -14,6 +16,9 @@ import {
   selectTransaction,
   undoCommit,
   push,
+  startUndo,
+  endUndo,
+  selectHistoryState,
 } from "../slices/history";
 import type { Command, HistoryContext } from "../types/history";
 import { useEngine } from "./useEngine";
@@ -23,6 +28,7 @@ import { clearRegistry as clearHistoryRegistry } from "../history/registry";
 
 export function useHistory() {
   const dispatch = useAppDispatch();
+  const { isUndoing, isRedoing } = useAppSelector(selectHistoryState);
   const canUndo = useAppSelector(selectCanUndo);
   const canRedo = useAppSelector(selectCanRedo);
   const lastPast = useAppSelector(selectLastPast);
@@ -50,9 +56,11 @@ export function useHistory() {
   );
 
   const undo = useCallback(async () => {
+    if (isUndoing || isRedoing) return;
     if (!lastPast) return;
     const cmd = getCommand(lastPast);
     if (!cmd) return;
+    dispatch(startUndo());
     const childIds = (cmd as unknown as { __childIds?: string[] }).__childIds;
     if (Array.isArray(childIds) && childIds.length) {
       for (let i = childIds.length - 1; i >= 0; i--) {
@@ -70,12 +78,15 @@ export function useHistory() {
       }
     }
     dispatch(undoCommit());
-  }, [dispatch, lastPast, ctx]);
+    dispatch(endUndo());
+  }, [dispatch, lastPast, ctx, isUndoing, isRedoing]);
 
   const redo = useCallback(async () => {
+    if (isRedoing || isUndoing) return;
     if (!nextFuture) return;
     const cmd = getCommand(nextFuture);
     if (!cmd) return;
+    dispatch(startRedo());
     const childIds = (cmd as unknown as { __childIds?: string[] }).__childIds;
     if (Array.isArray(childIds) && childIds.length) {
       for (let i = 0; i < childIds.length; i++) {
@@ -93,7 +104,8 @@ export function useHistory() {
       }
     }
     dispatch(redoCommit());
-  }, [dispatch, nextFuture, ctx]);
+    dispatch(endRedo());
+  }, [dispatch, nextFuture, ctx, isRedoing, isUndoing]);
 
   const begin = useCallback(
     (label: string) => {
