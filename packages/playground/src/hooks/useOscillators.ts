@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 import { useEngine } from "./useEngine";
+import { selectIsLoadingOscillators } from "../slices/session";
 import {
   selectOscillators,
   selectOscillator,
@@ -22,6 +23,7 @@ import {
 export function useOscillators(sliderId?: string) {
   const dispatch = useAppDispatch();
   const oscillators = useAppSelector(selectOscillators);
+  const isLoadingOscillators = useAppSelector(selectIsLoadingOscillators);
   const { engine: engineInstance } = useEngine();
 
   // Get oscillator data for specific slider if ID provided
@@ -90,15 +92,19 @@ export function useOscillators(sliderId?: string) {
     dispatch(clearAllOscillators());
   }, [dispatch]);
 
-  const clearModule = useCallback((moduleName: string) => {
-    dispatch(clearModuleOscillators(moduleName));
-    engineInstance?.clearModuleOscillators(moduleName);
-  }, [dispatch, engineInstance]);
-
+  const clearModule = useCallback(
+    (moduleName: string) => {
+      dispatch(clearModuleOscillators(moduleName));
+      engineInstance?.clearModuleOscillators(moduleName);
+    },
+    [dispatch, engineInstance]
+  );
 
   // Sync Redux → Engine for this slider (if moduleName/inputName present)
   useEffect(() => {
     if (!sliderId) return;
+    // Skip sync during session load to prevent conflicts
+    if (isLoadingOscillators) return;
     const cfg = oscillatorData;
     const api = engineInstance;
     if (!api) return;
@@ -116,23 +122,43 @@ export function useOscillators(sliderId?: string) {
     if (!moduleName || !inputName) return;
 
     if (cfg) {
+      const options: any = {
+        curveExponent: cfg.curveExponent,
+        jitter: cfg.jitter,
+      };
+
+      // Use saved runtime state if available, otherwise use current values
+      if (cfg.lastValue !== undefined) {
+        options.currentValue = cfg.lastValue;
+      } else {
+        options.currentValue = api.getModule(moduleName)?.readValue(inputName);
+      }
+
+      if (cfg.lastDirection !== undefined) {
+        options.initialDirection = cfg.lastDirection;
+      }
+
+      if (cfg.phaseOffset !== undefined) {
+        options.phaseOffset = cfg.phaseOffset;
+      }
+
+      // Ensure min <= max and numerical stability
+      const minVal = Math.min(cfg.customMin, cfg.customMax);
+      const maxVal = Math.max(cfg.customMin, cfg.customMax);
+
       api.addOscillator({
         moduleName,
         inputName,
-        min: cfg.customMin,
-        max: cfg.customMax,
+        min: minVal,
+        max: maxVal,
         speedHz: cfg.speedHz,
-        options: {
-          curveExponent: cfg.curveExponent,
-          jitter: cfg.jitter,
-          currentValue: api.getModule(moduleName)?.readValue(inputName),
-        },
+        options,
       });
     } else {
       api.removeOscillator(moduleName, inputName);
     }
     // No cleanup to avoid removing oscillators on unmount without explicit action
-  }, [sliderId, oscillatorData, engineInstance]);
+  }, [sliderId, oscillatorData, engineInstance, isLoadingOscillators]);
 
   return {
     // State for specific slider

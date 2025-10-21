@@ -13,6 +13,11 @@ export interface OscillatorData {
   // Optional per-oscillator options
   curveExponent?: number;
   jitter?: boolean | number;
+  // Runtime state (optional, for session save/load)
+  lastValue?: number;
+  lastDirection?: -1 | 0 | 1;
+  phaseOffset?: number;
+  active?: boolean;
 }
 
 export type OscillatorsState = Record<string, OscillatorData>;

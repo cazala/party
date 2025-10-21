@@ -40,7 +40,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
   return (
     <>
       <Slider
-        sliderId="sensors.distance"
+        sliderId="sensors.sensorDistance"
         label="Distance"
         min={3}
         max={100}
@@ -50,7 +50,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
-        sliderId="sensors.angle"
+        sliderId="sensors.sensorAngle"
         label="Angle"
         value={sensorAngleDegrees}
         min={2}
@@ -58,10 +58,12 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         step={1}
         onChange={(v) => setAngle(degToRad(v))}
         formatValue={(v) => `${v.toFixed(0)}°`}
+        toEngine={(deg) => degToRad(deg)}
+        fromEngine={(rad) => radToDeg(rad)}
         disabled={!enabled}
       />
       <Slider
-        sliderId="sensors.radius"
+        sliderId="sensors.sensorRadius"
         label="Radius"
         value={sensorRadius}
         min={0}
@@ -71,7 +73,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
-        sliderId="sensors.threshold"
+        sliderId="sensors.sensorThreshold"
         label="Threshold"
         value={sensorThreshold}
         min={0.01}
@@ -82,7 +84,7 @@ export function SensorsModule({ enabled = true }: { enabled?: boolean }) {
         disabled={!enabled}
       />
       <Slider
-        sliderId="sensors.strength"
+        sliderId="sensors.sensorStrength"
         label="Strength"
         value={sensorStrength}
         min={0}

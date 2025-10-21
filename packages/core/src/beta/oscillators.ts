@@ -5,6 +5,7 @@ export interface AddOscillatorOptions {
   jitter?: boolean | number; // false | true (0.8–1.2) | explicit multiplier
   initialDirection?: -1 | 1; // seed desired direction
   currentValue?: number; // optional starting value to preserve continuity on start
+  phaseOffset?: number; // exact phase offset to preserve when restoring from session
 }
 
 export interface OscillatorConfigInternal {
@@ -31,6 +32,7 @@ export interface OscillatorPublicConfig {
   jitterMultiplier: number;
   phaseOffset: number;
   lastDirection: -1 | 0 | 1;
+  lastValue: number;
   active: boolean;
 }
 
@@ -91,10 +93,11 @@ export class OscillatorManager {
 
     const curveExponent = opts.curveExponent ?? 2;
 
-    // Preserve direction if overwriting
-    let lastDirection: -1 | 0 | 1 = 0;
+    // Use provided initialDirection, or preserve direction if overwriting, or default to 0
+    let lastDirection: -1 | 0 | 1 = opts.initialDirection ?? 0;
     const existingIndex = this.keyToIndex.get(key);
-    if (existingIndex !== undefined) {
+    if (existingIndex !== undefined && opts.initialDirection === undefined) {
+      // Only preserve existing direction if no explicit initialDirection was provided
       lastDirection = this.oscillators[existingIndex].lastDirection;
     }
 
@@ -106,7 +109,7 @@ export class OscillatorManager {
       speedHz,
       curveExponent,
       jitterMultiplier,
-      phaseOffset: 0,
+      phaseOffset: opts.phaseOffset ?? 0,
       lastValue: typeof opts.currentValue === "number" ? opts.currentValue : 0,
       lastDirection,
       active: true,
@@ -114,14 +117,20 @@ export class OscillatorManager {
 
     if (existingIndex !== undefined) {
       this.oscillators[existingIndex] = config;
-      this.recalculatePhaseOffset(this.oscillators[existingIndex]);
+      // Only recalculate phase offset if not explicitly provided
+      if (opts.phaseOffset === undefined) {
+        this.recalculatePhaseOffset(this.oscillators[existingIndex]);
+      }
       return key;
     }
 
     const index = this.oscillators.length;
     this.oscillators.push(config);
     this.keyToIndex.set(key, index);
-    this.recalculatePhaseOffset(this.oscillators[index]);
+    // Only recalculate phase offset if not explicitly provided
+    if (opts.phaseOffset === undefined) {
+      this.recalculatePhaseOffset(this.oscillators[index]);
+    }
     return key;
   }
 
@@ -195,6 +204,7 @@ export class OscillatorManager {
       jitterMultiplier: cfg.jitterMultiplier,
       phaseOffset: cfg.phaseOffset,
       lastDirection: cfg.lastDirection,
+      lastValue: cfg.lastValue,
       active: cfg.active,
     };
   }
@@ -206,6 +216,14 @@ export class OscillatorManager {
     this.listeners.clear();
   }
 
+  getElapsedSeconds(): number {
+    return this.elapsedSeconds;
+  }
+
+  setElapsedSeconds(seconds: number): void {
+    this.elapsedSeconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+  }
+
   clearModule(moduleName: string): void {
     const indicesToRemove: number[] = [];
     for (let i = 0; i < this.oscillators.length; i++) {
@@ -213,25 +231,28 @@ export class OscillatorManager {
         indicesToRemove.push(i);
       }
     }
-    
+
     // Remove in reverse order to maintain indices
     for (let i = indicesToRemove.length - 1; i >= 0; i--) {
       const index = indicesToRemove[i];
       const osc = this.oscillators[index];
       const key = OscillatorManager.makeKey(osc.moduleName, osc.inputName);
-      
+
       // Remove from keyToIndex map
       this.keyToIndex.delete(key);
-      
+
       // Remove from listeners
       this.listeners.delete(key);
-      
+
       // Swap-remove from oscillators array
       const lastIndex = this.oscillators.length - 1;
       if (index !== lastIndex) {
         this.oscillators[index] = this.oscillators[lastIndex];
         const moved = this.oscillators[index];
-        const movedKey = OscillatorManager.makeKey(moved.moduleName, moved.inputName);
+        const movedKey = OscillatorManager.makeKey(
+          moved.moduleName,
+          moved.inputName
+        );
         this.keyToIndex.set(movedKey, index);
       }
       this.oscillators.pop();
@@ -352,5 +373,26 @@ export class OscillatorManager {
     if (!set) return;
     set.delete(handler);
     if (set.size === 0) this.listeners.delete(key);
+  }
+
+  setOscillatorState(
+    moduleName: string,
+    inputName: string,
+    lastValue: number,
+    lastDirection: -1 | 0 | 1
+  ): boolean {
+    const key = OscillatorManager.makeKey(moduleName, inputName);
+    const index = this.keyToIndex.get(key);
+    if (index === undefined) return false;
+
+    const osc = this.oscillators[index];
+    osc.lastValue = lastValue;
+    osc.lastDirection = lastDirection;
+    // Recompute phase immediately; elapsedSeconds should be restored by loader
+    this.recalculatePhaseOffset(osc);
+    // Also set the module value to match immediately
+    this.setInput(moduleName, inputName, lastValue);
+
+    return true;
   }
 }

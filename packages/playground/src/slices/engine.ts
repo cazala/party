@@ -51,7 +51,7 @@ export const registerEngine = (engine: Engine | null) => {
   engineInstance = engine;
 };
 
-const getEngine = (): Engine | null => engineInstance;
+export const getEngine = (): Engine | null => engineInstance;
 
 const initialState: EngineState = {
   isWebGPU: false,

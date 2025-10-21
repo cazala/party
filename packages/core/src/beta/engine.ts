@@ -184,6 +184,27 @@ export class Engine implements IEngine {
   ): void {
     this.engine.removeOscillatorListener(moduleName, inputName, handler);
   }
+  setOscillatorState(
+    moduleName: string,
+    inputName: string,
+    lastValue: number,
+    lastDirection: -1 | 0 | 1
+  ): boolean {
+    return this.engine.setOscillatorState(
+      moduleName,
+      inputName,
+      lastValue,
+      lastDirection
+    );
+  }
+  getOscillatorsElapsedSeconds(): number {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.engine as any).getOscillatorsElapsedSeconds();
+  }
+  setOscillatorsElapsedSeconds(seconds: number): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (this.engine as any).setOscillatorsElapsedSeconds(seconds);
+  }
   setParticles(p: IParticle[]): void {
     this.engine.setParticles(p);
   }

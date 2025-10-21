@@ -1,4 +1,4 @@
-import { radToDeg, GravityDirection } from "@cazala/party";
+import { radToDeg, degToRad, GravityDirection } from "@cazala/party";
 import { Slider } from "../ui/Slider";
 import { Dropdown } from "../ui/Dropdown";
 import { useEnvironment } from "../../hooks/modules/useEnvironment";
@@ -75,6 +75,8 @@ export function EnvironmentModule({ enabled = true }: { enabled?: boolean }) {
           step={1}
           disabled={!enabled}
           formatValue={(v) => `${v.toFixed(0)}°`}
+          toEngine={(deg) => degToRad(deg)}
+          fromEngine={(rad) => radToDeg(rad)}
         />
       )}
 

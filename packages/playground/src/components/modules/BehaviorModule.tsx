@@ -129,6 +129,8 @@ export function BehaviorModule({ enabled = true }: { enabled?: boolean }) {
         step={1}
         formatValue={(v) => `${v.toFixed(0)}°`}
         onChange={(v) => setViewAngle(degToRad(v))}
+        toEngine={(deg) => degToRad(deg)}
+        fromEngine={(rad) => radToDeg(rad)}
         disabled={!enabled}
       />
     </>

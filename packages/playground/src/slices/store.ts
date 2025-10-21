@@ -6,6 +6,7 @@ import { modulesReducer } from "./modules";
 import { performanceReducer } from "./performance";
 import { oscillatorsReducer } from "./oscillators";
 import { historyReducer } from "./history";
+import { sessionReducer } from "./session";
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     performance: performanceReducer,
     oscillators: oscillatorsReducer,
     history: historyReducer,
+    session: sessionReducer,
   },
   devTools: import.meta.env.DEV,
   middleware: (getDefaultMiddleware) =>

@@ -14,11 +14,15 @@ import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
 import { useHistory } from "../hooks/useHistory";
 import { HelpModal } from "./HelpModal";
+import { SaveSessionModal } from "./modals/SaveSessionModal";
+import { LoadSessionModal } from "./modals/LoadSessionModal";
 import "./TopBar.css";
 
 export function TopBar() {
   const [helpOpen, setHelpOpen] = useState(false);
-  const { isPlaying, play, pause, clear, spawnParticles } = useEngine();
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [loadModalOpen, setLoadModalOpen] = useState(false);
+  const { isPlaying, play, pause, clear, spawnParticles, getCount } = useEngine();
   const { initState, gridJoints, setGridJoints } = useInit();
   const { removeAllJoints } = useJoints();
   const { removeAllLines } = useLines();
@@ -40,6 +44,26 @@ export function TopBar() {
     clear();
     removeAllJoints();
     removeAllLines();
+  };
+
+  const handleSaveSession = () => {
+    // Pause engine while modal is open
+    console.log("🔴 Pausing engine for save modal");
+    pause();
+    setSaveModalOpen(true);
+  };
+
+  const handleLoadSession = () => {
+    // Pause engine while modal is open
+    pause();
+    setLoadModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setSaveModalOpen(false);
+    setLoadModalOpen(false);
+    // Resume engine when modal closes
+    play();
   };
 
   const handleReset = useCallback(() => {
@@ -134,11 +158,17 @@ export function TopBar() {
           </div>
 
           <div className="button-group">
-            <button className="button">
+            <button 
+              className="button"
+              onClick={handleSaveSession}
+            >
               <Save width="12" height="12" />
               <span>Save</span>
             </button>
-            <button className="button">
+            <button 
+              className="button"
+              onClick={handleLoadSession}
+            >
               <File width="12" height="12" />
               <span>Load</span>
             </button>
@@ -156,6 +186,15 @@ export function TopBar() {
         </div>
       </div>
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <SaveSessionModal 
+        isOpen={saveModalOpen} 
+        onClose={handleCloseModal}
+        particleCount={getCount()}
+      />
+      <LoadSessionModal 
+        isOpen={loadModalOpen} 
+        onClose={handleCloseModal}
+      />
     </div>
   );
 }

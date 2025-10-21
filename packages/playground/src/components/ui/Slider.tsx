@@ -20,6 +20,9 @@ interface SliderProps {
   label: string;
   formatValue?: (value: number) => string;
   sliderId?: string; // Optional - enables oscillator when provided
+  // Optional unit converters between UI and engine numeric spaces
+  toEngine?: (uiValue: number) => number;
+  fromEngine?: (engineValue: number) => number;
 }
 
 export function Slider({
@@ -32,6 +35,8 @@ export function Slider({
   label,
   formatValue = (v) => v.toString(),
   sliderId,
+  toEngine,
+  fromEngine,
 }: SliderProps) {
   // Oscillator hook - only works if sliderId is provided
   const {
@@ -65,10 +70,22 @@ export function Slider({
     ? reduxOscillationSpeed ?? "none"
     : "none";
   // Use dragging values if they exist, otherwise use Redux values
-  const oscillationMin =
-    draggingMin !== null ? draggingMin : reduxCustomMin ?? min;
-  const oscillationMax =
-    draggingMax !== null ? draggingMax : reduxCustomMax ?? max;
+  // Convert Redux-stored bounds (engine units) to UI units for display
+  const reduxMinUi =
+    reduxCustomMin !== undefined
+      ? fromEngine
+        ? fromEngine(reduxCustomMin)
+        : reduxCustomMin
+      : undefined;
+  const reduxMaxUi =
+    reduxCustomMax !== undefined
+      ? fromEngine
+        ? fromEngine(reduxCustomMax)
+        : reduxCustomMax
+      : undefined;
+
+  const oscillationMin = draggingMin !== null ? draggingMin : reduxMinUi ?? min;
+  const oscillationMax = draggingMax !== null ? draggingMax : reduxMaxUi ?? max;
 
   // Initialize bounds in Redux when slider mounts
   useEffect(() => {
@@ -78,8 +95,10 @@ export function Slider({
       (reduxCustomMin === undefined || reduxCustomMax === undefined)
     ) {
       // Set initial bounds but don't start oscillating
-      if (reduxCustomMin === undefined) updateMin(min);
-      if (reduxCustomMax === undefined) updateMax(max);
+      if (reduxCustomMin === undefined)
+        updateMin(toEngine ? toEngine(min) : min);
+      if (reduxCustomMax === undefined)
+        updateMax(toEngine ? toEngine(max) : max);
     }
   }, [
     sliderId,
@@ -90,6 +109,7 @@ export function Slider({
     reduxCustomMax,
     updateMin,
     updateMax,
+    toEngine,
   ]);
 
   // Clear dragging state when Redux has updated and we're not actively dragging
@@ -143,21 +163,24 @@ export function Slider({
   const startOscillation = useCallback(
     (speed: OscillationSpeed) => {
       if (!sliderId) return;
-      
+
       // Extract module and input names from sliderId
       const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
-      const [moduleName, inputName] = parts.length >= 2 ? parts : [undefined, undefined];
-      
+      const [moduleName, inputName] =
+        parts.length >= 2 ? parts : [undefined, undefined];
+
       // Update Redux state; engine owns motion
+      const engineMin = toEngine ? toEngine(oscillationMin) : oscillationMin;
+      const engineMax = toEngine ? toEngine(oscillationMax) : oscillationMax;
       setOscillator({
         speedHz: speed === "slow" ? 0.01 : speed === "fast" ? 0.2 : 0.05,
-        customMin: oscillationMin,
-        customMax: oscillationMax,
+        customMin: engineMin,
+        customMax: engineMax,
         moduleName,
         inputName,
       });
     },
-    [sliderId, oscillationMin, oscillationMax, setOscillator]
+    [sliderId, oscillationMin, oscillationMax, setOscillator, toEngine]
   );
 
   const cycleOscillationSpeed = useCallback(() => {
@@ -337,30 +360,35 @@ export function Slider({
         if (sliderId) {
           // Extract module and input names from sliderId
           const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
-          const [moduleName, inputName] = parts.length >= 2 ? parts : [undefined, undefined];
-          
+          const [moduleName, inputName] =
+            parts.length >= 2 ? parts : [undefined, undefined];
+
           const speedHz =
             resumeSpeed === "slow" ? 0.01 : resumeSpeed === "fast" ? 0.2 : 0.05;
+          const engineMin = toEngine ? toEngine(finalMin) : finalMin;
+          const engineMax = toEngine ? toEngine(finalMax) : finalMax;
           setOscillator({
             speedHz,
-            customMin: finalMin,
-            customMax: finalMax,
+            customMin: engineMin,
+            customMax: engineMax,
             moduleName,
             inputName,
           });
         }
       }
 
-      // Update Redux with final bounds
+      // Update Redux with final bounds (store in engine units)
       if (sliderId) {
-        const currentMin = reduxCustomMin ?? min;
-        const currentMax = reduxCustomMax ?? max;
+        const currentMin = reduxCustomMin ?? (toEngine ? toEngine(min) : min);
+        const currentMax = reduxCustomMax ?? (toEngine ? toEngine(max) : max);
+        const engineFinalMin = toEngine ? toEngine(finalMin) : finalMin;
+        const engineFinalMax = toEngine ? toEngine(finalMax) : finalMax;
 
-        if (finalMin !== currentMin) {
-          updateMin(finalMin);
+        if (engineFinalMin !== currentMin) {
+          updateMin(engineFinalMin);
         }
-        if (finalMax !== currentMax) {
-          updateMax(finalMax);
+        if (engineFinalMax !== currentMax) {
+          updateMax(engineFinalMax);
         }
       }
 
@@ -394,7 +422,8 @@ export function Slider({
     const [moduleName, inputName] = parts;
 
     const handler = (raw: number) => {
-      const clamped = Math.max(min, Math.min(max, raw));
+      const uiValue = fromEngine ? fromEngine(raw) : raw;
+      const clamped = Math.max(min, Math.min(max, uiValue));
       const stepped = Math.round((clamped - min) / step) * step + min;
       if (stepped !== lastValueRef.current) {
         lastValueRef.current = stepped;
@@ -419,7 +448,6 @@ export function Slider({
       setDisplayValue(value);
     }
   }, [value]);
-
 
   return (
     <Field className="slider-field">

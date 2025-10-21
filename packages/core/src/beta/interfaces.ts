@@ -86,6 +86,7 @@ export interface IEngine {
         jitterMultiplier: number;
         phaseOffset: number;
         lastDirection: -1 | 0 | 1;
+        lastValue: number;
         active: boolean;
       }
     | undefined;
@@ -101,6 +102,14 @@ export interface IEngine {
     inputName: string,
     handler: (value: number) => void
   ): void;
+  setOscillatorState(
+    moduleName: string,
+    inputName: string,
+    lastValue: number,
+    lastDirection: -1 | 0 | 1
+  ): boolean;
+  getOscillatorsElapsedSeconds(): number;
+  setOscillatorsElapsedSeconds(seconds: number): void;
 }
 
 export abstract class AbstractEngine implements IEngine {
@@ -283,6 +292,27 @@ export abstract class AbstractEngine implements IEngine {
       inputName,
       handler
     );
+  }
+  setOscillatorState(
+    moduleName: string,
+    inputName: string,
+    lastValue: number,
+    lastDirection: -1 | 0 | 1
+  ): boolean {
+    return this.oscillatorManager.setOscillatorState(
+      moduleName,
+      inputName,
+      lastValue,
+      lastDirection
+    );
+  }
+
+  getOscillatorsElapsedSeconds(): number {
+    return this.oscillatorManager.getElapsedSeconds();
+  }
+
+  setOscillatorsElapsedSeconds(seconds: number): void {
+    this.oscillatorManager.setElapsedSeconds(seconds);
   }
 
   export(): Record<string, Record<string, number>> {

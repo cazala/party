@@ -1,0 +1,329 @@
+/* Modal Base Styles */
+.session-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.session-modal-content {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-primary);
+}
+
+/* Modal Header */
+.session-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.session-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.session-modal-close-button {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.session-modal-close-button:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.session-modal-close-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Modal Body */
+.session-modal-body {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Modal Footer */
+.session-modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 20px 24px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+/* Save Session Modal Specific */
+.save-session-modal {
+  width: 480px;
+}
+
+.session-metadata {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.metadata-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.metadata-item:last-child {
+  margin-bottom: 0;
+}
+
+.metadata-label {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.metadata-value {
+  color: var(--color-text-primary);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* Load Session Modal Specific */
+.load-session-modal {
+  width: 600px;
+  height: 500px;
+}
+
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-secondary);
+  transition: all 0.2s ease;
+}
+
+.session-item:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-hover);
+}
+
+.session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.session-details {
+  display: flex;
+  gap: 16px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.session-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.session-actions .session-modal-button {
+  padding: 6px 12px;
+  font-size: 12px;
+  min-width: auto;
+}
+
+.empty-sessions {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 40px 20px;
+  font-style: italic;
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input.error {
+  border-color: #ef4444;
+}
+
+.form-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error Message */
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+/* Button Styles */
+.session-modal-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  min-width: 80px;
+  justify-content: center;
+}
+
+.session-modal-button:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-hover);
+}
+
+.session-modal-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.session-modal-button.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: white;
+}
+
+.session-modal-button.primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.session-modal-button.secondary {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.session-modal-button.danger {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+}
+
+.session-modal-button.danger:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Spinner */
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Delete Confirmation */
+.delete-confirmation {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 8px;
+  color: #dc2626;
+  font-size: 12px;
+}
+
+.delete-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.delete-actions .session-modal-button {
+  padding: 4px 8px;
+  font-size: 11px;
+  min-width: 60px;
+}
