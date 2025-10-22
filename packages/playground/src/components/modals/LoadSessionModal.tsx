@@ -125,6 +125,12 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
                 <div className="session-details">
                   <span>{formatParticleCount(session.metadata.particleCount)} particles</span>
                   <span>•</span>
+                  <span>
+                    {session.metadata.hasParticleData !== undefined 
+                      ? (session.metadata.hasParticleData ? "Full data" : "Config only")
+                      : "Config only"}
+                  </span>
+                  <span>•</span>
                   <span>Saved {formatDate(session.metadata.createdAt)}</span>
                   {session.metadata.lastModified !== session.metadata.createdAt && (
                     <>

@@ -3,10 +3,25 @@ import { InitState } from "../slices/init";
 import { EngineState } from "../slices/engine";
 import { OscillatorsState } from "../slices/oscillators";
 
+// Particle data interface matching engine's IParticle
+export interface SavedParticle {
+  position: { x: number; y: number };
+  velocity: { x: number; y: number };
+  size: number;
+  mass: number;
+  color: {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  };
+}
+
 export interface SessionMetadata {
   particleCount: number;
   createdAt: string;
   lastModified: string;
+  hasParticleData?: boolean;
 }
 
 export interface SessionData {
@@ -21,8 +36,8 @@ export interface SessionData {
     "constrainIterations" | "gridCellSize" | "maxNeighbors" | "camera" | "zoom"
   >;
   oscillators: OscillatorsState;
-  // New: time base for oscillator manager
   oscillatorsElapsedSeconds?: number;
+  particles?: SavedParticle[];
 }
 
 export interface SessionSaveRequest {

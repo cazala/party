@@ -3,6 +3,20 @@ import type { Engine } from "@cazala/party";
 import { Spawner } from "@cazala/party";
 import { clearGrab } from "./modules/grab";
 
+// Type for particle data (matches engine's IParticle interface)
+export interface ParticleData {
+  position: { x: number; y: number };
+  velocity: { x: number; y: number };
+  size: number;
+  mass: number;
+  color: {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  };
+}
+
 export type SpawnParticlesConfig = {
   numParticles: number;
   shape: "grid" | "random" | "circle" | "donut" | "square";
@@ -386,6 +400,80 @@ export const spawnParticlesThunk = createAsyncThunk(
     engine.setParticles(particles);
     engine.play(); // Actually start the engine loop
     // Note: Particle count now tracked via refs in useEngineInternal
+    dispatch(engineSlice.actions.setPlaying(true));
+  }
+);
+
+// Set particles directly (for session loading)
+export const setParticlesThunk = createAsyncThunk(
+  "engine/setParticles",
+  async (
+    payload: { 
+      particles: ParticleData[], 
+      jointsToRestore?: any, 
+      linesToRestore?: any 
+    }, 
+    { dispatch }
+  ) => {
+    const { particles, jointsToRestore, linesToRestore } = payload;
+    const engine = getEngine();
+    if (!engine) return;
+
+    engine.clear();
+    engine.setParticles(particles);
+    
+    // Use a timeout to ensure particles are processed by the engine before applying joints
+    // This mirrors the timing used in InitControls.tsx for grid joints
+    setTimeout(() => {
+      console.log("🔗 [setParticlesThunk] Restoring joints and lines after timeout");
+      console.log("🔗 Engine particle count:", engine.getCount());
+      
+      // Use passed data instead of reading from Redux state (which might be stale)
+      if (jointsToRestore) {
+        const joints = engine.getModule("joints");
+        console.log("🔗 Joints module:", joints);
+        console.log("🔗 Joints to restore:", jointsToRestore);
+        if (joints && 'setJoints' in joints) {
+          const jointsModule = joints as any;
+          console.log("🔗 Setting joints enabled:", jointsToRestore.enabled);
+          console.log("🔗 Setting joints list (length):", jointsToRestore.list.length);
+          console.log("🔗 Joints list:", jointsToRestore.list);
+          
+          // Sync all joint properties
+          jointsModule.setEnabled(jointsToRestore.enabled);
+          jointsModule.setEnableParticleCollisions(jointsToRestore.enableParticleCollisions);
+          jointsModule.setEnableJointCollisions(jointsToRestore.enableJointCollisions);
+          jointsModule.setMomentum(jointsToRestore.momentum);
+          jointsModule.setRestitution(jointsToRestore.restitution);
+          jointsModule.setSeparation(jointsToRestore.separation);
+          jointsModule.setSteps(jointsToRestore.steps);
+          jointsModule.setFriction(jointsToRestore.friction);
+          jointsModule.setJoints(jointsToRestore.list);
+          
+          console.log("🔗 Joints set successfully");
+        } else {
+          console.log("🔗 No joints module found or setJoints method missing");
+        }
+      } else {
+        console.log("🔗 No joints to restore");
+      }
+      
+      // Restore lines
+      if (linesToRestore) {
+        const lines = engine.getModule("lines");
+        console.log("🔗 Lines to restore:", linesToRestore);
+        if (lines && 'setLines' in lines) {
+          const linesModule = lines as any;
+          linesModule.setEnabled(linesToRestore.enabled);
+          linesModule.setLines(linesToRestore.list);
+          console.log("🔗 Lines set successfully, count:", linesToRestore.list.length);
+        }
+      } else {
+        console.log("🔗 No lines to restore");
+      }
+    }, 100); // Small delay to ensure particles are processed by the engine
+    
+    engine.play();
     dispatch(engineSlice.actions.setPlaying(true));
   }
 );

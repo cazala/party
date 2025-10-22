@@ -127,6 +127,19 @@ export const saveCurrentSessionThunk = createAsyncThunk(
         oscillatorsWithRuntimeState[sliderId] = enhancedConfig;
       }
 
+      // Determine if we should save particle data (≤1000 particles)
+      const shouldSaveParticleData = request.particleCount <= 1000;
+      let particles: any[] | undefined;
+
+      if (shouldSaveParticleData && engine) {
+        try {
+          particles = await engine.getParticles();
+        } catch (error) {
+          console.warn("Failed to get particles for session save:", error);
+          // If we can't get particles, fall back to init-only mode
+        }
+      }
+
       const sessionData: SessionData = {
         id: generateSessionId(request.name),
         name: request.name,
@@ -134,6 +147,7 @@ export const saveCurrentSessionThunk = createAsyncThunk(
           particleCount: request.particleCount,
           createdAt: new Date().toISOString(),
           lastModified: new Date().toISOString(),
+          hasParticleData: shouldSaveParticleData && !!particles,
         },
         modules: state.modules,
         init: state.init,
@@ -146,7 +160,14 @@ export const saveCurrentSessionThunk = createAsyncThunk(
         },
         oscillators: oscillatorsWithRuntimeState,
         oscillatorsElapsedSeconds: engine?.getOscillatorsElapsedSeconds(),
+        particles,
       };
+
+      console.log("💾 [saveSession] Saving session with:");
+      console.log("💾 Particle count:", request.particleCount);
+      console.log("💾 Has particle data:", sessionData.metadata.hasParticleData);
+      console.log("💾 Joints state:", state.modules.joints);
+      console.log("💾 Lines state:", state.modules.lines);
 
       saveSessionToStorage(sessionData);
       return sessionData;
@@ -282,10 +303,6 @@ export const loadSessionThunk = createAsyncThunk(
                 speedHz: config.speedHz,
                 options,
               });
-
-              // No forced state: with restored elapsed time and phase, the computed value should match
-
-              // No debug logs
             }
           }
         );

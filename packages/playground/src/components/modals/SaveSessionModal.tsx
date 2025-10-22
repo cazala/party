@@ -128,7 +128,21 @@ export function SaveSessionModal({ isOpen, onClose, particleCount }: SaveSession
             <span className="metadata-label">Date:</span>
             <span className="metadata-value">{new Date().toLocaleDateString()}</span>
           </div>
+          <div className="metadata-item">
+            <span className="metadata-label">Save type:</span>
+            <span className="metadata-value">
+              {particleCount <= 1000 ? "Full particle data" : "Initial configuration only"}
+            </span>
+          </div>
         </div>
+        
+        {particleCount > 1000 && (
+          <div className="particle-limit-notice">
+            <AlertCircle size={16} />
+            Since this session has more than 1,000 particles, only the initial configuration will be saved. 
+            When loaded, particles will be respawned using the saved settings rather than their exact current positions.
+          </div>
+        )}
         
         <div className="form-group">
           <label htmlFor="session-name">Session Name *</label>

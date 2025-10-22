@@ -150,3 +150,23 @@
     transform: rotate(360deg);
   }
 }
+
+/* Particle Limit Notice */
+.save-session-modal .particle-limit-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 6px;
+  color: #ffc107;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 20px;
+}
+
+.save-session-modal .particle-limit-notice svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
