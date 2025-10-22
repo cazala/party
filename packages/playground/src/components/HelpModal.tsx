@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { createPortal } from "react-dom";
+import { Modal } from "./Modal";
 import "./HelpModal.css";
 
 export function HelpModal({
@@ -9,26 +8,8 @@ export function HelpModal({
   open: boolean;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (open) document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  return createPortal(
-    <div className="help-modal-backdrop" onClick={onClose}>
-      <div className="help-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="help-modal-header">
-          <h2>Help & Shortcuts</h2>
-          <button className="help-close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        </div>
-        <div className="help-modal-body">
+  const content = (
+    <>
           <section>
             <h3>General</h3>
             <ul>
@@ -181,9 +162,17 @@ export function HelpModal({
               </li>
             </ul>
           </section>
-        </div>
-      </div>
-    </div>,
-    document.body
+    </>
+  );
+
+  return (
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      title="Help & Shortcuts"
+      className="help-modal-content"
+    >
+      {content}
+    </Modal>
   );
 }

@@ -1,0 +1,171 @@
+/* Load Session Modal Specific Styles */
+.load-session-modal .sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.load-session-modal .session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.load-session-modal .session-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.load-session-modal .session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.load-session-modal .session-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.load-session-modal .session-details {
+  display: flex;
+  gap: 16px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.load-session-modal .session-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.load-session-modal .session-actions .session-modal-button {
+  padding: 6px 12px;
+  font-size: 12px;
+  min-width: auto;
+}
+
+.load-session-modal .empty-sessions {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 40px 20px;
+  font-style: italic;
+}
+
+/* Delete Confirmation */
+.load-session-modal .delete-confirmation {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 8px;
+  color: #ef4444;
+  font-size: 12px;
+}
+
+.load-session-modal .delete-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.load-session-modal .delete-actions .session-modal-button {
+  padding: 4px 8px;
+  font-size: 11px;
+  min-width: 60px;
+}
+
+/* Modal Button Styles - Following TopBar Button Pattern */
+.session-modal-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.session-modal-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.session-modal-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.session-modal-button.primary {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: rgba(76, 175, 80, 0.4);
+  color: var(--color-text-primary);
+}
+
+.session-modal-button.primary:hover:not(:disabled) {
+  background: rgba(76, 175, 80, 0.3);
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
+.session-modal-button.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--color-text-secondary);
+}
+
+.session-modal-button.secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--color-text-primary);
+}
+
+.session-modal-button.danger {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.session-modal-button.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Error Message */
+.load-session-modal .error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ef4444;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+
+/* Spinner */
+.load-session-modal .spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,77 +1,13 @@
-.help-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1001;
-}
-
-.help-modal {
-  background: var(--color-panel);
-  color: var(--color-text-primary);
-  width: 640px;
-  max-width: 90vw;
-  max-height: 85vh;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.help-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: var(--color-panel);
-  flex-shrink: 0;
-}
-
-.help-modal-header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.help-modal-body {
-  padding: 20px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.help-modal-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.help-modal-body::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.help-modal-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-}
-
-.help-modal-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.help-modal-body section {
+/* Help Modal Specific Styles */
+.help-modal-content section {
   margin-bottom: 24px;
 }
 
-.help-modal-body section:last-child {
+.help-modal-content section:last-child {
   margin-bottom: 0;
 }
 
-.help-modal-body h3 {
+.help-modal-content h3 {
   margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
@@ -81,23 +17,23 @@
   font-size: 13px;
 }
 
-.help-modal-body ul {
+.help-modal-content ul {
   margin: 0;
   padding-left: 20px;
   line-height: 1.7;
 }
 
-.help-modal-body li {
+.help-modal-content li {
   margin-bottom: 8px;
   color: var(--color-text-primary);
   font-size: 14px;
 }
 
-.help-modal-body li:last-child {
+.help-modal-content li:last-child {
   margin-bottom: 0;
 }
 
-.help-modal-body b {
+.help-modal-content b {
   color: var(--color-accent-white);
   font-weight: 600;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
@@ -105,30 +41,4 @@
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 13px;
-}
-
-.help-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--color-text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  font-size: 20px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  outline: none;
-}
-
-.help-close:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: var(--color-text-primary);
-}
-
-.help-close:active {
-  transform: scale(0.95);
 }

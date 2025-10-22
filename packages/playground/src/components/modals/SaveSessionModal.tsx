@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, Save, AlertCircle } from "lucide-react";
+import { Save, AlertCircle } from "lucide-react";
 import { useSession } from "../../hooks/useSession";
-import { ModalPortal } from "./ModalPortal";
-import "./Modal.css";
+import { Modal } from "../Modal";
+import "../SaveSessionModal.css";
 
 interface SaveSessionModalProps {
   isOpen: boolean;
@@ -78,93 +78,85 @@ export function SaveSessionModal({ isOpen, onClose, particleCount }: SaveSession
     }
   };
 
-  if (!isOpen) return null;
+  const footer = (
+    <>
+      <button 
+        type="button" 
+        className="session-modal-button secondary"
+        onClick={onClose}
+        disabled={isSaving}
+      >
+        Cancel
+      </button>
+      <button 
+        type="submit" 
+        className="session-modal-button primary"
+        onClick={handleSubmit}
+        disabled={isSaving || !!nameError || !sessionName.trim()}
+      >
+        {isSaving ? (
+          <>
+            <div className="spinner" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Save size={16} />
+            Save Session
+          </>
+        )}
+      </button>
+    </>
+  );
 
   return (
-    <ModalPortal>
-      <div className="session-modal-overlay">
-        <div className="session-modal-content save-session-modal">
-          <div className="session-modal-header">
-            <h2>Save Session</h2>
-            <button 
-              className="session-modal-close-button"
-              onClick={onClose}
-              disabled={isSaving}
-            >
-              <X size={20} />
-            </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Save Session"
+      footer={footer}
+      width="520px"
+      className="save-session-modal"
+    >
+      <form onSubmit={handleSubmit}>
+        <div className="session-metadata">
+          <div className="metadata-item">
+            <span className="metadata-label">Particles:</span>
+            <span className="metadata-value">{particleCount.toLocaleString()}</span>
           </div>
-          
-          <form onSubmit={handleSubmit} className="session-modal-body">
-          <div className="session-metadata">
-            <div className="metadata-item">
-              <span className="metadata-label">Particles:</span>
-              <span className="metadata-value">{particleCount.toLocaleString()}</span>
-            </div>
-            <div className="metadata-item">
-              <span className="metadata-label">Date:</span>
-              <span className="metadata-value">{new Date().toLocaleDateString()}</span>
-            </div>
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="session-name">Session Name *</label>
-            <input
-              id="session-name"
-              type="text"
-              value={sessionName}
-              onChange={handleNameChange}
-              placeholder="Enter a name for this session..."
-              disabled={isSaving}
-              className={nameError ? "error" : ""}
-              autoFocus
-            />
-            {nameError && (
-              <div className="error-message">
-                <AlertCircle size={16} />
-                {nameError}
-              </div>
-            )}
-          </div>
-          
-          {saveError && (
-            <div className="error-message">
-              <AlertCircle size={16} />
-              {saveError}
-            </div>
-          )}
-          </form>
-          
-          <div className="session-modal-footer">
-            <button 
-              type="button" 
-              className="session-modal-button secondary"
-              onClick={onClose}
-              disabled={isSaving}
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="session-modal-button primary"
-              onClick={handleSubmit}
-              disabled={isSaving || !!nameError || !sessionName.trim()}
-            >
-              {isSaving ? (
-                <>
-                  <div className="spinner" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Save Session
-                </>
-              )}
-            </button>
+          <div className="metadata-item">
+            <span className="metadata-label">Date:</span>
+            <span className="metadata-value">{new Date().toLocaleDateString()}</span>
           </div>
         </div>
-      </div>
-    </ModalPortal>
+        
+        <div className="form-group">
+          <label htmlFor="session-name">Session Name *</label>
+          <input
+            id="session-name"
+            type="text"
+            value={sessionName}
+            onChange={handleNameChange}
+            placeholder="Enter a name for this session..."
+            disabled={isSaving}
+            className={nameError ? "error" : ""}
+            autoFocus
+          />
+          {nameError && (
+            <div className="error-message">
+              <AlertCircle size={16} />
+              {nameError}
+            </div>
+          )}
+        </div>
+        
+        {saveError && (
+          <div className="error-message">
+            <AlertCircle size={16} />
+            {saveError}
+          </div>
+        )}
+      </form>
+    </Modal>
   );
 }
