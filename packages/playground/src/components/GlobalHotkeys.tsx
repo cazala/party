@@ -3,12 +3,14 @@ import { useTools } from "../hooks/useTools";
 import { useEngine } from "../hooks/useEngine";
 import { useHistory } from "../hooks/useHistory";
 import { useSession } from "../hooks/useSession";
+import { useUI } from "../hooks/useUI";
 
 export function GlobalHotkeys() {
   const { setToolMode, toolMode } = useTools();
   const { canvasRef, play, pause, isPlaying } = useEngine();
   const { undo, redo, canUndo, canRedo } = useHistory();
   const { orderedSessions, quickLoadSession } = useSession();
+  const { toggleBarsVisibility } = useUI();
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -29,7 +31,8 @@ export function GlobalHotkeys() {
           key === "g" ||
           key === "h" ||
           key === "j" ||
-          key === "k"
+          key === "k" ||
+          key === "b"
         ));
 
       // If it's our hotkey, prevent default and stop propagation immediately
@@ -149,6 +152,9 @@ export function GlobalHotkeys() {
           setToolMode("shape");
           updateOverlayMouseToCurrent();
           break;
+        case "b":
+          toggleBarsVisibility();
+          break;
         default:
           break;
       }
@@ -175,7 +181,7 @@ export function GlobalHotkeys() {
       window.removeEventListener("keydown", onKeyDown, { capture: true });
       window.removeEventListener("mousemove", onMouseMove);
     };
-  }, [setToolMode, canvasRef, toolMode, undo, redo, canUndo, canRedo, orderedSessions, quickLoadSession, play, pause, isPlaying]);
+  }, [setToolMode, canvasRef, toolMode, undo, redo, canUndo, canRedo, orderedSessions, quickLoadSession, play, pause, isPlaying, toggleBarsVisibility]);
 
   return null;
 }

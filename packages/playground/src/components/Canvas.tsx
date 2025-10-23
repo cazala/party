@@ -10,7 +10,7 @@ export function Canvas({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const { canvasRef, size, runtime, handleWheel, isInitialized } = useEngine();
+  const { canvasRef, canvasDimensions, runtime, handleWheel, isInitialized } = useEngine();
   const {
     isSpawnMode,
     isGrabMode,
@@ -57,15 +57,23 @@ export function Canvas({
     .filter(Boolean)
     .join(" ");
 
+  // Use canvas dimensions for both visual styling AND buffer size
+  // This ensures consistent coordinate systems between visual and simulation space
+  const canvasStyle = {
+    ...style,
+    width: `${canvasDimensions.width}px`,
+    height: `${canvasDimensions.height}px`,
+  };
+
   return (
     <canvas
       key={runtime} // Force canvas recreation when engine type changes
       ref={canvasRef}
       id="canvas"
       className={canvasClasses}
-      style={style}
-      width={size.width}
-      height={size.height}
+      style={canvasStyle}
+      width={canvasDimensions.width}
+      height={canvasDimensions.height}
     />
   );
 }

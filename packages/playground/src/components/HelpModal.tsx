@@ -17,6 +17,9 @@ export function HelpModal({
             <b>Space</b>: Play/Pause simulation
           </li>
           <li>
+            <b>Cmd/Ctrl + B</b>: Toggle bars (fullscreen canvas)
+          </li>
+          <li>
             <b>Cmd/Ctrl + Z</b>: Undo
           </li>
           <li>

@@ -9,27 +9,32 @@ import { SystemSidebar } from "./components/SystemSidebar";
 import { GlobalHotkeys } from "./components/GlobalHotkeys";
 import { Provider } from "react-redux";
 import { store } from "./slices/store";
+import { useUI } from "./hooks/useUI";
 
 import "./styles/index.css";
 import "./App.css";
 
 function AppContent() {
+  const { barsVisible } = useUI();
+
   return (
-    <div className="app">
-      <TopBar />
+    <div className={`app ${barsVisible ? 'bars-visible' : ''}`}>
+      {barsVisible && <TopBar />}
       <GlobalHotkeys />
       <div className="app-content">
-        <SystemSidebar />
+        {barsVisible && <SystemSidebar />}
         <div className="playground">
-          <Toolbar style={{ display: "block" }} />
+          {barsVisible && <Toolbar style={{ display: "block" }} />}
           <div className="canvas-container">
             <Canvas />
             <Overlay />
           </div>
         </div>
-        <div className="right-sidebar" style={{ display: "block" }}>
-          <ModulesSidebar />
-        </div>
+        {barsVisible && (
+          <div className="right-sidebar" style={{ display: "block" }}>
+            <ModulesSidebar />
+          </div>
+        )}
       </div>
     </div>
   );

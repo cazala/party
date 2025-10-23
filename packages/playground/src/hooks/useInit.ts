@@ -15,6 +15,9 @@ import {
   updateVelocityConfig,
   setGridJoints,
   selectInitState,
+  selectHasInitialSpawned,
+  selectIsSpawnLocked,
+  setHasInitialSpawned,
   InitState,
   InitVelocityConfig,
 } from "../slices/init";
@@ -22,6 +25,8 @@ import {
 export function useInit() {
   const dispatch = useAppDispatch();
   const initState = useAppSelector(selectInitState);
+  const hasInitialSpawned = useAppSelector(selectHasInitialSpawned);
+  const isSpawnLocked = useAppSelector(selectIsSpawnLocked);
 
   // Getters - destructure all state values
   const {
@@ -124,6 +129,10 @@ export function useInit() {
     [dispatch]
   );
 
+  const markInitialSpawned = useCallback(() => {
+    dispatch(setHasInitialSpawned(true));
+  }, [dispatch]);
+
   return {
     // State values (getters)
     numParticles,
@@ -138,6 +147,10 @@ export function useInit() {
     colors,
     velocityConfig,
     gridJoints,
+
+    // Spawn state
+    hasInitialSpawned,
+    isSpawnLocked,
 
     // Full state object for convenience
     initState,
@@ -155,5 +168,6 @@ export function useInit() {
     setColors: setColorsValue,
     updateVelocityConfig: updateVelocityConfigValue,
     setGridJoints: setGridJointsValue,
+    markInitialSpawned,
   };
 }

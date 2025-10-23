@@ -9,8 +9,13 @@
 
 .app-content {
   display: flex;
-  height: calc(100vh - 60px); /* Account for TopBar height */
+  flex: 1;
+}
+
+/* When bars are visible, account for fixed TopBar */
+.app.bars-visible .app-content {
   margin-top: 60px;
+  height: calc(100vh - 60px);
 }
 
 .left-sidebar {
@@ -20,8 +25,13 @@
   flex-shrink: 0;
 }
 
+.playground {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 .canvas-container {
-  width: calc(100vw - 280px - 320px); /* TODO: Unhardcode this */
   flex: 1;
   background: var(--color-canvas);
   position: relative;

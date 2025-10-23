@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import {
   SessionData,
   SessionSaveRequest,
@@ -727,20 +727,21 @@ export const selectIsLoadingOscillators = (state: RootState) =>
   state.session.isLoadingOscillators;
 export const selectSessionOrder = (state: RootState) =>
   state.session.sessionOrder;
-export const selectOrderedSessions = (state: RootState) => {
-  const sessions = state.session.availableSessions;
-  const order = state.session.sessionOrder;
+// Memoized selector to prevent unnecessary re-renders
+export const selectOrderedSessions = createSelector(
+  [(state: RootState) => state.session.availableSessions, (state: RootState) => state.session.sessionOrder],
+  (sessions, order) => {
+    // Return sessions in custom order, with any missing sessions at the end
+    const orderedSessions = order
+      .map((id) => sessions.find((session) => session.id === id))
+      .filter((session): session is SessionListItem => session !== undefined);
 
-  // Return sessions in custom order, with any missing sessions at the end
-  const orderedSessions = order
-    .map((id) => sessions.find((session) => session.id === id))
-    .filter((session): session is SessionListItem => session !== undefined);
+    const unorderedSessions = sessions.filter(
+      (session) => !order.includes(session.id)
+    );
 
-  const unorderedSessions = sessions.filter(
-    (session) => !order.includes(session.id)
-  );
-
-  return [...orderedSessions, ...unorderedSessions];
-};
+    return [...orderedSessions, ...unorderedSessions];
+  }
+);
 export const selectStorageInfo = (state: RootState) =>
   state.session.storageInfo;

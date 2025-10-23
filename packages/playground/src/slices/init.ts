@@ -1,5 +1,6 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import { SpawnParticlesConfig } from "./engine";
+import type { RootState } from "./store";
 
 export interface InitVelocityConfig {
   speed: number;
@@ -27,7 +28,12 @@ const DEFAULT_VELOCITY_SPEED = 0;
 const DEFAULT_VELOCITY_DIRECTION = "random" as const;
 const DEFAULT_VELOCITY_ANGLE = 0;
 
-const initialState: InitState = {
+export interface InitSliceState extends InitState {
+  hasInitialSpawned: boolean;
+  isSpawnLocked: boolean;
+}
+
+const initialState: InitSliceState = {
   numParticles: DEFAULT_SPAWN_NUM_PARTICLES,
   shape: DEFAULT_SPAWN_SHAPE,
   spacing: DEFAULT_SPAWN_SPACING,
@@ -44,6 +50,8 @@ const initialState: InitState = {
     angle: DEFAULT_VELOCITY_ANGLE,
   },
   gridJoints: false,
+  hasInitialSpawned: false,
+  isSpawnLocked: false,
 };
 
 export const initSlice = createSlice({
@@ -98,6 +106,12 @@ export const initSlice = createSlice({
     setState: (state, action: PayloadAction<Partial<InitState>>) => {
       Object.assign(state, action.payload);
     },
+    setHasInitialSpawned: (state, action: PayloadAction<boolean>) => {
+      state.hasInitialSpawned = action.payload;
+    },
+    setSpawnLocked: (state, action: PayloadAction<boolean>) => {
+      state.isSpawnLocked = action.payload;
+    },
     resetToDefaults: () => initialState,
   },
 });
@@ -117,23 +131,47 @@ export const {
   updateVelocityConfig,
   setGridJoints,
   setState,
+  setHasInitialSpawned,
+  setSpawnLocked,
   resetToDefaults,
 } = initSlice.actions;
 
 export const initReducer = initSlice.reducer;
 
-// Selectors
-export const selectInitState = (state: { init: InitState }) => state.init;
-export const selectNumParticles = (state: { init: InitState }) =>
-  state.init.numParticles;
-export const selectSpawnShape = (state: { init: InitState }) =>
-  state.init.shape;
-export const selectParticleSize = (state: { init: InitState }) =>
-  state.init.particleSize;
-export const selectParticleMass = (state: { init: InitState }) =>
-  state.init.particleMass;
-export const selectColors = (state: { init: InitState }) => state.init.colors;
-export const selectVelocityConfig = (state: { init: InitState }) =>
-  state.init.velocityConfig;
-export const selectGridJoints = (state: { init: InitState }) =>
-  state.init.gridJoints;
+// Thunk to temporarily lock spawn operations during UI changes
+export const lockSpawnTemporarily = createAsyncThunk(
+  "init/lockSpawnTemporarily",
+  async (durationMs: number = 100, { dispatch }) => {
+    dispatch(setSpawnLocked(true));
+    
+    // Wait for specified duration (enough for UI transitions to settle)
+    await new Promise(resolve => setTimeout(resolve, durationMs));
+    
+    dispatch(setSpawnLocked(false));
+  }
+);
+
+// Selectors - Memoized to prevent unnecessary re-renders
+export const selectInitState = createSelector(
+  [(state: RootState) => state.init],
+  (init): InitState => ({
+    numParticles: init.numParticles,
+    shape: init.shape,
+    spacing: init.spacing,
+    particleSize: init.particleSize,
+    particleMass: init.particleMass,
+    radius: init.radius,
+    innerRadius: init.innerRadius,
+    squareSize: init.squareSize,
+    cornerRadius: init.cornerRadius,
+    colors: init.colors,
+    velocityConfig: init.velocityConfig,
+    gridJoints: init.gridJoints,
+  })
+);
+
+export const selectHasInitialSpawned = (state: RootState): boolean => 
+  state.init.hasInitialSpawned;
+
+export const selectIsSpawnLocked = (state: RootState): boolean => 
+  state.init.isSpawnLocked;

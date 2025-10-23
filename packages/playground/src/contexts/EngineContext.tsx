@@ -1,4 +1,4 @@
-import React, { createContext, useRef, ReactNode, useEffect } from "react";
+import React, { createContext, useRef, ReactNode, useEffect, useMemo } from "react";
 import {
   Engine,
   Environment,
@@ -17,17 +17,14 @@ import {
 import { useEngineInternal } from "../hooks/useEngineInternal";
 import { useWindowSize } from "../hooks/useWindowSize";
 import { useAppDispatch } from "../hooks/useAppDispatch";
+import { useAppSelector } from "../hooks/useAppSelector";
 import {
   setSizeThunk,
   registerEngine,
   SpawnParticlesConfig,
 } from "../slices/engine";
 import { loadAvailableSessionsThunk } from "../slices/session";
-
-const LEFT_SIDEBAR_WIDTH = 280;
-const RIGHT_SIDEBAR_WIDTH = 320;
-const TOPBAR_HEIGHT = 60;
-const TOOLBAR_HEIGHT = 60;
+import { selectBarsVisible, LAYOUT_CONSTANTS } from "../slices/ui";
 
 // Define the context interface - same as what useEngine returns
 export interface EngineContextType {
@@ -45,6 +42,7 @@ export interface EngineContextType {
   maxNeighbors: number;
   clearColor: { r: number; g: number; b: number; a: number };
   size: { width: number; height: number };
+  canvasDimensions: { width: number; height: number };
   camera: { x: number; y: number };
   zoom: number;
   runtime: "cpu" | "webgpu";
@@ -108,15 +106,28 @@ export function EngineProvider({ children }: EngineProviderProps) {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const size = useWindowSize();
+  const barsVisible = useAppSelector(selectBarsVisible);
 
-  // Calculate canvas dimensions
-  const canvasWidth = size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
-  const canvasHeight = size.height - TOPBAR_HEIGHT - TOOLBAR_HEIGHT;
+  // Memoize canvas dimensions calculation to prevent unnecessary re-renders
+  const canvasDimensions = useMemo(() => {
+    if (barsVisible) {
+      return {
+        width: size.width - LAYOUT_CONSTANTS.LEFT_SIDEBAR_WIDTH - LAYOUT_CONSTANTS.RIGHT_SIDEBAR_WIDTH,
+        height: size.height - LAYOUT_CONSTANTS.TOPBAR_HEIGHT - LAYOUT_CONSTANTS.TOOLBAR_HEIGHT,
+      };
+    } else {
+      // Full window when bars are hidden
+      return {
+        width: size.width,
+        height: size.height,
+      };
+    }
+  }, [size.width, size.height, barsVisible]);
 
   // Initialize engine using the internal hook
   const engineState = useEngineInternal({
     canvasRef,
-    initialSize: { width: canvasWidth, height: canvasHeight },
+    initialSize: canvasDimensions,
   });
 
   const { engine, isInitialized } = engineState;
@@ -133,14 +144,20 @@ export function EngineProvider({ children }: EngineProviderProps) {
     }
   }, [isInitialized, engine, dispatch]);
 
-  // Update canvas size when window size changes
+  // Update engine size to match canvas dimensions (visual space)
   useEffect(() => {
     if (engine && isInitialized) {
-      const targetWidth = size.width - LEFT_SIDEBAR_WIDTH - RIGHT_SIDEBAR_WIDTH;
-      const targetHeight = size.height - TOPBAR_HEIGHT - TOOLBAR_HEIGHT;
-      dispatch(setSizeThunk({ width: targetWidth, height: targetHeight }));
+      // Keep engine size synchronized with canvas dimensions to ensure
+      // consistent coordinate systems between visual and simulation space
+      const currentEngineSize = engine.getSize();
+      
+      // Update engine size if canvas dimensions changed
+      if (currentEngineSize.width !== canvasDimensions.width || 
+          currentEngineSize.height !== canvasDimensions.height) {
+        dispatch(setSizeThunk(canvasDimensions));
+      }
     }
-  }, [engine, isInitialized, size, dispatch]);
+  }, [engine, isInitialized, canvasDimensions, dispatch]);
 
   // Add a timeout for initialization
   useEffect(() => {
@@ -156,6 +173,7 @@ export function EngineProvider({ children }: EngineProviderProps) {
   // Create the context value
   const contextValue: EngineContextType = {
     canvasRef,
+    canvasDimensions,
     ...engineState,
   };
 

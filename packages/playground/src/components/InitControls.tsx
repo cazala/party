@@ -8,6 +8,7 @@ import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
 import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
+import { useUI } from "../hooks/useUI";
 import { InitVelocityConfig as InitVelocityConfigType } from "../slices/init";
 import "./InitControls.css";
 
@@ -19,6 +20,7 @@ export function InitControls() {
     setEnabled: setJointsEnabled,
   } = useJoints();
   const { removeAllLines, setLines, setEnabled: setLinesEnabled } = useLines();
+  const { barsVisible } = useUI();
   const {
     numParticles,
     shape,
@@ -32,6 +34,8 @@ export function InitControls() {
     colors,
     velocityConfig,
     gridJoints,
+    hasInitialSpawned,
+    isSpawnLocked,
     setNumParticles,
     setSpawnShape,
     setSpacing,
@@ -44,26 +48,73 @@ export function InitControls() {
     setColors,
     updateVelocityConfig,
     setGridJoints,
+    markInitialSpawned,
     initState,
   } = useInit();
 
-  const firstRenderRef = useRef(false);
+  const prevBarsVisibleRef = useRef(barsVisible);
+  const isFirstRenderRef = useRef(true);
 
   // Color management handler
   const handleColorsChange = (newColors: string[]) => {
     setColors(newColors);
   };
 
-  // Trigger initial particle spawn when engine is initialized
+  // Trigger initial particle spawn when engine is initialized (only once globally)
   useEffect(() => {
-    if (isInitialized && !firstRenderRef.current) {
-      firstRenderRef.current = true;
+    if (isInitialized && !hasInitialSpawned) {
+      markInitialSpawned();
+      console.log("Initial spawn: spawning particles", initState);
       spawnParticles(initState);
     }
-  }, [isInitialized, spawnParticles, initState]);
+  }, [isInitialized, hasInitialSpawned, initState, markInitialSpawned, spawnParticles]);
 
-  // Auto-spawn particles when any setting changes
+  // Auto-spawn particles when any setting changes (but not on initial mount or bars toggle)
   useEffect(() => {
+    // Skip if spawn is locked due to UI changes
+    if (isSpawnLocked) {
+      console.log("Skipping auto-spawn: spawn is locked");
+      return;
+    }
+    
+    // Skip on first render - let the initial spawn effect handle that
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      console.log("Skipping auto-spawn: first render");
+      return;
+    }
+    
+    // Check if this is just a remount due to bars visibility change
+    const barsChanged = prevBarsVisibleRef.current !== barsVisible;
+    prevBarsVisibleRef.current = barsVisible;
+    
+    // Skip auto-spawn if this is just a component remount due to bars visibility change
+    if (barsChanged) {
+      console.log("Skipping auto-spawn: bars visibility changed");
+      return;
+    }
+    
+    // Skip if we haven't done initial spawn yet
+    if (!hasInitialSpawned) {
+      console.log("Skipping auto-spawn: initial spawn not done yet");
+      return;
+    }
+    
+    console.log(
+      "Auto-spawn: spawning particles",
+      numParticles,
+      shape,
+      spacing,
+      particleSize,
+      particleMass,
+      radius,
+      innerRadius,
+      squareSize,
+      cornerRadius,
+      colors,
+      velocityConfig,
+      gridJoints
+    );
     spawnParticles({
       numParticles,
       shape,
@@ -79,7 +130,11 @@ export function InitControls() {
       gridJoints,
     });
   }, [
-    spawnParticles,
+    // NOTE: spawnParticles is intentionally NOT in this dependency array
+    // because it gets recreated when the engine is re-initialized for UI changes
+    // which would cause unnecessary simulation resets
+    isSpawnLocked,
+    hasInitialSpawned,
     numParticles,
     shape,
     spacing,
@@ -92,6 +147,7 @@ export function InitControls() {
     colors,
     velocityConfig,
     gridJoints,
+    barsVisible, // Include to detect when component remounts due to UI changes
   ]);
 
   // Reset joints and lines when particle configuration changes (but not when engine changes)
