@@ -10,6 +10,8 @@ import {
   loadSession as loadSessionFromStorage,
   getAllSessions as getAllSessionsFromStorage,
   deleteSession as deleteSessionFromStorage,
+  renameSession as renameSessionInStorage,
+  duplicateSession as duplicateSessionInStorage,
   generateSessionId,
 } from "../utils/sessionManager";
 
@@ -59,6 +61,7 @@ export interface SessionState {
   saveError: string | null;
   loadError: string | null;
   availableSessions: SessionListItem[];
+  sessionOrder: string[]; // Custom ordering of session IDs for display
 }
 
 const initialState: SessionState = {
@@ -70,6 +73,7 @@ const initialState: SessionState = {
   saveError: null,
   loadError: null,
   availableSessions: [],
+  sessionOrder: [],
 };
 
 // Async thunk to save current session
@@ -355,6 +359,36 @@ export const deleteSessionThunk = createAsyncThunk(
   }
 );
 
+// Async thunk to rename session
+export const renameSessionThunk = createAsyncThunk(
+  "session/renameSession",
+  async ({ sessionId, newName }: { sessionId: string; newName: string }, { rejectWithValue }) => {
+    try {
+      renameSessionInStorage(sessionId, newName);
+      return { sessionId, newName };
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Failed to rename session"
+      );
+    }
+  }
+);
+
+// Async thunk to duplicate session
+export const duplicateSessionThunk = createAsyncThunk(
+  "session/duplicateSession",
+  async (sessionId: string, { rejectWithValue }) => {
+    try {
+      const newSessionId = duplicateSessionInStorage(sessionId);
+      return newSessionId;
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Failed to duplicate session"
+      );
+    }
+  }
+);
+
 export const sessionSlice = createSlice({
   name: "session",
   initialState,
@@ -373,6 +407,15 @@ export const sessionSlice = createSlice({
     },
     setIsLoadingOscillators: (state, action: PayloadAction<boolean>) => {
       state.isLoadingOscillators = action.payload;
+    },
+    reorderSessions: (state, action: PayloadAction<string[]>) => {
+      state.sessionOrder = action.payload;
+      // Persist the order to localStorage
+      try {
+        localStorage.setItem('party-session-order', JSON.stringify(action.payload));
+      } catch (error) {
+        console.warn('Failed to save session order:', error);
+      }
     },
   },
   extraReducers: (builder) => {
@@ -418,12 +461,57 @@ export const sessionSlice = createSlice({
       // Load available sessions
       .addCase(loadAvailableSessionsThunk.fulfilled, (state, action) => {
         state.availableSessions = action.payload;
+        // Load custom session order from localStorage
+        try {
+          const savedOrder = localStorage.getItem('party-session-order');
+          if (savedOrder) {
+            const order = JSON.parse(savedOrder);
+            // Filter out any session IDs that no longer exist
+            state.sessionOrder = order.filter((id: string) => 
+              action.payload.some(session => session.id === id)
+            );
+            // Add any new sessions that aren't in the saved order to the end
+            const newSessions = action.payload
+              .filter(session => !state.sessionOrder.includes(session.id))
+              .map(session => session.id);
+            state.sessionOrder = [...state.sessionOrder, ...newSessions];
+          } else {
+            // No custom order, use default date-based order
+            state.sessionOrder = action.payload.map(session => session.id);
+          }
+        } catch (error) {
+          console.warn('Failed to load session order:', error);
+          state.sessionOrder = action.payload.map(session => session.id);
+        }
       })
       // Delete session
       .addCase(deleteSessionThunk.fulfilled, (state, action) => {
         state.availableSessions = state.availableSessions.filter(
           (s) => s.id !== action.payload
         );
+        // Remove from custom order as well
+        state.sessionOrder = state.sessionOrder.filter(id => id !== action.payload);
+        // Update localStorage
+        try {
+          localStorage.setItem('party-session-order', JSON.stringify(state.sessionOrder));
+        } catch (error) {
+          console.warn('Failed to update session order after delete:', error);
+        }
+      })
+      // Rename session
+      .addCase(renameSessionThunk.fulfilled, (state, action) => {
+        const { sessionId, newName } = action.payload;
+        const sessionIndex = state.availableSessions.findIndex(s => s.id === sessionId);
+        if (sessionIndex >= 0) {
+          state.availableSessions[sessionIndex].name = newName;
+          state.availableSessions[sessionIndex].metadata.lastModified = new Date().toISOString();
+        }
+      })
+      // Duplicate session - refresh sessions list to include the new duplicate
+      .addCase(duplicateSessionThunk.fulfilled, () => {
+        // The duplicate has been created in storage, we'll refresh the full list
+        // This ensures we get the new session with proper ordering
+        // The actual refresh happens in the useSession hook after the thunk completes
       });
   },
 });
@@ -434,6 +522,7 @@ export const {
   setCurrentSessionName,
   setLastSessionName,
   setIsLoadingOscillators,
+  reorderSessions,
 } = sessionSlice.actions;
 
 export const sessionReducer = sessionSlice.reducer;
@@ -452,3 +541,20 @@ export const selectLastSessionName = (state: RootState) =>
   state.session.lastSessionName;
 export const selectIsLoadingOscillators = (state: RootState) =>
   state.session.isLoadingOscillators;
+export const selectSessionOrder = (state: RootState) =>
+  state.session.sessionOrder;
+export const selectOrderedSessions = (state: RootState) => {
+  const sessions = state.session.availableSessions;
+  const order = state.session.sessionOrder;
+  
+  // Return sessions in custom order, with any missing sessions at the end
+  const orderedSessions = order
+    .map(id => sessions.find(session => session.id === id))
+    .filter((session): session is SessionListItem => session !== undefined);
+    
+  const unorderedSessions = sessions.filter(
+    session => !order.includes(session.id)
+  );
+  
+  return [...orderedSessions, ...unorderedSessions];
+};

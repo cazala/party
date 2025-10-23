@@ -7,6 +7,8 @@ import {
   loadSessionThunk,
   loadAvailableSessionsThunk,
   deleteSessionThunk,
+  renameSessionThunk,
+  duplicateSessionThunk,
   clearSaveError,
   clearLoadError,
   selectCurrentSessionName,
@@ -16,6 +18,8 @@ import {
   selectLoadError,
   selectAvailableSessions,
   selectLastSessionName,
+  selectOrderedSessions,
+  reorderSessions,
 } from "../slices/session";
 import { spawnParticlesThunk, setParticlesThunk, getEngine } from "../slices/engine";
 import { SessionSaveRequest } from "../types/session";
@@ -32,6 +36,7 @@ export function useSession() {
   const saveError = useAppSelector(selectSaveError);
   const loadError = useAppSelector(selectLoadError);
   const availableSessions = useAppSelector(selectAvailableSessions);
+  const orderedSessions = useAppSelector(selectOrderedSessions);
 
   // Save current session
   const saveCurrentSession = useCallback(
@@ -132,6 +137,52 @@ export function useSession() {
     if (loadError) dispatch(clearLoadError());
   }, [dispatch, saveError, loadError]);
 
+  // Reorder sessions
+  const reorderSessionsList = useCallback((newOrder: string[]) => {
+    dispatch(reorderSessions(newOrder));
+  }, [dispatch]);
+
+  // Rename session
+  const renameSession = useCallback(
+    async (sessionId: string, newName: string): Promise<boolean> => {
+      try {
+        await dispatch(renameSessionThunk({ sessionId, newName })).unwrap();
+        return true;
+      } catch (error) {
+        console.error("Failed to rename session:", error);
+        return false;
+      }
+    },
+    [dispatch]
+  );
+
+  // Duplicate session
+  const duplicateSession = useCallback(
+    async (sessionId: string): Promise<boolean> => {
+      try {
+        const newSessionId = await dispatch(duplicateSessionThunk(sessionId)).unwrap();
+        // Refresh the sessions list to include the new duplicate
+        await dispatch(loadAvailableSessionsThunk()).unwrap();
+        
+        // Insert the new session right after the original in the custom order
+        const currentOrder = [...orderedSessions.map(s => s.id)];
+        const originalIndex = currentOrder.indexOf(sessionId);
+        
+        if (originalIndex !== -1) {
+          // Insert the new session right after the original
+          currentOrder.splice(originalIndex + 1, 0, newSessionId);
+          dispatch(reorderSessions(currentOrder));
+        }
+        
+        return true;
+      } catch (error) {
+        console.error("Failed to duplicate session:", error);
+        return false;
+      }
+    },
+    [dispatch, orderedSessions]
+  );
+
   return {
     // State
     currentSessionName,
@@ -141,12 +192,16 @@ export function useSession() {
     saveError,
     loadError,
     availableSessions,
+    orderedSessions,
 
     // Actions
     saveCurrentSession,
     loadSession,
     deleteSession,
+    renameSession,
+    duplicateSession,
     refreshSessions,
     clearErrors,
+    reorderSessionsList,
   };
 }

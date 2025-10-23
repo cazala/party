@@ -106,6 +106,86 @@ export function getAllSessions(): SessionListItem[] {
 }
 
 /**
+ * Rename a session
+ */
+export function renameSession(sessionId: string, newName: string): void {
+  try {
+    // Load the session data
+    const sessionData = loadSession(sessionId);
+    if (!sessionData) {
+      throw new Error("Session not found");
+    }
+
+    // Update the session name and last modified time
+    sessionData.name = newName;
+    sessionData.metadata.lastModified = new Date().toISOString();
+
+    // Save the updated session data
+    const sessionKey = getSessionKey(sessionId);
+    localStorage.setItem(sessionKey, JSON.stringify(sessionData));
+
+    // Update the session index
+    const sessions = getSessionIndex();
+    const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex >= 0) {
+      sessions[sessionIndex].name = newName;
+      sessions[sessionIndex].metadata.lastModified = sessionData.metadata.lastModified;
+      updateSessionIndex(sessions);
+    }
+  } catch (error) {
+    console.error("Failed to rename session:", error);
+    throw new Error("Failed to rename session");
+  }
+}
+
+/**
+ * Duplicate a session
+ */
+export function duplicateSession(sessionId: string): string {
+  try {
+    // Load the existing session data
+    const sessionData = loadSession(sessionId);
+    if (!sessionData) {
+      throw new Error("Session not found");
+    }
+
+    // Generate a new ID for the duplicate
+    const newSessionId = generateSessionId(sessionData.name);
+    const now = new Date().toISOString();
+
+    // Create the duplicate with new timestamps and ID
+    const duplicateSessionData: SessionData = {
+      ...sessionData,
+      id: newSessionId,
+      metadata: {
+        ...sessionData.metadata,
+        createdAt: now,
+        lastModified: now,
+      },
+    };
+
+    // Save the duplicate session
+    const duplicateSessionKey = getSessionKey(newSessionId);
+    localStorage.setItem(duplicateSessionKey, JSON.stringify(duplicateSessionData));
+
+    // Update the session index
+    const sessions = getSessionIndex();
+    const duplicateListItem: SessionListItem = {
+      id: newSessionId,
+      name: duplicateSessionData.name,
+      metadata: duplicateSessionData.metadata,
+    };
+    sessions.push(duplicateListItem);
+    updateSessionIndex(sessions);
+
+    return newSessionId;
+  } catch (error) {
+    console.error("Failed to duplicate session:", error);
+    throw new Error("Failed to duplicate session");
+  }
+}
+
+/**
  * Delete a session from localStorage
  */
 export function deleteSession(sessionId: string): void {
