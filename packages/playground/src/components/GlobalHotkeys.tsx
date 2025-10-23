@@ -12,21 +12,56 @@ export function GlobalHotkeys() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      // Avoid triggering inside editable inputs
+      const isModifier = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+
+      // Check if this is one of our hotkeys FIRST, before checking inputs
+      const isOurHotkey = 
+        e.code === "Space" ||
+        (isModifier && (
+          (key >= "1" && key <= "9") ||
+          key === "z" ||
+          key === "y" ||
+          key === "a" ||
+          key === "s" ||
+          key === "d" ||
+          key === "f" ||
+          key === "g" ||
+          key === "h" ||
+          key === "j" ||
+          key === "k"
+        ));
+
+      // If it's our hotkey, prevent default and stop propagation immediately
+      if (isOurHotkey) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
+
+      // Only block hotkeys when actually typing in text fields
       const target = e.target as HTMLElement | null;
-      if (target) {
+      if (target && target === document.activeElement) {
         const tag = target.tagName;
-        const isEditable =
-          (target as HTMLElement).isContentEditable ||
-          tag === "INPUT" ||
-          tag === "TEXTAREA" ||
-          tag === "SELECT";
-        if (isEditable) return;
+        // Only block when actively typing in text inputs or content editable elements
+        const isTextInput = 
+          (tag === "INPUT" && (target as HTMLInputElement).type === "text") ||
+          (tag === "INPUT" && (target as HTMLInputElement).type === "search") ||
+          (tag === "INPUT" && (target as HTMLInputElement).type === "password") ||
+          (tag === "INPUT" && (target as HTMLInputElement).type === "email") ||
+          (tag === "INPUT" && (target as HTMLInputElement).type === "url") ||
+          (tag === "TEXTAREA") ||
+          (target as HTMLElement).isContentEditable;
+        
+        // Only return (block hotkeys) if we're in a text input
+        if (isTextInput) {
+          return;
+        }
+        // For all other elements (sliders, buttons, selects, etc.) let hotkeys work
       }
 
       // Handle spacebar for play/pause (no modifier required)
       if (e.code === "Space") {
-        e.preventDefault();
         if (isPlaying) {
           pause();
         } else {
@@ -35,10 +70,7 @@ export function GlobalHotkeys() {
         return;
       }
 
-      const isModifier = e.metaKey || e.ctrlKey;
       if (!isModifier) return;
-
-      const key = e.key.toLowerCase();
       const updateOverlayMouseToCurrent = () => {
         const canvas = canvasRef?.current as HTMLCanvasElement | null;
         if (!canvas) return;
@@ -61,7 +93,6 @@ export function GlobalHotkeys() {
 
       // Quick load sessions (Cmd/Ctrl + 1-9)
       if (key >= "1" && key <= "9") {
-        e.preventDefault(); // Always prevent tab switching
         const sessionIndex = parseInt(key) - 1;
         if (sessionIndex < orderedSessions.length) {
           const sessionId = orderedSessions[sessionIndex].id;
@@ -72,7 +103,6 @@ export function GlobalHotkeys() {
 
       // Undo/Redo
       if (key === "z") {
-        e.preventDefault();
         if (e.shiftKey) {
           if (canRedo) redo();
         } else {
@@ -82,49 +112,40 @@ export function GlobalHotkeys() {
       }
 
       if (key === "y") {
-        e.preventDefault();
         if (canRedo) redo();
         return;
       }
 
       switch (key) {
         case "a":
-          e.preventDefault();
           setToolMode("interaction");
           updateOverlayMouseToCurrent();
           break;
         case "s":
-          e.preventDefault();
           setToolMode("spawn");
           updateOverlayMouseToCurrent();
           break;
         case "d":
-          e.preventDefault();
           setToolMode("remove");
           updateOverlayMouseToCurrent();
           break;
         case "f":
-          e.preventDefault();
           setToolMode("pin");
           updateOverlayMouseToCurrent();
           break;
         case "g":
-          e.preventDefault();
           setToolMode("grab");
           updateOverlayMouseToCurrent();
           break;
         case "h":
-          e.preventDefault();
           setToolMode("joint");
           updateOverlayMouseToCurrent();
           break;
         case "j":
-          e.preventDefault();
           setToolMode("draw");
           updateOverlayMouseToCurrent();
           break;
         case "k":
-          e.preventDefault();
           setToolMode("shape");
           updateOverlayMouseToCurrent();
           break;
@@ -133,7 +154,9 @@ export function GlobalHotkeys() {
       }
     };
 
-    document.addEventListener("keydown", onKeyDown);
+    // Use window with capture and also stop propagation for our hotkeys
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    
     // Track last mouse position to seed overlay position on tool switch
     const onMouseMove = (e: MouseEvent) => {
       const canvas = canvasRef?.current as HTMLCanvasElement | null;
@@ -147,8 +170,9 @@ export function GlobalHotkeys() {
       }
     };
     window.addEventListener("mousemove", onMouseMove);
+    
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
       window.removeEventListener("mousemove", onMouseMove);
     };
   }, [setToolMode, canvasRef, toolMode, undo, redo, canUndo, canRedo, orderedSessions, quickLoadSession, play, pause, isPlaying]);
