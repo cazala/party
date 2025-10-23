@@ -15,6 +15,7 @@ import {
   selectSaveError,
   selectLoadError,
   selectAvailableSessions,
+  selectLastSessionName,
 } from "../slices/session";
 import { spawnParticlesThunk, setParticlesThunk, getEngine } from "../slices/engine";
 import { SessionSaveRequest } from "../types/session";
@@ -25,6 +26,7 @@ export function useSession() {
 
   // Session state
   const currentSessionName = useAppSelector(selectCurrentSessionName);
+  const lastSessionName = useAppSelector(selectLastSessionName);
   const isSaving = useAppSelector(selectIsSaving);
   const isLoading = useAppSelector(selectIsLoading);
   const saveError = useAppSelector(selectSaveError);
@@ -78,15 +80,8 @@ export function useSession() {
         ).unwrap();
 
         // Choose how to restore particles based on session data
-        console.log("📂 [loadSession] Loading session:");
-        console.log("📂 Has particle data:", sessionData.metadata.hasParticleData);
-        console.log("📂 Particle count:", sessionData.metadata.particleCount);
-        console.log("📂 Joints in session:", sessionData.modules.joints);
-        console.log("📂 Lines in session:", sessionData.modules.lines);
-        
         if (sessionData.metadata.hasParticleData === true && sessionData.particles) {
           // Restore exact particles (for sessions with ≤1000 particles)
-          console.log("📂 Using setParticlesThunk for", sessionData.particles.length, "particles");
           await dispatch(setParticlesThunk({
             particles: sessionData.particles,
             jointsToRestore: sessionData.modules.joints,
@@ -95,7 +90,6 @@ export function useSession() {
         } else {
           // Restart simulation with the loaded init configuration 
           // (for sessions with >1000 particles or old sessions without particle data)
-          console.log("📂 Using spawnParticlesThunk with init config");
           await dispatch(spawnParticlesThunk(sessionData.init)).unwrap();
         }
 
@@ -141,6 +135,7 @@ export function useSession() {
   return {
     // State
     currentSessionName,
+    lastSessionName,
     isSaving,
     isLoading,
     saveError,

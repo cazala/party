@@ -48,7 +48,6 @@ export function TopBar() {
 
   const handleSaveSession = () => {
     // Pause engine while modal is open
-    console.log("🔴 Pausing engine for save modal");
     pause();
     setSaveModalOpen(true);
   };

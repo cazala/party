@@ -52,6 +52,7 @@ import {
 
 export interface SessionState {
   currentSessionName: string | null;
+  lastSessionName: string | null; // Last saved/loaded session name for prefilling save modal
   isSaving: boolean;
   isLoading: boolean;
   isLoadingOscillators: boolean; // Flag to prevent useOscillators interference during session load
@@ -62,6 +63,7 @@ export interface SessionState {
 
 const initialState: SessionState = {
   currentSessionName: null,
+  lastSessionName: null,
   isSaving: false,
   isLoading: false,
   isLoadingOscillators: false,
@@ -140,12 +142,20 @@ export const saveCurrentSessionThunk = createAsyncThunk(
         }
       }
 
+      // Check if a session with this name already exists
+      const existingSession = state.session.availableSessions.find(
+        session => session.name.toLowerCase() === request.name.toLowerCase()
+      );
+      
+      // Use existing ID if overriding, otherwise generate new one
+      const sessionId = existingSession ? existingSession.id : generateSessionId(request.name);
+
       const sessionData: SessionData = {
-        id: generateSessionId(request.name),
+        id: sessionId,
         name: request.name,
         metadata: {
           particleCount: request.particleCount,
-          createdAt: new Date().toISOString(),
+          createdAt: existingSession ? existingSession.metadata.createdAt : new Date().toISOString(),
           lastModified: new Date().toISOString(),
           hasParticleData: shouldSaveParticleData && !!particles,
         },
@@ -162,12 +172,6 @@ export const saveCurrentSessionThunk = createAsyncThunk(
         oscillatorsElapsedSeconds: engine?.getOscillatorsElapsedSeconds(),
         particles,
       };
-
-      console.log("💾 [saveSession] Saving session with:");
-      console.log("💾 Particle count:", request.particleCount);
-      console.log("💾 Has particle data:", sessionData.metadata.hasParticleData);
-      console.log("💾 Joints state:", state.modules.joints);
-      console.log("💾 Lines state:", state.modules.lines);
 
       saveSessionToStorage(sessionData);
       return sessionData;
@@ -364,6 +368,9 @@ export const sessionSlice = createSlice({
     setCurrentSessionName: (state, action: PayloadAction<string | null>) => {
       state.currentSessionName = action.payload;
     },
+    setLastSessionName: (state, action: PayloadAction<string | null>) => {
+      state.lastSessionName = action.payload;
+    },
     setIsLoadingOscillators: (state, action: PayloadAction<boolean>) => {
       state.isLoadingOscillators = action.payload;
     },
@@ -378,6 +385,7 @@ export const sessionSlice = createSlice({
       .addCase(saveCurrentSessionThunk.fulfilled, (state, action) => {
         state.isSaving = false;
         state.currentSessionName = action.payload.name;
+        state.lastSessionName = action.payload.name;
         // Add to available sessions
         const newSession: SessionListItem = {
           id: action.payload.id,
@@ -401,6 +409,7 @@ export const sessionSlice = createSlice({
       .addCase(loadSessionThunk.fulfilled, (state, action) => {
         state.isLoading = false;
         state.currentSessionName = action.payload.name;
+        state.lastSessionName = action.payload.name;
       })
       .addCase(loadSessionThunk.rejected, (state, action) => {
         state.isLoading = false;
@@ -423,6 +432,7 @@ export const {
   clearSaveError,
   clearLoadError,
   setCurrentSessionName,
+  setLastSessionName,
   setIsLoadingOscillators,
 } = sessionSlice.actions;
 
@@ -438,5 +448,7 @@ export const selectSaveError = (state: RootState) => state.session.saveError;
 export const selectLoadError = (state: RootState) => state.session.loadError;
 export const selectAvailableSessions = (state: RootState) =>
   state.session.availableSessions;
+export const selectLastSessionName = (state: RootState) =>
+  state.session.lastSessionName;
 export const selectIsLoadingOscillators = (state: RootState) =>
   state.session.isLoadingOscillators;

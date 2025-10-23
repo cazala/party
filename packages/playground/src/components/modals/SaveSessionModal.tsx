@@ -13,31 +13,40 @@ interface SaveSessionModalProps {
 export function SaveSessionModal({ isOpen, onClose, particleCount }: SaveSessionModalProps) {
   const [sessionName, setSessionName] = useState("");
   const [nameError, setNameError] = useState("");
-  const { saveCurrentSession, isSaving, saveError, clearErrors } = useSession();
+  const [showOverrideWarning, setShowOverrideWarning] = useState(false);
+  const { saveCurrentSession, isSaving, saveError, clearErrors, lastSessionName, availableSessions } = useSession();
 
-  // Reset form when modal opens
+  // Reset form when modal opens and populate with last session name
   useEffect(() => {
     if (isOpen) {
-      setSessionName("");
+      setSessionName(lastSessionName || "");
       setNameError("");
+      setShowOverrideWarning(false);
       setSaveInitiated(false);
       clearErrors();
+    } else {
+      // Reset state when modal closes to prevent issues on next open
+      setSaveInitiated(false);
+      setShowOverrideWarning(false);
+      setNameError("");
     }
-  }, [isOpen, clearErrors]);
+  }, [isOpen, clearErrors, lastSessionName]);
 
   // Track if save was initiated to detect successful completion
   const [saveInitiated, setSaveInitiated] = useState(false);
 
+
   // Close modal on successful save
   useEffect(() => {
     if (saveInitiated && !isSaving && !saveError && isOpen) {
-      // Save completed successfully - close modal after short delay
-      const timer = setTimeout(() => {
-        onClose();
-      }, 500);
-      return () => clearTimeout(timer);
+      onClose();
     }
   }, [saveInitiated, isSaving, saveError, isOpen, onClose]);
+
+  // Check if session name already exists
+  const sessionExists = (name: string): boolean => {
+    return availableSessions.some(session => session.name.toLowerCase() === name.toLowerCase());
+  };
 
   const validateSessionName = (name: string): string => {
     if (!name.trim()) {
@@ -63,14 +72,32 @@ export function SaveSessionModal({ isOpen, onClose, particleCount }: SaveSession
       return;
     }
     
+    // Check if name exists and show warning if not already confirmed
+    if (sessionExists(trimmedName) && !showOverrideWarning) {
+      setShowOverrideWarning(true);
+      setNameError("");
+      return;
+    }
+    
     setNameError("");
+    setShowOverrideWarning(false);
     setSaveInitiated(true);
-    await saveCurrentSession(trimmedName);
+    
+    try {
+      await saveCurrentSession(trimmedName);
+    } catch (error) {
+      console.error("Failed to save session:", error);
+    }
+  };
+
+  const handleOverrideCancel = () => {
+    setShowOverrideWarning(false);
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSessionName(value);
+    setShowOverrideWarning(false); // Hide override warning when name changes
     
     if (nameError) {
       const validationError = validateSessionName(value);
@@ -88,24 +115,26 @@ export function SaveSessionModal({ isOpen, onClose, particleCount }: SaveSession
       >
         Cancel
       </button>
-      <button 
-        type="submit" 
-        className="session-modal-button primary"
-        onClick={handleSubmit}
-        disabled={isSaving || !!nameError || !sessionName.trim()}
-      >
-        {isSaving ? (
-          <>
-            <div className="spinner" />
-            Saving...
-          </>
-        ) : (
-          <>
-            <Save size={16} />
-            Save Session
-          </>
-        )}
-      </button>
+      {!showOverrideWarning && (
+        <button 
+          type="submit" 
+          className="session-modal-button primary"
+          onClick={handleSubmit}
+          disabled={isSaving || !!nameError || !sessionName.trim()}
+        >
+          {isSaving ? (
+            <>
+              <div className="spinner" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save size={16} />
+              Save Session
+            </>
+          )}
+        </button>
+      )}
     </>
   );
 
@@ -163,6 +192,33 @@ export function SaveSessionModal({ isOpen, onClose, particleCount }: SaveSession
             </div>
           )}
         </div>
+        
+        {showOverrideWarning && (
+          <div className="override-warning">
+            <div>
+              <AlertCircle size={16} />
+              A session named "{sessionName.trim()}" already exists. Do you want to override it?
+            </div>
+            <div className="override-actions">
+              <button 
+                type="button"
+                className="session-modal-button primary"
+                onClick={handleSubmit}
+                disabled={isSaving}
+              >
+                Yes, Override
+              </button>
+              <button 
+                type="button"
+                className="session-modal-button secondary"
+                onClick={handleOverrideCancel}
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         
         {saveError && (
           <div className="error-message">
