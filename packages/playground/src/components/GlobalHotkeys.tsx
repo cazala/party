@@ -6,15 +6,12 @@ import { useSession } from "../hooks/useSession";
 
 export function GlobalHotkeys() {
   const { setToolMode, toolMode } = useTools();
-  const { canvasRef } = useEngine();
+  const { canvasRef, play, pause, isPlaying } = useEngine();
   const { undo, redo, canUndo, canRedo } = useHistory();
   const { orderedSessions, quickLoadSession } = useSession();
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const isModifier = e.metaKey || e.ctrlKey;
-      if (!isModifier) return;
-
       // Avoid triggering inside editable inputs
       const target = e.target as HTMLElement | null;
       if (target) {
@@ -26,6 +23,20 @@ export function GlobalHotkeys() {
           tag === "SELECT";
         if (isEditable) return;
       }
+
+      // Handle spacebar for play/pause (no modifier required)
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (isPlaying) {
+          pause();
+        } else {
+          play();
+        }
+        return;
+      }
+
+      const isModifier = e.metaKey || e.ctrlKey;
+      if (!isModifier) return;
 
       const key = e.key.toLowerCase();
       const updateOverlayMouseToCurrent = () => {
@@ -140,7 +151,7 @@ export function GlobalHotkeys() {
       document.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("mousemove", onMouseMove);
     };
-  }, [setToolMode, canvasRef, toolMode, undo, redo, canUndo, canRedo, orderedSessions, quickLoadSession]);
+  }, [setToolMode, canvasRef, toolMode, undo, redo, canUndo, canRedo, orderedSessions, quickLoadSession, play, pause, isPlaying]);
 
   return null;
 }

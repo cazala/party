@@ -14,6 +14,9 @@ export function HelpModal({
         <h3>General</h3>
         <ul>
           <li>
+            <b>Space</b>: Play/Pause simulation
+          </li>
+          <li>
             <b>Cmd/Ctrl + Z</b>: Undo
           </li>
           <li>
