@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { Download, Trash2, AlertCircle, RefreshCw, MoreVertical, Edit3, Copy } from "lucide-react";
+import { createPortal } from "react-dom";
+import {
+  Download,
+  Trash2,
+  AlertCircle,
+  RefreshCw,
+  MoreVertical,
+  Edit3,
+  Copy,
+} from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useSession } from "../../hooks/useSession";
@@ -13,21 +22,24 @@ interface LoadSessionModalProps {
 }
 
 export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
-  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
-  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(
+    null
+  );
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(
+    null
+  );
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const { 
-    orderedSessions, 
-    loadSession, 
-    deleteSession, 
+  const {
+    orderedSessions,
+    loadSession,
+    deleteSession,
     renameSession,
     duplicateSession,
-    refreshSessions,
     reorderSessionsList,
     storageInfo,
-    isLoading, 
-    loadError, 
-    clearErrors 
+    isLoading,
+    loadError,
+    clearErrors,
   } = useSession();
 
   // Reset state when modal opens
@@ -37,21 +49,45 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
       setRenamingSessionId(null);
       setOpenDropdownId(null);
       clearErrors();
-      refreshSessions();
     }
-  }, [isOpen, clearErrors, refreshSessions]);
+  }, [isOpen, clearErrors]);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside or modal scrolls
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (openDropdownId && !(event.target as Element).closest('.dropdown-container')) {
+      if (openDropdownId) {
+        const target = event.target as Element;
+        // Check if click is outside both the trigger button and the portal dropdown
+        const isClickOnTrigger = target.closest(".dropdown-trigger");
+        const isClickOnDropdown = target.closest(".dropdown-portal");
+
+        if (!isClickOnTrigger && !isClickOnDropdown) {
+          setOpenDropdownId(null);
+        }
+      }
+    };
+
+    const handleModalScroll = () => {
+      if (openDropdownId) {
         setOpenDropdownId(null);
       }
     };
 
     if (openDropdownId) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      document.addEventListener("click", handleClickOutside);
+      const modalBody = document.querySelector(
+        ".load-session-modal .sessions-list"
+      );
+      if (modalBody) {
+        modalBody.addEventListener("scroll", handleModalScroll);
+      }
+
+      return () => {
+        document.removeEventListener("click", handleClickOutside);
+        if (modalBody) {
+          modalBody.removeEventListener("scroll", handleModalScroll);
+        }
+      };
     }
   }, [openDropdownId]);
 
@@ -71,7 +107,7 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
   };
 
   const handleRenameSession = async (sessionId: string, newName: string) => {
-    if (newName.trim() && newName.trim() !== '') {
+    if (newName.trim() && newName.trim() !== "") {
       const success = await renameSession(sessionId, newName.trim());
       if (success) {
         setRenamingSessionId(null);
@@ -97,10 +133,14 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
   const formatDate = (dateString: string): string => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+      return (
+        date.toLocaleDateString() +
+        " " +
+        date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
     } catch {
       return "Unknown date";
     }
@@ -110,37 +150,36 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
     const newOrder = [...orderedSessions];
     const [draggedSession] = newOrder.splice(dragIndex, 1);
     newOrder.splice(hoverIndex, 0, draggedSession);
-    reorderSessionsList(newOrder.map(session => session.id));
+    reorderSessionsList(newOrder.map((session) => session.id));
   };
 
   const formatParticleCount = (count: number): string => {
     return count.toLocaleString();
   };
 
-  const headerActions = (
-    <button 
-      className="session-modal-button secondary"
-      onClick={refreshSessions}
-      disabled={isLoading}
-      title="Refresh sessions"
-    >
-      <RefreshCw size={14} />
-    </button>
-  );
-
   const footer = (
     <>
-      <div style={{ flex: 1, fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+      <div
+        style={{
+          flex: 1,
+          fontSize: "12px",
+          color: "var(--color-text-secondary)",
+        }}
+      >
         {orderedSessions.length > 0 && (
           <>
-            {`${orderedSessions.length} session${orderedSessions.length === 1 ? '' : 's'} available`}
+            {`${orderedSessions.length} session${
+              orderedSessions.length === 1 ? "" : "s"
+            } available`}
             {storageInfo && (
               <>
-                {' • '}
-                <span 
-                  style={{ 
-                    color: storageInfo.isHighUsage ? '#ffc107' : 'var(--color-text-secondary)',
-                    fontWeight: storageInfo.isHighUsage ? '600' : 'normal'
+                {" • "}
+                <span
+                  style={{
+                    color: storageInfo.isHighUsage
+                      ? "#ffc107"
+                      : "var(--color-text-secondary)",
+                    fontWeight: storageInfo.isHighUsage ? "600" : "normal",
                   }}
                 >
                   {storageInfo.formattedSize} used
@@ -150,8 +189,8 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
           </>
         )}
       </div>
-      <button 
-        type="button" 
+      <button
+        type="button"
         className="session-modal-button secondary"
         onClick={onClose}
         disabled={isLoading}
@@ -166,21 +205,26 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       title="Load Session"
-      headerActions={headerActions}
       footer={footer}
       width="700px"
       className="load-session-modal"
     >
       {loadError && (
-        <div className="error-message" style={{ marginBottom: '16px' }}>
+        <div className="error-message" style={{ marginBottom: "16px" }}>
           <AlertCircle size={16} />
           {loadError}
         </div>
       )}
-      
+
       {isLoading ? (
-        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-secondary)' }}>
-          <div className="spinner" style={{ margin: '0 auto 16px' }} />
+        <div
+          style={{
+            textAlign: "center",
+            padding: "40px 20px",
+            color: "var(--color-text-secondary)",
+          }}
+        >
+          <div className="spinner" style={{ margin: "0 auto 16px" }} />
           Loading session...
         </div>
       ) : orderedSessions.length === 0 ? (
@@ -263,8 +307,8 @@ function SessionRow({
   formatParticleCount,
   isLoading,
 }: SessionRowProps) {
-  const [{ isDragging }, drag] = useDrag({
-    type: 'session',
+  const [{ isDragging }, drag, dragPreview] = useDrag({
+    type: "session",
     item: { index },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
@@ -272,7 +316,7 @@ function SessionRow({
   });
 
   const [, drop] = useDrop({
-    accept: 'session',
+    accept: "session",
     hover: (item: { index: number }) => {
       if (item.index !== index) {
         moveSession(item.index, index);
@@ -282,19 +326,25 @@ function SessionRow({
   });
 
   const [renameValue, setRenameValue] = useState(session.name);
-  const [dropdownPosition, setDropdownPosition] = useState<'down' | 'up'>('down');
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    direction: "down" as "down" | "up",
+  });
   const [dropdownReady, setDropdownReady] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const lastModified = session.metadata.lastModified || session.metadata.createdAt;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const lastModified =
+    session.metadata.lastModified || session.metadata.createdAt;
 
   const handleRenameSubmit = () => {
     handleRenameSession(session.id, renameValue);
   };
 
   const handleRenameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleRenameSubmit();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setRenameValue(session.name);
       setRenamingSessionId(null);
     }
@@ -302,45 +352,51 @@ function SessionRow({
 
   // Calculate dropdown position when it opens
   useEffect(() => {
-    if (openDropdownId === session.id && dropdownRef.current) {
+    if (openDropdownId === session.id && triggerRef.current) {
       // Reset ready state to hide dropdown during calculation
       setDropdownReady(false);
-      
+
       // Small delay to ensure DOM is updated
       const calculatePosition = () => {
-        const dropdownContainer = dropdownRef.current;
-        if (!dropdownContainer) return;
-        
-        const containerRect = dropdownContainer.getBoundingClientRect();
-        
-        // Find the sessions list container to get the scrollable area bounds
-        const sessionsList = dropdownContainer.closest('.sessions-list');
-        const modalBody = dropdownContainer.closest('.modal-body');
-        
-        let availableSpace = window.innerHeight - containerRect.bottom;
-        
-        // If we're inside a modal or scrollable container, use that as the boundary
-        if (sessionsList) {
-          const sessionsListRect = sessionsList.getBoundingClientRect();
-          availableSpace = sessionsListRect.bottom - containerRect.bottom;
-        } else if (modalBody) {
-          const modalRect = modalBody.getBoundingClientRect();
-          availableSpace = modalRect.bottom - containerRect.bottom;
-        }
-        
-        // Dropdown menu height (approximate) - 3 items × ~40px each
+        const trigger = triggerRef.current;
+        if (!trigger) return;
+
+        const triggerRect = trigger.getBoundingClientRect();
+
+        // Dropdown menu dimensions (approximate)
         const dropdownMenuHeight = 120;
-        
-        if (availableSpace < dropdownMenuHeight) {
-          setDropdownPosition('up');
-        } else {
-          setDropdownPosition('down');
+        const dropdownMenuWidth = 120;
+
+        // Calculate available space below and above
+        const spaceBelow = window.innerHeight - triggerRect.bottom;
+        const spaceAbove = triggerRect.top;
+
+        // Determine direction
+        const direction =
+          spaceBelow >= dropdownMenuHeight || spaceBelow >= spaceAbove
+            ? "down"
+            : "up";
+
+        // Calculate position
+        let top =
+          direction === "down"
+            ? triggerRect.bottom + 4
+            : triggerRect.top - dropdownMenuHeight - 4;
+
+        let left = triggerRect.right - dropdownMenuWidth;
+
+        // Ensure dropdown doesn't go off screen
+        if (left < 8) left = 8;
+        if (left + dropdownMenuWidth > window.innerWidth - 8) {
+          left = window.innerWidth - dropdownMenuWidth - 8;
         }
-        
+
+        setDropdownPosition({ top, left, direction });
+
         // Show the dropdown now that positioning is calculated
         setDropdownReady(true);
       };
-      
+
       // Use requestAnimationFrame to ensure positioning happens after render
       requestAnimationFrame(calculatePosition);
     } else {
@@ -351,16 +407,49 @@ function SessionRow({
 
   return (
     <div
-      ref={(node) => drag(drop(node))}
-      className={`session-item ${isDragging ? 'dragging' : ''}`}
+      ref={(node) => dragPreview(drop(node))}
+      className={`session-item ${isDragging ? "dragging" : ""}`}
       style={{ opacity: isDragging ? 0.5 : 1 }}
     >
-      <div className="session-number">#{rowNumber}</div>
-      
-      <div className="session-info">
+      <div
+        ref={drag}
+        className="session-number drag-handle"
+        title="Drag to reorder"
+      >
+        #{rowNumber}
+      </div>
+
+      <div
+        className="session-info"
+        onClick={(e) => {
+          // Don't load if we're in delete/rename mode or if clicking on interactive elements
+          if (
+            deletingSessionId === session.id ||
+            renamingSessionId === session.id
+          )
+            return;
+
+          // Don't load if clicking on the rename input
+          if ((e.target as Element).closest(".rename-input-container")) return;
+
+          handleLoadSession(session.id);
+        }}
+        style={{
+          cursor:
+            deletingSessionId === session.id || renamingSessionId === session.id
+              ? "default"
+              : "pointer",
+        }}
+        title={
+          deletingSessionId === session.id || renamingSessionId === session.id
+            ? ""
+            : "Click to load session"
+        }
+      >
         {deletingSessionId === session.id ? (
           <div className="delete-confirmation-text">
-            Are you sure you want to delete "{session.name}"? This action cannot be undone.
+            Are you sure you want to delete "{session.name}"? This action cannot
+            be undone.
           </div>
         ) : renamingSessionId === session.id ? (
           <div className="rename-input-container">
@@ -377,11 +466,15 @@ function SessionRow({
           <>
             <div className="session-name">{session.name}</div>
             <div className="session-details">
-              <span>{formatParticleCount(session.metadata.particleCount)} particles</span>
+              <span>
+                {formatParticleCount(session.metadata.particleCount)} particles
+              </span>
               <span>•</span>
               <span>
-                {session.metadata.hasParticleData !== undefined 
-                  ? (session.metadata.hasParticleData ? "Full data" : "Config only")
+                {session.metadata.hasParticleData !== undefined
+                  ? session.metadata.hasParticleData
+                    ? "Full data"
+                    : "Config only"
                   : "Config only"}
               </span>
               <span>•</span>
@@ -390,20 +483,27 @@ function SessionRow({
           </>
         )}
       </div>
-      
-      <div className={`session-actions ${
-        deletingSessionId === session.id ? 'delete-mode' : 
-        renamingSessionId === session.id ? 'rename-mode' : ''
-      }`}>
+
+      <div
+        className={`session-actions ${
+          deletingSessionId === session.id
+            ? "delete-mode"
+            : renamingSessionId === session.id
+            ? "rename-mode"
+            : openDropdownId === session.id
+            ? "dropdown-open"
+            : ""
+        }`}
+      >
         {deletingSessionId === session.id ? (
           <>
-            <button 
+            <button
               className="session-modal-button danger"
               onClick={() => handleDeleteSession(session.id)}
             >
               Yes, Delete
             </button>
-            <button 
+            <button
               className="session-modal-button secondary"
               onClick={() => setDeletingSessionId(null)}
             >
@@ -412,13 +512,13 @@ function SessionRow({
           </>
         ) : renamingSessionId === session.id ? (
           <>
-            <button 
+            <button
               className="session-modal-button primary"
               onClick={handleRenameSubmit}
             >
               Confirm
             </button>
-            <button 
+            <button
               className="session-modal-button secondary"
               onClick={() => {
                 setRenameValue(session.name);
@@ -430,7 +530,7 @@ function SessionRow({
           </>
         ) : (
           <>
-            <button 
+            <button
               className="session-modal-button primary"
               onClick={() => handleLoadSession(session.id)}
               disabled={isLoading}
@@ -439,44 +539,60 @@ function SessionRow({
               Load
             </button>
             <div className="dropdown-container" ref={dropdownRef}>
-              <button 
+              <button
+                ref={triggerRef}
                 className="session-modal-button secondary dropdown-trigger"
                 onClick={() => handleDropdownToggle(session.id)}
                 disabled={isLoading}
               >
                 <MoreVertical size={14} />
               </button>
-              {openDropdownId === session.id && (
-                <div className={`dropdown-menu ${dropdownPosition === 'up' ? 'dropdown-up' : 'dropdown-down'} ${dropdownReady ? 'dropdown-ready' : 'dropdown-calculating'}`}>
-                  <button 
-                    className="dropdown-item"
-                    onClick={() => {
-                      setRenamingSessionId(session.id);
-                      setOpenDropdownId(null);
+              {openDropdownId === session.id &&
+                dropdownReady &&
+                createPortal(
+                  <div
+                    className={`dropdown-portal dropdown-menu ${
+                      dropdownPosition.direction === "up"
+                        ? "dropdown-up"
+                        : "dropdown-down"
+                    } dropdown-ready`}
+                    style={{
+                      position: "fixed",
+                      top: `${dropdownPosition.top}px`,
+                      left: `${dropdownPosition.left}px`,
+                      zIndex: 10000,
                     }}
                   >
-                    <Edit3 size={12} />
-                    Rename
-                  </button>
-                  <button 
-                    className="dropdown-item"
-                    onClick={() => handleDuplicateSession(session.id)}
-                  >
-                    <Copy size={12} />
-                    Duplicate
-                  </button>
-                  <button 
-                    className="dropdown-item danger"
-                    onClick={() => {
-                      setDeletingSessionId(session.id);
-                      setOpenDropdownId(null);
-                    }}
-                  >
-                    <Trash2 size={12} />
-                    Delete
-                  </button>
-                </div>
-              )}
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setRenamingSessionId(session.id);
+                        setOpenDropdownId(null);
+                      }}
+                    >
+                      <Edit3 size={12} />
+                      Rename
+                    </button>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => handleDuplicateSession(session.id)}
+                    >
+                      <Copy size={12} />
+                      Duplicate
+                    </button>
+                    <button
+                      className="dropdown-item danger"
+                      onClick={() => {
+                        setDeletingSessionId(session.id);
+                        setOpenDropdownId(null);
+                      }}
+                    >
+                      <Trash2 size={12} />
+                      Delete
+                    </button>
+                  </div>,
+                  document.body
+                )}
             </div>
           </>
         )}

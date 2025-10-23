@@ -11,22 +11,41 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px 12px 8px;
+  padding: 12px 16px 12px 52px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.05);
   transition: all 0.2s ease;
-  cursor: grab;
+  cursor: default;
   position: relative;
 }
 
 .load-session-modal .session-item.dragging {
-  transform: rotate(5deg);
   z-index: 1000;
 }
 
-.load-session-modal .session-item:active {
+.load-session-modal .session-number.drag-handle {
+  cursor: grab;
+  user-select: none;
+  transition: background 0.2s ease;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  border-radius: 6px 0 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.load-session-modal .session-number.drag-handle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.load-session-modal .session-number.drag-handle:active {
   cursor: grabbing;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .load-session-modal .session-item:hover {
@@ -39,9 +58,10 @@
   visibility: visible;
 }
 
-/* Always show actions when in delete confirmation mode or rename mode */
+/* Always show actions when in delete confirmation mode, rename mode, or dropdown is open */
 .load-session-modal .session-actions.delete-mode,
-.load-session-modal .session-actions.rename-mode {
+.load-session-modal .session-actions.rename-mode,
+.load-session-modal .session-actions.dropdown-open {
   opacity: 1 !important;
   visibility: visible !important;
 }
@@ -145,6 +165,17 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Portal dropdown (rendered to document.body) */
+.dropdown-portal {
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 120px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+}
+
 .load-session-modal .dropdown-menu.dropdown-down {
   top: 100%;
   margin-top: 4px;
@@ -166,7 +197,8 @@
   transition: opacity 0.1s ease;
 }
 
-.load-session-modal .dropdown-item {
+.load-session-modal .dropdown-item,
+.dropdown-portal .dropdown-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -181,15 +213,18 @@
   text-align: left;
 }
 
-.load-session-modal .dropdown-item:hover {
+.load-session-modal .dropdown-item:hover,
+.dropdown-portal .dropdown-item:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.load-session-modal .dropdown-item.danger {
+.load-session-modal .dropdown-item.danger,
+.dropdown-portal .dropdown-item.danger {
   color: #ef4444;
 }
 
-.load-session-modal .dropdown-item.danger:hover {
+.load-session-modal .dropdown-item.danger:hover,
+.dropdown-portal .dropdown-item.danger:hover {
   background: rgba(239, 68, 68, 0.1);
 }
 
