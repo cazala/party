@@ -2,11 +2,13 @@ import { useEffect } from "react";
 import { useTools } from "../hooks/useTools";
 import { useEngine } from "../hooks/useEngine";
 import { useHistory } from "../hooks/useHistory";
+import { useSession } from "../hooks/useSession";
 
 export function GlobalHotkeys() {
   const { setToolMode, toolMode } = useTools();
   const { canvasRef } = useEngine();
   const { undo, redo, canUndo, canRedo } = useHistory();
+  const { orderedSessions, quickLoadSession } = useSession();
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -45,6 +47,17 @@ export function GlobalHotkeys() {
         });
         window.dispatchEvent(evt);
       };
+
+      // Quick load sessions (Cmd/Ctrl + 1-9)
+      if (key >= "1" && key <= "9") {
+        e.preventDefault(); // Always prevent tab switching
+        const sessionIndex = parseInt(key) - 1;
+        if (sessionIndex < orderedSessions.length) {
+          const sessionId = orderedSessions[sessionIndex].id;
+          quickLoadSession(sessionId);
+        }
+        return;
+      }
 
       // Undo/Redo
       if (key === "z") {
@@ -127,7 +140,7 @@ export function GlobalHotkeys() {
       document.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("mousemove", onMouseMove);
     };
-  }, [setToolMode, canvasRef, toolMode, undo, redo, canUndo, canRedo]);
+  }, [setToolMode, canvasRef, toolMode, undo, redo, canUndo, canRedo, orderedSessions, quickLoadSession]);
 
   return null;
 }

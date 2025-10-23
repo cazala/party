@@ -199,6 +199,144 @@ export const saveCurrentSessionThunk = createAsyncThunk(
   }
 );
 
+// Async thunk to quick load session (without particles and joints)
+export const quickLoadSessionThunk = createAsyncThunk(
+  "session/quickLoadSession",
+  async (sessionId: string, { dispatch, rejectWithValue }) => {
+    try {
+      const sessionData = loadSessionFromStorage(sessionId);
+      if (!sessionData) {
+        throw new Error("Session not found");
+      }
+
+      // Set flag to prevent useOscillators interference during load
+      dispatch(sessionSlice.actions.setIsLoadingOscillators(true));
+
+      // Clear existing oscillators from both Redux and engine
+      dispatch(clearAllOscillators());
+      const engine = getEngine();
+      if (engine) {
+        engine.clearOscillators();
+      }
+
+      // Small delay to ensure clearing is complete before loading
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Sync GPU if needed
+      await engine?.getParticles();
+
+      // Load engine settings
+      dispatch(setConstrainIterations(sessionData.engine.constrainIterations));
+      dispatch(setGridCellSize(sessionData.engine.gridCellSize));
+      dispatch(setMaxNeighbors(sessionData.engine.maxNeighbors));
+
+      // Load module states
+      dispatch(resetEnvironment());
+      dispatch(importEnvironmentSettings(sessionData.modules.environment));
+
+      dispatch(resetBoundary());
+      dispatch(importBoundarySettings(sessionData.modules.boundary));
+
+      dispatch(resetCollisions());
+      dispatch(importCollisionsSettings(sessionData.modules.collisions));
+
+      dispatch(resetFluids());
+      dispatch(importFluidsSettings(sessionData.modules.fluids));
+
+      dispatch(resetBehavior());
+      dispatch(importBehaviorSettings(sessionData.modules.behavior));
+
+      dispatch(resetSensors());
+      dispatch(importSensorsSettings(sessionData.modules.sensors));
+
+      dispatch(resetJoints());
+
+      dispatch(importTrailsSettings(sessionData.modules.trails));
+      dispatch(importInteractionSettings(sessionData.modules.interaction));
+      dispatch(importParticlesSettings(sessionData.modules.particles));
+      dispatch(importLinesSettings(sessionData.modules.lines));
+      dispatch(importGrabSettings(sessionData.modules.grab));
+
+      // Load oscillators to Redux state
+      Object.entries(sessionData.oscillators).forEach(([sliderId, config]) => {
+        dispatch(setOscillator({ sliderId, config }));
+      });
+
+      // Restore oscillator engine elapsed time BEFORE adding oscillators
+      if (engine) {
+        if (typeof sessionData.oscillatorsElapsedSeconds === "number") {
+          engine.setOscillatorsElapsedSeconds(
+            sessionData.oscillatorsElapsedSeconds
+          );
+        } else {
+          // For old sessions without time, reset to 0 to make saved phase offsets deterministic
+          engine.setOscillatorsElapsedSeconds(0);
+        }
+
+        // Directly restore oscillators to engine with runtime state to avoid timing issues
+        Object.entries(sessionData.oscillators).forEach(
+          ([sliderId, config]) => {
+            // Resolve module/input from explicit fields or from sliderId
+            let moduleName = config.moduleName;
+            let inputName = config.inputName;
+
+            if (!moduleName || !inputName) {
+              const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
+              if (parts.length >= 2) {
+                moduleName = moduleName || parts[0];
+                inputName = inputName || parts[1];
+              }
+            }
+
+            if (moduleName && inputName) {
+              // Explicitly remove any existing oscillator first to ensure clean state
+              if (engine.hasOscillator(moduleName, inputName)) {
+                engine.removeOscillator(moduleName, inputName);
+              }
+              const options: any = {
+                curveExponent: config.curveExponent ?? 2,
+                jitter: config.jitter ?? false,
+              };
+
+              // Simple approach: just use current value and direction, let engine calculate fresh phase
+              if (config.lastValue !== undefined) {
+                options.currentValue = config.lastValue;
+              }
+              if (config.lastDirection !== undefined) {
+                options.initialDirection = config.lastDirection;
+              }
+              // Pass saved phaseOffset if present, since elapsed time is restored
+              if (config.phaseOffset !== undefined) {
+                options.phaseOffset = config.phaseOffset;
+              }
+
+              engine.addOscillator({
+                moduleName,
+                inputName,
+                min: config.customMin,
+                max: config.customMax,
+                speedHz: config.speedHz,
+                options,
+              });
+            }
+          }
+        );
+      }
+
+      // Clear the flag after loading is complete
+      dispatch(sessionSlice.actions.setIsLoadingOscillators(false));
+
+      return sessionData;
+    } catch (error) {
+      // Clear the flag on error to avoid getting stuck
+      dispatch(sessionSlice.actions.setIsLoadingOscillators(false));
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Failed to load session"
+      );
+    }
+  }
+);
+
 // Async thunk to load session
 export const loadSessionThunk = createAsyncThunk(
   "session/loadSession",
@@ -475,6 +613,20 @@ export const sessionSlice = createSlice({
         state.lastSessionName = action.payload.name;
       })
       .addCase(loadSessionThunk.rejected, (state, action) => {
+        state.isLoading = false;
+        state.loadError = action.payload as string;
+      })
+      // Quick load session (without particles and joints)
+      .addCase(quickLoadSessionThunk.pending, (state) => {
+        state.isLoading = true;
+        state.loadError = null;
+      })
+      .addCase(quickLoadSessionThunk.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.currentSessionName = action.payload.name;
+        state.lastSessionName = action.payload.name;
+      })
+      .addCase(quickLoadSessionThunk.rejected, (state, action) => {
         state.isLoading = false;
         state.loadError = action.payload as string;
       })

@@ -22,6 +22,7 @@ import {
   registerEngine,
   SpawnParticlesConfig,
 } from "../slices/engine";
+import { loadAvailableSessionsThunk } from "../slices/session";
 
 const LEFT_SIDEBAR_WIDTH = 280;
 const RIGHT_SIDEBAR_WIDTH = 320;
@@ -124,6 +125,13 @@ export function EngineProvider({ children }: EngineProviderProps) {
   useEffect(() => {
     registerEngine(engine);
   }, [engine]);
+
+  // Load available sessions when engine is first initialized
+  useEffect(() => {
+    if (isInitialized && engine) {
+      dispatch(loadAvailableSessionsThunk());
+    }
+  }, [isInitialized, engine, dispatch]);
 
   // Update canvas size when window size changes
   useEffect(() => {
