@@ -243,6 +243,11 @@
   cursor: pointer;
   transition: all 0.2s ease;
   outline: none;
+  margin-left: 8px;
+}
+
+.session-modal-button:first-child {
+  margin-left: 0;
 }
 
 .session-modal-button:hover:not(:disabled) {

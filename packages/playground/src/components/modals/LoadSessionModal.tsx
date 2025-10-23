@@ -4,10 +4,10 @@ import {
   Download,
   Trash2,
   AlertCircle,
-  RefreshCw,
   MoreVertical,
   Edit3,
   Copy,
+  Upload,
 } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -29,17 +29,21 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
     null
   );
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const {
     orderedSessions,
     loadSession,
     deleteSession,
     renameSession,
     duplicateSession,
+    exportSession,
+    importSession,
     reorderSessionsList,
     storageInfo,
     isLoading,
     loadError,
     clearErrors,
+    refreshSessions,
   } = useSession();
 
   // Reset state when modal opens
@@ -48,9 +52,11 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
       setDeletingSessionId(null);
       setRenamingSessionId(null);
       setOpenDropdownId(null);
+      setImportError(null);
       clearErrors();
+      refreshSessions();
     }
-  }, [isOpen, clearErrors]);
+  }, [isOpen, clearErrors, refreshSessions]);
 
   // Close dropdown when clicking outside or modal scrolls
   useEffect(() => {
@@ -123,6 +129,33 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
     }
   };
 
+  const handleExportSession = async (sessionId: string) => {
+    const success = await exportSession(sessionId);
+    if (success) {
+      setOpenDropdownId(null);
+    }
+  };
+
+  const handleImportSession = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportError(null);
+    const result = await importSession(file);
+    
+    if (!result.success) {
+      setImportError(result.error || "Failed to import session");
+    }
+
+    // Reset the file input
+    event.target.value = "";
+  };
+
+  const triggerImport = () => {
+    const fileInput = document.getElementById("session-import-input") as HTMLInputElement;
+    fileInput?.click();
+  };
+
   const handleDropdownToggle = (sessionId: string) => {
     setOpenDropdownId(openDropdownId === sessionId ? null : sessionId);
     // Reset other states when opening dropdown
@@ -192,6 +225,16 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
       <button
         type="button"
         className="session-modal-button secondary"
+        onClick={triggerImport}
+        disabled={isLoading}
+        title="Import session from JSON file"
+      >
+        <Upload size={14} />
+        Import
+      </button>
+      <button
+        type="button"
+        className="session-modal-button secondary"
         onClick={onClose}
         disabled={isLoading}
       >
@@ -209,12 +252,21 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
       width="700px"
       className="load-session-modal"
     >
-      {loadError && (
+      {(loadError || importError) && (
         <div className="error-message" style={{ marginBottom: "16px" }}>
           <AlertCircle size={16} />
-          {loadError}
+          {loadError || importError}
         </div>
       )}
+
+      {/* Hidden file input for import */}
+      <input
+        id="session-import-input"
+        type="file"
+        accept=".json,application/json"
+        onChange={handleImportSession}
+        style={{ display: "none" }}
+      />
 
       {isLoading ? (
         <div
@@ -249,6 +301,7 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
                 handleDeleteSession={handleDeleteSession}
                 handleRenameSession={handleRenameSession}
                 handleDuplicateSession={handleDuplicateSession}
+                handleExportSession={handleExportSession}
                 handleDropdownToggle={handleDropdownToggle}
                 openDropdownId={openDropdownId}
                 renamingSessionId={renamingSessionId}
@@ -277,6 +330,7 @@ interface SessionRowProps {
   handleDeleteSession: (id: string) => void;
   handleRenameSession: (id: string, newName: string) => void;
   handleDuplicateSession: (id: string) => void;
+  handleExportSession: (id: string) => void;
   handleDropdownToggle: (id: string) => void;
   openDropdownId: string | null;
   renamingSessionId: string | null;
@@ -298,6 +352,7 @@ function SessionRow({
   handleDeleteSession,
   handleRenameSession,
   handleDuplicateSession,
+  handleExportSession,
   handleDropdownToggle,
   openDropdownId,
   renamingSessionId,
@@ -579,6 +634,13 @@ function SessionRow({
                     >
                       <Copy size={12} />
                       Duplicate
+                    </button>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => handleExportSession(session.id)}
+                    >
+                      <Download size={12} />
+                      Export
                     </button>
                     <button
                       className="dropdown-item danger"

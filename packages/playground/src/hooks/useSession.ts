@@ -28,7 +28,18 @@ import {
   setParticlesThunk,
   getEngine,
 } from "../slices/engine";
-import { SessionSaveRequest } from "../types/session";
+import { SessionSaveRequest, SessionData } from "../types/session";
+import { 
+  loadSession as loadSessionFromStorage, 
+  saveSession as saveSessionToStorage,
+  generateSessionId 
+} from "../utils/sessionManager";
+import { 
+  toSnakeCase, 
+  isValidSessionData, 
+  downloadJsonFile, 
+  readJsonFile 
+} from "../utils/importExportUtils";
 
 export function useSession() {
   const dispatch = useAppDispatch();
@@ -224,6 +235,80 @@ export function useSession() {
     [dispatch, orderedSessions]
   );
 
+  // Export session to JSON file
+  const exportSession = useCallback(
+    async (sessionId: string): Promise<boolean> => {
+      try {
+        // Load the complete session data from storage
+        const sessionData = loadSessionFromStorage(sessionId);
+        if (!sessionData) {
+          console.error("Session not found for export:", sessionId);
+          return false;
+        }
+
+        // Generate filename from session name
+        const filename = toSnakeCase(sessionData.name);
+        
+        // Download as JSON file
+        downloadJsonFile(sessionData, filename);
+        
+        return true;
+      } catch (error) {
+        console.error("Failed to export session:", error);
+        return false;
+      }
+    },
+    []
+  );
+
+  // Import session from JSON file
+  const importSession = useCallback(
+    async (file: File): Promise<{ success: boolean; error?: string }> => {
+      try {
+        // Read and parse the JSON file
+        const data = await readJsonFile(file);
+        
+        // Validate the session data structure
+        if (!isValidSessionData(data)) {
+          return { 
+            success: false, 
+            error: "Invalid session file format. Please ensure you're importing a valid session file." 
+          };
+        }
+
+        // Generate a new unique ID for the imported session
+        const newSessionId = generateSessionId(data.name);
+        const now = new Date().toISOString();
+
+        // Create new session data with updated metadata
+        const importedSessionData: SessionData = {
+          ...data,
+          id: newSessionId,
+          metadata: {
+            ...data.metadata,
+            createdAt: now,
+            lastModified: now,
+          },
+        };
+
+        // Save the imported session
+        saveSessionToStorage(importedSessionData);
+        
+        // Refresh the sessions list
+        await dispatch(loadAvailableSessionsThunk()).unwrap();
+
+        return { success: true };
+      } catch (error) {
+        console.error("Failed to import session:", error);
+        return { 
+          success: false, 
+          error: error instanceof Error ? error.message : "Failed to import session file"
+        };
+      }
+    },
+    [dispatch]
+  );
+
   return {
     // State
     currentSessionName,
@@ -243,6 +328,8 @@ export function useSession() {
     deleteSession,
     renameSession,
     duplicateSession,
+    exportSession,
+    importSession,
     refreshSessions,
     clearErrors,
     reorderSessionsList,
