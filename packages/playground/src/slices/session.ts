@@ -12,6 +12,7 @@ import {
   deleteSession as deleteSessionFromStorage,
   renameSession as renameSessionInStorage,
   duplicateSession as duplicateSessionInStorage,
+  getStorageInfo,
   generateSessionId,
 } from "../utils/sessionManager";
 
@@ -62,6 +63,12 @@ export interface SessionState {
   loadError: string | null;
   availableSessions: SessionListItem[];
   sessionOrder: string[]; // Custom ordering of session IDs for display
+  storageInfo: {
+    usedSessions: number;
+    totalSize: number;
+    formattedSize: string;
+    isHighUsage: boolean;
+  } | null;
 }
 
 const initialState: SessionState = {
@@ -74,6 +81,7 @@ const initialState: SessionState = {
   loadError: null,
   availableSessions: [],
   sessionOrder: [],
+  storageInfo: null,
 };
 
 // Async thunk to save current session
@@ -148,18 +156,22 @@ export const saveCurrentSessionThunk = createAsyncThunk(
 
       // Check if a session with this name already exists
       const existingSession = state.session.availableSessions.find(
-        session => session.name.toLowerCase() === request.name.toLowerCase()
+        (session) => session.name.toLowerCase() === request.name.toLowerCase()
       );
-      
+
       // Use existing ID if overriding, otherwise generate new one
-      const sessionId = existingSession ? existingSession.id : generateSessionId(request.name);
+      const sessionId = existingSession
+        ? existingSession.id
+        : generateSessionId(request.name);
 
       const sessionData: SessionData = {
         id: sessionId,
         name: request.name,
         metadata: {
           particleCount: request.particleCount,
-          createdAt: existingSession ? existingSession.metadata.createdAt : new Date().toISOString(),
+          createdAt: existingSession
+            ? existingSession.metadata.createdAt
+            : new Date().toISOString(),
           lastModified: new Date().toISOString(),
           hasParticleData: shouldSaveParticleData && !!particles,
         },
@@ -362,7 +374,10 @@ export const deleteSessionThunk = createAsyncThunk(
 // Async thunk to rename session
 export const renameSessionThunk = createAsyncThunk(
   "session/renameSession",
-  async ({ sessionId, newName }: { sessionId: string; newName: string }, { rejectWithValue }) => {
+  async (
+    { sessionId, newName }: { sessionId: string; newName: string },
+    { rejectWithValue }
+  ) => {
     try {
       renameSessionInStorage(sessionId, newName);
       return { sessionId, newName };
@@ -412,9 +427,12 @@ export const sessionSlice = createSlice({
       state.sessionOrder = action.payload;
       // Persist the order to localStorage
       try {
-        localStorage.setItem('party-session-order', JSON.stringify(action.payload));
+        localStorage.setItem(
+          "party-session-order",
+          JSON.stringify(action.payload)
+        );
       } catch (error) {
-        console.warn('Failed to save session order:', error);
+        console.warn("Failed to save session order:", error);
       }
     },
   },
@@ -439,6 +457,8 @@ export const sessionSlice = createSlice({
           newSession,
           ...state.availableSessions.filter((s) => s.id !== newSession.id),
         ];
+        // Update storage info
+        state.storageInfo = getStorageInfo();
       })
       .addCase(saveCurrentSessionThunk.rejected, (state, action) => {
         state.isSaving = false;
@@ -463,26 +483,28 @@ export const sessionSlice = createSlice({
         state.availableSessions = action.payload;
         // Load custom session order from localStorage
         try {
-          const savedOrder = localStorage.getItem('party-session-order');
+          const savedOrder = localStorage.getItem("party-session-order");
           if (savedOrder) {
             const order = JSON.parse(savedOrder);
             // Filter out any session IDs that no longer exist
-            state.sessionOrder = order.filter((id: string) => 
-              action.payload.some(session => session.id === id)
+            state.sessionOrder = order.filter((id: string) =>
+              action.payload.some((session) => session.id === id)
             );
             // Add any new sessions that aren't in the saved order to the end
             const newSessions = action.payload
-              .filter(session => !state.sessionOrder.includes(session.id))
-              .map(session => session.id);
+              .filter((session) => !state.sessionOrder.includes(session.id))
+              .map((session) => session.id);
             state.sessionOrder = [...state.sessionOrder, ...newSessions];
           } else {
             // No custom order, use default date-based order
-            state.sessionOrder = action.payload.map(session => session.id);
+            state.sessionOrder = action.payload.map((session) => session.id);
           }
         } catch (error) {
-          console.warn('Failed to load session order:', error);
-          state.sessionOrder = action.payload.map(session => session.id);
+          console.warn("Failed to load session order:", error);
+          state.sessionOrder = action.payload.map((session) => session.id);
         }
+        // Update storage info
+        state.storageInfo = getStorageInfo();
       })
       // Delete session
       .addCase(deleteSessionThunk.fulfilled, (state, action) => {
@@ -490,21 +512,31 @@ export const sessionSlice = createSlice({
           (s) => s.id !== action.payload
         );
         // Remove from custom order as well
-        state.sessionOrder = state.sessionOrder.filter(id => id !== action.payload);
+        state.sessionOrder = state.sessionOrder.filter(
+          (id) => id !== action.payload
+        );
         // Update localStorage
         try {
-          localStorage.setItem('party-session-order', JSON.stringify(state.sessionOrder));
+          localStorage.setItem(
+            "party-session-order",
+            JSON.stringify(state.sessionOrder)
+          );
         } catch (error) {
-          console.warn('Failed to update session order after delete:', error);
+          console.warn("Failed to update session order after delete:", error);
         }
+        // Update storage info
+        state.storageInfo = getStorageInfo();
       })
       // Rename session
       .addCase(renameSessionThunk.fulfilled, (state, action) => {
         const { sessionId, newName } = action.payload;
-        const sessionIndex = state.availableSessions.findIndex(s => s.id === sessionId);
+        const sessionIndex = state.availableSessions.findIndex(
+          (s) => s.id === sessionId
+        );
         if (sessionIndex >= 0) {
           state.availableSessions[sessionIndex].name = newName;
-          state.availableSessions[sessionIndex].metadata.lastModified = new Date().toISOString();
+          state.availableSessions[sessionIndex].metadata.lastModified =
+            new Date().toISOString();
         }
       })
       // Duplicate session - refresh sessions list to include the new duplicate
@@ -546,15 +578,17 @@ export const selectSessionOrder = (state: RootState) =>
 export const selectOrderedSessions = (state: RootState) => {
   const sessions = state.session.availableSessions;
   const order = state.session.sessionOrder;
-  
+
   // Return sessions in custom order, with any missing sessions at the end
   const orderedSessions = order
-    .map(id => sessions.find(session => session.id === id))
+    .map((id) => sessions.find((session) => session.id === id))
     .filter((session): session is SessionListItem => session !== undefined);
-    
+
   const unorderedSessions = sessions.filter(
-    session => !order.includes(session.id)
+    (session) => !order.includes(session.id)
   );
-  
+
   return [...orderedSessions, ...unorderedSessions];
 };
+export const selectStorageInfo = (state: RootState) =>
+  state.session.storageInfo;

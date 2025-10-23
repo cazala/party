@@ -24,6 +24,7 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
     duplicateSession,
     refreshSessions,
     reorderSessionsList,
+    storageInfo,
     isLoading, 
     loadError, 
     clearErrors 
@@ -130,7 +131,24 @@ export function LoadSessionModal({ isOpen, onClose }: LoadSessionModalProps) {
   const footer = (
     <>
       <div style={{ flex: 1, fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-        {orderedSessions.length > 0 && `${orderedSessions.length} session${orderedSessions.length === 1 ? '' : 's'} available`}
+        {orderedSessions.length > 0 && (
+          <>
+            {`${orderedSessions.length} session${orderedSessions.length === 1 ? '' : 's'} available`}
+            {storageInfo && (
+              <>
+                {' • '}
+                <span 
+                  style={{ 
+                    color: storageInfo.isHighUsage ? '#ffc107' : 'var(--color-text-secondary)',
+                    fontWeight: storageInfo.isHighUsage ? '600' : 'normal'
+                  }}
+                >
+                  {storageInfo.formattedSize} used
+                </span>
+              </>
+            )}
+          </>
+        )}
       </div>
       <button 
         type="button" 

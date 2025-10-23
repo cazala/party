@@ -73,7 +73,18 @@ export function saveSession(sessionData: SessionData): void {
     updateSessionIndex(sessions);
   } catch (error) {
     console.error("Failed to save session:", error);
-    throw new Error("Failed to save session. Your browser storage might be full.");
+    
+    // Handle quota exceeded error specifically
+    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+      const { usedSessions, totalSize } = getStorageInfo();
+      const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
+      throw new Error(
+        `Storage quota exceeded! You're using ${sizeInMB}MB across ${usedSessions} sessions. ` +
+        `Please delete some sessions to free up space, or consider using sessions with fewer particles.`
+      );
+    }
+    
+    throw new Error("Failed to save session. Please try again or contact support if the issue persists.");
   }
 }
 
@@ -225,7 +236,7 @@ export function checkStorageAvailability(): { available: boolean; error?: string
 /**
  * Get storage usage information
  */
-export function getStorageInfo(): { usedSessions: number; totalSize: number } {
+export function getStorageInfo(): { usedSessions: number; totalSize: number; formattedSize: string; isHighUsage: boolean } {
   const sessions = getSessionIndex();
   let totalSize = 0;
   
@@ -242,8 +253,36 @@ export function getStorageInfo(): { usedSessions: number; totalSize: number } {
     }
   });
   
+  // Add session index size
+  try {
+    const indexData = localStorage.getItem(SESSION_INDEX_KEY);
+    if (indexData) {
+      totalSize += indexData.length;
+    }
+  } catch (error) {
+    // Ignore error
+  }
+  
+  // Format size appropriately
+  let formattedSize: string;
+  let isHighUsage = false;
+  
+  if (totalSize < 1024) {
+    formattedSize = `${totalSize}B`;
+  } else if (totalSize < 1024 * 1024) {
+    const sizeInKB = (totalSize / 1024).toFixed(1);
+    formattedSize = `${sizeInKB}KB`;
+    isHighUsage = totalSize > 512 * 1024; // > 512KB
+  } else {
+    const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
+    formattedSize = `${sizeInMB}MB`;
+    isHighUsage = totalSize > 2 * 1024 * 1024; // > 2MB
+  }
+  
   return {
     usedSessions: sessions.length,
     totalSize,
+    formattedSize,
+    isHighUsage,
   };
 }

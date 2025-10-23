@@ -266,12 +266,18 @@ export function Slider({
 
         // Snapshot both bounds at drag start so UI does not depend on Redux while dragging
         // Convert Redux values (engine units) to UI units for consistent dragging
-        const snapshotMin = reduxCustomMin !== undefined 
-          ? (fromEngine ? fromEngine(reduxCustomMin) : reduxCustomMin)
-          : min;
-        const snapshotMax = reduxCustomMax !== undefined 
-          ? (fromEngine ? fromEngine(reduxCustomMax) : reduxCustomMax) 
-          : max;
+        const snapshotMin =
+          reduxCustomMin !== undefined
+            ? fromEngine
+              ? fromEngine(reduxCustomMin)
+              : reduxCustomMin
+            : min;
+        const snapshotMax =
+          reduxCustomMax !== undefined
+            ? fromEngine
+              ? fromEngine(reduxCustomMax)
+              : reduxCustomMax
+            : max;
         setDraggingMin(snapshotMin);
         setDraggingMax(snapshotMax);
 

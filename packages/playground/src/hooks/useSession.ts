@@ -19,9 +19,14 @@ import {
   selectAvailableSessions,
   selectLastSessionName,
   selectOrderedSessions,
+  selectStorageInfo,
   reorderSessions,
 } from "../slices/session";
-import { spawnParticlesThunk, setParticlesThunk, getEngine } from "../slices/engine";
+import {
+  spawnParticlesThunk,
+  setParticlesThunk,
+  getEngine,
+} from "../slices/engine";
 import { SessionSaveRequest } from "../types/session";
 
 export function useSession() {
@@ -37,6 +42,7 @@ export function useSession() {
   const loadError = useAppSelector(selectLoadError);
   const availableSessions = useAppSelector(selectAvailableSessions);
   const orderedSessions = useAppSelector(selectOrderedSessions);
+  const storageInfo = useAppSelector(selectStorageInfo);
 
   // Save current session
   const saveCurrentSession = useCallback(
@@ -85,15 +91,20 @@ export function useSession() {
         ).unwrap();
 
         // Choose how to restore particles based on session data
-        if (sessionData.metadata.hasParticleData === true && sessionData.particles) {
+        if (
+          sessionData.metadata.hasParticleData === true &&
+          sessionData.particles
+        ) {
           // Restore exact particles (for sessions with ≤1000 particles)
-          await dispatch(setParticlesThunk({
-            particles: sessionData.particles,
-            jointsToRestore: sessionData.modules.joints,
-            linesToRestore: sessionData.modules.lines
-          })).unwrap();
+          await dispatch(
+            setParticlesThunk({
+              particles: sessionData.particles,
+              jointsToRestore: sessionData.modules.joints,
+              linesToRestore: sessionData.modules.lines,
+            })
+          ).unwrap();
         } else {
-          // Restart simulation with the loaded init configuration 
+          // Restart simulation with the loaded init configuration
           // (for sessions with >1000 particles or old sessions without particle data)
           await dispatch(spawnParticlesThunk(sessionData.init)).unwrap();
         }
@@ -138,9 +149,12 @@ export function useSession() {
   }, [dispatch, saveError, loadError]);
 
   // Reorder sessions
-  const reorderSessionsList = useCallback((newOrder: string[]) => {
-    dispatch(reorderSessions(newOrder));
-  }, [dispatch]);
+  const reorderSessionsList = useCallback(
+    (newOrder: string[]) => {
+      dispatch(reorderSessions(newOrder));
+    },
+    [dispatch]
+  );
 
   // Rename session
   const renameSession = useCallback(
@@ -160,20 +174,22 @@ export function useSession() {
   const duplicateSession = useCallback(
     async (sessionId: string): Promise<boolean> => {
       try {
-        const newSessionId = await dispatch(duplicateSessionThunk(sessionId)).unwrap();
+        const newSessionId = await dispatch(
+          duplicateSessionThunk(sessionId)
+        ).unwrap();
         // Refresh the sessions list to include the new duplicate
         await dispatch(loadAvailableSessionsThunk()).unwrap();
-        
+
         // Insert the new session right after the original in the custom order
-        const currentOrder = [...orderedSessions.map(s => s.id)];
+        const currentOrder = [...orderedSessions.map((s) => s.id)];
         const originalIndex = currentOrder.indexOf(sessionId);
-        
+
         if (originalIndex !== -1) {
           // Insert the new session right after the original
           currentOrder.splice(originalIndex + 1, 0, newSessionId);
           dispatch(reorderSessions(currentOrder));
         }
-        
+
         return true;
       } catch (error) {
         console.error("Failed to duplicate session:", error);
@@ -193,6 +209,7 @@ export function useSession() {
     loadError,
     availableSessions,
     orderedSessions,
+    storageInfo,
 
     // Actions
     saveCurrentSession,
