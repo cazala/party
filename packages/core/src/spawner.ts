@@ -1,7 +1,7 @@
 /**
  * Spawner
  *
- * Utility for generating initial `WebGPUParticle[]` configurations for common
+ * Utility for generating initial `IParticle[]` configurations for common
  * shapes (grid, random, circle, donut, square) with optional initial velocity
  * presets (random/in/out/clockwise/counter-clockwise/custom). Also includes
  * lightweight color parsing helpers.
