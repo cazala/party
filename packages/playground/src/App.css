@@ -18,6 +18,75 @@
   height: calc(100vh - 60px);
 }
 
+/* When bars are hidden, position canvas to cover full screen with overlay approach */
+.app.bars-hidden .app-content {
+  margin-top: 0;
+  height: 100vh;
+  position: relative;
+}
+
+/* Make all bars non-interactive when hidden */
+.app.bars-hidden .top-bar,
+.app.bars-hidden .left-sidebar,
+.app.bars-hidden .right-sidebar,
+.app.bars-hidden .toolbar {
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Position canvas container to fill entire screen when bars are hidden */
+.app.bars-hidden .canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+/* Smooth transitions for bars visibility */
+.app.bars-visible .canvas-container {
+  transition: all 0.3s ease;
+}
+
+/* Ensure top bar stays in position but becomes non-interactive when hidden */
+.app.bars-hidden .top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+
+/* Ensure sidebars stay in position but become non-interactive when hidden */
+.app.bars-hidden .left-sidebar,
+.app.bars-hidden .right-sidebar {
+  position: fixed;
+  top: 60px;
+  bottom: 0;
+  z-index: 50;
+}
+
+.app.bars-hidden .left-sidebar {
+  left: 0;
+}
+
+.app.bars-hidden .right-sidebar {
+  right: 0;
+}
+
+/* Ensure toolbar stays in position but becomes non-interactive when hidden */
+.app.bars-hidden .toolbar {
+  position: fixed;
+  top: 60px;
+  left: 280px;
+  right: 320px;
+  z-index: 50;
+}
+
 .left-sidebar {
   width: 280px;
   background: var(--color-panel);

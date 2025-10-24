@@ -42,23 +42,21 @@ function AppContent() {
   }, [restoreBarsFromFullscreenMode, barsVisible]);
 
   return (
-    <div className={`app ${barsVisible ? 'bars-visible' : ''}`}>
-      {barsVisible && <TopBar />}
+    <div className={`app ${barsVisible ? 'bars-visible' : 'bars-hidden'}`}>
+      <TopBar />
       <GlobalHotkeys />
       <div className="app-content">
-        {barsVisible && <SystemSidebar />}
+        <SystemSidebar />
         <div className="playground">
-          {barsVisible && <Toolbar style={{ display: "block" }} />}
+          <Toolbar />
           <div className="canvas-container">
             <Canvas />
             <Overlay />
           </div>
         </div>
-        {barsVisible && (
-          <div className="right-sidebar" style={{ display: "block" }}>
-            <ModulesSidebar />
-          </div>
-        )}
+        <div className="right-sidebar">
+          <ModulesSidebar />
+        </div>
       </div>
     </div>
   );
