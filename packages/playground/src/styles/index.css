@@ -101,10 +101,11 @@ body {
   background-color: #000000;
   position: relative;
   overflow: hidden;
+  filter: blur(0.5px);
 }
 
 .canvas-container.invert-colors {
-  filter: invert(1);
+  filter: invert(1) blur(0.5px);
 }
 
 .canvas-container canvas {
