@@ -4,12 +4,13 @@ import {
   createAsyncThunk,
   createSelector,
 } from "@reduxjs/toolkit";
+import { IEngine } from "@cazala/party";
 import {
   SessionData,
   SessionSaveRequest,
   SessionListItem,
 } from "../types/session";
-import { RootState } from "./store";
+import { AppDispatch, RootState } from "./store";
 import {
   saveSession as saveSessionToStorage,
   loadSession as loadSessionFromStorage,
@@ -20,8 +21,7 @@ import {
   getStorageInfo,
   generateSessionId,
 } from "../utils/sessionManager";
-
-// Import action creators from other slices
+import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import { setState as setInitState } from "./init";
 import {
   setConstrainIterations,
@@ -54,9 +54,176 @@ import {
 } from "./modules";
 import {
   clearAllOscillators,
+  clearModuleOscillators,
   setOscillator,
   OscillatorData,
 } from "./oscillators";
+
+// Helper function to clear oscillators only for restart-affected modules
+const clearRestartAffectedOscillators = (
+  dispatch: AppDispatch,
+  engine: IEngine | null
+) => {
+  // Clear oscillators from Redux for affected modules
+  RESTART_AFFECTED_MODULES.forEach((moduleName) => {
+    dispatch(clearModuleOscillators(moduleName));
+  });
+
+  // Clear oscillators from engine for affected modules
+  if (engine) {
+    RESTART_AFFECTED_MODULES.forEach((moduleName) => {
+      engine.clearModuleOscillators?.(moduleName);
+    });
+  }
+};
+
+// Helper function to restore oscillators only for restart-affected modules
+const restoreRestartAffectedOscillators = (
+  dispatch: AppDispatch,
+  engine: IEngine | null,
+  oscillators: Record<string, OscillatorData>,
+  oscillatorsElapsedSeconds?: number
+) => {
+  // Filter oscillators to only include those for restart-affected modules
+  const affectedOscillators = Object.entries(oscillators).filter(
+    ([sliderId, config]) => {
+      // Resolve module name from explicit field or from sliderId
+      let moduleName = config.moduleName;
+      if (!moduleName) {
+        const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
+        if (parts.length >= 2) {
+          moduleName = parts[0];
+        }
+      }
+      return moduleName && RESTART_AFFECTED_MODULES.includes(moduleName);
+    }
+  );
+
+  // Load oscillators to Redux state
+  affectedOscillators.forEach(([sliderId, config]) => {
+    dispatch(setOscillator({ sliderId, config }));
+  });
+
+  // Restore oscillator engine elapsed time BEFORE adding oscillators
+  if (engine) {
+    if (typeof oscillatorsElapsedSeconds === "number") {
+      engine.setOscillatorsElapsedSeconds(oscillatorsElapsedSeconds);
+    }
+
+    // Directly restore oscillators to engine with runtime state to avoid timing issues
+    affectedOscillators.forEach(([sliderId, config]) => {
+      // Resolve module/input from explicit fields or from sliderId
+      let moduleName = config.moduleName;
+      let inputName = config.inputName;
+
+      if (!moduleName || !inputName) {
+        const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
+        if (parts.length >= 2) {
+          moduleName = moduleName || parts[0];
+          inputName = inputName || parts[1];
+        }
+      }
+
+      if (moduleName && inputName) {
+        // Explicitly remove any existing oscillator first to ensure clean state
+        if (engine.hasOscillator(moduleName, inputName)) {
+          engine.removeOscillator(moduleName, inputName);
+        }
+        const options: any = {
+          curveExponent: config.curveExponent ?? 2,
+          jitter: config.jitter ?? false,
+        };
+
+        // Simple approach: just use current value and direction, let engine calculate fresh phase
+        if (config.lastValue !== undefined) {
+          options.currentValue = config.lastValue;
+        }
+        if (config.lastDirection !== undefined) {
+          options.initialDirection = config.lastDirection;
+        }
+        // Pass saved phaseOffset if present, since elapsed time is restored
+        if (config.phaseOffset !== undefined) {
+          options.phaseOffset = config.phaseOffset;
+        }
+
+        engine.addOscillator({
+          moduleName,
+          inputName,
+          min: config.customMin,
+          max: config.customMax,
+          speedHz: config.speedHz,
+          options,
+        });
+      }
+    });
+  }
+};
+
+// Helper function to load module settings based on the restart-affected modules list
+const loadModuleSettings = (
+  dispatch: any,
+  sessionData: SessionData,
+  includeJoints: boolean = false
+) => {
+  // Reset and import settings for all restart-affected modules
+  if (RESTART_AFFECTED_MODULES.includes("environment")) {
+    dispatch(resetEnvironment());
+    dispatch(importEnvironmentSettings(sessionData.modules.environment));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("boundary")) {
+    dispatch(resetBoundary());
+    dispatch(importBoundarySettings(sessionData.modules.boundary));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("collisions")) {
+    dispatch(resetCollisions());
+    dispatch(importCollisionsSettings(sessionData.modules.collisions));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("fluids")) {
+    dispatch(resetFluids());
+    dispatch(importFluidsSettings(sessionData.modules.fluids));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("behavior")) {
+    dispatch(resetBehavior());
+    dispatch(importBehaviorSettings(sessionData.modules.behavior));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("sensors")) {
+    dispatch(resetSensors());
+    dispatch(importSensorsSettings(sessionData.modules.sensors));
+  }
+
+  // Handle joints separately since quickload doesn't restore joints connections
+  if (includeJoints) {
+    dispatch(resetJoints());
+    dispatch(importJointsSettings(sessionData.modules.joints));
+  } else {
+    dispatch(resetJoints());
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("trails")) {
+    dispatch(importTrailsSettings(sessionData.modules.trails));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("interaction")) {
+    dispatch(importInteractionSettings(sessionData.modules.interaction));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("particles")) {
+    dispatch(importParticlesSettings(sessionData.modules.particles));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("lines")) {
+    dispatch(importLinesSettings(sessionData.modules.lines));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("grab")) {
+    dispatch(importGrabSettings(sessionData.modules.grab));
+  }
+};
 
 export interface SessionState {
   currentSessionName: string | null;
@@ -217,12 +384,9 @@ export const quickLoadSessionThunk = createAsyncThunk(
       // Set flag to prevent useOscillators interference during load
       dispatch(sessionSlice.actions.setIsLoadingOscillators(true));
 
-      // Clear existing oscillators from both Redux and engine
-      dispatch(clearAllOscillators());
+      // Clear existing oscillators only for restart-affected modules
       const engine = getEngine();
-      if (engine) {
-        engine.clearOscillators();
-      }
+      clearRestartAffectedOscillators(dispatch as AppDispatch, engine);
 
       // Small delay to ensure clearing is complete before loading
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -235,98 +399,15 @@ export const quickLoadSessionThunk = createAsyncThunk(
       dispatch(setGridCellSize(sessionData.engine.gridCellSize));
       dispatch(setMaxNeighbors(sessionData.engine.maxNeighbors));
 
-      // Load module states
-      dispatch(resetEnvironment());
-      dispatch(importEnvironmentSettings(sessionData.modules.environment));
+      // Load module states (without joints connections for quickload)
+      loadModuleSettings(dispatch, sessionData, false);
 
-      dispatch(resetBoundary());
-      dispatch(importBoundarySettings(sessionData.modules.boundary));
-
-      dispatch(resetCollisions());
-      dispatch(importCollisionsSettings(sessionData.modules.collisions));
-
-      dispatch(resetFluids());
-      dispatch(importFluidsSettings(sessionData.modules.fluids));
-
-      dispatch(resetBehavior());
-      dispatch(importBehaviorSettings(sessionData.modules.behavior));
-
-      dispatch(resetSensors());
-      dispatch(importSensorsSettings(sessionData.modules.sensors));
-
-      dispatch(resetJoints());
-
-      dispatch(importTrailsSettings(sessionData.modules.trails));
-      dispatch(importInteractionSettings(sessionData.modules.interaction));
-      dispatch(importParticlesSettings(sessionData.modules.particles));
-      dispatch(importLinesSettings(sessionData.modules.lines));
-      dispatch(importGrabSettings(sessionData.modules.grab));
-
-      // Load oscillators to Redux state
-      Object.entries(sessionData.oscillators).forEach(([sliderId, config]) => {
-        dispatch(setOscillator({ sliderId, config }));
-      });
-
-      // Restore oscillator engine elapsed time BEFORE adding oscillators
-      if (engine) {
-        if (typeof sessionData.oscillatorsElapsedSeconds === "number") {
-          engine.setOscillatorsElapsedSeconds(
-            sessionData.oscillatorsElapsedSeconds
-          );
-        } else {
-          // For old sessions without time, reset to 0 to make saved phase offsets deterministic
-          engine.setOscillatorsElapsedSeconds(0);
-        }
-
-        // Directly restore oscillators to engine with runtime state to avoid timing issues
-        Object.entries(sessionData.oscillators).forEach(
-          ([sliderId, config]) => {
-            // Resolve module/input from explicit fields or from sliderId
-            let moduleName = config.moduleName;
-            let inputName = config.inputName;
-
-            if (!moduleName || !inputName) {
-              const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
-              if (parts.length >= 2) {
-                moduleName = moduleName || parts[0];
-                inputName = inputName || parts[1];
-              }
-            }
-
-            if (moduleName && inputName) {
-              // Explicitly remove any existing oscillator first to ensure clean state
-              if (engine.hasOscillator(moduleName, inputName)) {
-                engine.removeOscillator(moduleName, inputName);
-              }
-              const options: any = {
-                curveExponent: config.curveExponent ?? 2,
-                jitter: config.jitter ?? false,
-              };
-
-              // Simple approach: just use current value and direction, let engine calculate fresh phase
-              if (config.lastValue !== undefined) {
-                options.currentValue = config.lastValue;
-              }
-              if (config.lastDirection !== undefined) {
-                options.initialDirection = config.lastDirection;
-              }
-              // Pass saved phaseOffset if present, since elapsed time is restored
-              if (config.phaseOffset !== undefined) {
-                options.phaseOffset = config.phaseOffset;
-              }
-
-              engine.addOscillator({
-                moduleName,
-                inputName,
-                min: config.customMin,
-                max: config.customMax,
-                speedHz: config.speedHz,
-                options,
-              });
-            }
-          }
-        );
-      }
+      // Restore oscillators only for restart-affected modules
+      restoreRestartAffectedOscillators(
+        dispatch as AppDispatch,
+        engine,
+        sessionData.oscillators
+      );
 
       // Clear the flag after loading is complete
       dispatch(sessionSlice.actions.setIsLoadingOscillators(false));

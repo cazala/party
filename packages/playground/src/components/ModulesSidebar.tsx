@@ -19,6 +19,7 @@ import {
   useSensors,
   useJoints,
 } from "../hooks/modules";
+import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import "./ModulesSidebar.css";
 
 export function ModulesSidebar() {
@@ -83,8 +84,7 @@ export function ModulesSidebar() {
             setIsResetting(true);
             
             // Clear oscillators for each module first
-            const moduleNames = ['environment', 'boundary', 'collisions', 'fluids', 'behavior', 'sensors', 'joints'];
-            moduleNames.forEach(moduleName => {
+            RESTART_AFFECTED_MODULES.forEach(moduleName => {
               clearModuleOscillators(moduleName);
             });
             
