@@ -17,7 +17,27 @@ export function GlobalHotkeys() {
       const isModifier = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
 
-      // Check if this is one of our hotkeys FIRST, before checking inputs
+      // FIRST: Check if we're typing in a text input
+      const target = e.target as HTMLElement | null;
+      if (target && target === document.activeElement) {
+        const tag = target.tagName;
+        // Only block when actively typing in text inputs or content editable elements
+        const isTextInput = 
+          (tag === "INPUT" && (target as HTMLInputElement).type === "text") ||
+          (tag === "INPUT" && (target as HTMLInputElement).type === "search") ||
+          (tag === "INPUT" && (target as HTMLInputElement).type === "password") ||
+          (tag === "INPUT" && (target as HTMLInputElement).type === "email") ||
+          (tag === "INPUT" && (target as HTMLInputElement).type === "url") ||
+          (tag === "TEXTAREA") ||
+          (target as HTMLElement).isContentEditable;
+        
+        // If we're in a text input, don't handle hotkeys at all
+        if (isTextInput) {
+          return;
+        }
+      }
+
+      // SECOND: Check if this is one of our hotkeys and prevent default
       const isOurHotkey = 
         e.code === "Space" ||
         (isModifier && (
@@ -35,32 +55,11 @@ export function GlobalHotkeys() {
           key === "b"
         ));
 
-      // If it's our hotkey, prevent default and stop propagation immediately
+      // If it's our hotkey and we're NOT in a text input, prevent default
       if (isOurHotkey) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-      }
-
-      // Only block hotkeys when actually typing in text fields
-      const target = e.target as HTMLElement | null;
-      if (target && target === document.activeElement) {
-        const tag = target.tagName;
-        // Only block when actively typing in text inputs or content editable elements
-        const isTextInput = 
-          (tag === "INPUT" && (target as HTMLInputElement).type === "text") ||
-          (tag === "INPUT" && (target as HTMLInputElement).type === "search") ||
-          (tag === "INPUT" && (target as HTMLInputElement).type === "password") ||
-          (tag === "INPUT" && (target as HTMLInputElement).type === "email") ||
-          (tag === "INPUT" && (target as HTMLInputElement).type === "url") ||
-          (tag === "TEXTAREA") ||
-          (target as HTMLElement).isContentEditable;
-        
-        // Only return (block hotkeys) if we're in a text input
-        if (isTextInput) {
-          return;
-        }
-        // For all other elements (sliders, buttons, selects, etc.) let hotkeys work
       }
 
       // Handle spacebar for play/pause (no modifier required)
