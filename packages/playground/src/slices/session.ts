@@ -406,7 +406,8 @@ export const quickLoadSessionThunk = createAsyncThunk(
       restoreRestartAffectedOscillators(
         dispatch as AppDispatch,
         engine,
-        sessionData.oscillators
+        sessionData.oscillators,
+        sessionData.oscillatorsElapsedSeconds
       );
 
       // Clear the flag after loading is complete
