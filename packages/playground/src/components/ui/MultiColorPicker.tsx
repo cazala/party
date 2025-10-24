@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { DEFAULT_COLOR_PALETTE } from "@cazala/party/legacy";
 import { Field } from "./Field";
 import "./MultiColorPicker.css";
 
@@ -127,12 +126,6 @@ export function MultiColorPicker({
         onChange={handleColorChange}
         onBlur={handleColorCommit}
       />
-
-      {colors.length === 0 ? (
-        <div className="default-palette-notice">
-          Using default palette ({DEFAULT_COLOR_PALETTE.length} colors)
-        </div>
-      ) : null}
     </Field>
   );
 }
