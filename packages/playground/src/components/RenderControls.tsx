@@ -7,6 +7,7 @@ import { useEngine } from "../hooks/useEngine";
 import { useLines } from "../hooks/modules/useLines";
 import { useParticles } from "../hooks/modules/useParticles";
 import { useTrails } from "../hooks/modules/useTrails";
+import { useRender } from "../hooks/useRender";
 
 interface RenderControlsProps {
   disabled?: boolean;
@@ -14,6 +15,7 @@ interface RenderControlsProps {
 
 export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
   const { clearColor, setClearColor } = useEngine();
+  const { invertColors, setInvertColors } = useRender();
   const {
     enabled: linesEnabled,
     lineWidth,
@@ -183,6 +185,14 @@ export function RenderControls({ disabled = false }: RenderControlsProps = {}) {
           disabled={disabled}
         />
       )}
+
+      {/* Invert colors toggle */}
+      <Checkbox
+        label="Invert Colors"
+        checked={invertColors}
+        onChange={(v) => setInvertColors(v)}
+        disabled={disabled}
+      />
 
       {/* Clear color stays at bottom */}
       <ColorPicker

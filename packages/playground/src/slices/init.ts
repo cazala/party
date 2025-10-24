@@ -1,4 +1,9 @@
-import { createSlice, PayloadAction, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
+import {
+  createSlice,
+  PayloadAction,
+  createAsyncThunk,
+  createSelector,
+} from "@reduxjs/toolkit";
 import { SpawnParticlesConfig } from "./engine";
 import type { RootState } from "./store";
 
@@ -143,10 +148,10 @@ export const lockSpawnTemporarily = createAsyncThunk(
   "init/lockSpawnTemporarily",
   async (durationMs: number = 100, { dispatch }) => {
     dispatch(setSpawnLocked(true));
-    
+
     // Wait for specified duration (enough for UI transitions to settle)
-    await new Promise(resolve => setTimeout(resolve, durationMs));
-    
+    await new Promise((resolve) => setTimeout(resolve, durationMs));
+
     dispatch(setSpawnLocked(false));
   }
 );
@@ -170,8 +175,8 @@ export const selectInitState = createSelector(
   })
 );
 
-export const selectHasInitialSpawned = (state: RootState): boolean => 
+export const selectHasInitialSpawned = (state: RootState): boolean =>
   state.init.hasInitialSpawned;
 
-export const selectIsSpawnLocked = (state: RootState): boolean => 
+export const selectIsSpawnLocked = (state: RootState): boolean =>
   state.init.isSpawnLocked;

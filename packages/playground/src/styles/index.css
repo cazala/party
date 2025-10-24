@@ -103,6 +103,10 @@ body {
   overflow: hidden;
 }
 
+.canvas-container.invert-colors {
+  filter: invert(1);
+}
+
 .canvas-container canvas {
   display: block;
 }

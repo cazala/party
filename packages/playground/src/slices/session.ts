@@ -58,7 +58,6 @@ import {
   OscillatorData,
 } from "./oscillators";
 
-
 // Helper function to load module settings based on the restart-affected modules list
 const loadModuleSettings = (
   dispatch: any,
@@ -256,6 +255,7 @@ export const saveCurrentSessionThunk = createAsyncThunk(
           camera: state.engine.camera,
           zoom: state.engine.zoom,
         },
+        render: (state as RootState).render,
         oscillators: oscillatorsWithRuntimeState,
         oscillatorsElapsedSeconds: engine?.getOscillatorsElapsedSeconds(),
         particles,
@@ -285,20 +285,22 @@ export const quickLoadSessionThunk = createAsyncThunk(
       dispatch(sessionSlice.actions.setIsLoadingOscillators(true));
 
       const engine = getEngine();
-      
+
       // Backup current oscillator state for non-restart modules
       const currentOscillators = Object.fromEntries(
-        Object.entries((getState() as RootState).oscillators).filter(([sliderId, config]) => {
-          let moduleName = config.moduleName;
-          if (!moduleName) {
-            const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
-            if (parts.length >= 2) {
-              moduleName = parts[0];
+        Object.entries((getState() as RootState).oscillators).filter(
+          ([sliderId, config]) => {
+            let moduleName = config.moduleName;
+            if (!moduleName) {
+              const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
+              if (parts.length >= 2) {
+                moduleName = parts[0];
+              }
             }
+            // Keep oscillators that are NOT restart-affected
+            return moduleName && !RESTART_AFFECTED_MODULES.includes(moduleName);
           }
-          // Keep oscillators that are NOT restart-affected
-          return moduleName && !RESTART_AFFECTED_MODULES.includes(moduleName);
-        })
+        )
       );
 
       // Clear existing oscillators only for restart-affected modules
@@ -322,20 +324,21 @@ export const quickLoadSessionThunk = createAsyncThunk(
 
       // Load module states (without joints connections for quickload)
       loadModuleSettings(dispatch, sessionData, false);
+      // Do NOT load render settings on quickload (per requirement)
 
       // Restore oscillators only for restart-affected modules
-      const affectedOscillators = Object.entries(sessionData.oscillators).filter(
-        ([sliderId, config]) => {
-          let moduleName = config.moduleName;
-          if (!moduleName) {
-            const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
-            if (parts.length >= 2) {
-              moduleName = parts[0];
-            }
+      const affectedOscillators = Object.entries(
+        sessionData.oscillators
+      ).filter(([sliderId, config]) => {
+        let moduleName = config.moduleName;
+        if (!moduleName) {
+          const parts = sliderId.split(/[:./_\-]/).filter(Boolean);
+          if (parts.length >= 2) {
+            moduleName = parts[0];
           }
-          return moduleName && RESTART_AFFECTED_MODULES.includes(moduleName);
         }
-      );
+        return moduleName && RESTART_AFFECTED_MODULES.includes(moduleName);
+      });
 
       // Load oscillators to Redux state
       affectedOscillators.forEach(([sliderId, config]) => {
@@ -345,7 +348,9 @@ export const quickLoadSessionThunk = createAsyncThunk(
       // Restore oscillator engine elapsed time BEFORE adding oscillators
       if (engine) {
         if (typeof sessionData.oscillatorsElapsedSeconds === "number") {
-          engine.setOscillatorsElapsedSeconds(sessionData.oscillatorsElapsedSeconds);
+          engine.setOscillatorsElapsedSeconds(
+            sessionData.oscillatorsElapsedSeconds
+          );
         }
 
         // Directly restore oscillators to engine with runtime state
@@ -391,7 +396,7 @@ export const quickLoadSessionThunk = createAsyncThunk(
           }
         });
       }
-      
+
       // Restore non-restart oscillators without runtime state to prevent jumping
       Object.entries(currentOscillators).forEach(([sliderId, config]) => {
         // Strip runtime state properties that cause oscillators to jump during session loads
@@ -481,6 +486,16 @@ export const loadSessionThunk = createAsyncThunk(
       dispatch(importParticlesSettings(sessionData.modules.particles));
       dispatch(importLinesSettings(sessionData.modules.lines));
       dispatch(importGrabSettings(sessionData.modules.grab));
+
+      // Load render settings (full load only)
+      if (sessionData.render) {
+        try {
+          const { importRenderSettings } = await import("./render");
+          dispatch(importRenderSettings(sessionData.render));
+        } catch (e) {
+          // ignore if render slice changes
+        }
+      }
 
       // Load oscillators to Redux state
       Object.entries(sessionData.oscillators).forEach(([sliderId, config]) => {

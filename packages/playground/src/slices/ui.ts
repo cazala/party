@@ -36,7 +36,7 @@ export const toggleBarsWithLock = createAsyncThunk(
   async (_, { dispatch }) => {
     // Lock spawning before toggling bars
     dispatch(lockSpawnTemporarily(200)); // Lock for 200ms
-    
+
     // Toggle bars
     dispatch(toggleBars());
   }
@@ -47,19 +47,19 @@ export const toggleFullscreen = createAsyncThunk(
   "ui/toggleFullscreen",
   async (_, { dispatch }) => {
     const isCurrentlyFullscreen = !document.fullscreenElement;
-    
+
     try {
       if (isCurrentlyFullscreen) {
         // Entering fullscreen
         await document.documentElement.requestFullscreen();
-        
+
         // Hide bars and lock spawning
         dispatch(lockSpawnTemporarily(200));
         dispatch(setBarsVisible(false));
       } else {
         // Exiting fullscreen
         await document.exitFullscreen();
-        
+
         // Show bars and lock spawning
         dispatch(lockSpawnTemporarily(200));
         dispatch(setBarsVisible(true));
@@ -83,6 +83,7 @@ export const restoreBarsFromFullscreen = createAsyncThunk(
 export const { toggleBars, setBarsVisible } = uiSlice.actions;
 
 // Selectors
-export const selectBarsVisible = (state: { ui: UIState }) => state.ui.barsVisible;
+export const selectBarsVisible = (state: { ui: UIState }) =>
+  state.ui.barsVisible;
 
 export default uiSlice.reducer;

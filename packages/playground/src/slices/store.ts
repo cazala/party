@@ -8,6 +8,7 @@ import { oscillatorsReducer } from "./oscillators";
 import { historyReducer } from "./history";
 import { sessionReducer } from "./session";
 import uiReducer from "./ui";
+import { renderReducer } from "./render";
 
 export const store = configureStore({
   reducer: {
@@ -19,6 +20,7 @@ export const store = configureStore({
     oscillators: oscillatorsReducer,
     history: historyReducer,
     session: sessionReducer,
+    render: renderReducer,
     ui: uiReducer,
   },
   devTools: import.meta.env.DEV,

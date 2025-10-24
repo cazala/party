@@ -2,6 +2,7 @@ import { ModulesState } from "../slices/modules";
 import { InitState } from "../slices/init";
 import { EngineState } from "../slices/engine";
 import { OscillatorsState } from "../slices/oscillators";
+import { RenderState } from "../slices/render";
 
 // Particle data interface matching engine's IParticle
 export interface SavedParticle {
@@ -35,6 +36,7 @@ export interface SessionData {
     EngineState,
     "constrainIterations" | "gridCellSize" | "maxNeighbors" | "camera" | "zoom"
   >;
+  render: RenderState;
   oscillators: OscillatorsState;
   oscillatorsElapsedSeconds?: number;
   particles?: SavedParticle[];

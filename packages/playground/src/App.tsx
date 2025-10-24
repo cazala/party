@@ -11,12 +11,14 @@ import { GlobalHotkeys } from "./components/GlobalHotkeys";
 import { Provider } from "react-redux";
 import { store } from "./slices/store";
 import { useUI } from "./hooks/useUI";
+import { useRender } from "./hooks/useRender";
 
 import "./styles/index.css";
 import "./App.css";
 
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode } = useUI();
+  const { invertColors } = useRender();
 
   // Handle fullscreen change events (when user exits via ESC or browser controls)
   useEffect(() => {
@@ -28,28 +30,37 @@ function AppContent() {
     };
 
     // Add event listeners for all browser variants
-    const events = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
-    
-    events.forEach(event => {
+    const events = [
+      "fullscreenchange",
+      "webkitfullscreenchange",
+      "mozfullscreenchange",
+      "MSFullscreenChange",
+    ];
+
+    events.forEach((event) => {
       document.addEventListener(event, handleFullscreenChange);
     });
-    
+
     return () => {
-      events.forEach(event => {
+      events.forEach((event) => {
         document.removeEventListener(event, handleFullscreenChange);
       });
     };
   }, [restoreBarsFromFullscreenMode, barsVisible]);
 
   return (
-    <div className={`app ${barsVisible ? 'bars-visible' : 'bars-hidden'}`}>
+    <div className={`app ${barsVisible ? "bars-visible" : "bars-hidden"}`}>
       <TopBar />
       <GlobalHotkeys />
       <div className="app-content">
         <SystemSidebar />
         <div className="playground">
           <Toolbar />
-          <div className="canvas-container">
+          <div
+            className={`canvas-container ${
+              invertColors ? "invert-colors" : ""
+            }`}
+          >
             <Canvas />
             <Overlay />
           </div>
