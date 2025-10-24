@@ -4,7 +4,7 @@ This document explains the internal architecture of the core library for contrib
 
 ### Code organization
 
-- `packages/core/src/beta/`
+- `packages/core/src/`
   - `engine.ts`: facade that selects runtime (`cpu`/`webgpu`/`auto`) and delegates the full `IEngine` API
   - `interfaces.ts`: `IEngine`, `IParticle`, `AbstractEngine` common logic (view, modules, config, oscillators, export/import, FPS)
   - `module.ts`: `Module` base class, `ModuleRole`, `DataType`, and uniform plumbing

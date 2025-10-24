@@ -230,28 +230,55 @@ npm test
 ```
 party/
 ├── packages/
-│   ├── core/                    # Core engine library
+│   ├── core/                      # Core engine library
 │   │   ├── src/
-│   │   │   ├── beta/
-│   │   │   │   ├── engine.ts    # Main engine facade
-│   │   │   │   ├── interfaces.ts # Common interfaces
-│   │   │   │   ├── modules/     # Force and render modules
-│   │   │   │   └── runtimes/    # WebGPU and CPU implementations
-│   │   │   └── index.ts         # Public API exports
-│   │   └── package.json
-│   └── playground/              # React playground application
+│   │   │   ├── engine.ts          # Main engine facade
+│   │   │   ├── index.ts           # Public API exports
+│   │   │   ├── interfaces.ts      # Common interfaces
+│   │   │   ├── modules/           # Force and render modules
+│   │   │   │   ├── forces/
+│   │   │   │   └── render/
+│   │   │   ├── oscillators.ts
+│   │   │   ├── particle.ts
+│   │   │   ├── runtimes/          # WebGPU and CPU implementations
+│   │   │   │   ├── cpu/
+│   │   │   │   └── webgpu/
+│   │   │   ├── spawner.ts
+│   │   │   ├── vector.ts
+│   │   │   └── view.ts
+│   │   ├── package.json
+│   │   ├── README.md
+│   │   ├── rollup.config.js
+│   │   └── tsconfig.json
+│   └── playground/                # React playground application
 │       ├── src/
-│       │   ├── components/      # UI components
-│       │   ├── hooks/           # React hooks
-│       │   ├── slices/          # Redux state management
-│       │   └── utils/           # Utility functions
-│       └── package.json
-├── docs/                        # Documentation
-│   ├── user-guide.md           # End-user documentation
-│   ├── maintainer-guide.md     # Internal architecture guide
-│   └── module-author-guide.md  # Custom module development
-├── package.json                # Root workspace configuration
-└── README.md                   # This file
+│       │   ├── components/
+│       │   ├── constants/
+│       │   ├── contexts/
+│       │   ├── history/
+│       │   ├── hooks/
+│       │   ├── slices/
+│       │   ├── styles/
+│       │   ├── types/
+│       │   └── utils/
+│       ├── index.html
+│       ├── package.json
+│       ├── README.md
+│       ├── tsconfig.json
+│       └── vite.config.js
+├── docs/                          # Documentation
+│   ├── maintainer-guide.md
+│   ├── module-author-guide.md
+│   ├── playground-maintainer-guide.md
+│   ├── playground-user-guide.md
+│   └── user-guide.md
+├── LICENSE
+├── package.json                   # Root workspace configuration
+├── package-lock.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── tsconfig.json
+└── README.md
 ```
 
 ## Performance
