@@ -96,6 +96,9 @@ export class GPUResources {
 
     this.device = await this.adapter.requestDevice({
       requiredFeatures: this.requiredFeatures || [],
+      requiredLimits: {
+        maxStorageBufferBindingSize: this.adapter.limits.maxStorageBufferBindingSize,
+      },
     });
 
     this.context = this.canvas.getContext("webgpu");
