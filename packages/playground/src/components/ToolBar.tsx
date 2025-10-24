@@ -1,155 +1,115 @@
-import { useEffect } from "react";
 import {
-  Circle,
+  MousePointer,
+  Plus,
+  Minus,
+  Pin,
   Link,
   Hand,
-  Pin,
-  Eraser,
-  Zap,
+  Pen,
+  Hexagon,
 } from "lucide-react";
-import { ToolMode } from "../hooks/useToolMode";
+import { useTools } from "../hooks/useTools";
 
-interface ToolBarProps {
-  toolMode?: ToolMode;
-  onToolModeChange?: (mode: ToolMode) => void;
-  style?: React.CSSProperties;
-  currentlyGrabbedParticle?: any;
-  onGrabToJoint?: () => boolean;
-  isCreatingJoint?: boolean;
-  onJointToSpawn?: () => boolean;
-}
+import "./ToolBar.css";
 
-export function ToolBar({
-  toolMode = "spawn",
-  onToolModeChange,
-  style,
-  currentlyGrabbedParticle,
-  onGrabToJoint,
-  isCreatingJoint,
-  onJointToSpawn,
-}: ToolBarProps) {
-  // Add keyboard shortcuts for tool mode changes
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!onToolModeChange) return;
-
-      // Check for Cmd (Mac) or Ctrl (PC)
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
-        switch (e.key.toLowerCase()) {
-          case "a":
-            e.preventDefault();
-            // Special handling for CMD+A during joint creation: switch to spawn mode with pending joint
-            if (isCreatingJoint && onJointToSpawn) {
-              const success = onJointToSpawn();
-              if (success) {
-                onToolModeChange("spawn");
-              }
-            } else {
-              onToolModeChange("spawn");
-            }
-            break;
-          case "s":
-            e.preventDefault();
-            // Special handling for CMD+S during grab: switch to joint mode with grabbed particle
-            if (currentlyGrabbedParticle && onGrabToJoint) {
-              const success = onGrabToJoint();
-              if (success) {
-                onToolModeChange("joint");
-              }
-            } else {
-              onToolModeChange("joint");
-            }
-            break;
-          case "d":
-            e.preventDefault();
-            onToolModeChange("grab");
-            break;
-          case "f":
-            onToolModeChange("pin");
-            break;
-          case "g":
-            e.preventDefault();
-            onToolModeChange("remove");
-            break;
-          case "h":
-            e.preventDefault();
-            onToolModeChange("emitter");
-            break;
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onToolModeChange, currentlyGrabbedParticle, onGrabToJoint, isCreatingJoint, onJointToSpawn]);
-
-  if (!onToolModeChange) {
-    return null;
-  }
+export function Toolbar({ style }: { style?: React.CSSProperties }) {
+  const {
+    isInteractionMode,
+    isSpawnMode,
+    isRemoveMode,
+    isPinMode,
+    isJointMode,
+    isGrabMode,
+    isDrawMode,
+    isShapeMode,
+    setToolMode,
+  } = useTools();
 
   return (
     <div className="toolbar" style={style}>
       <div className="toolbar-content">
         <div className="tool-mode-selector">
           <button
-            onClick={() => onToolModeChange("spawn")}
+            onClick={() => setToolMode("interaction")}
             className={`tool-mode-button tool-mode-first ${
-              toolMode === "spawn" ? "tool-mode-active" : ""
+              isInteractionMode ? "tool-mode-active" : ""
             }`}
-            title="Spawn particles (Cmd+A)"
+            title="Interact"
           >
-            <Circle width="16" height="16" />
+            <MousePointer width="16" height="16" />
+            <span>Interact</span>
+          </button>
+          <button
+            onClick={() => setToolMode("spawn")}
+            className={`tool-mode-button tool-mode-second ${
+              isSpawnMode ? "tool-mode-active" : ""
+            }`}
+            title="Spawn"
+          >
+            <Plus width="16" height="16" />
             <span>Spawn</span>
           </button>
           <button
-            onClick={() => onToolModeChange("joint")}
-            className={`tool-mode-button tool-mode-second ${
-              toolMode === "joint" ? "tool-mode-active" : ""
-            }`}
-            title="Create joints (Cmd+S)"
-          >
-            <Link width="16" height="16" />
-            <span>Joint</span>
-          </button>
-          <button
-            onClick={() => onToolModeChange("grab")}
+            onClick={() => setToolMode("remove")}
             className={`tool-mode-button tool-mode-third ${
-              toolMode === "grab" ? "tool-mode-active" : ""
+              isRemoveMode ? "tool-mode-active" : ""
             }`}
-            title="Grab particles (Cmd+D)"
+            title="Remove"
           >
-            <Hand width="16" height="16" />
-            <span>Grab</span>
+            <Minus width="16" height="16" />
+            <span>Remove</span>
           </button>
           <button
-            onClick={() => onToolModeChange("pin")}
+            onClick={() => setToolMode("pin")}
             className={`tool-mode-button tool-mode-fourth ${
-              toolMode === "pin" ? "tool-mode-active" : ""
+              isPinMode ? "tool-mode-active" : ""
             }`}
-            title="Pin particles (Cmd+F)"
+            title="Pin"
           >
             <Pin width="16" height="16" />
             <span>Pin</span>
           </button>
           <button
-            onClick={() => onToolModeChange("emitter")}
+            onClick={() => setToolMode("grab")}
             className={`tool-mode-button tool-mode-fifth ${
-              toolMode === "emitter" ? "tool-mode-active" : ""
+              isGrabMode ? "tool-mode-active" : ""
             }`}
-            title="Place emitters (Cmd+H)"
+            title="Grab"
           >
-            <Zap width="16" height="16" />
-            <span>Emitter</span>
+            <Hand width="16" height="16" />
+            <span>Grab</span>
+          </button>
+
+          <button
+            onClick={() => setToolMode("joint")}
+            className={`tool-mode-button tool-mode-seventh ${
+              isJointMode ? "tool-mode-active" : ""
+            }`}
+            title="Joint"
+          >
+            <Link width="16" height="16" />
+            <span>Joint</span>
           </button>
           <button
-            onClick={() => onToolModeChange("remove")}
+            onClick={() => setToolMode("draw")}
             className={`tool-mode-button tool-mode-sixth ${
-              toolMode === "remove" ? "tool-mode-active" : ""
+              isDrawMode ? "tool-mode-active" : ""
             }`}
-            title="Remove particles (Cmd+G)"
+            title="Draw"
           >
-            <Eraser width="16" height="16" />
-            <span>Remove</span>
+            <Pen width="16" height="16" />
+            <span>Draw</span>
+          </button>
+
+          <button
+            onClick={() => setToolMode("shape")}
+            className={`tool-mode-button tool-mode-eighth ${
+              isShapeMode ? "tool-mode-active" : ""
+            }`}
+            title="Shape"
+          >
+            <Hexagon width="16" height="16" />
+            <span>Shape</span>
           </button>
         </div>
       </div>

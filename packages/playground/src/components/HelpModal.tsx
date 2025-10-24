@@ -1,216 +1,196 @@
-import { useEffect } from "react";
+import { Modal } from "./Modal";
 import "./HelpModal.css";
 
-interface HelpModalProps {
-  isOpen: boolean;
+export function HelpModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
   onClose: () => void;
-}
+}) {
+  const content = (
+    <>
+      <section>
+        <h3>General</h3>
+        <ul>
+          <li>
+            <b>Space</b>: Play/Pause simulation
+          </li>
+          <li>
+            <b>Cmd/Ctrl + B</b>: Toggle bars (fullscreen canvas)
+          </li>
+          <li>
+            <b>Fullscreen Button</b>: Enter browser fullscreen mode
+          </li>
+          <li>
+            <b>Cmd/Ctrl + Z</b>: Undo
+          </li>
+          <li>
+            <b>Cmd/Ctrl + Shift + Z</b> or <b>Cmd/Ctrl + Y</b>: Redo
+          </li>
+        </ul>
+      </section>
 
-export function HelpModal({ isOpen, onClose }: HelpModalProps) {
-  // Close modal on Escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
-    };
+      <section>
+        <h3>Sessions</h3>
+        <ul>
+          <li>
+            <b>Cmd/Ctrl + 1-9</b>: Quick load session (settings only)
+          </li>
+        </ul>
+      </section>
 
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose]);
+      <section>
+        <h3>Tools</h3>
+        <ul>
+          <li>
+            <b>Cmd/Ctrl + A</b>: Interact
+          </li>
+          <li>
+            <b>Cmd/Ctrl + S</b>: Spawn
+          </li>
+          <li>
+            <b>Cmd/Ctrl + D</b>: Remove
+          </li>
+          <li>
+            <b>Cmd/Ctrl + F</b>: Pin
+          </li>
+          <li>
+            <b>Cmd/Ctrl + G</b>: Grab
+          </li>
+          <li>
+            <b>Cmd/Ctrl + H</b>: Joint
+          </li>
+          <li>
+            <b>Cmd/Ctrl + J</b>: Draw
+          </li>
+          <li>
+            <b>Cmd/Ctrl + K</b>: Shape
+          </li>
+        </ul>
+      </section>
 
-  // Close modal when clicking backdrop
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
+      <section>
+        <h3>Interact</h3>
+        <ul>
+          <li>
+            <b>Left Click</b>: Attract
+          </li>
+          <li>
+            <b>Right Click</b>: Repel
+          </li>
+          <li>
+            <b>Ctrl/Cmd + Drag</b>: Adjust interaction radius
+          </li>
+          <li>
+            <b>Shift + Drag</b>: Adjust strength
+          </li>
+        </ul>
+      </section>
 
-  if (!isOpen) return null;
+      <section>
+        <h3>Spawn</h3>
+        <ul>
+          <li>
+            <b>Click</b>: Spawn particle (persisted size)
+          </li>
+          <li>
+            <b>Drag</b>: Set initial velocity (arrow)
+          </li>
+          <li>
+            <b>Ctrl/Cmd + Drag</b>: Adjust size (persists, does not spawn)
+          </li>
+          <li>
+            <b>Shift</b>: Stream while dragging
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Remove</h3>
+        <ul>
+          <li>
+            <b>Click/Drag</b>: Remove inside circle
+          </li>
+          <li>
+            <b>Ctrl/Cmd + Drag</b>: Adjust removal radius
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Pin</h3>
+        <ul>
+          <li>
+            <b>Click/Drag</b>: Pin inside circle
+          </li>
+          <li>
+            <b>Shift + Click/Drag</b>: Unpin inside circle
+          </li>
+          <li>
+            <b>Ctrl/Cmd + Drag</b>: Adjust pin radius
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Grab</h3>
+        <ul>
+          <li>
+            <b>Click & Drag</b>: Grab and move particles
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Joint</h3>
+        <ul>
+          <li>
+            <b>Click</b>: Create joints between selected particles
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Draw</h3>
+        <ul>
+          <li>
+            <b>Click & Drag</b>: Draw particles and auto-connect joints
+          </li>
+          <li>
+            <b>Shift</b>: Pin while drawing
+          </li>
+          <li>
+            <b>Ctrl/Cmd + Drag</b>: Adjust particle size
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Shape</h3>
+        <ul>
+          <li>
+            <b>Click</b>: Spawn full-mesh polygon
+          </li>
+          <li>
+            <b>Ctrl/Cmd + Drag</b>: Adjust radius
+          </li>
+          <li>
+            <b>Shift + Drag</b>: Adjust sides (3-6)
+          </li>
+        </ul>
+      </section>
+    </>
+  );
 
   return (
-    <div className="help-modal-backdrop" onClick={handleBackdropClick}>
-      <div className="help-modal">
-        <div className="help-modal-header">
-          <h2>Help & Controls</h2>
-          <button className="help-modal-close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-
-        <div className="help-modal-content">
-          <section className="help-section">
-            <h3>Mouse Controls</h3>
-            <div className="help-list">
-              <div className="help-item">
-                <div className="help-action">Click</div>
-                <div className="help-description">Spawn a particle</div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Click + Drag</div>
-                <div className="help-description">
-                  Drag to set particle size by distance (Single mode only)
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + Click + Drag</div>
-                <div className="help-description">
-                  Drag to set particle direction and speed (Single mode only)
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Right Click</div>
-                <div className="help-description">
-                  Attract particles to cursor
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + Right Click</div>
-                <div className="help-description">
-                  Repel particles from cursor
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Mouse Wheel / Trackpad Scroll</div>
-                <div className="help-description">Zoom in / out</div>
-              </div>
-            </div>
-          </section>
-
-          <section className="help-section">
-            <h3>Keyboard Modifiers</h3>
-            <div className="help-list">
-              <div className="help-item">
-                <div className="help-action">Shift</div>
-                <div className="help-description">
-                  In Joint mode: continue creating joints without deselecting particles
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ during drag</div>
-                <div className="help-description">
-                  Switch from size mode to velocity mode (Single mode only)
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="help-section">
-            <h3>Keyboard Shortcuts</h3>
-            <div className="help-list">
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + Z</div>
-                <div className="help-description">
-                  Undo last action (spawn/remove particles, clear)
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + Shift + Z</div>
-                <div className="help-description">Redo last undone action</div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Shift + Space</div>
-                <div className="help-description">Toggle play/pause</div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Escape</div>
-                <div className="help-description">Cancel a drag operation</div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">?</div>
-                <div className="help-description">Open this help modal</div>
-              </div>
-            </div>
-          </section>
-
-          <section className="help-section">
-            <h3>Tool Mode Shortcuts</h3>
-            <div className="help-list">
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + A</div>
-                <div className="help-description">Switch to Spawn tool</div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + S</div>
-                <div className="help-description">Switch to Joint tool</div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + D</div>
-                <div className="help-description">Switch to Grab tool</div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + F</div>
-                <div className="help-description">Switch to Pin tool</div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + G</div>
-                <div className="help-description">Switch to Remove tool</div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + SHIFT + A</div>
-                <div className="help-description">
-                  Circle through Modes in spawn controls
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Ctrl/⌘ + SHIFT + F</div>
-                <div className="help-description">
-                  Toggle Pin checkbox in spawn controls, or pin/unpin grabbed particle
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="help-section">
-            <h3>Spawn Modes</h3>
-            <div className="help-list">
-              <div className="help-item">
-                <div className="help-action">Single Mode</div>
-                <div className="help-description">
-                  Standard particle spawning with drag-to-size and drag-to-velocity
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Stream Mode</div>
-                <div className="help-description">
-                  Continuously spawn particles at cursor position
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Draw Mode</div>
-                <div className="help-description">
-                  Draw connected particle chains by dragging
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Shape Mode</div>
-                <div className="help-description">
-                  Spawn geometric shapes with all-to-all particle connections
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="help-section">
-            <h3>Advanced Features</h3>
-            <div className="help-list">
-              <div className="help-item">
-                <div className="help-action">Mode Switching</div>
-                <div className="help-description">
-                  Press Ctrl/⌘ while dragging to switch from size mode to
-                  velocity mode (only works in Single spawn mode)
-                </div>
-              </div>
-              <div className="help-item">
-                <div className="help-action">Undo History</div>
-                <div className="help-description">
-                  Up to 50 operations can be undone with Ctrl+Z/⌘+Z
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </div>
-    </div>
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      title="Help & Shortcuts"
+      className="help-modal-content"
+    >
+      {content}
+    </Modal>
   );
 }

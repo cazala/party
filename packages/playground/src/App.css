@@ -9,8 +9,13 @@
 
 .app-content {
   display: flex;
-  height: calc(100vh - 60px); /* Account for TopBar height */
+  flex: 1;
+}
+
+/* When bars are visible, account for fixed TopBar */
+.app.bars-visible .app-content {
   margin-top: 60px;
+  height: calc(100vh - 60px);
 }
 
 .left-sidebar {
@@ -20,17 +25,28 @@
   flex-shrink: 0;
 }
 
+.playground {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 .canvas-container {
   flex: 1;
   background: var(--color-canvas);
   position: relative;
 }
 
+.canvas-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
 #canvas {
   display: block;
-  width: 100%;
-  height: calc(100% - 60px); /* Account for ToolBar height */
-  margin-top: 60px; /* Push canvas below ToolBar */
 }
 
 /* Fullscreen canvas styling - no margins/offsets when in fullscreen mode */
@@ -46,6 +62,26 @@
 
 #canvas.grab-tool.grabbing {
   cursor: grabbing;
+}
+
+#canvas.spawn-tool {
+  cursor: none; /* Hide cursor when spawn tool is active, overlay will show preview */
+}
+
+#canvas.joint-tool {
+  cursor: none; /* Hide cursor when spawn tool is active, overlay will show preview */
+}
+
+#canvas.pin-tool {
+  cursor: none; /* Hide cursor when pin tool is active, overlay will show preview */
+}
+
+#canvas.remove-tool {
+  cursor: none; /* Hide cursor when remove tool is active, overlay will show preview */
+}
+
+#canvas.draw-tool {
+  cursor: crosshair; /* Show crosshair cursor for precise drawing */
 }
 
 .right-sidebar {
@@ -67,7 +103,7 @@ body {
   .app-content {
     flex-direction: column;
   }
-  
+
   .left-sidebar,
   .right-sidebar {
     width: 100%;
@@ -76,7 +112,7 @@ body {
     border-right: none;
     border-top: 1px solid #333;
   }
-  
+
   .canvas-container {
     height: 50vh;
     order: -1; /* Put canvas first on mobile */

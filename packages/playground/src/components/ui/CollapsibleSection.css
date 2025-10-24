@@ -1,0 +1,65 @@
+/* Collapsible section styles */
+.collapsible-section {
+  margin-bottom: 16px;
+  border: 1px solid #2a2a35;
+  border-radius: 8px;
+  background: #1f1f28;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  background: linear-gradient(135deg, #252530 0%, #22222d 100%);
+}
+
+.collapsible-header:hover {
+  background: linear-gradient(135deg, #2a2a38 0%, #272732 100%);
+}
+
+.collapsible-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapsible-header h4 {
+  margin: 0;
+  color: #e8e8f0;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.collapsible-arrow {
+  color: #9090a0;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  transform: rotate(-90deg);
+}
+
+.collapsible-arrow.open {
+  transform: rotate(0deg);
+  color: #b0b0c0;
+}
+
+.collapsible-content {
+  padding: 16px;
+  border-top: 1px solid #2a2a35;
+  background: #1c1c25;
+}
+
+.collapsible-content .control-section {
+  margin-bottom: 0;
+}
+
+.collapsible-content .control-group:last-child {
+  margin-bottom: 0;
+}

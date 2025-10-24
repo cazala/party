@@ -1,0 +1,262 @@
+import { Vector } from "../vector";
+import { Particle } from "../particle";
+import { Force } from "../system";
+import { SpatialGrid } from "../spatial-grid";
+
+// Gravity direction enum
+export type GravityDirection =
+  | "up"
+  | "down"
+  | "left"
+  | "right"
+  | "in"
+  | "out"
+  | "custom";
+
+// Default constants for Environment
+export const DEFAULT_GRAVITY_STRENGTH = 0;
+export const DEFAULT_GRAVITY_DIRECTION: GravityDirection = "down";
+export const DEFAULT_GRAVITY_ANGLE = Math.PI / 2; // radians (90 degrees, downward)
+export const DEFAULT_INERTIA = 0;
+export const DEFAULT_FRICTION = 0;
+export const DEFAULT_DAMPING = 0;
+
+export interface EnvironmentOptions {
+  gravity?: {
+    strength?: number;
+    direction?: GravityDirection;
+    angle?: number; // Only used when direction is 'custom'
+  };
+  inertia?: number;
+  friction?: number;
+  worldWidth?: number; // For 'in'/'out' gravity calculations
+  worldHeight?: number; // For 'in'/'out' gravity calculations
+  damping?: number;
+}
+
+export class Environment implements Force {
+  public gravity: {
+    strength: number;
+    direction: GravityDirection;
+    angle?: number; // Only for custom direction
+  };
+  public inertia: number;
+  public friction: number;
+  public damping: number;
+  public worldWidth: number;
+  public worldHeight: number;
+
+  // Camera properties for calculating visible world center
+  private cameraX: number = 0;
+  private cameraY: number = 0;
+  private zoom: number = 1;
+
+  // Store positions before physics integration for inertia and momentum preservation
+  private previousPositions: Map<number, Vector> = new Map();
+
+  constructor(options: EnvironmentOptions = {}) {
+    this.gravity = {
+      strength: options.gravity?.strength ?? DEFAULT_GRAVITY_STRENGTH,
+      direction: options.gravity?.direction ?? DEFAULT_GRAVITY_DIRECTION,
+      angle: options.gravity?.angle ?? DEFAULT_GRAVITY_ANGLE,
+    };
+    this.inertia = options.inertia ?? DEFAULT_INERTIA;
+    this.friction = options.friction ?? DEFAULT_FRICTION;
+    this.damping = options.damping ?? DEFAULT_DAMPING;
+    this.worldWidth = options.worldWidth ?? 1200;
+    this.worldHeight = options.worldHeight ?? 800;
+  }
+
+  // Getters for backward compatibility
+  get strength(): number {
+    return this.gravity.strength;
+  }
+
+  get direction(): Vector {
+    return this.calculateGravityDirection(new Vector(0, 0)); // Default particle position for compatibility
+  }
+
+  setStrength(strength: number): void {
+    this.gravity.strength = strength;
+  }
+
+  setDirection(direction: GravityDirection): void {
+    this.gravity.direction = direction;
+  }
+
+  setGravityAngle(angle: number): void {
+    this.gravity.angle = angle;
+  }
+
+  setDamping(damping: number): void {
+    this.damping = Math.max(0, Math.min(1, damping)); // Clamp between 0 and 1
+  }
+
+  setWorldSize(width: number, height: number): void {
+    this.worldWidth = width;
+    this.worldHeight = height;
+  }
+
+  setCamera(cameraX: number, cameraY: number, zoom: number): void {
+    this.cameraX = cameraX;
+    this.cameraY = cameraY;
+    this.zoom = zoom;
+  }
+
+  setInertia(inertia: number): void {
+    this.inertia = Math.max(0, Math.min(1, inertia)); // Clamp between 0 and 1
+  }
+
+  setFriction(friction: number): void {
+    this.friction = Math.max(0, Math.min(1, friction)); // Clamp between 0 and 1
+  }
+
+  /**
+   * Calculate gravity direction vector based on direction type and particle position
+   */
+  private calculateGravityDirection(particlePosition: Vector): Vector {
+    switch (this.gravity.direction) {
+      case "up":
+        return new Vector(0, -1);
+      case "down":
+        return new Vector(0, 1);
+      case "left":
+        return new Vector(-1, 0);
+      case "right":
+        return new Vector(1, 0);
+      case "in": {
+        // Gravity toward visible world center (accounting for camera position and zoom)
+        const visibleCenterX =
+          (-this.cameraX + this.worldWidth / 2) / this.zoom;
+        const visibleCenterY =
+          (-this.cameraY + this.worldHeight / 2) / this.zoom;
+        const direction = new Vector(
+          visibleCenterX - particlePosition.x,
+          visibleCenterY - particlePosition.y
+        );
+        const length = Math.sqrt(
+          direction.x * direction.x + direction.y * direction.y
+        );
+        if (length > 0) {
+          return new Vector(direction.x / length, direction.y / length);
+        }
+        return new Vector(0, 0);
+      }
+      case "out": {
+        // Gravity away from visible world center (accounting for camera position and zoom)
+        const visibleCenterX =
+          (-this.cameraX + this.worldWidth / 2) / this.zoom;
+        const visibleCenterY =
+          (-this.cameraY + this.worldHeight / 2) / this.zoom;
+        const direction = new Vector(
+          particlePosition.x - visibleCenterX,
+          particlePosition.y - visibleCenterY
+        );
+        const length = Math.sqrt(
+          direction.x * direction.x + direction.y * direction.y
+        );
+        if (length > 0) {
+          return new Vector(direction.x / length, direction.y / length);
+        }
+        return new Vector(0, 0);
+      }
+      case "custom":
+        return Vector.fromAngle(this.gravity.angle ?? DEFAULT_GRAVITY_ANGLE);
+      default:
+        return new Vector(0, 1); // Default to down
+    }
+  }
+
+  apply(particle: Particle, _spatialGrid: SpatialGrid): void {
+    if (particle.pinned || particle.grabbed) {
+      return;
+    }
+
+    // Apply inertia based on previous position
+    if (this.inertia > 0) {
+      const previousPosition = this.previousPositions.get(particle.id);
+      if (previousPosition) {
+        const movement = particle.position.clone().subtract(previousPosition);
+        const inertiaForce = movement.multiply(this.inertia * particle.mass);
+        particle.applyForce(inertiaForce);
+      }
+      // Store current position for next frame
+      this.previousPositions.set(particle.id, particle.position.clone());
+    }
+
+    // Apply gravity force
+    if (this.gravity.strength !== 0) {
+      const gravityDirection = this.calculateGravityDirection(
+        particle.position
+      );
+      const gravityForce = gravityDirection
+        .clone()
+        .multiply(this.gravity.strength * particle.mass);
+      particle.applyForce(gravityForce);
+    }
+
+    // Apply friction (dampen current velocity)
+    if (this.friction > 0) {
+      const frictionForce = particle.velocity
+        .clone()
+        .multiply(-this.friction * particle.mass);
+      particle.applyForce(frictionForce);
+    }
+
+    if (this.damping !== 0) {
+      particle.velocity.multiply(1 - this.damping * 0.2);
+    }
+  }
+
+  /**
+   * Clean up stored positions for removed particles
+   */
+  cleanupRemovedParticles(activeParticleIds: Set<number>): void {
+    for (const particleId of this.previousPositions.keys()) {
+      if (!activeParticleIds.has(particleId)) {
+        this.previousPositions.delete(particleId);
+      }
+    }
+  }
+
+  /**
+   * Clear all stored positions (useful for resets)
+   */
+
+  clear(): void {
+    this.previousPositions.clear();
+  }
+
+  /**
+   * Update world size for 'in' and 'out' gravity calculations
+   * This should be called when the system size changes
+   */
+  updateWorldSize(width: number, height: number): void {
+    this.worldWidth = width;
+    this.worldHeight = height;
+  }
+}
+
+export function createEnvironmentForce(
+  gravity: {
+    strength?: number;
+    direction?: GravityDirection;
+    angle?: number;
+  } = {},
+  inertia: number = DEFAULT_INERTIA,
+  friction: number = DEFAULT_FRICTION,
+  damping: number = DEFAULT_DAMPING
+): Environment {
+  return new Environment({
+    gravity: {
+      strength: gravity.strength ?? DEFAULT_GRAVITY_STRENGTH,
+      direction: gravity.direction ?? DEFAULT_GRAVITY_DIRECTION,
+      angle: gravity.angle ?? DEFAULT_GRAVITY_ANGLE,
+    },
+    inertia,
+    friction,
+    damping,
+  });
+}
+
+export const defaultEnvironment = createEnvironmentForce();

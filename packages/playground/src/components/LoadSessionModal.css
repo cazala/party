@@ -1,0 +1,321 @@
+/* Load Session Modal Specific Styles */
+.load-session-modal .sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.load-session-modal .session-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 12px 52px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+  cursor: default;
+  position: relative;
+}
+
+.load-session-modal .session-item.dragging {
+  z-index: 1000;
+}
+
+.load-session-modal .session-number.drag-handle {
+  cursor: grab;
+  user-select: none;
+  transition: background 0.2s ease;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  border-radius: 6px 0 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.load-session-modal .session-number.drag-handle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.load-session-modal .session-number.drag-handle:active {
+  cursor: grabbing;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.load-session-modal .session-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.load-session-modal .session-item:hover .session-actions {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Always show actions when in delete confirmation mode, rename mode, or dropdown is open */
+.load-session-modal .session-actions.delete-mode,
+.load-session-modal .session-actions.rename-mode,
+.load-session-modal .session-actions.dropdown-open {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.load-session-modal .session-number {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  min-width: 24px;
+  text-align: right;
+}
+
+.load-session-modal .session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.load-session-modal .session-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.load-session-modal .session-details {
+  display: flex;
+  gap: 12px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.load-session-modal .session-actions {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.load-session-modal .session-actions .session-modal-button {
+  padding: 4px 8px;
+  font-size: 11px;
+  min-width: auto;
+  gap: 4px;
+}
+
+.load-session-modal .empty-sessions {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 40px 20px;
+  font-style: italic;
+}
+
+/* Delete Confirmation Text */
+.load-session-modal .delete-confirmation-text {
+  color: #ef4444;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* Rename Input */
+.load-session-modal .rename-input-container {
+  display: flex;
+  align-items: center;
+}
+
+.load-session-modal .rename-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.load-session-modal .rename-input:focus {
+  border-color: rgba(76, 175, 80, 0.5);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+/* Dropdown */
+.load-session-modal .dropdown-container {
+  position: relative;
+}
+
+.load-session-modal .dropdown-menu {
+  position: absolute;
+  right: 0;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 120px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Portal dropdown (rendered to document.body) */
+.dropdown-portal {
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 120px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+.load-session-modal .dropdown-menu.dropdown-down {
+  top: 100%;
+  margin-top: 4px;
+}
+
+.load-session-modal .dropdown-menu.dropdown-up {
+  bottom: 100%;
+  margin-bottom: 4px;
+}
+
+.load-session-modal .dropdown-menu.dropdown-calculating {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.load-session-modal .dropdown-menu.dropdown-ready {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.1s ease;
+}
+
+.load-session-modal .dropdown-item,
+.dropdown-portal .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  text-align: left;
+}
+
+.load-session-modal .dropdown-item:hover,
+.dropdown-portal .dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.load-session-modal .dropdown-item.danger,
+.dropdown-portal .dropdown-item.danger {
+  color: #ef4444;
+}
+
+.load-session-modal .dropdown-item.danger:hover,
+.dropdown-portal .dropdown-item.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Modal Button Styles - Following TopBar Button Pattern */
+.session-modal-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  margin-left: 8px;
+}
+
+.session-modal-button:first-child {
+  margin-left: 0;
+}
+
+.session-modal-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.session-modal-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.session-modal-button.primary {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: rgba(76, 175, 80, 0.4);
+  color: var(--color-text-primary);
+}
+
+.session-modal-button.primary:hover:not(:disabled) {
+  background: rgba(76, 175, 80, 0.3);
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
+.session-modal-button.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--color-text-secondary);
+}
+
+.session-modal-button.secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--color-text-primary);
+}
+
+.session-modal-button.danger {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.session-modal-button.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Error Message */
+.load-session-modal .error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ef4444;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+
+/* Spinner */
+.load-session-modal .spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

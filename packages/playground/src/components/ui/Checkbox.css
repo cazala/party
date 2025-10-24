@@ -1,0 +1,73 @@
+.field.checkbox-field label input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+/* Custom checkbox styles */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #404050;
+  border-radius: 4px;
+  background: #1c1c25;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+input[type="checkbox"]:hover {
+  border-color: #5a5a70;
+  background: #202028;
+}
+
+input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, #4a9eff 0%, #357abd 100%);
+  border-color: #4a9eff;
+}
+
+input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 7px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+}
+
+input[type="checkbox"]:focus {
+  outline: none;
+}
+
+input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #333;
+  background: #1a1a1a;
+}
+
+input[type="checkbox"]:disabled:hover {
+  border-color: #333;
+  background: #1a1a1a;
+}
+
+/* Make checkbox labels clickable with pointer cursor */
+.field.checkbox-field label:has(input[type="checkbox"]) {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.checkbox-label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}

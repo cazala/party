@@ -1,160 +1,44 @@
-.help-modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
+/* Help Modal Specific Styles */
+.help-modal-content section {
+  margin-bottom: 24px;
 }
 
-.help-modal {
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 12px;
-  max-width: 600px;
-  max-height: 80vh;
-  width: 90%;
-  overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-}
-
-.help-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #333;
-  background: #222;
-}
-
-.help-modal-header h2 {
-  margin: 0;
-  color: #fff;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.help-modal-close {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.help-modal-close:hover {
-  background: #333;
-  color: #fff;
-}
-
-.help-modal-content {
-  padding: 24px;
-  max-height: calc(80vh - 80px);
-  overflow-y: auto;
-}
-
-.help-section {
-  margin-bottom: 28px;
-}
-
-.help-section:last-child {
+.help-modal-content section:last-child {
   margin-bottom: 0;
 }
 
-.help-section h3 {
-  color: #fff;
+.help-modal-content h3 {
+  margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
-  margin: 0 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #333;
-}
-
-.help-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.help-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.help-action {
-  min-width: 160px;
-  padding: 8px 12px;
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 6px;
-  color: #fff;
-  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  color: var(--color-accent-white);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   font-size: 13px;
-  font-weight: 500;
-  text-align: center;
-  flex-shrink: 0;
 }
 
-.help-description {
-  color: #ccc;
+.help-modal-content ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.7;
+}
+
+.help-modal-content li {
+  margin-bottom: 8px;
+  color: var(--color-text-primary);
   font-size: 14px;
-  line-height: 1.5;
-  padding-top: 6px;
 }
 
-/* Responsive design */
-@media (max-width: 640px) {
-  .help-modal {
-    width: 95%;
-    max-height: 90vh;
-  }
-  
-  .help-modal-header {
-    padding: 16px 20px;
-  }
-  
-  .help-modal-content {
-    padding: 20px;
-  }
-  
-  .help-item {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .help-action {
-    min-width: auto;
-    width: 100%;
-  }
-  
-  .help-description {
-    padding-top: 0;
-  }
+.help-modal-content li:last-child {
+  margin-bottom: 0;
 }
 
-/* Scrollbar styling */
-.help-modal-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.help-modal-content::-webkit-scrollbar-track {
-  background: #1a1a1a;
-}
-
-.help-modal-content::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 3px;
-}
-
-.help-modal-content::-webkit-scrollbar-thumb:hover {
-  background: #555;
+.help-modal-content b {
+  color: var(--color-accent-white);
+  font-weight: 600;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
 }

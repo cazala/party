@@ -1,9 +1,6 @@
 .toolbar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
+  position: relative;
+  z-index: 100;
   background: var(--color-canvas);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
@@ -39,6 +36,8 @@
   background: rgba(255, 255, 255, 0.05);
   color: var(--color-text-secondary);
   position: relative;
+  user-select: none;
+  outline: none;
 }
 
 .tool-mode-button:hover {
@@ -52,23 +51,8 @@
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-.tool-mode-first {
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.tool-mode-second {
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.tool-mode-third {
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.tool-mode-fourth {
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.tool-mode-fifth {
+/* Add right border to all buttons except the last one */
+.tool-mode-button:not(:last-child) {
   border-right: 1px solid rgba(255, 255, 255, 0.15);
 }
 
@@ -99,7 +83,7 @@
     padding: 6px 8px;
     min-width: 36px;
   }
-  
+
   .tool-mode-selector {
     gap: 2px;
   }

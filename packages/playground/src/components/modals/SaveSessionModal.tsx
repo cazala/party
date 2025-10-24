@@ -1,295 +1,232 @@
 import React, { useState, useEffect } from "react";
-import { System } from "@cazala/party";
-import { SessionManager } from "../../utils/SessionManager";
-import { SystemControlsRef } from "../SystemControls";
-import { ForcesControlsRef } from "../ForcesControls";
-import "./Modal.css";
+import { Save, AlertCircle } from "lucide-react";
+import { useSession } from "../../hooks/useSession";
+import { Modal } from "../Modal";
+import "../SaveSessionModal.css";
 
 interface SaveSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  system: System | null;
-  renderer?: any;
-  systemControlsRef?: React.RefObject<SystemControlsRef>;
-  forcesControlsRef?: React.RefObject<ForcesControlsRef>;
-  onSaveSuccess?: (sessionName: string) => void;
+  particleCount: number;
 }
 
-export function SaveSessionModal({
-  isOpen,
-  onClose,
-  system,
-  renderer,
-  systemControlsRef,
-  forcesControlsRef,
-  onSaveSuccess,
-}: SaveSessionModalProps) {
+export function SaveSessionModal({ isOpen, onClose, particleCount }: SaveSessionModalProps) {
   const [sessionName, setSessionName] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [showOverwriteWarning, setShowOverwriteWarning] = useState(false);
-  const [existingSession, setExistingSession] = useState<any>(null);
-  const [wasPlayingBeforeModal, setWasPlayingBeforeModal] = useState(false);
+  const [nameError, setNameError] = useState("");
+  const [showOverrideWarning, setShowOverrideWarning] = useState(false);
+  const { saveCurrentSession, isSaving, saveError, clearErrors, lastSessionName, availableSessions } = useSession();
 
-  // Reset form when modal opens/closes
+  // Reset form when modal opens and populate with last session name
   useEffect(() => {
     if (isOpen) {
-      setSessionName("");
-      setError("");
-      setIsLoading(false);
-      setShowOverwriteWarning(false);
-      setExistingSession(null);
-
-      // Pause system when modal opens
-      if (system) {
-        setWasPlayingBeforeModal(system.isPlaying);
-        system.pause();
-      }
-    } else if (system) {
-      // Resume system when modal closes if it was playing before
-      if (wasPlayingBeforeModal) {
-        system.play();
-      }
+      setSessionName(lastSessionName || "");
+      setNameError("");
+      setShowOverrideWarning(false);
+      setSaveInitiated(false);
+      clearErrors();
+    } else {
+      // Reset state when modal closes to prevent issues on next open
+      setSaveInitiated(false);
+      setShowOverrideWarning(false);
+      setNameError("");
     }
-  }, [isOpen, system]);
+  }, [isOpen, clearErrors, lastSessionName]);
 
-  // Close modal on Escape key
+  // Track if save was initiated to detect successful completion
+  const [saveInitiated, setSaveInitiated] = useState(false);
+
+
+  // Close modal on successful save
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !isLoading) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      return () => document.removeEventListener("keydown", handleEscape);
-    }
-  }, [isOpen, isLoading, onClose]);
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget && !isLoading) {
+    if (saveInitiated && !isSaving && !saveError && isOpen) {
       onClose();
     }
+  }, [saveInitiated, isSaving, saveError, isOpen, onClose]);
+
+  // Check if session name already exists
+  const sessionExists = (name: string): boolean => {
+    return availableSessions.some(session => session.name.toLowerCase() === name.toLowerCase());
+  };
+
+  const validateSessionName = (name: string): string => {
+    if (!name.trim()) {
+      return "Session name is required";
+    }
+    if (name.length < 2) {
+      return "Session name must be at least 2 characters";
+    }
+    if (name.length > 100) {
+      return "Session name must be less than 100 characters";
+    }
+    return "";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!system) {
-      setError("No system available to save");
-      return;
-    }
-
+    
     const trimmedName = sessionName.trim();
-
-    if (!trimmedName) {
-      setError("Session name is required");
+    const validationError = validateSessionName(trimmedName);
+    
+    if (validationError) {
+      setNameError(validationError);
       return;
     }
-
-    if (trimmedName.length < 2) {
-      setError("Session name must be at least 2 characters");
+    
+    // Check if name exists and show warning if not already confirmed
+    if (sessionExists(trimmedName) && !showOverrideWarning) {
+      setShowOverrideWarning(true);
+      setNameError("");
       return;
     }
-
-    if (trimmedName.length > 50) {
-      setError("Session name must be 50 characters or less");
-      return;
-    }
-
-    // Check for invalid characters
-    if (!/^[a-zA-Z0-9\s\-_]+$/.test(trimmedName)) {
-      setError(
-        "Session name can only contain letters, numbers, spaces, hyphens, and underscores"
-      );
-      return;
-    }
-
-    if (SessionManager.sessionExists(trimmedName)) {
-      if (!showOverwriteWarning) {
-        // Show overwrite warning instead of error
-        const sessions = SessionManager.getSessionMetadata();
-        const existing = sessions.find((s) => s.name === trimmedName);
-        setExistingSession(existing);
-        setShowOverwriteWarning(true);
-        setError("");
-        return;
-      }
-      // If we reach here, user has confirmed overwrite
-    }
-
-    setIsLoading(true);
-    setError("");
-
+    
+    setNameError("");
+    setShowOverrideWarning(false);
+    setSaveInitiated(true);
+    
     try {
-      // Get system controls state
-      const systemControlsState = systemControlsRef?.current?.getSystemControlsState();
-      
-      // Get collision controls state
-      const collisionControlsState = forcesControlsRef?.current?.getCollisionControlsState();
-      
-      // Combine all UI states
-      const combinedState = {
-        ...systemControlsState,
-        collisionControls: collisionControlsState,
-      };
-      
-      const result = SessionManager.saveSession(
-        system,
-        trimmedName,
-        showOverwriteWarning,
-        renderer,
-        combinedState
-      );
-
-      if (result.success) {
-        onSaveSuccess?.(trimmedName);
-        onClose();
-      } else {
-        setError(result.error || "Failed to save session");
-      }
+      await saveCurrentSession(trimmedName);
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Unknown error occurred"
-      );
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to save session:", error);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSessionName(e.target.value);
-    if (error) {
-      setError("");
-    }
-    if (showOverwriteWarning) {
-      setShowOverwriteWarning(false);
-      setExistingSession(null);
-    }
+  const handleOverrideCancel = () => {
+    setShowOverrideWarning(false);
   };
 
-  const handleCancelOverwrite = () => {
-    setShowOverwriteWarning(false);
-    setExistingSession(null);
-  };
-
-  const handleConfirmOverwrite = () => {
-    setShowOverwriteWarning(false);
-    handleSubmit(new Event("submit") as any);
-  };
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours =
-      Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
-    if (diffInHours < 1) {
-      const minutes = Math.floor(diffInHours * 60);
-      return `${minutes} minute${minutes !== 1 ? "s" : ""} ago`;
-    } else if (diffInHours < 24) {
-      const hours = Math.floor(diffInHours);
-      return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
-    } else if (diffInHours < 168) {
-      // 7 days
-      const days = Math.floor(diffInHours / 24);
-      return `${days} day${days !== 1 ? "s" : ""} ago`;
-    } else {
-      return date.toLocaleDateString();
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSessionName(value);
+    setShowOverrideWarning(false); // Hide override warning when name changes
+    
+    if (nameError) {
+      const validationError = validateSessionName(value);
+      setNameError(validationError);
     }
   };
 
-  if (!isOpen) return null;
-
-  const particleCount = system?.particles.length || 0;
+  const footer = (
+    <>
+      <button 
+        type="button" 
+        className="session-modal-button secondary"
+        onClick={onClose}
+        disabled={isSaving}
+      >
+        Cancel
+      </button>
+      {!showOverrideWarning && (
+        <button 
+          type="submit" 
+          className="session-modal-button primary"
+          onClick={handleSubmit}
+          disabled={isSaving || !!nameError || !sessionName.trim()}
+        >
+          {isSaving ? (
+            <>
+              <div className="spinner" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save size={16} />
+              Save Session
+            </>
+          )}
+        </button>
+      )}
+    </>
+  );
 
   return (
-    <div className="modal-backdrop" onClick={handleBackdropClick}>
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2 className="modal-title">Save Session</h2>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Save Session"
+      footer={footer}
+      width="520px"
+      className="save-session-modal"
+    >
+      <form onSubmit={handleSubmit}>
+        <div className="session-metadata">
+          <div className="metadata-item">
+            <span className="metadata-label">Particles:</span>
+            <span className="metadata-value">{particleCount.toLocaleString()}</span>
+          </div>
+          <div className="metadata-item">
+            <span className="metadata-label">Date:</span>
+            <span className="metadata-value">{new Date().toLocaleDateString()}</span>
+          </div>
+          <div className="metadata-item">
+            <span className="metadata-label">Save type:</span>
+            <span className="metadata-value">
+              {particleCount <= 1000 ? "Full particle data" : "Initial configuration only"}
+            </span>
+          </div>
         </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
+        
+        {particleCount > 1000 && (
+          <div className="particle-limit-notice">
+            <AlertCircle size={16} />
+            Since this session has more than 1,000 particles, only the initial configuration will be saved. 
+            When loaded, particles will be respawned using the saved settings rather than their exact current positions.
+          </div>
+        )}
+        
+        <div className="form-group">
+          <label htmlFor="session-name">Session Name *</label>
+          <input
+            id="session-name"
+            type="text"
+            value={sessionName}
+            onChange={handleNameChange}
+            placeholder="Enter a name for this session..."
+            disabled={isSaving}
+            className={nameError ? "error" : ""}
+            autoFocus
+          />
+          {nameError && (
+            <div className="error-message">
+              <AlertCircle size={16} />
+              {nameError}
+            </div>
+          )}
+        </div>
+        
+        {showOverrideWarning && (
+          <div className="override-warning">
             <div>
-              <label className="modal-label" htmlFor="session-name">
-                Session Name
-              </label>
-              <input
-                id="session-name"
-                type="text"
-                className="modal-input"
-                value={sessionName}
-                onChange={handleInputChange}
-                placeholder="Enter a name for this session"
-                disabled={isLoading}
-                autoFocus
-                maxLength={50}
-              />
-              {error && <div className="modal-error">{error}</div>}
-
-              <div className="modal-info">
-                This will save {particleCount} particles, all current settings.
-              </div>
+              <AlertCircle size={16} />
+              A session named "{sessionName.trim()}" already exists. Do you want to override it?
+            </div>
+            <div className="override-actions">
+              <button 
+                type="button"
+                className="session-modal-button primary"
+                onClick={handleSubmit}
+                disabled={isSaving}
+              >
+                Yes, Override
+              </button>
+              <button 
+                type="button"
+                className="session-modal-button secondary"
+                onClick={handleOverrideCancel}
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
             </div>
           </div>
-
-          <div className="modal-footer">
-            {showOverwriteWarning && existingSession ? (
-              <>
-                <div className="modal-warning">
-                  <div className="modal-warning-title">
-                    ⚠️ Session Already Exists
-                  </div>
-                  <div className="modal-warning-content">
-                    A session named "{existingSession.name}" already exists (
-                    {existingSession.particleCount} particles,{" "}
-                    {formatDate(existingSession.timestamp)}).
-                  </div>
-                </div>
-                <div className="modal-warning-actions">
-                  <button
-                    type="button"
-                    className="modal-button modal-button-secondary"
-                    onClick={handleCancelOverwrite}
-                    disabled={isLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="modal-button modal-button-warning"
-                    onClick={handleConfirmOverwrite}
-                    disabled={isLoading}
-                  >
-                    Overwrite Existing Session
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="modal-button modal-button-secondary"
-                  onClick={onClose}
-                  disabled={isLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="modal-button modal-button-primary"
-                  disabled={isLoading || !sessionName.trim()}
-                >
-                  {isLoading ? "Saving..." : "Save Session"}
-                </button>
-              </>
-            )}
+        )}
+        
+        {saveError && (
+          <div className="error-message">
+            <AlertCircle size={16} />
+            {saveError}
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+      </form>
+    </Modal>
   );
 }
