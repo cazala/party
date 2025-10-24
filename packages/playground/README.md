@@ -1,18 +1,35 @@
-# @cazala/playground
+# Party Playground
 
-Interactive web playground for experimenting with particle system simulations. Built with React, TypeScript, and the [@cazala/party](../core) particle system library.
+Interactive web application for experimenting with particle physics simulations. Built with React, TypeScript, and the [@cazala/party](../core) particle physics engine featuring dual runtime support (WebGPU + CPU fallback).
 
 ## Features
 
-- Interactive canvas with real-time particle manipulation using mouse/touch controls
-- Multiple tools: spawn, grab, joint, pin, and remove modes
-- Real-time controls for adjusting psimulation parameters while it runs runs
-- Session management for saving and loading complete simulation states
-- Undo/redo system
-- Visual effects including trails, configurable glow effects, density fields, velocity visualization, and particle lifetime effects
-- Keyboard shortcuts for efficient workflow
+### Core Capabilities
+- **Dual Runtime Support**: Automatic WebGPU/CPU selection with seamless fallback
+- **Interactive Tools**: Spawn, grab, joint, pin, remove, draw, emit, and interact tools
+- **Real-time Physics**: Live parameter adjustment during simulation playback
+- **Advanced Session Management**: Save, load, rename, duplicate, reorder, export/import sessions
+- **Sophisticated Undo/Redo**: Command pattern with transaction support and action grouping
+- **Parameter Oscillators**: Animate any module parameter with configurable frequency and bounds
+- **Comprehensive Hotkeys**: Efficient keyboard-driven workflow
 
-## Getting Started
+### Physics Modules
+- **Environment**: Gravity, inertia, friction, damping with directional/radial options
+- **Boundary**: Bounce, kill, warp modes with repel forces and tangential friction
+- **Collisions**: Elastic particle-particle collision detection and response
+- **Behavior**: Flocking behaviors (cohesion, alignment, separation, wander, chase/avoid)
+- **Fluids**: Smoothed Particle Hydrodynamics (SPH) with near-pressure optimization
+- **Sensors**: Trail-following and color-based steering with configurable behaviors
+- **Interaction**: User-controlled attraction/repulsion with visual force fields
+- **Joints**: Distance constraints with momentum preservation and stress-based breaking
+
+### Visual Effects
+- **Particle Rendering**: Multiple color modes, size scaling, pinned particle visualization
+- **Trails**: Decay and diffusion effects with performance optimization
+- **Lines**: Joint visualization with configurable styling
+- **Debug Overlays**: Spatial grid, density fields, velocity vectors
+
+## Quick Start
 
 ### Development Setup
 
@@ -25,315 +42,235 @@ cd party
 npm install
 
 # Start development server
-npm dev
+npm run dev
 ```
 
-Visit `http://localhost:3000` to access the playground.
+Visit `http://localhost:5173` to access the playground.
 
 ### Production Build
 
 ```bash
 # Build for production
-npm build
+npm run build
 
 # Preview production build
-npm preview
+npm run preview
 ```
 
 ## Interface Overview
 
-### Layout
-
-The playground uses a three-panel layout:
+The playground features a **four-panel layout** with comprehensive controls:
 
 ```
-┌─────────────┬─────────────────────┬─────────────────┐
-│             │                     │                 │
-│   System    │                     │    Physics      │
-│  Controls   │      Canvas         │   Controls      │
-│  (280px)    │    (expandable)     │   (320px)       │
-│             │                     │                 │
-│ • Init      │  • Particles        │ • Physics       │
-│ • Spawn     │  • Interactive      │ • Boundary      │
-│ • Emitters  │  • Real-time        │ • Collisions    │
-│ • Render    │  • Zoom/Pan         │ • Behavior      │
-│ •   │                     │ • Fluid         │
-│             │                     │ • Sensors       │
-│             │                     │ • Joints        │
-└─────────────┴─────────────────────┴─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                          Top Bar                                │
+│  Play/Pause • Clear • Restart • Save • Load • Fullscreen       │
+├───────────────┬─────────────────────────────┬───────────────────┤
+│               │                             │                   │
+│   Left Panel  │           Canvas            │   Right Panel     │
+│   (280px)     │        (expandable)         │    (320px)        │
+│               │                             │                   │
+│ • INIT Panel  │  • Interactive Tools        │ • Physics Modules │
+│ • Spawn       │  • Real-time Simulation     │ • Environment     │
+│ • Particles   │  • Zoom/Pan Camera          │ • Boundary        │
+│ • Tools       │  • Visual Overlays          │ • Collisions      │
+│               │                             │ • Behavior        │
+│               │                             │ • Fluids          │
+│               │                             │ • Sensors         │
+│               │                             │ • Interaction     │
+│               │                             │ • Joints          │
+└───────────────┴─────────────────────────────┴───────────────────┘
 ```
 
-### Top Bar
+## Tools System
 
-- **Play/Pause**: Control simulation state
-- **Clear/Reset**: Remove particles or reset simulation
-- **Tool Selection**: Switch between interaction modes
-- **Save/Load**: Session management
-- **Help**: Access documentation and shortcuts
+### Interactive Tools
 
-## Tool Modes
+Access via toolbar or hotkeys. Active tool shows visual cursor overlay and handles mouse interactions.
 
-### 1. Spawn Mode (Default)
+- **Spawn Tool (S)**: Add particles with click/drag, size/velocity control
+- **Grab Tool (G)**: Physics-based particle dragging with momentum
+- **Joint Tool (J)**: Create distance constraints between particles
+- **Pin Tool (P)**: Toggle particle pinned state (immovable)
+- **Remove Tool (R)**: Delete particles and joints with area selection
+- **Draw Tool (D)**: Create connected particle chains with automatic joints
+- **Emit Tool (E)**: Place particle emitters with lifetime effects
+- **Interact Tool (I)**: Manual attraction/repulsion with visual feedback
 
-Create particles with various interaction methods:
+### Tool Features
+- **Visual Feedback**: Cursor overlays and hover effects
+- **Modifier Keys**: Shift/Alt for tool variations
+- **Undo Integration**: All tool actions support undo/redo
+- **Performance Optimized**: Efficient rendering and interaction handling
 
-- **Click**: Spawn single particle
-- **Click + Drag**: Drag-to-size (Single mode only)
-- **Ctrl/⌘ + Click + Drag**: Drag-to-velocity (Single mode only)
-- **Ctrl/⌘ during drag**: Switch between size and velocity modes
+## Hotkeys and Shortcuts
 
-**Spawn Modes**:
+### Essential Hotkeys
+- **Spacebar**: Play/pause simulation
+- **S, G, J, P, R, D, E, I**: Switch tools
+- **Cmd/Ctrl + S**: Save session
+- **Cmd/Ctrl + O**: Load session
+- **Cmd/Ctrl + Z/Y**: Undo/redo
+- **Cmd/Ctrl + B**: Toggle sidebars
+- **1-9**: Quick load sessions
+- **C**: Clear particles
+- **F**: Fullscreen mode
 
-- **Single**: Standard spawning with drag controls
-- **Stream**: Continuous particle creation
-- **Draw**: Connected particle chains
-- **Shape**: Geometric formations with joints
+### Advanced Shortcuts
+- **Mouse Wheel**: Zoom in/out
+- **Middle Mouse**: Pan camera
+- **Cmd/Ctrl + 0**: Reset camera
+- **Cmd/Ctrl + R**: Restart simulation
+- **H**: Help modal
 
-### 2. Joint Mode
+For complete hotkey reference, see [User Guide](../../docs/playground-user-guide.md).
 
-Create distance constraints between particles:
+## Module System
 
-- **Click particles**: Connect with joints
-- **Shift + Click**: Continue connecting without deselecting
-- **Escape**: Cancel joint creation
+### Physics Configuration
 
-### 3. Grab Mode
-
-Manually manipulate particles during simulation:
-
-- **Click + Drag**: Move particles with physics influence
-- **Release**: Apply momentum from drag movement
-- **Multiple particles**: Grab individual particles
-
-### 4. Pin Mode
-
-Fix particles in place:
-
-- **Click**: Toggle particle pinned state
-- **Pinned particles**: Unaffected by forces but still influence others
-
-### 5. Remove Mode
-
-Delete particles from simulation:
-
-- **Click**: Remove single particle
-- **Click + Drag**: Remove multiple particles in area
-- **Visual feedback**: Preview removal area
-
-## Controls Reference
-
-### System Controls (Left Panel)
-
-#### Initialization
-
-- **Particle Count**: Number of particles to spawn
-- **Spawn Pattern**: Grid, Random, Circle, Donut, Square
-- **Initial Velocity**: Random, directional, or zero
-- **Size/Mass**: Configure initial particle properties
-- **Colors**: Set particle color palette
-
-#### Spawn Configuration
-
-- **Size/Mass**: Real-time adjustment of spawn parameters
-- **Pin**: Whether new particles are pinned
-- **Mode**: Single, Stream, Draw, Shape
-- **Stream Rate**: Particles per second for stream mode
-- **Draw Step Size**: Distance between particles in draw mode
-- **Shape Parameters**: Sides and size for shape mode
-
-#### Rendering Options
-
-- **Color Mode**: Particle, Custom, Velocity-based, Rotating Hue
-- **Glow Effects**: Enable/disable particle shadow-based glow effects (disabled by default for better performance)
-- **Visual Effects**: Trails, blur effects, and other visual enhancements
-- **Debug Overlays**: Spatial grid, density field, velocity arrows
-- **Performance**: FPS display and particle count
-
-**Performance Note**: Glow effects use Canvas2D shadow operations which are computationally expensive. Disabling glow effects can significantly improve frame rates, especially with many particles. When trails are enabled, glow effects are automatically bypassed to prevent conflicts.
-
-#### Emitter Configuration
-
-- **Basic Properties**: Particle size, mass, rate, direction, speed, and spread
-- **Colors**: Color palette for emitted particles
-- **Infinite Particles**: Toggle for unlimited vs limited particle lifetime
-- **Lifetime Controls** (when infinite is disabled):
-  - **Duration**: Particle lifetime in milliseconds (0.1s - 10s)
-  - **Size Multiplier**: Final size scaling over lifetime (-5x to 5x)
-  - **Alpha**: Final transparency for fade effects (0.0 to 1.0)
-  - **End Colors**: Color transition targets (multiple colors supported)
-  - **Speed Multiplier**: Acceleration/deceleration over lifetime (-5x to 5x)
-
-### Physics Controls (Right Panel)
+Each module provides real-time controls for different physics aspects:
 
 #### Environment
-
-- **Gravity**: Direction and strength with support for directional, radial, and custom angles
-- **Inertia**: Position-based momentum preservation (0-1)
-- **Friction**: Force-based velocity damping proportional to mass (0-1)
-- **Damping**: Direct velocity multiplication factor (0-1)
+- **Gravity**: Directional/radial gravity with custom angles
+- **Inertia**: Momentum preservation (0-1)
+- **Friction**: Velocity damping (0-1) 
+- **Damping**: Direct velocity reduction (0-1)
 
 #### Boundary
+- **Modes**: Bounce, warp, kill, none
+- **Restitution**: Energy retention on bounce (0-1)
+- **Friction**: Tangential friction (0-1)
+- **Repel**: Edge repulsion with distance/strength control
 
-- **Mode**: Bounce, Kill, Warp, or None at boundaries
-- **Bounce**: Energy retention on collision (0-1)
-- **Friction**: Tangential friction during boundary collisions (0-1)
-- **Repel**: Boundary repulsion distance and strength settings
+#### Fluids (SPH)
+- **Influence Radius**: Particle interaction distance
+- **Pressure**: Density-based force strength
+- **Near Pressure**: Enhanced close-range interactions
+- **Viscosity**: Internal friction for realistic flow
 
-#### Collisions
+### Parameter Oscillators
 
-- **Enable Collisions**: Master switch for entire collision system
-- **Particle vs Particle**: Enable particle-particle collisions
-- **Particle vs Joint**: Enable particle-joint collisions
-- **Joint vs Joint**: Enable joint crossing resolution
-- **Restitution**: Collision elasticity (0-1)
-- **Friction**: Tangential friction during collisions (0-1)
-- **Eating**: Larger particles consume smaller ones
+Animate any module parameter over time:
 
-#### Behavior (Flocking)
-
-- **Cohesion**: Attraction to group center
-- **Alignment**: Velocity matching with neighbors
-- **Separation**: Personal space maintenance
-- **Wander**: Random exploration
-- **Chase/Avoid**: Color-based interactions
-- **View Parameters**: Detection radius and field of view
-
-#### Fluid Dynamics
-
-- **SPH Settings**: Influence radius, target density
-- **Pressure**: Force multiplier for fluid behavior
-- **Near Pressure**: Enhanced short-range particle interaction
-- **Near Threshold**: Distance for switching to near pressure mode
-- **Viscosity**: Internal friction for realistic fluid behavior
-
-#### Sensors
-
-- **Trail System**: Visual trail parameters
-- **Environmental Sensing**: Detection and steering
-- **Color Sensitivity**: Same/different color behaviors
-
-#### Joints
-
-- **Enable Joints**: Master switch for joint system
-- **Tolerance**: Joint breaking stress tolerance (0-1)
-- **Max Iterations**: Constraint solving iterations for rigidity
-- **Momentum**: Momentum preservation for joint particles (0-1)
-- **Clear All**: Remove all existing joints
-
-## Keyboard Shortcuts
-
-### Animation Control
-
-- **Shift + Space**: Play/Pause simulation
-- **Escape**: Cancel current operation
-
-### Undo/Redo
-
-- **Ctrl/⌘ + Z**: Undo last action
-- **Ctrl/⌘ + Shift + Z**: Redo last undone action
-
-### Tool Switching
-
-- **Ctrl/⌘ + A**: Spawn tool
-- **Ctrl/⌘ + S**: Joint tool
-- **Ctrl/⌘ + D**: Grab tool
-- **Ctrl/⌘ + F**: Pin tool
-- **Ctrl/⌘ + G**: Remove tool
-
-### Quick Actions
-
-- **Ctrl/⌘ + Shift + A**: Cycle spawn modes
-- **Ctrl/⌘ + Shift + F**: Toggle pin setting (or pin grabbed particle)
-- **?**: Open help modal
-
-### Mouse Controls
-
-- **Right Click**: Attract particles to cursor
-- **Ctrl/⌘ + Right Click**: Repel particles from cursor
-- **Mouse Wheel**: Zoom in/out
-- **Middle Mouse + Drag**: Pan camera (when zoomed)
+1. **Enable**: Cmd/Ctrl + click any slider
+2. **Speed Control**: Click speed badge to cycle rates (0.1Hz - 2Hz)
+3. **Range**: Uses current slider min/max bounds
+4. **Visual Feedback**: Animated sliders with speed indicators
 
 ## Session Management
 
-### Saving Sessions
-
-1. Configure your simulation
-2. Click **Save** in the top bar
-3. Enter a descriptive name
-4. Session is saved to browser localStorage
-
-### Loading Sessions
-
-1. Click **Load** in the top bar
-2. Select from saved sessions
-3. Complete simulation state is restored
+### Advanced Session Features
+- **Quick Load**: Click session name for fast parameter-only loading
+- **Full Load**: Complete restoration including particles and joints
+- **Drag Reordering**: Custom session display order
+- **Export/Import**: JSON file backup and sharing
+- **Metadata**: Creation dates, particle counts, data inclusion status
+- **Rename/Duplicate**: In-place session management
 
 ### Session Contents
-
-Saved sessions include:
-
-- All particle positions, velocities, and properties
-- Complete physics configuration (environment, boundary, collisions, behavior, fluid, sensors, joints)
-- Visual settings and camera position
-- Active tool mode and spawn settings
-- Emitter configurations with lifetime settings
+- All module parameters and states
+- Particle positions, velocities, properties (≤1000 particles)
 - Joint network topology and properties
+- Oscillator configurations and states
+- Camera position and zoom level
 
-## Educational Use
+## Performance and Optimization
 
-The playground is excellent for exploring physics concepts:
+### Runtime Performance
+- **WebGPU**: GPU compute for thousands of particles at 60+ FPS
+- **CPU Fallback**: Universal browser compatibility
+- **Auto-Detection**: Seamless runtime selection
+- **Performance Monitoring**: Real-time FPS display
 
-### Basic Physics
+### Optimization Guidelines
+- **Module Control**: Disable unused modules for better performance
+- **Particle Limits**: 1K-2K for smooth performance, up to 10K supported
+- **Trail Settings**: Reduce diffusion if experiencing slowdown
+- **Joint Complexity**: Fewer joints for large simulations
 
-- **Gravity**: Observe acceleration and terminal velocity with multiple gravity modes
-- **Inertia vs Friction vs Damping**: Compare different momentum preservation and energy dissipation methods
-- **Collisions**: Elastic and inelastic interactions with tangential friction effects
-- **Boundary Interactions**: Study different boundary behaviors and their friction effects
+## Architecture
 
-### Emergent Behaviors
+### Tech Stack
+- **React 18**: Modern component architecture with hooks
+- **TypeScript**: Full type safety with strict configuration
+- **Redux Toolkit**: State management with modern patterns
+- **Vite**: Fast development server and optimized builds
+- **CSS Modules**: Scoped styling with PostCSS processing
 
-- **Flocking**: Craig Reynolds' boids algorithm
-- **Phase Transitions**: Order/disorder in particle systems
-- **Self-Organization**: Pattern formation from simple rules
+### Key Architectural Patterns
+- **Module Hook Pattern**: Redux abstraction layer for components
+- **Dual-Write Pattern**: Immediate engine updates for responsive UI
+- **Command Pattern**: Sophisticated undo/redo with transactions
+- **Tool System**: Standardized hook-based tool interfaces
+- **Engine Context**: Centralized engine and utility access
 
-### Fluid Dynamics
+For detailed architecture information, see [Maintainer Guide](../../docs/playground-maintainer-guide.md).
 
-- **SPH Method**: Smoothed Particle Hydrodynamics
-- **Pressure Systems**: Density-based force generation
-- **Near Pressure**: Dual-pressure system with spiky kernels for close-range interactions
-- **Viscosity**: Inter-particle friction effects
+## Development Workflows
 
-### Complex Systems
+### Adding New Modules
+1. Create Redux slice with consistent action patterns
+2. Implement module hook following dual-write pattern
+3. Build UI component using standardized controls
+4. Integrate into sidebar and engine synchronization
 
-- **Sensor Networks**: Environmental navigation and trail-following
-- **Constraint Systems**: Joint-based structures with momentum preservation
-- **Multi-agent Systems**: Individual vs collective behavior
-- **Rigid Body Dynamics**: Joint networks with collision interactions and stress-based breaking
+### Adding New Tools
+1. Implement tool hook with handlers and overlay rendering
+2. Register in tool system with hotkey mapping
+3. Add UI controls to toolbar
+4. Integrate with undo/redo system
 
-## Development
+### Code Quality Standards
+- **No Direct Redux**: Always use module hooks in components
+- **Memoization**: useCallback for functions, useMemo for objects
+- **Individual Exports**: Export properties separately, not state objects
+- **Type Safety**: Comprehensive TypeScript coverage
 
-### Project Structure
+## Educational Applications
 
+### Physics Concepts
+- **Classical Mechanics**: Gravity, inertia, friction, collisions
+- **Fluid Dynamics**: SPH method, pressure systems, viscosity
+- **Constraint Systems**: Distance constraints, momentum preservation
+- **Emergent Behavior**: Flocking, self-organization, phase transitions
+
+### Computer Science Topics
+- **Spatial Optimization**: Grid-based neighbor queries
+- **Parallel Computing**: WebGPU compute shaders
+- **State Management**: Redux patterns and immutable updates
+- **Command Pattern**: Undo/redo and transaction handling
+
+## Browser Support
+
+- **WebGPU**: Chrome 113+, Edge 113+ for optimal performance
+- **CPU Fallback**: All modern browsers with Canvas2D support
+- **Mobile**: Limited support due to touch interface requirements
+- **Feature Detection**: Automatic capability detection and graceful degradation
+
+## Contributing
+
+### Development Setup
+```bash
+npm install          # Install dependencies
+npm run dev         # Start development server
+npm test            # Run test suite
+npm run type-check  # TypeScript verification
 ```
-playground/
-├── src/
-│   ├── components/          # React components
-│   │   ├── control-sections/   # Parameter controls
-│   │   ├── modals/            # Save/load dialogs
-│   │   ├── HelpModal.tsx      # Documentation
-│   │   └── TopBar.tsx         # Main navigation
-│   ├── hooks/               # React hooks
-│   │   ├── usePlayground.ts    # Main playground logic
-│   │   ├── useInteractions.ts  # User input handling
-│   │   ├── useUndoRedo.ts     # History management
-│   │   └── useToolMode.ts     # Tool state
-│   ├── utils/               # Utilities
-│   │   ├── SessionManager.ts   # Save/load logic
-│   │   └── particle.ts        # Particle utilities
-│   └── styles/              # CSS files
-├── index.html               # Entry point
-└── vite.config.js          # Build configuration
-```
+
+### Guidelines
+- Follow established architectural patterns
+- Maintain comprehensive TypeScript coverage
+- Write tests for new functionality
+- Update documentation for user-facing changes
+
+For detailed contribution guidelines, see [Maintainer Guide](../../docs/playground-maintainer-guide.md).
+
+## Documentation
+
+- **[User Guide](../../docs/playground-user-guide.md)**: Complete feature documentation and workflows
+- **[Maintainer Guide](../../docs/playground-maintainer-guide.md)**: Architecture, patterns, and development guidelines
+- **[Core Engine Guide](../../docs/user-guide.md)**: Engine API and module development
 
 ## License
 

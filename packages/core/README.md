@@ -1,17 +1,17 @@
 # @cazala/party
 
-A TypeScript particle physics engine featuring advanced force systems, spatial optimization, and comprehensive rendering capabilities.
+A high-performance TypeScript particle physics engine with dual runtime support (WebGPU compute + CPU fallback), modular architecture, and real-time parameter oscillation.
 
 ## Features
 
-- High performance spatial grid optimization for O(1) neighbor queries
-- Modular force system with pluggable architecture and lifecycle management
-- Real-time simulation capable of 60+ FPS with thousands of particles
-- Advanced Canvas2D rendering with trails, configurable glow effects, density visualization, and particle lifetime effects
-- Comprehensive physics including gravity, collisions, flocking, fluid dynamics, breakable elastic joints, particle emitters, and more
-- Spatial optimization with efficient collision detection and neighbor finding
-- Interactive user-controlled forces and particle manipulation
-- Serializable system configurations for export/import
+- **Dual Runtime Architecture**: Automatic WebGPU/CPU runtime selection with seamless fallback
+- **GPU Compute Performance**: WebGPU shaders for parallel particle processing at scale
+- **Modular Force System**: Pluggable physics modules with four-phase lifecycle
+- **Spatial Grid Optimization**: Efficient O(1) neighbor queries for collision detection
+- **Real-time Oscillators**: Animate any module parameter with configurable frequency and bounds
+- **Advanced Rendering**: Trails, particle instancing, line rendering with multiple color modes
+- **Session Management**: Export/import complete simulation configurations
+- **Cross-platform**: Works in all modern browsers with automatic feature detection
 
 ## Installation
 
@@ -23,553 +23,574 @@ npm install @cazala/party
 
 ```typescript
 import {
-  System,
-  Particle,
-  Vector2D,
+  Engine,
+  // Force modules
   Environment,
   Boundary,
+  Collisions,
+  Behavior,
+  Fluids,
+  // Render modules
+  Particles,
+  Trails,
 } from "@cazala/party";
 
-// Create a particle system
-const system = new System({ width: 800, height: 600 });
+const canvas = document.querySelector("canvas")!;
 
-// Add some particles
-for (let i = 0; i < 100; i++) {
-  const particle = new Particle({
-    position: new Vector2D(Math.random() * 800, Math.random() * 600),
-    velocity: new Vector2D(
-      (Math.random() - 0.5) * 2,
-      (Math.random() - 0.5) * 2
-    ),
-    mass: 1 + Math.random() * 2,
-    size: 3 + Math.random() * 7,
-    color: `hsl(${Math.random() * 360}, 70%, 60%)`,
-  });
-  system.addParticle(particle);
-}
-
-// Add environmental physics
-system.addForce(
+const forces = [
   new Environment({
-    gravity: { strength: 0.1, direction: "down" },
+    gravityStrength: 600,
+    gravityDirection: "down",
+    inertia: 0.05,
     friction: 0.01,
-    inertia: 0.1,
-    damping: 0.02,
-  })
-);
-
-// Add boundary constraints
-system.addForce(
+  }),
   new Boundary({
     mode: "bounce",
-    bounce: 0.8,
+    restitution: 0.9,
     friction: 0.1,
-  })
-);
+  }),
+  new Collisions({ restitution: 0.85 }),
+  new Behavior({
+    cohesion: 1.5,
+    alignment: 1.2,
+    separation: 12,
+    viewRadius: 100,
+  }),
+  new Fluids({
+    influenceRadius: 80,
+    pressureMultiplier: 25,
+    viscosity: 0.8,
+  }),
+];
 
-// Start the simulation
-system.play();
+const render = [
+  new Trails({ trailDecay: 10, trailDiffuse: 4 }),
+  new Particles({ colorType: 2, hue: 0.55 }),
+];
+
+const engine = new Engine({
+  canvas,
+  forces,
+  render,
+  runtime: "auto", // Auto-selects WebGPU when available
+});
+
+await engine.initialize();
+
+// Add particles
+for (let i = 0; i < 100; i++) {
+  engine.addParticle({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random() - 0.5) * 4,
+    vy: (Math.random() - 0.5) * 4,
+    mass: 1 + Math.random() * 2,
+    size: 3 + Math.random() * 7,
+  });
+}
+
+engine.play();
 ```
 
 ## Core Concepts
 
-### System
+### Engine
 
-The `System` class is the main orchestrator that manages particles, forces, and the simulation lifecycle:
+The `Engine` class provides a unified API that automatically selects the best runtime:
 
 ```typescript
-const system = new System({
-  width: 800,
-  height: 600,
-  cellSize: 50, // Spatial grid cell size for optimization
+const engine = new Engine({
+  canvas: HTMLCanvasElement,
+  forces: Module[],      // Force modules
+  render: Module[],      // Render modules
+  runtime: "auto",       // "auto" | "webgpu" | "cpu"
+  
+  // Optional configuration
+  constrainIterations: 50,    // Constraint solver iterations
+  cellSize: 32,              // Spatial grid cell size
+  maxNeighbors: 128,         // Max neighbors per particle
+  maxParticles: 10000,       // Particle capacity
+  clearColor: "#000000",     // Background color
 });
 
-// Particle management
-system.addParticle(particle);
-system.removeParticle(particle);
-system.getParticle(id);
+// Lifecycle
+await engine.initialize();
+engine.play();
+engine.pause();
+engine.stop();
+engine.destroy();
 
-// Force management
-system.addForce(force);
-system.removeForce(force);
+// State
+const isPlaying = engine.isPlaying();
+const fps = engine.getFPS();
+const count = engine.getCount();
 
-// Animation control
-system.play();
-system.pause();
-system.toggle();
-system.reset();
+// Particles
+engine.addParticle({ x, y, vx, vy, mass, size });
+engine.setParticles([...particles]);
+const particles = await engine.getParticles();
+engine.clear();
+
+// View
+engine.setSize(width, height);
+engine.setCamera(x, y);
+engine.setZoom(scale);
+
+// Configuration
+const config = engine.export();
+engine.import(config);
+```
+
+### Runtime Selection
+
+- **"auto"**: Tries WebGPU first, falls back to CPU if unavailable
+- **"webgpu"**: GPU compute with WGSL shaders (Chrome 113+, Edge 113+)
+- **"cpu"**: JavaScript simulation with Canvas2D rendering (universal compatibility)
+
+```typescript
+// Check which runtime is active
+const runtime = engine.getActualRuntime(); // "webgpu" | "cpu"
+
+// Test module support
+const isSupported = engine.isSupported(module);
 ```
 
 ### Particles
 
-Particles are individual entities with physics properties:
+Particles are simple data structures with physics properties:
 
 ```typescript
-const particle = new Particle({
-  position: new Vector2D(100, 100),
-  velocity: new Vector2D(1, -2),
-  mass: 2.5,
-  size: 8,
-  color: "#ff6b35",
-  pinned: false, // Whether particle is affected by forces
+const particle = {
+  x: 100, y: 100,           // Position
+  vx: 1, vy: -2,            // Velocity
+  mass: 2.5,                // Mass (negative = pinned)
+  size: 8,                  // Visual size
+  color: 0xff6b35,          // Color (24-bit RGB)
+};
 
-  // Lifetime properties (optional)
-  duration: 5000, // Particle lifetime in milliseconds (undefined = infinite)
-  endSizeMultiplier: 0.1, // Final size multiplier (interpolated over lifetime)
-  endAlpha: 0, // Final alpha value for fade out effect
-  endColor: ["#ff0000", "#00ff00"], // Array of possible end colors (random selection)
-  endSpeedMultiplier: 2.0, // Final speed multiplier (accelerate/decelerate over time)
-});
+// Bulk operations (preferred for performance)
+engine.setParticles(particles);
+const allParticles = await engine.getParticles();
 
-// Apply forces to particles
-particle.applyForce(new Vector2D(0, -9.8));
+// Individual operations
+engine.addParticle(particle);
+const singleParticle = await engine.getParticle(index);
 
-// Update physics (called automatically by System)
-particle.update(deltaTime);
-
-// Check if particle has exceeded its lifetime
-if (particle.isDead()) {
-  system.removeParticle(particle);
-}
+// Pin/unpin helpers
+engine.pinParticles([0, 1, 2]);
+engine.unpinParticles([0, 1, 2]);
+engine.unpinAll();
 ```
 
-### Forces
+### Modules
 
-Forces implement the `Force` interface with a four-phase lifecycle:
+Modules are pluggable components that contribute to simulation or rendering:
 
 ```typescript
-interface Force {
-  before?(particles: Particle[], deltaTime: number): void;
-  apply(particle: Particle, spatialGrid: SpatialGrid): void;
-  constraints?(particles: Particle[], spatialGrid: SpatialGrid): void;
-  after?(
-    particles: Particle[],
-    deltaTime: number,
-    spatialGrid: SpatialGrid
-  ): void;
-  clear?(): void;
-}
+// Force modules affect particle physics
+const forces = [
+  new Environment({ gravityStrength: 1000 }),
+  new Boundary({ mode: "bounce" }),
+  new Collisions({ restitution: 0.8 }),
+];
+
+// Render modules draw visual effects
+const render = [
+  new Particles({ colorType: 2, hue: 0.5 }),
+  new Trails({ trailDecay: 10 }),
+];
+
+// Module control
+const module = engine.getModule("environment");
+module.setEnabled(false);
+const isEnabled = module.isEnabled();
+
+// Read/write module inputs
+const inputs = module.read();
+module.write({ gravityStrength: 500 });
 ```
 
-## Available Forces
+## Available Modules
 
-### Environment
+### Force Modules
 
-Environmental physics simulation including gravity, inertia, friction, and damping:
+#### Environment
+Global physics: gravity, inertia, friction, damping
 
 ```typescript
-import { Environment } from "@cazala/party";
-
-const environment = new Environment({
-  gravity: {
-    strength: 1000,
-    direction: "down", // 'up', 'down', 'left', 'right', 'in', 'out', 'custom'
-    angle: Math.PI / 2, // Custom angle in radians (only used when direction is 'custom')
-  },
-  inertia: 0.1, // Momentum preservation based on previous position (0-1)
-  friction: 0.01, // Velocity damping (0-1)
-  damping: 0.02, // Direct velocity damping factor (0-1)
-});
+new Environment({
+  gravityStrength: 600,           // Gravity magnitude
+  gravityDirection: "down",       // "up"|"down"|"left"|"right"|"inwards"|"outwards"|"custom"
+  gravityAngle: Math.PI / 4,      // Custom angle (when direction = "custom")
+  inertia: 0.05,                  // Momentum preservation (0-1)
+  friction: 0.01,                 // Velocity damping (0-1)
+  damping: 0.02,                  // Direct velocity reduction (0-1)
+})
 ```
 
-**Gravity Directions:**
-
-- **Directional**: `up`, `down`, `left`, `right` - Standard directional gravity
-- **Radial**: `in` (toward center), `out` (away from center) - Radial gravity fields
-- **Custom**: `custom` - Use custom angle for any direction
-
-**Physics Properties:**
-
-- **Inertia**: Applies momentum based on particle movement between frames, creating realistic motion continuation
-- **Friction**: Applies force opposing current velocity, gradually slowing particles
-- **Damping**: Direct velocity multiplication for immediate velocity reduction
-
-### Boundary
-
-Boundary interactions for keeping particles within limits:
+#### Boundary
+Boundary interactions and containment
 
 ```typescript
-import { Boundary } from "@cazala/party";
-
-const boundary = new Boundary({
-  mode: "bounce", // 'bounce', 'kill', 'warp', or 'none'
-  bounce: 0.8, // Energy retention on bounce (0-1)
-  friction: 0.1, // Tangential friction during boundary collisions (0-1)
-  repelDistance: 50, // Distance to start repel force
-  repelStrength: 0.5, // Strength of boundary repulsion
-});
+new Boundary({
+  mode: "bounce",                 // "bounce"|"warp"|"kill"|"none"
+  restitution: 0.9,              // Bounce energy retention (0-1)
+  friction: 0.1,                 // Tangential friction (0-1)
+  repelDistance: 50,             // Distance to start repel force
+  repelStrength: 0.5,            // Repel force magnitude
+})
 ```
 
-**Boundary Modes:**
-
-- **bounce**: Particles bounce off boundaries with energy retention based on `bounce` coefficient
-- **kill**: Particles are removed when they hit boundaries
-- **warp**: Particles teleport to opposite side when hitting boundaries
-- **none**: No boundary interactions
-
-**Friction Parameter:**
-
-The `friction` parameter applies tangential friction during boundary collisions, reducing velocity perpendicular to the collision normal. This creates more realistic boundary interactions where particles lose speed when sliding along walls.
-
-### Collisions
-
-Particle-to-particle collision detection and response:
+#### Collisions
+Particle-particle collision detection and response
 
 ```typescript
-import { Collisions } from "@cazala/party";
-
-const collisions = new Collisions({
-  enabled: true,
-  enableParticles: true, // Enable particle-particle collisions
-  eat: true, // Larger particles consume smaller ones
-  restitution: 0.8, // Collision elasticity (0-1)
-  friction: 0.1, // Tangential friction during collisions (0-1)
-  joints: jointsForce, // Optional: reference to joints for joint-particle collisions
-});
+new Collisions({
+  restitution: 0.8,              // Collision elasticity (0-1)
+})
 ```
 
-**Collision Parameters:**
-
-- **restitution**: Controls collision elasticity (0 = perfectly inelastic, 1 = perfectly elastic)
-- **friction**: Applies tangential friction during collisions, reducing relative motion perpendicular to collision normal
-- **eat**: When enabled, larger particles absorb smaller particles on collision, combining their mass and size
-- **enableParticles**: Controls whether particle-particle collisions are processed
-
-### Behavior (Flocking)
-
-Emergent group behaviors based on local interactions:
+#### Behavior
+Flocking behaviors (boids-style steering)
 
 ```typescript
-import { Behavior } from "@cazala/party";
-
-const behavior = new Behavior({
-  enabled: true, // Enable/disable behavior force
-  cohesionWeight: 0.1, // Attraction to group center
-  alignmentWeight: 0.1, // Velocity matching
-  separationWeight: 0.15, // Avoidance of crowding
-  wanderWeight: 0.05, // Random exploration
-  chaseWeight: 0.02, // Pursuit of different colors
-  avoidWeight: 0.03, // Avoidance of different colors
-  viewRadius: 50, // Neighbor detection distance
-  viewAngle: Math.PI, // Field of view in radians (Math.PI = 180°)
-  separationRange: 25, // Personal space radius
-});
+new Behavior({
+  cohesion: 1.5,                 // Attraction to group center
+  alignment: 1.2,                // Velocity matching
+  repulsion: 2.0,                // Separation force
+  separation: 12,                // Personal space radius
+  viewRadius: 100,               // Neighbor detection radius
+  viewAngle: Math.PI,            // Field of view (radians)
+  wander: 20,                    // Random exploration
+  chase: 0.5,                    // Pursue lighter particles
+  avoid: 0.3,                    // Flee heavier particles
+})
 ```
 
-### Fluid
-
-Smoothed Particle Hydrodynamics (SPH) for fluid simulation:
+#### Fluids
+Smoothed Particle Hydrodynamics (SPH) fluid simulation
 
 ```typescript
-import { Fluid } from "@cazala/party";
-
-const fluid = new Fluid({
-  enabled: true, // Enable/disable fluid simulation
-  influenceRadius: 30, // Particle interaction distance
-  targetDensity: 1.0, // Desired fluid density
-  pressureMultiplier: 0.1, // Pressure force strength
-  viscosity: 1.0, // Fluid viscosity for internal friction
-  nearPressureMultiplier: 10.0, // Near pressure force strength for particles in close proximity
-  nearThreshold: 30, // Distance threshold (in pixels) for switching to near pressure
-});
+new Fluids({
+  influenceRadius: 80,           // Particle interaction radius
+  targetDensity: 1.0,            // Rest density
+  pressureMultiplier: 25,        // Pressure force strength
+  viscosity: 0.8,                // Internal friction
+  nearPressureMultiplier: 40,    // Near-field pressure
+  nearThreshold: 18,             // Near-field distance
+  enableNearPressure: true,      // Enable near-field forces
+  maxAcceleration: 60,           // Force clamping for stability
+})
 ```
 
-**Near Pressure System:**
-The fluid simulation features a dual-pressure system for enhanced particle interaction:
-
-- **Regular pressure**: Applied to particles at normal distances based on density differences
-- **Near pressure**: Applied when particles are closer than `nearThreshold`, using a spiky kernel for stronger short-range forces
-- This prevents particle overlap and creates more realistic fluid behavior, especially in dense configurations
-
-### Sensors
-
-Environmental sensing with trail-following behaviors:
+#### Sensors
+Trail-following and color-based steering
 
 ```typescript
-import { Sensors } from "@cazala/party";
-
-const sensors = new Sensors({
-  enableTrail: true, // Particles leave visual trails
-  trailDecay: 0.05, // Trail fade rate
-  trailDiffuse: 0.02, // Trail blur amount
-  enableSensors: true, // Enable sensor navigation
-  sensorDistance: 20, // Sensor projection distance
-  sensorAngle: Math.PI / 6, // Sensor angle offset in radians (π/6 = 30°)
-  sensorRadius: 3, // Sensor detection radius
-  sensorThreshold: 0.1, // Minimum detection threshold
-  sensorStrength: 0.1, // Steering force strength
-  followBehavior: "any", // 'any', 'same', 'different', 'none'
-  fleeBehavior: "different", // 'any', 'same', 'different', 'none'
-  fleeAngle: Math.PI / 2, // Flee angle in radians (π/2 = 90°)
-  colorSimilarityThreshold: 0.8,
-});
+new Sensors({
+  sensorDistance: 30,            // Sensor projection distance
+  sensorAngle: Math.PI / 6,      // Sensor angle offset (30°)
+  sensorRadius: 3,               // Sensor detection radius
+  sensorThreshold: 0.15,         // Minimum detection threshold
+  sensorStrength: 800,           // Steering force magnitude
+  followBehavior: "any",         // "any"|"same"|"different"|"none"
+  fleeBehavior: "none",          // "any"|"same"|"different"|"none"
+  colorSimilarityThreshold: 0.5, // Color matching threshold
+  fleeAngle: Math.PI / 2,        // Flee direction offset (90°)
+})
 ```
 
-### Joints
-
-Distance constraints between particles with configurable elasticity and stress-based breaking:
-
-```typescript
-import { Joints } from "@cazala/party";
-
-const joints = new Joints({
-  enabled: true, // Enable/disable joints system
-  enableCollisions: true, // Joints interact with collisions
-  momentum: 0.7, // Momentum preservation for joint particles (0-1)
-});
-
-// Create joints between particles
-joints.createJoint({
-  particleA: particle1,
-  particleB: particle2,
-  restLength: 50, // Optional: custom rest length
-  stiffness: 1.0, // Optional: joint stiffness (0.0 = elastic, 1.0 = rigid)
-  tolerance: 1.0, // Optional: stress tolerance (0.0 = break easily, 1.0 = never break)
-});
-
-// Global stiffness and tolerance control
-joints.setGlobalStiffness(0.5); // Apply to all existing joints
-joints.setGlobalTolerance(0.8); // Apply to all existing joints
-const currentStiffness = joints.getGlobalStiffness();
-const currentTolerance = joints.getGlobalTolerance();
-```
-
-**Joint Stiffness Values:**
-
-- `1.0` - Rigid constraint (default behavior)
-- `0.5` - Semi-elastic joint
-- `0.1` - Very elastic joint
-- `0.0` - No constraint (effectively disabled)
-
-**Joint Tolerance Values:**
-
-- `1.0` - Never break under stress (default behavior)
-- `0.5` - Break when stress exceeds 50% of maximum expected
-- `0.1` - Break easily under small stress
-- `0.0` - Break immediately with any disturbance
-
-**Momentum Preservation:**
-
-The `momentum` parameter (0-1) controls how much of the velocity change from constraint solving is preserved:
-
-- `1.0` - Full momentum preservation: particle velocities match their actual movement after constraint solving
-- `0.7` - Balanced preservation: maintains most momentum while allowing some constraint-induced dampening (default)
-- `0.3` - Reduced preservation: allows more dampening for stable but less energetic systems
-- `0.0` - No preservation: constraint solving can dramatically alter velocities
-
-### Interaction
-
-User-controlled attraction and repulsion:
+#### Interaction
+User-controlled attraction and repulsion
 
 ```typescript
-import { Interaction } from "@cazala/party";
-
 const interaction = new Interaction({
-  position: new Vector2D(0, 0), // Optional: initial position
-  radius: 200, // Interaction area radius
-  strength: 5000, // Force strength
+  mode: "attract",               // "attract"|"repel"
+  strength: 12000,               // Force magnitude
+  radius: 300,                   // Interaction radius
+  active: false,                 // Initially inactive
 });
 
 // Control interaction
 interaction.setPosition(mouseX, mouseY);
-interaction.attract(); // or interaction.repel()
-interaction.setActive(true); // Enable/disable
+interaction.setActive(true);
+interaction.setMode("repel");
 ```
 
-### Emitters
-
-Particle emitters continuously spawn particles at a specified rate with configurable properties:
+#### Joints
+Distance constraints between particles
 
 ```typescript
-import { Emitter } from "@cazala/party";
-
-const emitter = new Emitter({
-  position: new Vector2D(400, 300), // Emitter position
-  rate: 20, // Particles per second
-  direction: 0, // Emission direction in radians (0 = right)
-  speed: 150, // Initial particle speed
-  amplitude: Math.PI / 4, // Spread angle in radians (π/4 = 45°)
-  particleSize: 6,
-  particleMass: 1.2,
-  colors: ["#ff6b35", "#f7931e", "#ffd700"], // Particle colors (random selection)
-
-  // Particle lifetime configuration
-  infinite: false, // If false, particles have limited lifetime
-  duration: 3000, // Particle lifetime in milliseconds
-  endSizeMultiplier: 0.2, // Particles shrink over time
-  endAlpha: 0, // Particles fade out completely
-  endColors: ["#8B4513", "#654321"], // End colors for color transitions
-  endSpeedMultiplier: 0.1, // Particles slow down over time (friction-like)
+const joints = new Joints({
+  momentum: 0.7,                 // Momentum preservation (0-1)
+  restitution: 0.9,             // Joint elasticity
+  separation: 0.5,              // Separation force strength
+  steps: 2,                     // Constraint iterations
+  friction: 0.02,               // Joint friction
+  enableParticleCollisions: false, // Particle-joint collisions
+  enableJointCollisions: false,    // Joint-joint collisions
 });
 
-// Add emitter to system
-system.emitters.addEmitter(emitter);
-
-// Control emitter
-emitter.setEnabled(true);
-emitter.setRate(50); // Change emission rate
-emitter.setPosition(newX, newY);
-emitter.setDirection(Math.PI / 2); // Point upward
-
-// Manage emitters collection
-const emitterId = system.emitters.addEmitter(emitter);
-const foundEmitter = system.emitters.getEmitter(emitterId);
-system.emitters.removeEmitter(emitterId);
-system.emitters.setEnabled(false); // Disable all emitters
+// Manage joints
+joints.setJoints([
+  { aIndex: 0, bIndex: 1, restLength: 50 },
+  { aIndex: 1, bIndex: 2, restLength: 75 },
+]);
+joints.add({ aIndex: 2, bIndex: 3, restLength: 100 });
+joints.remove(0, 1);
+joints.removeAll();
 ```
 
-**Particle Lifetime Effects:**
-
-Emitted particles can have dynamic properties that change over their lifetime:
-
-- **Size Changes**: `endSizeMultiplier` controls final size (1.0 = no change, 0.1 = shrink, 2.0 = grow)
-- **Fade Effects**: `endAlpha` creates fade in/out effects (1.0 = opaque, 0.0 = transparent)
-- **Color Transitions**: `endColors` array provides possible end colors for smooth transitions
-- **Speed Modulation**: `endSpeedMultiplier` can simulate friction (< 1.0) or acceleration (> 1.0)
-
-## Rendering
-
-The library includes a comprehensive Canvas2D renderer with performance-optimized visual effects:
+#### Grab
+Single-particle mouse/touch dragging
 
 ```typescript
-import { Canvas2DRenderer, createCanvas2DRenderer } from "@cazala/party";
+const grab = new Grab();
 
-const renderer = createCanvas2DRenderer(canvasElement, {
-  clearColor: "#000000",
-  glowEffects: false, // Disabled by default for better performance
-  colorMode: "particle",
-  customColor: "#ffffff",
-  maxSpeed: 400,
-  rotationSpeed: 1.0,
+// Grab particle
+grab.grabParticle(particleIndex, { x: mouseX, y: mouseY });
+
+// Update position
+grab.updatePosition(newX, newY);
+
+// Release
+grab.releaseParticle();
+
+// Check state
+const isGrabbing = grab.isGrabbing();
+```
+
+### Render Modules
+
+#### Particles
+Instanced particle rendering with multiple color modes
+
+```typescript
+new Particles({
+  colorType: 2,                  // 0=Default, 1=Custom, 2=Hue
+  customColorR: 1.0,            // Custom color red (0-1)
+  customColorG: 0.4,            // Custom color green (0-1)
+  customColorB: 0.2,            // Custom color blue (0-1)
+  hue: 0.55,                    // Hue value (0-1) when colorType=2
+})
+
+// Pinned particles render as rings
+// Particle size and color come from particle data
+```
+
+#### Trails
+Decay and diffusion effects
+
+```typescript
+new Trails({
+  trailDecay: 10,               // Fade speed (higher = faster fade)
+  trailDiffuse: 4,              // Blur amount (0-12 typical)
+})
+```
+
+#### Lines
+Line rendering between particle pairs
+
+```typescript
+const lines = new Lines({
+  lineWidth: 2.0,               // Line thickness
+  lineColorR: -1,               // Line color (-1 = use particle color)
+  lineColorG: -1,
+  lineColorB: -1,
 });
 
-// Rendering features
-renderer.setColorMode("velocity"); // 'particle', 'custom', 'velocity', 'rotate'
-renderer.setCustomColor("#ff6b35");
-
-// Performance-optimized glow effects (disabled by default for better FPS)
-renderer.setGlowEffects(false); // Enable/disable particle glow effects
-// Note: Glow effects use expensive Canvas2D shadow operations that can impact performance
-// When trails are enabled, glow effects are automatically bypassed regardless of this setting
-
-// Visual overlays
-renderer.setShowSpatialGrid(true);
-renderer.setShowDensityField(true);
-renderer.setShowVelocityField(true);
-
-// Camera controls
-renderer.setZoom(1.5);
-renderer.setCamera(centerX, centerY);
+// Manage lines
+lines.setLines([
+  { aIndex: 0, bIndex: 1 },
+  { aIndex: 1, bIndex: 2 },
+]);
+lines.add({ aIndex: 2, bIndex: 3 });
+lines.remove(0, 1);
+lines.setLineColor("#ff0000"); // Or null for particle colors
 ```
 
-### Glow Effects and Performance
+## Oscillators
 
-The renderer includes configurable glow effects that create visual appeal but come with performance costs:
-
-```typescript
-// Enable/disable glow effects (disabled by default)
-renderer.setGlowEffects(true);
-const isGlowEnabled = renderer.getGlowEffects();
-```
-
-**Performance Impact:**
-
-- **With glow effects**: Each particle is rendered with Canvas2D shadow operations, creating a beautiful glow but significantly impacting frame rates
-- **Without glow effects**: Particles use simple fill operations, maximizing performance for large particle counts
-- **Automatic optimization**: When trails are enabled, glow effects are automatically bypassed to prevent visual conflicts and performance degradation
-
-**Recommendation:** Keep glow effects disabled for better performance, especially with 1000+ particles. Enable only when visual quality is prioritized over frame rate.
-
-## Spatial Grid Optimization
-
-The system uses spatial partitioning for efficient performance:
+Oscillators animate module parameters over time with smooth interpolation:
 
 ```typescript
-import { SpatialGrid } from "@cazala/party";
-
-const spatialGrid = new SpatialGrid({
-  width: 800,
-  height: 600,
-  cellSize: 50, // Adjust based on particle density
+// Add oscillator to animate boundary restitution
+engine.addOscillator({
+  moduleName: "boundary",
+  inputName: "restitution",
+  min: 0.4,                     // Minimum value
+  max: 0.95,                    // Maximum value
+  speedHz: 0.2,                 // Frequency (cycles per second)
 });
 
-// Efficient neighbor queries
-const neighbors = spatialGrid.getNeighbors(particle, radius);
-const nearby = spatialGrid.getNearbyParticles(x, y, radius);
+// Update oscillator parameters
+engine.updateOscillatorSpeed("boundary", "restitution", 0.5);
+engine.updateOscillatorBounds("boundary", "restitution", 0.2, 0.8);
+
+// Remove oscillators
+engine.removeOscillator("boundary", "restitution");
+engine.clearModuleOscillators("boundary");
+engine.clearOscillators();
+```
+
+## Configuration Management
+
+Export and import complete simulation states:
+
+```typescript
+// Export current configuration
+const config = engine.export();
+
+// Configuration format
+const config = {
+  environment: {
+    enabled: true,
+    gravityStrength: 600,
+    gravityDirection: "down",
+    // ... all module inputs
+  },
+  boundary: {
+    enabled: true,
+    mode: "bounce",
+    restitution: 0.9,
+    // ... all module inputs
+  },
+  // ... all modules
+};
+
+// Import configuration
+engine.import(config);
+
+// Partial import (only specified modules)
+engine.import({
+  environment: { gravityStrength: 1000 },
+  collisions: { restitution: 0.5 },
+});
+```
+
+## Performance Optimization
+
+### Spatial Grid
+
+The engine uses spatial partitioning for efficient neighbor queries:
+
+```typescript
+engine.setCellSize(32);           // Smaller = more precise, larger = faster
+engine.setMaxNeighbors(128);      // Higher = more accurate, slower
+```
+
+**Cell Size Guidelines:**
+- Dense simulations: 16-32
+- Sparse simulations: 64-128
+- Rule of thumb: 2-4x average particle size
+
+### Constraint Iterations
+
+Control physics solver accuracy vs performance:
+
+```typescript
+engine.setConstrainIterations(50);  // Higher = more stable, slower
+```
+
+**Typical Values:**
+- CPU: 5-10 iterations
+- WebGPU: 20-100 iterations (GPU can handle more)
+
+### WebGPU Configuration
+
+```typescript
+const engine = new Engine({
+  runtime: "webgpu",
+  workgroupSize: 64,            // 32, 64, 128, or 256
+  maxParticles: 10000,          // Pre-allocate GPU buffers
+});
 ```
 
 ## Advanced Usage
 
-### Custom Forces
+### Custom Modules
 
-Create custom forces by implementing the `Force` interface:
+Create custom force modules by extending the Module class:
 
 ```typescript
-class CustomForce implements Force {
-  apply(particle: Particle, spatialGrid: SpatialGrid): void {
-    // Apply custom force logic
-    const force = new Vector2D(0, -0.1);
-    particle.applyForce(force);
+import { Module, ModuleRole, DataType } from "@cazala/party";
+
+type WindInputs = { strength: number; dirX: number; dirY: number };
+
+export class Wind extends Module<"wind", WindInputs> {
+  readonly name = "wind" as const;
+  readonly role = ModuleRole.Force;
+  readonly inputs = {
+    strength: DataType.NUMBER,
+    dirX: DataType.NUMBER,
+    dirY: DataType.NUMBER,
+  } as const;
+
+  constructor() {
+    super();
+    this.write({ strength: 100, dirX: 1, dirY: 0 });
   }
 
-  constraints?(particles: Particle[]): void {
-    // Optional: constraint resolution
+  // WebGPU implementation
+  webgpu() {
+    return {
+      apply: ({ particleVar, getUniform }) => `{
+        let d = vec2<f32>(${getUniform("dirX")}, ${getUniform("dirY")});
+        if (length(d) > 0.0) {
+          ${particleVar}.acceleration += normalize(d) * ${getUniform("strength")};
+        }
+      }`,
+    };
+  }
+
+  // CPU implementation
+  cpu() {
+    return {
+      apply: ({ particle, input }) => {
+        const len = Math.hypot(input.dirX, input.dirY) || 1;
+        particle.acceleration.x += (input.dirX / len) * input.strength;
+        particle.acceleration.y += (input.dirY / len) * input.strength;
+      },
+    };
+  }
+}
+```
+
+### Error Handling
+
+```typescript
+try {
+  await engine.initialize();
+} catch (error) {
+  if (error.message.includes("WebGPU")) {
+    console.log("WebGPU not supported, falling back to CPU");
+    // Engine automatically falls back when runtime: "auto"
   }
 }
 
-system.addForce(new CustomForce());
+// Check module support
+if (!engine.isSupported(customModule)) {
+  console.warn("Custom module not supported in current runtime");
+}
 ```
 
-### Configuration Management
+## Browser Support
 
-Export and import complete system configurations:
+- **WebGPU**: Chrome 113+, Edge 113+, Firefox Nightly (experimental)
+- **CPU Fallback**: All modern browsers with Canvas2D support
+- **Feature Detection**: Automatic runtime selection with graceful fallback
+
+## TypeScript Support
+
+Full TypeScript support with comprehensive type definitions:
 
 ```typescript
-// Export current configuration
-const config = system.export();
+import type { IEngine, IParticle, Module } from "@cazala/party";
 
-// Apply configuration to system
-system.import(config);
-
-// Partial configuration updates
-system.import({
-  environment: {
-    gravity: { strength: 1000, direction: "down" },
-    inertia: 0.1,
-    friction: 0.02,
-    damping: 0.01,
-  },
-  boundary: {
-    mode: "bounce",
-    bounce: 0.8,
-    friction: 0.1,
-  },
-  collisions: {
-    enabled: true,
-    friction: 0.1,
-    restitution: 0.9,
-  },
-  behavior: {
-    enabled: true,
-    cohesionWeight: 0.2,
-  },
-  fluid: {
-    enabled: true,
-    pressureMultiplier: 0.2,
-    nearPressureMultiplier: 15.0,
-    nearThreshold: 25,
-  },
-  joints: {
-    enabled: true,
-    momentum: 0.7, // Momentum preservation
-    enableCollisions: true,
-  },
-  emitters: {
-    enabled: true,
-    emitterConfigs: [
-      // Emitter configurations are automatically serialized
-      // and restored as part of the system export/import
-    ],
-  },
-});
+const engine: IEngine = new Engine({ /* ... */ });
+const particle: IParticle = { x: 0, y: 0, vx: 1, vy: 1, mass: 1, size: 5 };
 ```
+
+## License
+
+MIT License - see [LICENSE](../../LICENSE) file for details.
