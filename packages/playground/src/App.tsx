@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { EngineProvider } from "./contexts/EngineContext";
 import { ResetProvider } from "./contexts/ResetContext";
 import { Canvas } from "./components/Canvas";
@@ -15,7 +16,30 @@ import "./styles/index.css";
 import "./App.css";
 
 function AppContent() {
-  const { barsVisible } = useUI();
+  const { barsVisible, restoreBarsFromFullscreenMode } = useUI();
+
+  // Handle fullscreen change events (when user exits via ESC or browser controls)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      // If we exited fullscreen and bars are not visible, restore them with proper locking
+      if (!document.fullscreenElement && !barsVisible) {
+        restoreBarsFromFullscreenMode();
+      }
+    };
+
+    // Add event listeners for all browser variants
+    const events = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+    
+    events.forEach(event => {
+      document.addEventListener(event, handleFullscreenChange);
+    });
+    
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleFullscreenChange);
+      });
+    };
+  }, [restoreBarsFromFullscreenMode, barsVisible]);
 
   return (
     <div className={`app ${barsVisible ? 'bars-visible' : ''}`}>

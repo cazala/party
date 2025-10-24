@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
-import { toggleBarsWithLock, setBarsVisible, selectBarsVisible } from "../slices/ui";
+import { toggleBarsWithLock, toggleFullscreen, restoreBarsFromFullscreen, setBarsVisible, selectBarsVisible } from "../slices/ui";
 
 export function useUI() {
   const dispatch = useAppDispatch();
@@ -18,9 +18,19 @@ export function useUI() {
     [dispatch]
   );
 
+  const toggleFullscreenMode = useCallback(() => {
+    dispatch(toggleFullscreen());
+  }, [dispatch]);
+
+  const restoreBarsFromFullscreenMode = useCallback(() => {
+    dispatch(restoreBarsFromFullscreen());
+  }, [dispatch]);
+
   return {
     barsVisible,
     toggleBarsVisibility,
     setBarsVisibility,
+    toggleFullscreenMode,
+    restoreBarsFromFullscreenMode,
   };
 }

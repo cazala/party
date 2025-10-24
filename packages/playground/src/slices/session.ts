@@ -1,4 +1,9 @@
-import { createSlice, PayloadAction, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
+import {
+  createSlice,
+  PayloadAction,
+  createAsyncThunk,
+  createSelector,
+} from "@reduxjs/toolkit";
 import {
   SessionData,
   SessionSaveRequest,
@@ -729,7 +734,10 @@ export const selectSessionOrder = (state: RootState) =>
   state.session.sessionOrder;
 // Memoized selector to prevent unnecessary re-renders
 export const selectOrderedSessions = createSelector(
-  [(state: RootState) => state.session.availableSessions, (state: RootState) => state.session.sessionOrder],
+  [
+    (state: RootState) => state.session.availableSessions,
+    (state: RootState) => state.session.sessionOrder,
+  ],
   (sessions, order) => {
     // Return sessions in custom order, with any missing sessions at the end
     const orderedSessions = order

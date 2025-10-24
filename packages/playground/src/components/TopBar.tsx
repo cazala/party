@@ -3,6 +3,7 @@ import {
   RefreshCw,
   Trash2,
   HelpCircle,
+  Maximize,
   Undo,
   Redo,
   Save,
@@ -13,6 +14,7 @@ import { useInit } from "../hooks/useInit";
 import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
 import { useHistory } from "../hooks/useHistory";
+import { useUI } from "../hooks/useUI";
 import { HelpModal } from "./HelpModal";
 import { SaveSessionModal } from "./modals/SaveSessionModal";
 import { LoadSessionModal } from "./modals/LoadSessionModal";
@@ -27,6 +29,7 @@ export function TopBar() {
   const { removeAllJoints } = useJoints();
   const { removeAllLines } = useLines();
   const { resetHistory, undo, redo, canUndo, canRedo } = useHistory();
+  const { toggleFullscreenMode } = useUI();
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -91,6 +94,7 @@ export function TopBar() {
     gridJoints,
     setGridJoints,
   ]);
+
 
   return (
     <div className="top-bar">
@@ -174,6 +178,14 @@ export function TopBar() {
           </div>
         </div>
         <div className="topbar-right">
+          <button
+            className="fullscreen-button"
+            aria-label="Fullscreen"
+            title="Enter Fullscreen"
+            onClick={toggleFullscreenMode}
+          >
+            <Maximize width="18" height="18" />
+          </button>
           <button
             className="help-button"
             aria-label="Help"

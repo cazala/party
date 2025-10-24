@@ -64,7 +64,6 @@ export function InitControls() {
   useEffect(() => {
     if (isInitialized && !hasInitialSpawned) {
       markInitialSpawned();
-      console.log("Initial spawn: spawning particles", initState);
       spawnParticles(initState);
     }
   }, [isInitialized, hasInitialSpawned, initState, markInitialSpawned, spawnParticles]);
@@ -73,14 +72,12 @@ export function InitControls() {
   useEffect(() => {
     // Skip if spawn is locked due to UI changes
     if (isSpawnLocked) {
-      console.log("Skipping auto-spawn: spawn is locked");
       return;
     }
     
     // Skip on first render - let the initial spawn effect handle that
     if (isFirstRenderRef.current) {
       isFirstRenderRef.current = false;
-      console.log("Skipping auto-spawn: first render");
       return;
     }
     
@@ -90,31 +87,13 @@ export function InitControls() {
     
     // Skip auto-spawn if this is just a component remount due to bars visibility change
     if (barsChanged) {
-      console.log("Skipping auto-spawn: bars visibility changed");
       return;
     }
     
     // Skip if we haven't done initial spawn yet
     if (!hasInitialSpawned) {
-      console.log("Skipping auto-spawn: initial spawn not done yet");
       return;
     }
-    
-    console.log(
-      "Auto-spawn: spawning particles",
-      numParticles,
-      shape,
-      spacing,
-      particleSize,
-      particleMass,
-      radius,
-      innerRadius,
-      squareSize,
-      cornerRadius,
-      colors,
-      velocityConfig,
-      gridJoints
-    );
     spawnParticles({
       numParticles,
       shape,

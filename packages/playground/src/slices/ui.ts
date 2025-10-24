@@ -42,6 +42,44 @@ export const toggleBarsWithLock = createAsyncThunk(
   }
 );
 
+// Thunk to toggle fullscreen mode
+export const toggleFullscreen = createAsyncThunk(
+  "ui/toggleFullscreen",
+  async (_, { dispatch }) => {
+    const isCurrentlyFullscreen = !document.fullscreenElement;
+    
+    try {
+      if (isCurrentlyFullscreen) {
+        // Entering fullscreen
+        await document.documentElement.requestFullscreen();
+        
+        // Hide bars and lock spawning
+        dispatch(lockSpawnTemporarily(200));
+        dispatch(setBarsVisible(false));
+      } else {
+        // Exiting fullscreen
+        await document.exitFullscreen();
+        
+        // Show bars and lock spawning
+        dispatch(lockSpawnTemporarily(200));
+        dispatch(setBarsVisible(true));
+      }
+    } catch (error) {
+      console.warn("Fullscreen API not supported or failed:", error);
+    }
+  }
+);
+
+// Thunk to restore bars when fullscreen is exited externally (ESC key, etc.)
+export const restoreBarsFromFullscreen = createAsyncThunk(
+  "ui/restoreBarsFromFullscreen",
+  async (_, { dispatch }) => {
+    // Show bars with spawn locking (without touching fullscreen API)
+    dispatch(lockSpawnTemporarily(200));
+    dispatch(setBarsVisible(true));
+  }
+);
+
 export const { toggleBars, setBarsVisible } = uiSlice.actions;
 
 // Selectors
