@@ -21,17 +21,20 @@
   "author": "cazala",
   "license": "MIT",
   "scripts": {
-    "dev": "pnpm --filter=@cazala/playground dev",
-    "build": "pnpm --filter=@cazala/party build && pnpm --filter=@cazala/playground build",
-    "build:core": "pnpm --filter=@cazala/party build",
-    "build:playground": "pnpm --filter=@cazala/playground build",
+    "setup": "npm install && npx pnpm@9.15.0 install",
+    "dev": "npx pnpm@9.15.0 --filter=@cazala/playground dev",
+    "build": "npx pnpm@9.15.0 --filter=@cazala/party build && npx pnpm@9.15.0 --filter=@cazala/playground build",
+    "build:core": "npx pnpm@9.15.0 --filter=@cazala/party build",
+    "build:playground": "npx pnpm@9.15.0 --filter=@cazala/playground build",
+    "type-check": "npx pnpm@9.15.0 --filter=@cazala/party build && npx pnpm@9.15.0 --filter=@cazala/playground type-check",
     "test": "echo 'No tests specified' && exit 0"
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.64",
+    "pnpm": "^9.15.0",
     "typescript": "^5.0.0"
   },
-  "packageManager": "pnpm@8.0.0",
+  "packageManager": "pnpm@9.15.0",
   "workspaces": [
     "packages/*"
   ]

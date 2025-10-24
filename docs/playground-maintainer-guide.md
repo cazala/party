@@ -577,7 +577,7 @@ const handleMouseClick = (event: MouseEvent) => {
 1. **Install dependencies**:
 
    ```bash
-   npm install
+   npm run setup
    ```
 
 2. **Start development server**:
@@ -596,6 +596,8 @@ const handleMouseClick = (event: MouseEvent) => {
    ```bash
    npm run type-check
    ```
+
+> **Note**: The project uses pnpm workspaces internally but all commands are available through npm scripts. The `setup` command installs pnpm locally and sets up all workspace dependencies.
 
 ### Adding New Modules
 

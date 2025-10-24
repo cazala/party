@@ -1,19 +1,31 @@
 {
   "name": "@cazala/playground",
   "version": "0.1.0",
-  "description": "Interactive web playground for experimenting with particle physics simulations. Features real-time parameter adjustment, multiple interaction modes, session management, and comprehensive physics force controls.",
+  "description": "Advanced interactive playground for particle physics simulations with WebGPU support. Features 8 interactive tools, real-time parameter oscillation, sophisticated undo/redo, comprehensive session management, and dual runtime architecture (WebGPU + CPU fallback).",
   "private": true,
   "type": "module",
   "keywords": [
     "particle-physics",
+    "webgpu",
     "simulation",
     "interactive",
     "playground",
     "physics-demo",
     "react",
+    "redux-toolkit",
     "vite",
+    "typescript",
     "canvas",
-    "real-time"
+    "real-time",
+    "oscillators",
+    "undo-redo",
+    "session-management",
+    "tools",
+    "dual-runtime",
+    "gpu-compute",
+    "fluid-dynamics",
+    "flocking",
+    "collision-detection"
   ],
   "repository": {
     "type": "git",
@@ -46,6 +58,7 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.0.0",
+    "@webgpu/types": "^0.1.64",
     "typescript": "^5.0.0",
     "vite": "^5.0.0"
   },

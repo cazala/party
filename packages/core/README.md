@@ -19,6 +19,8 @@ A high-performance TypeScript particle physics engine with dual runtime support 
 npm install @cazala/party
 ```
 
+> **Development Note**: This package is part of a pnpm workspace. For development, clone the full repository and use `npm run setup` from the root.
+
 ## Quick Start
 
 ```typescript

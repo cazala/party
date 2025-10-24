@@ -39,13 +39,15 @@ git clone https://github.com/cazala/party.git
 cd party
 
 # Install dependencies
-npm install
+npm run setup
 
 # Start development server
 npm run dev
 ```
 
-Visit `http://localhost:5173` to access the playground.
+Visit `http://localhost:3000` to access the playground.
+
+> **Note**: This project uses pnpm workspaces internally. Run all commands from the root directory using `npm run <script>`.
 
 ### Production Build
 
@@ -53,8 +55,11 @@ Visit `http://localhost:5173` to access the playground.
 # Build for production
 npm run build
 
-# Preview production build
-npm run preview
+# Or build only playground
+npm run build:playground
+
+# Preview production build (from playground directory)
+cd packages/playground && npm run preview
 ```
 
 ## Interface Overview
@@ -252,10 +257,10 @@ For detailed architecture information, see [Maintainer Guide](../../docs/playgro
 
 ### Development Setup
 ```bash
-npm install          # Install dependencies
-npm run dev         # Start development server
-npm test            # Run test suite
-npm run type-check  # TypeScript verification
+npm run setup                  # Install dependencies for all packages
+npm run dev                   # Start development server
+npm test                      # Run test suite
+npm run type-check           # TypeScript verification for all packages
 ```
 
 ### Guidelines

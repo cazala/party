@@ -1,7 +1,7 @@
 {
   "name": "@cazala/party",
   "version": "0.1.0",
-  "description": "A powerful TypeScript particle physics engine featuring advanced force systems, spatial optimization, and comprehensive rendering capabilities. Supports complex behaviors like flocking, fluid dynamics, collision detection, and interactive user controls.",
+  "description": "High-performance TypeScript particle physics engine with dual runtime support (WebGPU compute + CPU fallback). Features modular architecture, real-time parameter oscillation, advanced physics modules, and comprehensive rendering capabilities.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,16 +19,24 @@
   "keywords": [
     "particle-physics",
     "physics-engine",
+    "webgpu",
+    "gpu-compute",
+    "dual-runtime",
     "simulation",
     "particles",
     "forces",
     "collision-detection",
     "fluid-dynamics",
+    "sph",
     "flocking",
+    "boids",
     "spatial-grid",
+    "oscillators",
+    "modular-architecture",
     "canvas-rendering",
     "typescript",
-    "interactive"
+    "interactive",
+    "real-time"
   ],
   "repository": {
     "type": "git",
@@ -48,20 +56,10 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.0",
+    "@webgpu/types": "^0.1.64",
     "rollup": "^4.0.0",
     "tslib": "^2.6.0",
     "typescript": "^5.0.0"
-  },
-  "peerDependencies": {
-    "react": ">=16.8.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
-  },
-  "dependencies": {
-    "mitt": "^3.0.1"
   },
   "engines": {
     "node": ">=16.0.0"

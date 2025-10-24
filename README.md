@@ -48,13 +48,15 @@ git clone https://github.com/cazala/party.git
 cd party
 
 # Install dependencies
-npm install
+npm run setup
 
 # Start the playground in development mode
 npm run dev
 ```
 
-Visit `http://localhost:5173` to access the interactive playground.
+Visit `http://localhost:3000` to access the interactive playground.
+
+> **Note**: This project uses pnpm workspaces internally for optimal monorepo management, but all commands are available through npm scripts. You only need npm installed.
 
 ### Using the Core Library
 
@@ -204,8 +206,8 @@ The force system uses a multi-phase lifecycle for optimal performance:
 ### Setup
 
 ```bash
-# Install dependencies
-npm install
+# Install dependencies for all packages
+npm run setup
 
 # Build the core library
 npm run build:core
@@ -215,6 +217,9 @@ npm run dev
 
 # Build everything for production
 npm run build
+
+# Type check all packages
+npm run type-check
 
 # Run tests
 npm test
