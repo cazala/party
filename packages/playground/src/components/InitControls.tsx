@@ -66,7 +66,13 @@ export function InitControls() {
       markInitialSpawned();
       spawnParticles(initState);
     }
-  }, [isInitialized, hasInitialSpawned, initState, markInitialSpawned, spawnParticles]);
+  }, [
+    isInitialized,
+    hasInitialSpawned,
+    initState,
+    markInitialSpawned,
+    spawnParticles,
+  ]);
 
   // Auto-spawn particles when any setting changes (but not on initial mount or bars toggle)
   useEffect(() => {
@@ -74,22 +80,22 @@ export function InitControls() {
     if (isSpawnLocked) {
       return;
     }
-    
+
     // Skip on first render - let the initial spawn effect handle that
     if (isFirstRenderRef.current) {
       isFirstRenderRef.current = false;
       return;
     }
-    
+
     // Check if this is just a remount due to bars visibility change
     const barsChanged = prevBarsVisibleRef.current !== barsVisible;
     prevBarsVisibleRef.current = barsVisible;
-    
+
     // Skip auto-spawn if this is just a component remount due to bars visibility change
     if (barsChanged) {
       return;
     }
-    
+
     // Skip if we haven't done initial spawn yet
     if (!hasInitialSpawned) {
       return;
@@ -264,12 +270,15 @@ export function InitControls() {
         label="Particle Size"
         value={particleSize}
         min={1}
-        max={10}
+        max={50}
         step={1}
         onChange={(value) => handleSpawnChange({ newParticleSize: value })}
       />
       <Slider
         label="Particle Mass"
+        min={0.1}
+        max={10}
+        step={0.1}
         value={particleMass}
         onChange={(value) => handleSpawnChange({ newParticleMass: value })}
         formatValue={(v) => v.toFixed(2)}
