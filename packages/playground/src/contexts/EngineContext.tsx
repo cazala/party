@@ -1,4 +1,10 @@
-import React, { createContext, useRef, ReactNode, useEffect, useMemo } from "react";
+import React, {
+  createContext,
+  useRef,
+  ReactNode,
+  useEffect,
+  useMemo,
+} from "react";
 import {
   Engine,
   Environment,
@@ -111,9 +117,20 @@ export function EngineProvider({ children }: EngineProviderProps) {
   // Memoize canvas dimensions calculation to prevent unnecessary re-renders
   const canvasDimensions = useMemo(() => {
     if (barsVisible) {
+      const minWidth =
+        LAYOUT_CONSTANTS.LEFT_SIDEBAR_WIDTH +
+        LAYOUT_CONSTANTS.RIGHT_SIDEBAR_WIDTH;
+      const minHeight =
+        LAYOUT_CONSTANTS.TOPBAR_HEIGHT + LAYOUT_CONSTANTS.TOOLBAR_HEIGHT;
       return {
-        width: size.width - LAYOUT_CONSTANTS.LEFT_SIDEBAR_WIDTH - LAYOUT_CONSTANTS.RIGHT_SIDEBAR_WIDTH,
-        height: size.height - LAYOUT_CONSTANTS.TOPBAR_HEIGHT - LAYOUT_CONSTANTS.TOOLBAR_HEIGHT,
+        width:
+          size.width === 0 || size.width >= minWidth
+            ? size.width - minWidth
+            : 1,
+        height:
+          size.height === 0 || size.height >= minHeight
+            ? size.height - minHeight
+            : 1,
       };
     } else {
       // Full window when bars are hidden
@@ -125,6 +142,8 @@ export function EngineProvider({ children }: EngineProviderProps) {
   }, [size.width, size.height, barsVisible]);
 
   // Initialize engine using the internal hook
+
+  console.log("canvasDimensions", canvasDimensions);
   const engineState = useEngineInternal({
     canvasRef,
     initialSize: canvasDimensions,
@@ -150,10 +169,12 @@ export function EngineProvider({ children }: EngineProviderProps) {
       // Keep engine size synchronized with canvas dimensions to ensure
       // consistent coordinate systems between visual and simulation space
       const currentEngineSize = engine.getSize();
-      
+
       // Update engine size if canvas dimensions changed
-      if (currentEngineSize.width !== canvasDimensions.width || 
-          currentEngineSize.height !== canvasDimensions.height) {
+      if (
+        currentEngineSize.width !== canvasDimensions.width ||
+        currentEngineSize.height !== canvasDimensions.height
+      ) {
         dispatch(setSizeThunk(canvasDimensions));
       }
     }
