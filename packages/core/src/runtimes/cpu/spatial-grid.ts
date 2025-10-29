@@ -56,9 +56,9 @@ export class SpatialGrid {
     this.maxX = worldRight + padding;
     this.maxY = worldBottom + padding;
 
-    // Recalculate grid dimensions
-    this.cols = Math.ceil((this.maxX - this.minX) / this.cellSize);
-    this.rows = Math.ceil((this.maxY - this.minY) / this.cellSize);
+    // Recalculate grid dimensions (ensure at least 1x1 to avoid undefined rows/cols)
+    this.cols = Math.max(1, Math.ceil((this.maxX - this.minX) / this.cellSize));
+    this.rows = Math.max(1, Math.ceil((this.maxY - this.minY) / this.cellSize));
 
     this.initializeGrid();
   }
@@ -134,6 +134,10 @@ export class SpatialGrid {
     const clampedRow = Math.max(0, Math.min(row, this.rows - 1));
 
     // Insert particle into grid
+    // Safety: ensure row/col arrays exist (defensive against any transient zero-dimension states)
+    if (!this.grid[clampedRow]) this.grid[clampedRow] = [];
+    if (!this.grid[clampedRow][clampedCol])
+      this.grid[clampedRow][clampedCol] = [];
     this.grid[clampedRow][clampedCol].push(particle);
 
     // Track particle position for incremental updates
