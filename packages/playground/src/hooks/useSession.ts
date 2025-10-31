@@ -6,6 +6,7 @@ import {
   saveCurrentSessionThunk,
   loadSessionThunk,
   quickLoadSessionThunk,
+  loadSessionDataThunk,
   loadAvailableSessionsThunk,
   deleteSessionThunk,
   renameSessionThunk,
@@ -29,16 +30,16 @@ import {
   getEngine,
 } from "../slices/engine";
 import { SessionSaveRequest, SessionData } from "../types/session";
-import { 
-  loadSession as loadSessionFromStorage, 
+import {
+  loadSession as loadSessionFromStorage,
   saveSession as saveSessionToStorage,
-  generateSessionId 
+  generateSessionId,
 } from "../utils/sessionManager";
-import { 
-  toSnakeCase, 
-  isValidSessionData, 
-  downloadJsonFile, 
-  readJsonFile 
+import {
+  toSnakeCase,
+  isValidSessionData,
+  downloadJsonFile,
+  readJsonFile,
 } from "../utils/importExportUtils";
 
 export function useSession() {
@@ -88,6 +89,48 @@ export function useSession() {
       }
     },
     [dispatch, getCount, pause, play]
+  );
+
+  // Load session from provided data and restart simulation
+  const loadSessionData = useCallback(
+    async (data: SessionData): Promise<boolean> => {
+      try {
+        // Pause the engine during loading
+        pause();
+
+        // Apply the session state
+        const sessionData = await dispatch(loadSessionDataThunk(data)).unwrap();
+
+        // Choose how to restore particles based on session data
+        if (
+          sessionData.metadata.hasParticleData === true &&
+          sessionData.particles
+        ) {
+          // Restore exact particles (for sessions with ≤1000 particles)
+          await dispatch(
+            setParticlesThunk({
+              particles: sessionData.particles,
+              jointsToRestore: sessionData.modules.joints,
+              linesToRestore: sessionData.modules.lines,
+            })
+          ).unwrap();
+        } else {
+          // Restart simulation with the loaded init configuration
+          await dispatch(spawnParticlesThunk(sessionData.init)).unwrap();
+        }
+
+        // Resume the engine
+        play();
+
+        return true;
+      } catch (error) {
+        console.error("Failed to load session data:", error);
+        // Resume engine even if loading failed
+        play();
+        return false;
+      }
+    },
+    [dispatch, pause, play]
   );
 
   // Load session and restart simulation
@@ -248,10 +291,10 @@ export function useSession() {
 
         // Generate filename from session name
         const filename = toSnakeCase(sessionData.name);
-        
+
         // Download as JSON file
         downloadJsonFile(sessionData, filename);
-        
+
         return true;
       } catch (error) {
         console.error("Failed to export session:", error);
@@ -267,12 +310,13 @@ export function useSession() {
       try {
         // Read and parse the JSON file
         const data = await readJsonFile(file);
-        
+
         // Validate the session data structure
         if (!isValidSessionData(data)) {
-          return { 
-            success: false, 
-            error: "Invalid session file format. Please ensure you're importing a valid session file." 
+          return {
+            success: false,
+            error:
+              "Invalid session file format. Please ensure you're importing a valid session file.",
           };
         }
 
@@ -293,16 +337,19 @@ export function useSession() {
 
         // Save the imported session
         saveSessionToStorage(importedSessionData);
-        
+
         // Refresh the sessions list
         await dispatch(loadAvailableSessionsThunk()).unwrap();
 
         return { success: true };
       } catch (error) {
         console.error("Failed to import session:", error);
-        return { 
-          success: false, 
-          error: error instanceof Error ? error.message : "Failed to import session file"
+        return {
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to import session file",
         };
       }
     },
@@ -328,6 +375,7 @@ export function useSession() {
     deleteSession,
     renameSession,
     duplicateSession,
+    loadSessionData,
     exportSession,
     importSession,
     refreshSessions,
