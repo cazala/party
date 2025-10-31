@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Provider } from "react-redux";
 import { EngineProvider } from "./contexts/EngineContext";
 import { ResetProvider } from "./contexts/ResetContext";
 import { Canvas } from "./components/Canvas";
@@ -8,10 +9,10 @@ import { ModulesSidebar } from "./components/ModulesSidebar";
 import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
 import { GlobalHotkeys } from "./components/GlobalHotkeys";
-import { Provider } from "react-redux";
-import { store } from "./slices/store";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
+// import { useHomepage } from "./hooks/useHomepage";
+import { store } from "./slices/store";
 
 import "./styles/index.css";
 import "./App.css";
@@ -19,6 +20,7 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode } = useUI();
   const { invertColors } = useRender();
+  const hasStarted = true; // const { hasStarted } = useHomepage();
 
   // Handle fullscreen change events (when user exits via ESC or browser controls)
   useEffect(() => {
@@ -49,7 +51,11 @@ function AppContent() {
   }, [restoreBarsFromFullscreenMode, barsVisible]);
 
   return (
-    <div className={`app ${barsVisible ? "bars-visible" : "bars-hidden"}`}>
+    <div
+      className={`app ${
+        barsVisible && hasStarted ? "bars-visible" : "bars-hidden"
+      }`}
+    >
       <TopBar />
       <GlobalHotkeys />
       <div className="app-content">

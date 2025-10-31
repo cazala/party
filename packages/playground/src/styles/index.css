@@ -17,6 +17,12 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
@@ -31,6 +37,8 @@ body {
 #root {
   width: 100vw;
   height: 100vh;
+  height: 100svh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -39,6 +47,8 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100svh;
+  height: 100dvh;
   width: 100vw;
 }
 

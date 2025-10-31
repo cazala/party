@@ -2,6 +2,8 @@
   position: relative;
   width: 100%;
   height: 100vh;
+  height: 100svh;
+  height: 100dvh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -16,12 +18,16 @@
 .app.bars-visible .app-content {
   margin-top: 60px;
   height: calc(100vh - 60px);
+  height: calc(100svh - 60px);
+  height: calc(100dvh - 60px);
 }
 
 /* When bars are hidden, position canvas to cover full screen with overlay approach */
 .app.bars-hidden .app-content {
   margin-top: 0;
   height: 100vh;
+  height: 100svh;
+  height: 100dvh;
   position: relative;
 }
 
@@ -43,6 +49,8 @@
   bottom: 0;
   width: 100vw;
   height: 100vh;
+  height: 100svh;
+  height: 100dvh;
   z-index: 100;
   transition: all 0.3s ease;
 }
@@ -177,6 +185,8 @@ body {
   .right-sidebar {
     width: 100%;
     height: 25vh;
+    height: 25svh;
+    height: 25dvh;
     border-left: none;
     border-right: none;
     border-top: 1px solid #333;
@@ -184,6 +194,8 @@ body {
 
   .canvas-container {
     height: 50vh;
+    height: 50svh;
+    height: 50dvh;
     order: -1; /* Put canvas first on mobile */
   }
 }
