@@ -7,6 +7,7 @@ import {
   loadSessionThunk,
   quickLoadSessionThunk,
   loadSessionDataThunk,
+  quickLoadSessionDataThunk,
   loadAvailableSessionsThunk,
   deleteSessionThunk,
   renameSessionThunk,
@@ -202,6 +203,30 @@ export function useSession() {
     [dispatch, pause, play]
   );
 
+  // Quick load session from provided data without affecting particles/joints
+  const quickLoadSessionData = useCallback(
+    async (data: SessionData): Promise<boolean> => {
+      try {
+        // Pause the engine during loading
+        pause();
+
+        // Load the session state (without particles and joints)
+        await dispatch(quickLoadSessionDataThunk(data)).unwrap();
+
+        // Resume the engine
+        play();
+
+        return true;
+      } catch (error) {
+        console.error("Failed to quick load session data:", error);
+        // Resume engine even if loading failed
+        play();
+        return false;
+      }
+    },
+    [dispatch, pause, play]
+  );
+
   // Delete session
   const deleteSession = useCallback(
     async (sessionId: string): Promise<boolean> => {
@@ -372,6 +397,7 @@ export function useSession() {
     saveCurrentSession,
     loadSession,
     quickLoadSession,
+    quickLoadSessionData,
     deleteSession,
     renameSession,
     duplicateSession,
