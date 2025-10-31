@@ -143,8 +143,7 @@ export class Trails extends Module<"trails", TrailsInputs> {
 
         // Apply decay (fade effect) - simple overlay approach with factor to match WebGPU speed
         if (decay > 0.00001) {
-          // Multiply decay by factor to match WebGPU behavior (WebGPU now uses 0.5x, so CPU uses 2.0x)
-          const adjustedDecay = Math.min(1.0, (decay * 1.5) / 100);
+          const adjustedDecay = Math.min(1.0, decay * 0.005);
           context.save();
           context.globalCompositeOperation = "source-over";
           context.fillStyle = `rgba(${clearColor.r * 255}, ${

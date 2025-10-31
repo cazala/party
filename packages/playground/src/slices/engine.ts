@@ -2,7 +2,7 @@ import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import type { Engine } from "@cazala/party";
 import { Spawner } from "@cazala/party";
 import { clearGrab } from "./modules/grab";
-import { 
+import {
   setJointsEnabled,
   setEnableParticleCollisions,
   setEnableJointCollisions,
@@ -11,12 +11,9 @@ import {
   setRestitution,
   setSeparation,
   setSteps,
-  setFriction
+  setFriction,
 } from "./modules/joints";
-import {
-  setLinesEnabled,
-  setLines
-} from "./modules/lines";
+import { setLinesEnabled, setLines } from "./modules/lines";
 
 // Type for particle data (matches engine's IParticle interface)
 export interface ParticleData {
@@ -362,6 +359,19 @@ export const spawnParticlesThunk = createAsyncThunk(
     const engine = getEngine();
     if (!engine) return;
 
+    // Ensure engine has a sane size before spawning (Safari can report tiny sizes initially)
+    const waitForEngineSize = async () => {
+      let attempts = 0;
+      while (attempts < 10) {
+        const s = engine.getSize();
+        if (s.width >= 4 && s.height >= 4) return s;
+        await new Promise((r) => requestAnimationFrame(() => r(undefined)));
+        attempts++;
+      }
+      return engine.getSize();
+    };
+    await waitForEngineSize();
+
     const {
       numParticles,
       shape,
@@ -423,11 +433,11 @@ export const spawnParticlesThunk = createAsyncThunk(
 export const setParticlesThunk = createAsyncThunk(
   "engine/setParticles",
   async (
-    payload: { 
-      particles: ParticleData[], 
-      jointsToRestore?: any, 
-      linesToRestore?: any 
-    }, 
+    payload: {
+      particles: ParticleData[];
+      jointsToRestore?: any;
+      linesToRestore?: any;
+    },
     { dispatch }
   ) => {
     const { particles, jointsToRestore, linesToRestore } = payload;
@@ -436,31 +446,41 @@ export const setParticlesThunk = createAsyncThunk(
 
     engine.clear();
     engine.setParticles(particles);
-    
+
     // Use a timeout to ensure particles are processed by the engine before applying joints
     // This mirrors the timing used in InitControls.tsx for grid joints
     setTimeout(() => {
       // Use passed data instead of reading from Redux state (which might be stale)
       if (jointsToRestore) {
         const joints = engine.getModule("joints");
-        if (joints && 'setJoints' in joints) {
+        if (joints && "setJoints" in joints) {
           const jointsModule = joints as any;
           // Sync all joint properties to engine
           jointsModule.setEnabled(jointsToRestore.enabled);
-          jointsModule.setEnableParticleCollisions(jointsToRestore.enableParticleCollisions);
-          jointsModule.setEnableJointCollisions(jointsToRestore.enableJointCollisions);
+          jointsModule.setEnableParticleCollisions(
+            jointsToRestore.enableParticleCollisions
+          );
+          jointsModule.setEnableJointCollisions(
+            jointsToRestore.enableJointCollisions
+          );
           jointsModule.setMomentum(jointsToRestore.momentum);
           jointsModule.setRestitution(jointsToRestore.restitution);
           jointsModule.setSeparation(jointsToRestore.separation);
           jointsModule.setSteps(jointsToRestore.steps);
           jointsModule.setFriction(jointsToRestore.friction);
           jointsModule.setJoints(jointsToRestore.list);
-          
+
           // CRITICAL: Also sync Redux state to match engine state
           // This ensures subsequent saves capture the correct joint state
           dispatch(setJointsEnabled(jointsToRestore.enabled));
-          dispatch(setEnableParticleCollisions(jointsToRestore.enableParticleCollisions));
-          dispatch(setEnableJointCollisions(jointsToRestore.enableJointCollisions));
+          dispatch(
+            setEnableParticleCollisions(
+              jointsToRestore.enableParticleCollisions
+            )
+          );
+          dispatch(
+            setEnableJointCollisions(jointsToRestore.enableJointCollisions)
+          );
           dispatch(setMomentum(jointsToRestore.momentum));
           dispatch(setRestitution(jointsToRestore.restitution));
           dispatch(setSeparation(jointsToRestore.separation));
@@ -469,23 +489,23 @@ export const setParticlesThunk = createAsyncThunk(
           dispatch(setJoints(jointsToRestore.list));
         }
       }
-      
+
       // Restore lines
       if (linesToRestore) {
         const lines = engine.getModule("lines");
-        if (lines && 'setLines' in lines) {
+        if (lines && "setLines" in lines) {
           const linesModule = lines as any;
           // Sync lines to engine
           linesModule.setEnabled(linesToRestore.enabled);
           linesModule.setLines(linesToRestore.list);
-          
+
           // CRITICAL: Also sync Redux state to match engine state
           dispatch(setLinesEnabled(linesToRestore.enabled));
           dispatch(setLines(linesToRestore.list));
         }
       }
     }, 100); // Small delay to ensure particles are processed by the engine
-    
+
     engine.play();
     dispatch(engineSlice.actions.setPlaying(true));
   }

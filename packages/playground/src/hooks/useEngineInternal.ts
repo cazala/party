@@ -383,6 +383,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   useEffect(() => {
     if (!isInitialized) return;
 
+    // Safari: avoid applying module config until canvas size is non-trivial
+    if (!size || size.width < 4 || size.height < 4) return;
+
     const environment = environmentRef.current;
     const boundary = boundaryRef.current;
     const collisions = collisionsRef.current;
@@ -444,6 +447,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     }
   }, [
     isInitialized,
+    size.width,
+    size.height,
     modulesState.environment.enabled,
     modulesState.boundary.enabled,
     modulesState.collisions.enabled,

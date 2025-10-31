@@ -143,7 +143,6 @@ export function EngineProvider({ children }: EngineProviderProps) {
 
   // Initialize engine using the internal hook
 
-  console.log("canvasDimensions", canvasDimensions);
   const engineState = useEngineInternal({
     canvasRef,
     initialSize: canvasDimensions,
