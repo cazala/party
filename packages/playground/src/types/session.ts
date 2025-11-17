@@ -36,7 +36,7 @@ export interface SessionData {
     EngineState,
     "constrainIterations" | "gridCellSize" | "maxNeighbors" | "camera" | "zoom"
   >;
-  render: RenderState;
+  render?: RenderState;
   oscillators: OscillatorsState;
   oscillatorsElapsedSeconds?: number;
   particles?: SavedParticle[];

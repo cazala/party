@@ -65,6 +65,20 @@ export function useInteraction() {
     [dispatch, interaction]
   );
 
+  const setActive = useCallback(
+    (active: boolean) => {
+      interaction?.setActive(active);
+    },
+    [interaction]
+  );
+
+  const setPosition = useCallback(
+    (x: number, y: number) => {
+      interaction?.setPosition(x, y);
+    },
+    [interaction]
+  );
+
   return {
     // Individual state properties
     mode,
@@ -76,5 +90,7 @@ export function useInteraction() {
     setMode,
     setStrength,
     setRadius,
+    setActive,
+    setPosition,
   };
 }

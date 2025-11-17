@@ -11,7 +11,7 @@ import { SystemSidebar } from "./components/SystemSidebar";
 import { GlobalHotkeys } from "./components/GlobalHotkeys";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
-// import { useHomepage } from "./hooks/useHomepage";
+import { useHomepage } from "./hooks/useHomepage";
 import { store } from "./slices/store";
 
 import "./styles/index.css";
@@ -20,7 +20,7 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode } = useUI();
   const { invertColors } = useRender();
-  const hasStarted = true; // const { hasStarted } = useHomepage();
+  const { hasStarted } = useHomepage();
 
   // Handle fullscreen change events (when user exits via ESC or browser controls)
   useEffect(() => {

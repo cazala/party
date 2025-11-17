@@ -1,0 +1,323 @@
+{
+  "id": "Demo-1761239954702",
+  "name": "Medusa",
+  "metadata": {
+    "particleCount": 41600,
+    "createdAt": "2025-10-23T17:19:14.702Z",
+    "lastModified": "2025-10-24T22:47:07.498Z",
+    "hasParticleData": false
+  },
+  "modules": {
+    "environment": {
+      "enabled": true,
+      "gravityStrength": 0,
+      "dirX": 0,
+      "dirY": 1,
+      "inertia": 0,
+      "friction": 0,
+      "damping": 0,
+      "mode": "down"
+    },
+    "boundary": {
+      "enabled": true,
+      "restitution": 0.9,
+      "friction": 0.1,
+      "mode": "warp",
+      "repelDistance": 0,
+      "repelStrength": 0
+    },
+    "collisions": {
+      "enabled": true,
+      "restitution": 0.8
+    },
+    "fluids": {
+      "enabled": true,
+      "influenceRadius": 27,
+      "targetDensity": 5,
+      "pressureMultiplier": 20,
+      "viscosity": 1,
+      "nearPressureMultiplier": 50,
+      "nearThreshold": 20,
+      "enableNearPressure": false,
+      "maxAcceleration": 68
+    },
+    "behavior": {
+      "enabled": true,
+      "wander": 20,
+      "cohesion": 1.5,
+      "alignment": 6.9,
+      "repulsion": 5.5,
+      "chase": 0,
+      "avoid": 0,
+      "separation": 11,
+      "viewRadius": 100,
+      "viewAngle": 6.283185307179586
+    },
+    "sensors": {
+      "enabled": true,
+      "sensorDistance": 30,
+      "sensorAngle": 0.5061454830783556,
+      "sensorRadius": 5,
+      "sensorThreshold": 0.01,
+      "sensorStrength": 3000,
+      "followValue": "any",
+      "fleeValue": "none",
+      "colorSimilarityThreshold": 0.4,
+      "fleeAngle": 1.5707963267948966
+    },
+    "trails": {
+      "enabled": true,
+      "trailDecay": 10,
+      "trailDiffuse": 0
+    },
+    "interaction": {
+      "enabled": true,
+      "mode": "attract",
+      "strength": 10000,
+      "radius": 500
+    },
+    "particles": {
+      "enabled": true,
+      "colorType": 0,
+      "customColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "hue": 0.66
+    },
+    "joints": {
+      "enabled": false,
+      "enableParticleCollisions": false,
+      "enableJointCollisions": false,
+      "list": [],
+      "momentum": 0.7,
+      "restitution": 0.9,
+      "separation": 0.5,
+      "steps": 1,
+      "friction": 0.01
+    },
+    "lines": {
+      "enabled": false,
+      "list": [],
+      "lineWidth": 1.5,
+      "lineColor": null
+    },
+    "grab": {
+      "enabled": false,
+      "grabbedIndex": -1,
+      "positionX": 0,
+      "positionY": 0
+    }
+  },
+  "init": {
+    "numParticles": 41600,
+    "shape": "donut",
+    "spacing": 12,
+    "particleSize": 3,
+    "particleMass": 0.2827433388230814,
+    "radius": 1000,
+    "innerRadius": 694,
+    "squareSize": 200,
+    "cornerRadius": 0,
+    "colors": [],
+    "velocityConfig": {
+      "speed": 298,
+      "direction": "out",
+      "angle": 89
+    },
+    "gridJoints": false,
+    "hasInitialSpawned": true,
+    "isSpawnLocked": false
+  },
+  "engine": {
+    "constrainIterations": 1,
+    "gridCellSize": 24,
+    "maxNeighbors": 109,
+    "camera": {
+      "x": 1115.0831282329048,
+      "y": 104.32740141309193
+    },
+    "zoom": 0.2790307902522153
+  },
+  "oscillators": {
+    "particles.hue": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 1,
+      "moduleName": "particles",
+      "inputName": "hue",
+      "lastValue": 0.6775771397222303,
+      "lastDirection": -1,
+      "phaseOffset": -6.191726179943014,
+      "active": true
+    },
+    "fluids.viscosity": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 10,
+      "moduleName": "fluids",
+      "inputName": "viscosity",
+      "lastValue": 5.523473286524843,
+      "lastDirection": 1,
+      "phaseOffset": -2.082192263300163,
+      "active": true
+    },
+    "fluids.nearPressureMultiplier": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 100,
+      "moduleName": "fluids",
+      "inputName": "nearPressureMultiplier",
+      "lastValue": 98.09614665569036,
+      "lastDirection": 1,
+      "phaseOffset": -1.0372847791530015,
+      "active": true
+    },
+    "fluids.nearThreshold": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 100,
+      "moduleName": "fluids",
+      "inputName": "nearThreshold",
+      "lastValue": 57.865366640338785,
+      "lastDirection": 1,
+      "phaseOffset": -2.0038557899398612,
+      "active": true
+    },
+    "behavior.cohesion": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 2.3000000000000003,
+      "moduleName": "behavior",
+      "inputName": "cohesion",
+      "lastValue": 2.296906547497086,
+      "lastDirection": 1,
+      "phaseOffset": -0.8927793481661028,
+      "active": true
+    },
+    "behavior.viewRadius": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 112,
+      "moduleName": "behavior",
+      "inputName": "viewRadius",
+      "lastValue": 106.006072058907,
+      "lastDirection": 1,
+      "phaseOffset": -1.1741891038171293,
+      "active": true
+    },
+    "behavior.separation": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 47,
+      "moduleName": "behavior",
+      "inputName": "separation",
+      "lastValue": 40.10975581276766,
+      "lastDirection": -1,
+      "phaseOffset": -6.5518786236472515,
+      "active": true
+    },
+    "behavior.repulsion": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 7.9,
+      "moduleName": "behavior",
+      "inputName": "repulsion",
+      "lastValue": 0.8064136150321106,
+      "lastDirection": -1,
+      "phaseOffset": -4.451305713723368,
+      "active": true
+    },
+    "sensors.sensorDistance": {
+      "speedHz": 0.01,
+      "customMin": 11,
+      "customMax": 74,
+      "moduleName": "sensors",
+      "inputName": "sensorDistance",
+      "lastValue": 35.78929518825547,
+      "lastDirection": -1,
+      "phaseOffset": -5.073526569073739,
+      "active": true
+    },
+    "sensors.sensorThreshold": {
+      "speedHz": 0.01,
+      "customMin": 0.01,
+      "customMax": 0.42000000000000004,
+      "moduleName": "sensors",
+      "inputName": "sensorThreshold",
+      "lastValue": 0.2017878580545781,
+      "lastDirection": 1,
+      "phaseOffset": -8.95155111274379,
+      "active": true
+    },
+    "fluids.targetDensity": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 5,
+      "moduleName": "fluids",
+      "inputName": "targetDensity",
+      "lastValue": 3.6729698619717994,
+      "lastDirection": -1,
+      "phaseOffset": -6.30784680940123,
+      "active": true
+    },
+    "fluids.pressureMultiplier": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 100,
+      "moduleName": "fluids",
+      "inputName": "pressureMultiplier",
+      "lastValue": 40.82433637692078,
+      "lastDirection": 1,
+      "phaseOffset": -9.137577042505047,
+      "active": true
+    },
+    "fluids.influenceRadius": {
+      "speedHz": 0.01,
+      "customMin": 1,
+      "customMax": 100,
+      "moduleName": "fluids",
+      "inputName": "influenceRadius",
+      "lastValue": 95.20472073839247,
+      "lastDirection": 1,
+      "phaseOffset": -7.440580871573982,
+      "active": true
+    },
+    "fluids.maxAcceleration": {
+      "speedHz": 0.01,
+      "customMin": 28,
+      "customMax": 68,
+      "moduleName": "fluids",
+      "inputName": "maxAcceleration",
+      "lastValue": 48.016203848490804,
+      "lastDirection": -1,
+      "phaseOffset": -5.581747960472942,
+      "active": true
+    },
+    "sensors.sensorAngle": {
+      "speedHz": 0.01,
+      "customMin": 0.19198621771937624,
+      "customMax": 0.7504915783575616,
+      "moduleName": "sensors",
+      "inputName": "sensorAngle",
+      "lastValue": 0.3995673523441571,
+      "lastDirection": -1,
+      "phaseOffset": -5.022030635383583,
+      "active": true
+    },
+    "behavior.alignment": {
+      "speedHz": 0.01,
+      "customMin": 0.7000000000000001,
+      "customMax": 10,
+      "moduleName": "behavior",
+      "inputName": "alignment",
+      "lastValue": 1.890357920212573,
+      "lastDirection": -1,
+      "phaseOffset": -4.512973244962044,
+      "active": true
+    }
+  },
+  "oscillatorsElapsedSeconds": 4238.383199997198
+}

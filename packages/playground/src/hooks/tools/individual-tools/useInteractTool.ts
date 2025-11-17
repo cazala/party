@@ -177,13 +177,13 @@ export function useInteractTool(isActive: boolean) {
       }
 
       // Normal interaction click: left = attract, right = repel
-      const button = (ev as MouseEvent).button;
-      const mode = button === 2 ? "repel" : "attract";
-      setMode(mode);
+      // const button = (ev as MouseEvent).button;
+      // const mode = button === 2 ? "repel" : "attract";
+      // setMode(mode);
 
-      const { x, y } = screenToWorld(sx, sy);
-      interaction.setPosition(x, y);
-      interaction.setActive(true);
+      // const { x, y } = screenToWorld(sx, sy);
+      // interaction.setPosition(x, y);
+      // interaction.setActive(true);
     },
 
     onMouseMove: (ev) => {
@@ -197,8 +197,8 @@ export function useInteractTool(isActive: boolean) {
       state.mouseY = sy;
 
       // Always update interaction position
-      const { x, y } = screenToWorld(sx, sy);
-      interaction.setPosition(x, y);
+      // const { x, y } = screenToWorld(sx, sy);
+      // interaction.setPosition(x, y);
 
       // Radius adjustment drag
       if (state.isAdjustingRadius) {
@@ -244,7 +244,7 @@ export function useInteractTool(isActive: boolean) {
         return;
       }
 
-      interaction.setActive(false);
+      // interaction.setActive(false);
     },
   };
 
