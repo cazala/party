@@ -1,0 +1,158 @@
+{
+  "id": "Demo3-1763409857543",
+  "name": "Demo3",
+  "metadata": {
+    "particleCount": 41600,
+    "createdAt": "2025-11-17T20:04:17.543Z",
+    "lastModified": "2025-11-17T20:04:17.543Z",
+    "hasParticleData": false
+  },
+  "modules": {
+    "environment": {
+      "enabled": true,
+      "gravityStrength": 0,
+      "dirX": 0,
+      "dirY": 0,
+      "inertia": 0,
+      "friction": 0,
+      "damping": 0,
+      "mode": "inwards"
+    },
+    "boundary": {
+      "enabled": true,
+      "restitution": 0.9,
+      "friction": 0.1,
+      "mode": "warp",
+      "repelDistance": 0,
+      "repelStrength": 0
+    },
+    "collisions": {
+      "enabled": false,
+      "restitution": 0.8
+    },
+    "fluids": {
+      "enabled": false,
+      "influenceRadius": 100,
+      "targetDensity": 1,
+      "pressureMultiplier": 30,
+      "viscosity": 1,
+      "nearPressureMultiplier": 50,
+      "nearThreshold": 20,
+      "enableNearPressure": true,
+      "maxAcceleration": 75
+    },
+    "behavior": {
+      "enabled": true,
+      "wander": 20,
+      "cohesion": 1.5,
+      "alignment": 5.4,
+      "repulsion": 3.3,
+      "chase": 0,
+      "avoid": 0,
+      "separation": 61,
+      "viewRadius": 100,
+      "viewAngle": 6.283185307179586
+    },
+    "sensors": {
+      "enabled": true,
+      "sensorDistance": 30,
+      "sensorAngle": 0.3665191429188092,
+      "sensorRadius": 3,
+      "sensorThreshold": 0.1,
+      "sensorStrength": 1906,
+      "followValue": "any",
+      "fleeValue": "none",
+      "colorSimilarityThreshold": 0.4,
+      "fleeAngle": 1.5707963267948966
+    },
+    "trails": {
+      "enabled": true,
+      "trailDecay": 10,
+      "trailDiffuse": 0
+    },
+    "interaction": {
+      "enabled": true,
+      "mode": "attract",
+      "strength": 10000,
+      "radius": 500
+    },
+    "particles": {
+      "enabled": true,
+      "colorType": 2,
+      "customColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "hue": 0.66
+    },
+    "joints": {
+      "enabled": false,
+      "enableParticleCollisions": false,
+      "enableJointCollisions": false,
+      "list": [],
+      "momentum": 0.7,
+      "restitution": 0.9,
+      "separation": 0.5,
+      "steps": 1,
+      "friction": 0.01
+    },
+    "lines": {
+      "enabled": false,
+      "list": [],
+      "lineWidth": 1.5,
+      "lineColor": null
+    },
+    "grab": {
+      "enabled": false,
+      "grabbedIndex": -1,
+      "positionX": 0,
+      "positionY": 0
+    }
+  },
+  "init": {
+    "numParticles": 41600,
+    "shape": "donut",
+    "spacing": 12,
+    "particleSize": 3,
+    "particleMass": 0.2827433388230814,
+    "radius": 1000,
+    "innerRadius": 10,
+    "squareSize": 200,
+    "cornerRadius": 0,
+    "colors": [],
+    "velocityConfig": {
+      "speed": 298,
+      "direction": "out",
+      "angle": 89
+    },
+    "gridJoints": false,
+    "hasInitialSpawned": true,
+    "isSpawnLocked": false
+  },
+  "engine": {
+    "constrainIterations": 1,
+    "gridCellSize": 40,
+    "maxNeighbors": 109,
+    "camera": {
+      "x": 1115.0831282329048,
+      "y": 104.32740141309193
+    },
+    "zoom": 0.2790307902522153
+  },
+  "oscillators": {
+    "particles.hue": {
+      "speedHz": 0.01,
+      "customMin": 0,
+      "customMax": 1,
+      "moduleName": "particles",
+      "inputName": "hue",
+      "lastValue": 0.05253284349175774,
+      "lastDirection": 1,
+      "phaseOffset": -6.595980039058421,
+      "active": true
+    }
+  },
+  "oscillatorsElapsedSeconds": 6085.231999985088
+}

@@ -1,10 +1,10 @@
 {
-  "id": "Demo-1761239954702",
-  "name": "Medusa",
+  "id": "Demo2-1763409843118",
+  "name": "Demo2",
   "metadata": {
-    "particleCount": 41600,
-    "createdAt": "2025-10-23T17:19:14.702Z",
-    "lastModified": "2025-10-24T22:47:07.498Z",
+    "particleCount": 27300,
+    "createdAt": "2025-11-17T20:04:03.118Z",
+    "lastModified": "2025-11-17T20:04:03.118Z",
     "hasParticleData": false
   },
   "modules": {
@@ -27,7 +27,7 @@
       "repelStrength": 0
     },
     "collisions": {
-      "enabled": true,
+      "enabled": false,
       "restitution": 0.8
     },
     "fluids": {
@@ -38,7 +38,7 @@
       "viscosity": 1,
       "nearPressureMultiplier": 50,
       "nearThreshold": 20,
-      "enableNearPressure": false,
+      "enableNearPressure": true,
       "maxAcceleration": 68
     },
     "behavior": {
@@ -58,7 +58,7 @@
       "sensorDistance": 30,
       "sensorAngle": 0.5061454830783556,
       "sensorRadius": 5,
-      "sensorThreshold": 0.01,
+      "sensorThreshold": 0.12,
       "sensorStrength": 3000,
       "followValue": "any",
       "fleeValue": "none",
@@ -78,14 +78,14 @@
     },
     "particles": {
       "enabled": true,
-      "colorType": 0,
+      "colorType": 2,
       "customColor": {
         "r": 1,
         "g": 1,
         "b": 1,
         "a": 1
       },
-      "hue": 0.66
+      "hue": 0
     },
     "joints": {
       "enabled": false,
@@ -112,20 +112,20 @@
     }
   },
   "init": {
-    "numParticles": 41600,
-    "shape": "donut",
+    "numParticles": 27300,
+    "shape": "random",
     "spacing": 12,
-    "particleSize": 3,
-    "particleMass": 0.2827433388230814,
-    "radius": 1000,
-    "innerRadius": 694,
+    "particleSize": 5,
+    "particleMass": 0.7853981633974483,
+    "radius": 100,
+    "innerRadius": 50,
     "squareSize": 200,
     "cornerRadius": 0,
     "colors": [],
     "velocityConfig": {
-      "speed": 298,
-      "direction": "out",
-      "angle": 89
+      "speed": 0,
+      "direction": "random",
+      "angle": 0
     },
     "gridJoints": false,
     "hasInitialSpawned": true,
@@ -133,13 +133,13 @@
   },
   "engine": {
     "constrainIterations": 1,
-    "gridCellSize": 24,
+    "gridCellSize": 40,
     "maxNeighbors": 109,
     "camera": {
-      "x": 1115.0831282329048,
-      "y": 104.32740141309193
+      "x": -1497.077356116648,
+      "y": -484.0373783910717
     },
-    "zoom": 0.2790307902522153
+    "zoom": 0.27420675852079385
   },
   "oscillators": {
     "particles.hue": {
@@ -148,9 +148,9 @@
       "customMax": 1,
       "moduleName": "particles",
       "inputName": "hue",
-      "lastValue": 0.6775771397222303,
-      "lastDirection": -1,
-      "phaseOffset": -6.191726179943014,
+      "lastValue": 0.48685426895487893,
+      "lastDirection": 1,
+      "phaseOffset": -8.958885079614067,
       "active": true
     },
     "fluids.viscosity": {
@@ -159,7 +159,7 @@
       "customMax": 10,
       "moduleName": "fluids",
       "inputName": "viscosity",
-      "lastValue": 5.523473286524843,
+      "lastValue": 5.871340485295162,
       "lastDirection": 1,
       "phaseOffset": -2.082192263300163,
       "active": true
@@ -170,7 +170,7 @@
       "customMax": 100,
       "moduleName": "fluids",
       "inputName": "nearPressureMultiplier",
-      "lastValue": 98.09614665569036,
+      "lastValue": 99.54777230718972,
       "lastDirection": 1,
       "phaseOffset": -1.0372847791530015,
       "active": true
@@ -181,7 +181,7 @@
       "customMax": 100,
       "moduleName": "fluids",
       "inputName": "nearThreshold",
-      "lastValue": 57.865366640338785,
+      "lastValue": 61.87235754273269,
       "lastDirection": 1,
       "phaseOffset": -2.0038557899398612,
       "active": true
@@ -192,8 +192,8 @@
       "customMax": 2.3000000000000003,
       "moduleName": "behavior",
       "inputName": "cohesion",
-      "lastValue": 2.296906547497086,
-      "lastDirection": 1,
+      "lastValue": 2.297211882234315,
+      "lastDirection": -1,
       "phaseOffset": -0.8927793481661028,
       "active": true
     },
@@ -203,7 +203,7 @@
       "customMax": 112,
       "moduleName": "behavior",
       "inputName": "viewRadius",
-      "lastValue": 106.006072058907,
+      "lastValue": 109.03575842616131,
       "lastDirection": 1,
       "phaseOffset": -1.1741891038171293,
       "active": true
@@ -214,7 +214,7 @@
       "customMax": 47,
       "moduleName": "behavior",
       "inputName": "separation",
-      "lastValue": 40.10975581276766,
+      "lastValue": 37.861270605120026,
       "lastDirection": -1,
       "phaseOffset": -6.5518786236472515,
       "active": true
@@ -225,7 +225,7 @@
       "customMax": 7.9,
       "moduleName": "behavior",
       "inputName": "repulsion",
-      "lastValue": 0.8064136150321106,
+      "lastValue": 0.5103481268929579,
       "lastDirection": -1,
       "phaseOffset": -4.451305713723368,
       "active": true
@@ -236,20 +236,9 @@
       "customMax": 74,
       "moduleName": "sensors",
       "inputName": "sensorDistance",
-      "lastValue": 35.78929518825547,
+      "lastValue": 33.0135849470997,
       "lastDirection": -1,
       "phaseOffset": -5.073526569073739,
-      "active": true
-    },
-    "sensors.sensorThreshold": {
-      "speedHz": 0.01,
-      "customMin": 0.01,
-      "customMax": 0.42000000000000004,
-      "moduleName": "sensors",
-      "inputName": "sensorThreshold",
-      "lastValue": 0.2017878580545781,
-      "lastDirection": 1,
-      "phaseOffset": -8.95155111274379,
       "active": true
     },
     "fluids.targetDensity": {
@@ -258,7 +247,7 @@
       "customMax": 5,
       "moduleName": "fluids",
       "inputName": "targetDensity",
-      "lastValue": 3.6729698619717994,
+      "lastValue": 3.4238722976700857,
       "lastDirection": -1,
       "phaseOffset": -6.30784680940123,
       "active": true
@@ -269,7 +258,7 @@
       "customMax": 100,
       "moduleName": "fluids",
       "inputName": "pressureMultiplier",
-      "lastValue": 40.82433637692078,
+      "lastValue": 44.390258503565576,
       "lastDirection": 1,
       "phaseOffset": -9.137577042505047,
       "active": true
@@ -280,7 +269,7 @@
       "customMax": 100,
       "moduleName": "fluids",
       "inputName": "influenceRadius",
-      "lastValue": 95.20472073839247,
+      "lastValue": 97.73951760898206,
       "lastDirection": 1,
       "phaseOffset": -7.440580871573982,
       "active": true
@@ -291,7 +280,7 @@
       "customMax": 68,
       "moduleName": "fluids",
       "inputName": "maxAcceleration",
-      "lastValue": 48.016203848490804,
+      "lastValue": 47.894541163228986,
       "lastDirection": -1,
       "phaseOffset": -5.581747960472942,
       "active": true
@@ -302,7 +291,7 @@
       "customMax": 0.7504915783575616,
       "moduleName": "sensors",
       "inputName": "sensorAngle",
-      "lastValue": 0.3995673523441571,
+      "lastValue": 0.37367504756080816,
       "lastDirection": -1,
       "phaseOffset": -5.022030635383583,
       "active": true
@@ -313,11 +302,22 @@
       "customMax": 10,
       "moduleName": "behavior",
       "inputName": "alignment",
-      "lastValue": 1.890357920212573,
+      "lastValue": 1.505767607651641,
       "lastDirection": -1,
       "phaseOffset": -4.512973244962044,
       "active": true
+    },
+    "sensors.sensorThreshold": {
+      "speedHz": 0.01,
+      "customMin": 0.01,
+      "customMax": 0.2,
+      "moduleName": "sensors",
+      "inputName": "sensorThreshold",
+      "lastValue": 0.04177609394977534,
+      "lastDirection": -1,
+      "phaseOffset": -4.700331547405991,
+      "active": true
     }
   },
-  "oscillatorsElapsedSeconds": 4238.383199997198
+  "oscillatorsElapsedSeconds": 4839.992999993085
 }
