@@ -123,7 +123,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     const initEngine = async () => {
       // Prevent multiple simultaneous initializations
       if (isInitializing) {
-        console.warn("[Engine] Initialization already in progress, skipping...");
         return;
       }
       
@@ -203,10 +202,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       // Validate and clamp canvas dimensions (must be within unsigned long range: 0 to 2^32-1)
       // This prevents negative dimensions and ensures valid WebGPU texture sizes
       if (canvasWidth < 0 || canvasWidth > 4294967295 || canvasHeight < 0 || canvasHeight > 4294967295) {
-        console.warn("[Engine] Invalid canvas dimensions detected, clamping:", canvasWidth, canvasHeight);
         canvasWidth = Math.max(1, Math.min(Math.abs(canvasWidth), 16384)); // Clamp to reasonable max, use abs for negatives
         canvasHeight = Math.max(1, Math.min(Math.abs(canvasHeight), 16384));
-        console.log("[Engine] Canvas dimensions clamped to:", canvasWidth, canvasHeight);
       }
 
       // Safari workaround: Ensure canvas has explicit width/height attributes
@@ -241,12 +238,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
               const adapter = await Promise.race([adapterPromise, timeoutPromise]);
               if (adapter) {
                 shouldUseWebGPU = true;
-                console.log("[Engine] WebGPU auto-detected and available");
-              } else {
-                console.warn("[Engine] WebGPU adapter request timed out, falling back to CPU");
               }
             } catch (error) {
-              console.warn("[Engine] WebGPU auto-detection failed, falling back to CPU:", error);
+              // Silently fall back to CPU if WebGPU detection fails
             }
           }
         }
@@ -293,8 +287,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           render,
           runtime: isAutoMode ? "auto" : shouldUseWebGPU ? "webgpu" : "cpu",
         });
-
-        console.log("[Engine] Initializing engine with runtime:", isAutoMode ? "auto" : shouldUseWebGPU ? "webgpu" : "cpu");
         
         // Initialize with timeout to prevent indefinite hanging
         const initPromise = engine.initialize();
@@ -303,8 +295,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         );
         
         await Promise.race([initPromise, timeoutPromise]);
-        
-        console.log("[Engine] Engine initialized successfully");
 
         // Set references
         engineRef.current = engine;
@@ -411,12 +401,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         dispatch(setError(errorMessage));
         dispatch(setInitializing(false));
         
-        // If WebGPU initialization failed and we're in auto mode, try falling back to CPU
-        if (isAutoMode && shouldUseWebGPU && errorMessage.includes("WebGPU")) {
-          console.warn("[Engine] WebGPU initialization failed, attempting CPU fallback...");
-          // The Engine class should handle fallback automatically, but if it doesn't,
-          // we could manually retry with CPU here if needed
-        }
+        // The Engine class should handle fallback automatically for auto mode
       }
     };
 

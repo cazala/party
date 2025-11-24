@@ -122,7 +122,6 @@ export class GPUResources {
 
     try {
       // Step 1: Request adapter with timeout
-      console.log("[WebGPU] Requesting adapter...");
       this.adapter = await withTimeout(
         navigator.gpu.requestAdapter(),
         5000,
@@ -132,10 +131,8 @@ export class GPUResources {
       if (!this.adapter) {
         throw new Error("Failed to get WebGPU adapter");
       }
-      console.log("[WebGPU] Adapter obtained");
 
       // Step 2: Request device with timeout
-      console.log("[WebGPU] Requesting device...");
       // Request the maximum buffer size limit to avoid buffer size errors
       const maxBufferSize = this.adapter.limits.maxBufferSize || this.adapter.limits.maxStorageBufferBindingSize;
       this.device = await withTimeout(
@@ -149,23 +146,18 @@ export class GPUResources {
         5000,
         "device request"
       );
-      console.log("[WebGPU] Device obtained");
 
       // Step 3: Get WebGPU context
-      console.log("[WebGPU] Getting WebGPU context...");
       this.context = this.canvas.getContext("webgpu");
       if (!this.context) {
         throw new Error("Failed to get WebGPU context");
       }
-      console.log("[WebGPU] Context obtained");
 
       // Step 4: Get preferred format
       // Note: getPreferredCanvasFormat() is synchronous, so we can't timeout it
       // If it hangs, the browser is likely in a bad state
-      console.log("[WebGPU] Getting preferred canvas format...");
       try {
         this.format = navigator.gpu.getPreferredCanvasFormat();
-        console.log("[WebGPU] Format:", this.format);
       } catch (error) {
         // Safari fallback: use a default format if getPreferredCanvasFormat fails
         console.warn("[WebGPU] getPreferredCanvasFormat failed, using fallback format:", error);
@@ -173,13 +165,11 @@ export class GPUResources {
       }
 
       // Step 5: Configure context
-      console.log("[WebGPU] Configuring context...");
       this.context.configure({
         device: this.device,
         format: this.format,
         alphaMode: "premultiplied",
       });
-      console.log("[WebGPU] Context configured successfully");
     } catch (error) {
       console.error("[WebGPU] Initialization failed:", error);
       // Clean up any partial state
