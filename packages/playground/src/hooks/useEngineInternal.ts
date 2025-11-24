@@ -48,6 +48,7 @@ import {
   setInitialized,
   setInitializing,
   setError,
+  setMaxParticles,
   setConstrainIterations as setConstrainIterationsAction,
   setGridCellSize as setGridCellSizeAction,
   setClearColor as setClearColorAction,
@@ -69,6 +70,7 @@ import {
   importLinesSettings,
   importJointsSettings,
 } from "../slices/modules";
+import { calculateMaxParticles } from "../utils/deviceCapabilities";
 
 export interface UseEngineProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -247,6 +249,12 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
         dispatch(setWebGPU(shouldUseWebGPU));
 
+        // Calculate appropriate maxParticles based on device capabilities
+        const maxParticles = await calculateMaxParticles();
+        
+        // Store maxParticles in Redux state
+        dispatch(setMaxParticles(maxParticles));
+
         // Create modules first
         const environment = new Environment({
           enabled: false,
@@ -280,12 +288,13 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         ];
         const render = [trails, lines, particles];
 
-        // Create engine
+        // Create engine with device-appropriate maxParticles
         const engine = new Engine({
           canvas,
           forces,
           render,
           runtime: isAutoMode ? "auto" : shouldUseWebGPU ? "webgpu" : "cpu",
+          maxParticles,
         });
         
         // Initialize with timeout to prevent indefinite hanging

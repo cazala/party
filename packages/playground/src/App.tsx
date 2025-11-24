@@ -9,6 +9,7 @@ import { ModulesSidebar } from "./components/ModulesSidebar";
 import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
 import { GlobalHotkeys } from "./components/GlobalHotkeys";
+import { MaxParticlesLabel } from "./components/MaxParticlesLabel";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
 import { useHomepage } from "./hooks/useHomepage";
@@ -78,6 +79,7 @@ function AppContent() {
           >
             <Canvas />
             <Overlay />
+            <MaxParticlesLabel />
             {isPlaying && (
               <button
                 onClick={stop}

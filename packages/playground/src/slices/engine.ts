@@ -64,6 +64,7 @@ export interface EngineState {
   constrainIterations: number;
   gridCellSize: number;
   maxNeighbors: number;
+  maxParticles: number;
   clearColor: { r: number; g: number; b: number; a: number };
   size: { width: number; height: number };
   camera: { x: number; y: number };
@@ -89,6 +90,7 @@ const initialState: EngineState = {
   constrainIterations: 1,
   gridCellSize: 16,
   maxNeighbors: 1000,
+  maxParticles: 40000,
   clearColor: { r: 0, g: 0, b: 0, a: 1 },
   size: { width: 800, height: 600 },
   camera: { x: 0, y: 0 },
@@ -131,6 +133,9 @@ export const engineSlice = createSlice({
     },
     setMaxNeighbors: (state, action: PayloadAction<number>) => {
       state.maxNeighbors = action.payload;
+    },
+    setMaxParticles: (state, action: PayloadAction<number>) => {
+      state.maxParticles = action.payload;
     },
     setClearColor: (
       state,
@@ -606,6 +611,7 @@ export const {
   setConstrainIterations,
   setGridCellSize,
   setMaxNeighbors,
+  setMaxParticles,
   setClearColor,
   setSize,
   setCamera,
@@ -636,6 +642,8 @@ export const selectGridCellSize = (state: { engine: EngineState }) =>
   state.engine.gridCellSize;
 export const selectMaxNeighbors = (state: { engine: EngineState }) =>
   state.engine.maxNeighbors;
+export const selectMaxParticles = (state: { engine: EngineState }) =>
+  state.engine.maxParticles;
 export const selectCamera = (state: { engine: EngineState }) =>
   state.engine.camera;
 export const selectZoom = (state: { engine: EngineState }) => state.engine.zoom;

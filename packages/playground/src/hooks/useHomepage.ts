@@ -53,7 +53,7 @@ export function useHomepage() {
           innerRadius: 50,
           squareSize: 200,
         });
-        setZoom(0.1);
+        setZoom(0.2);
         setCamera({ x: 0, y: 0 });
         setEnabled(true);
         setDecay(10);
@@ -96,7 +96,7 @@ export function useHomepage() {
     const intervalId = window.setInterval(() => {
       setActive(true);
       setStrength(100000);
-      setRadius(1000);
+      setRadius(700);
       setPosition(0, 0);
       setMode("repel");
       setCamera({ x: 0, y: 0 });
