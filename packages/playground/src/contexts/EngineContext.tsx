@@ -122,21 +122,18 @@ export function EngineProvider({ children }: EngineProviderProps) {
         LAYOUT_CONSTANTS.RIGHT_SIDEBAR_WIDTH;
       const minHeight =
         LAYOUT_CONSTANTS.TOPBAR_HEIGHT + LAYOUT_CONSTANTS.TOOLBAR_HEIGHT;
+      // Ensure we never return negative dimensions
+      const calculatedWidth = size.width > minWidth ? size.width - minWidth : 1;
+      const calculatedHeight = size.height > minHeight ? size.height - minHeight : 1;
       return {
-        width:
-          size.width === 0 || size.width >= minWidth
-            ? size.width - minWidth
-            : 1,
-        height:
-          size.height === 0 || size.height >= minHeight
-            ? size.height - minHeight
-            : 1,
+        width: Math.max(1, calculatedWidth),
+        height: Math.max(1, calculatedHeight),
       };
     } else {
-      // Full window when bars are hidden
+      // Full window when bars are hidden - ensure non-negative
       return {
-        width: size.width,
-        height: size.height,
+        width: Math.max(1, size.width || 1),
+        height: Math.max(1, size.height || 1),
       };
     }
   }, [size.width, size.height, barsVisible]);

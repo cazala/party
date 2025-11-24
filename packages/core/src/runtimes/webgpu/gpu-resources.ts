@@ -88,30 +88,106 @@ export class GPUResources {
       throw new Error("WebGPU not supported");
     }
 
-    this.adapter = await navigator.gpu.requestAdapter();
-
-    if (!this.adapter) {
-      throw new Error("Failed to get WebGPU adapter");
+    // Safari workaround: Ensure canvas is visible and has dimensions before WebGPU initialization
+    // Safari requires the canvas to be properly sized and in the DOM before getting WebGPU context
+    if (this.canvas.width === 0 || this.canvas.height === 0) {
+      // Set minimum dimensions if canvas has no size
+      const rect = this.canvas.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+      } else {
+        // Fallback to reasonable defaults
+        this.canvas.width = 800;
+        this.canvas.height = 600;
+      }
     }
 
-    this.device = await this.adapter.requestDevice({
-      requiredFeatures: this.requiredFeatures || [],
-      requiredLimits: {
-        maxStorageBufferBindingSize: this.adapter.limits.maxStorageBufferBindingSize,
-      },
-    });
+    // Helper function to add timeout to async operations
+    const withTimeout = <T>(
+      promise: Promise<T>,
+      timeoutMs: number,
+      operation: string
+    ): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`WebGPU ${operation} timed out after ${timeoutMs}ms`)),
+            timeoutMs
+          )
+        ),
+      ]);
+    };
 
-    this.context = this.canvas.getContext("webgpu");
-    if (!this.context) {
-      throw new Error("Failed to get WebGPU context");
+    try {
+      // Step 1: Request adapter with timeout
+      console.log("[WebGPU] Requesting adapter...");
+      this.adapter = await withTimeout(
+        navigator.gpu.requestAdapter(),
+        5000,
+        "adapter request"
+      );
+
+      if (!this.adapter) {
+        throw new Error("Failed to get WebGPU adapter");
+      }
+      console.log("[WebGPU] Adapter obtained");
+
+      // Step 2: Request device with timeout
+      console.log("[WebGPU] Requesting device...");
+      // Request the maximum buffer size limit to avoid buffer size errors
+      const maxBufferSize = this.adapter.limits.maxBufferSize || this.adapter.limits.maxStorageBufferBindingSize;
+      this.device = await withTimeout(
+        this.adapter.requestDevice({
+          requiredFeatures: this.requiredFeatures || [],
+          requiredLimits: {
+            maxStorageBufferBindingSize: this.adapter.limits.maxStorageBufferBindingSize,
+            maxBufferSize: maxBufferSize,
+          },
+        }),
+        5000,
+        "device request"
+      );
+      console.log("[WebGPU] Device obtained");
+
+      // Step 3: Get WebGPU context
+      console.log("[WebGPU] Getting WebGPU context...");
+      this.context = this.canvas.getContext("webgpu");
+      if (!this.context) {
+        throw new Error("Failed to get WebGPU context");
+      }
+      console.log("[WebGPU] Context obtained");
+
+      // Step 4: Get preferred format
+      // Note: getPreferredCanvasFormat() is synchronous, so we can't timeout it
+      // If it hangs, the browser is likely in a bad state
+      console.log("[WebGPU] Getting preferred canvas format...");
+      try {
+        this.format = navigator.gpu.getPreferredCanvasFormat();
+        console.log("[WebGPU] Format:", this.format);
+      } catch (error) {
+        // Safari fallback: use a default format if getPreferredCanvasFormat fails
+        console.warn("[WebGPU] getPreferredCanvasFormat failed, using fallback format:", error);
+        this.format = "bgra8unorm"; // Default format
+      }
+
+      // Step 5: Configure context
+      console.log("[WebGPU] Configuring context...");
+      this.context.configure({
+        device: this.device,
+        format: this.format,
+        alphaMode: "premultiplied",
+      });
+      console.log("[WebGPU] Context configured successfully");
+    } catch (error) {
+      console.error("[WebGPU] Initialization failed:", error);
+      // Clean up any partial state
+      this.adapter = null;
+      this.device = null;
+      this.context = null;
+      throw error;
     }
-
-    this.format = navigator.gpu.getPreferredCanvasFormat();
-    this.context.configure({
-      device: this.device,
-      format: this.format,
-      alphaMode: "premultiplied",
-    });
   }
 
   isInitialized(): boolean {
@@ -320,11 +396,23 @@ export class GPUResources {
   }
 
   ensureSceneTextures(width: number, height: number): void {
+    // Validate dimensions (must be within unsigned long range: 0 to 2^32-1)
+    // Also clamp to reasonable maximum to avoid GPU memory issues
+    const maxDimension = 16384; // Reasonable max texture size
+    const validWidth = Math.max(1, Math.min(Math.floor(width), maxDimension));
+    const validHeight = Math.max(1, Math.min(Math.floor(height), maxDimension));
+    
+    if (width !== validWidth || height !== validHeight) {
+      console.warn(
+        `[WebGPU] Texture dimensions clamped from ${width}x${height} to ${validWidth}x${validHeight}`
+      );
+    }
+
     const needInit = !this.scene;
     const changed =
       !this.sceneSize ||
-      this.sceneSize.width !== width ||
-      this.sceneSize.height !== height;
+      this.sceneSize.width !== validWidth ||
+      this.sceneSize.height !== validHeight;
     if (!needInit && !changed) return;
 
     // Destroy old textures if present
@@ -334,7 +422,7 @@ export class GPUResources {
     }
 
     const texDesc: GPUTextureDescriptor = {
-      size: { width, height, depthOrArrayLayers: 1 },
+      size: { width: validWidth, height: validHeight, depthOrArrayLayers: 1 },
       format: "rgba8unorm",
       usage:
         GPUTextureUsage.STORAGE_BINDING |
@@ -353,7 +441,7 @@ export class GPUResources {
       addressModeV: "clamp-to-edge",
     });
     this.scene = { a, b, viewA, viewB, sampler };
-    this.sceneSize = { width, height };
+    this.sceneSize = { width: validWidth, height: validHeight };
     this.currentScene = "A";
   }
 
