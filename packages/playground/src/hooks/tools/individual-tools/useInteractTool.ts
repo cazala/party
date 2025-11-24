@@ -3,6 +3,7 @@ import { useEngine } from "../../useEngine";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 import { drawDashedCircle, drawDashedLine, drawDot } from "../shared";
 import { useInteraction } from "../../modules/useInteraction";
+import { useHomepage } from "../../useHomepage";
 
 // Interaction tool configuration
 const MIN_RADIUS = 0;
@@ -19,6 +20,7 @@ type InteractionToolState = {
   // adjustment flags
   isAdjustingRadius: boolean;
   isAdjustingStrength: boolean;
+  isInteracting: boolean;
 
   // adjustment start
   adjustStartX: number;
@@ -32,6 +34,7 @@ const interactionToolState: InteractionToolState = {
   mouseY: 0,
   isAdjustingRadius: false,
   isAdjustingStrength: false,
+  isInteracting: false,
   adjustStartX: 0,
   adjustStartY: 0,
   adjustStartRadius: 0,
@@ -42,12 +45,16 @@ export function useInteractTool(isActive: boolean) {
   const { canvasRef, interaction, screenToWorld, engine } = useEngine();
   const { strength, radius, setStrength, setRadius, setMode } =
     useInteraction();
+  const { isPlaying } = useHomepage();
 
   const state = interactionToolState;
 
+  // Disable tool when demo is playing
+  const toolActive = isActive && !isPlaying;
+
   const renderOverlay: ToolRenderFunction = useCallback(
     (ctx, _size, mouse) => {
-      if (!isActive) return;
+      if (!toolActive) return;
 
       const centerX = mouse?.x ?? state.mouseX;
       const centerY = mouse?.y ?? state.mouseY;
@@ -138,12 +145,12 @@ export function useInteractTool(isActive: boolean) {
 
       ctx.restore();
     },
-    [isActive, engine, radius, strength]
+    [toolActive, engine, radius, strength]
   );
 
   const handlers: ToolHandlers = {
     onMouseDown: (ev) => {
-      if (!isActive || !interaction) return;
+      if (!toolActive || !interaction) return;
       ev.preventDefault();
       ev.stopPropagation();
       const canvas = canvasRef.current;
@@ -177,17 +184,18 @@ export function useInteractTool(isActive: boolean) {
       }
 
       // Normal interaction click: left = attract, right = repel
-      // const button = (ev as MouseEvent).button;
-      // const mode = button === 2 ? "repel" : "attract";
-      // setMode(mode);
+      state.isInteracting = true;
+      const button = (ev as MouseEvent).button;
+      const mode = button === 2 ? "repel" : "attract";
+      setMode(mode);
 
-      // const { x, y } = screenToWorld(sx, sy);
-      // interaction.setPosition(x, y);
-      // interaction.setActive(true);
+      const { x, y } = screenToWorld(sx, sy);
+      interaction.setPosition(x, y);
+      interaction.setActive(true);
     },
 
     onMouseMove: (ev) => {
-      if (!isActive || !interaction) return;
+      if (!toolActive || !interaction) return;
       ev.preventDefault();
       ev.stopPropagation();
       const rect = (ev.target as HTMLCanvasElement).getBoundingClientRect();
@@ -196,9 +204,11 @@ export function useInteractTool(isActive: boolean) {
       state.mouseX = sx;
       state.mouseY = sy;
 
-      // Always update interaction position
-      // const { x, y } = screenToWorld(sx, sy);
-      // interaction.setPosition(x, y);
+      // Update interaction position when actively interacting
+      if (state.isInteracting) {
+        const { x, y } = screenToWorld(sx, sy);
+        interaction.setPosition(x, y);
+      }
 
       // Radius adjustment drag
       if (state.isAdjustingRadius) {
@@ -230,7 +240,7 @@ export function useInteractTool(isActive: boolean) {
     },
 
     onMouseUp: (ev) => {
-      if (!isActive || !interaction) return;
+      if (!toolActive || !interaction) return;
       ev.preventDefault();
       ev.stopPropagation();
 
@@ -244,7 +254,10 @@ export function useInteractTool(isActive: boolean) {
         return;
       }
 
-      // interaction.setActive(false);
+      if (state.isInteracting) {
+        state.isInteracting = false;
+        interaction.setActive(false);
+      }
     },
   };
 

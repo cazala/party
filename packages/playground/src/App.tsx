@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Provider } from "react-redux";
 import { EngineProvider } from "./contexts/EngineContext";
 import { ResetProvider } from "./contexts/ResetContext";
@@ -20,7 +20,8 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode } = useUI();
   const { invertColors } = useRender();
-  const { hasStarted } = useHomepage();
+  const { hasStarted, isPlaying, play, stop } = useHomepage();
+  const hasAutoPlayed = useRef(false);
 
   // Handle fullscreen change events (when user exits via ESC or browser controls)
   useEffect(() => {
@@ -50,6 +51,14 @@ function AppContent() {
     };
   }, [restoreBarsFromFullscreenMode, barsVisible]);
 
+  // Start playing demos automatically when ready (only once)
+  useEffect(() => {
+    if (hasStarted && !hasAutoPlayed.current) {
+      hasAutoPlayed.current = true;
+      play();
+    }
+  }, [hasStarted, play]);
+
   return (
     <div
       className={`app ${
@@ -69,6 +78,27 @@ function AppContent() {
           >
             <Canvas />
             <Overlay />
+            {isPlaying && (
+              <button
+                onClick={stop}
+                style={{
+                  position: "absolute",
+                  top: "20px",
+                  right: "20px",
+                  padding: "10px 20px",
+                  backgroundColor: "rgba(0, 0, 0, 0.7)",
+                  color: "white",
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontFamily: "inherit",
+                  zIndex: 1000,
+                }}
+              >
+                Stop Demo
+              </button>
+            )}
           </div>
         </div>
         <div className="right-sidebar">

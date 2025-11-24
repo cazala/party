@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useUI } from "./useUI";
 import { useEngine } from "./useEngine";
 import { useEnvironment } from "./modules/useEnvironment";
@@ -8,6 +8,7 @@ import transitionSessionData from "../sessions/demo1.json";
 import demo1SessionData from "../sessions/demo2.json";
 import demo2SessionData from "../sessions/demo3.json";
 import demo3SessionData from "../sessions/demo4.json";
+import demo4SessionData from "../sessions/demo5.json";
 import { useInteraction, useTrails } from "./modules";
 import { useRender } from "./useRender";
 
@@ -19,6 +20,7 @@ export function useHomepage() {
     isWebGPU,
     spawnParticles,
     setZoom,
+    setCamera,
     setConstrainIterations,
     setCellSize,
     setMaxNeighbors,
@@ -31,6 +33,9 @@ export function useHomepage() {
   const { setInvertColors } = useRender();
 
   const [hasStarted, setHasStarted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [interactionInterval, setInteractionInterval] = useState<number | null>(null);
+
   useEffect(() => {
     if (!hasStarted && isInitialized && !isInitializing) {
       setHasStarted(true);
@@ -44,28 +49,18 @@ export function useHomepage() {
           particleSize: 3,
           radius: 100,
           colors: ["#ffffff"],
-          velocityConfig: { speed: 0, direction: "random", angle: 0 },
+          velocityConfig: { speed: 100, direction: "random", angle: 0 },
           innerRadius: 50,
           squareSize: 200,
         });
-        // Start with a random demo
-        const demos = [demo1SessionData, demo2SessionData, demo3SessionData];
-        const randomDemo = demos[Math.floor(Math.random() * demos.length)] as SessionData;
-        quickLoadSessionData(randomDemo);
         setZoom(0.1);
+        setCamera({ x: 0, y: 0 });
         setEnabled(true);
         setDecay(10);
         setConstrainIterations(1);
         setCellSize(16);
         setMaxNeighbors(100);
         setInvertColors(true);
-        setInterval(() => {
-          setActive(true);
-          setStrength(100000);
-          setRadius(1000);
-          setPosition(0, 0);
-          setMode("repel");
-        }, 16);
       } else {
         setGravityStrength(1000);
       }
@@ -79,22 +74,53 @@ export function useHomepage() {
     setGravityStrength,
     spawnParticles,
     setZoom,
-    quickLoadSessionData,
     setConstrainIterations,
     setCellSize,
     setMaxNeighbors,
     setEnabled,
     setDecay,
-    setActive,
-    setStrength,
-    setRadius,
-    setPosition,
-    setMode,
+    setInvertColors,
   ]);
+
+  const play = useCallback(() => {
+    if (!hasStarted || !isWebGPU) return;
+
+    setIsPlaying(true);
+
+    // Start with a random demo
+    const demos = [demo1SessionData, demo2SessionData, demo3SessionData];
+    const randomDemo = demos[Math.floor(Math.random() * demos.length)] as SessionData;
+    quickLoadSessionData(randomDemo);
+
+    // Start the interaction interval
+    const intervalId = window.setInterval(() => {
+      setActive(true);
+      setStrength(100000);
+      setRadius(1000);
+      setPosition(0, 0);
+      setMode("repel");
+      setCamera({ x: 0, y: 0 });
+    }, 16);
+    setInteractionInterval(intervalId);
+  }, [hasStarted, isWebGPU, quickLoadSessionData, setActive, setStrength, setRadius, setPosition, setMode, setCamera]);
+
+  const stop = useCallback(() => {
+    setIsPlaying(false);
+
+    // Clear the interaction interval
+    if (interactionInterval !== null) {
+      clearInterval(interactionInterval);
+      setInteractionInterval(null);
+    }
+
+    // Deactivate interaction
+    setActive(false);
+    setStrength(10000);
+  }, [interactionInterval, setActive]);
 
   // Rotate demos with transitions at random intervals between 20-30 seconds
   useEffect(() => {
-    if (!hasStarted || !isWebGPU) return;
+    if (!hasStarted || !isWebGPU || !isPlaying) return;
 
     const shuffleArray = <T,>(array: T[]): T[] => {
       const shuffled = [...array];
@@ -106,20 +132,22 @@ export function useHomepage() {
     };
 
     const createDemoSequence = () => {
-      const demos = [demo1SessionData, demo2SessionData, demo3SessionData];
+      const demos = [demo1SessionData, demo2SessionData, demo3SessionData, demo4SessionData] as SessionData[];
+      const transition: SessionData = transitionSessionData as SessionData;
+
       const shuffledDemos = shuffleArray(demos);
       // Interleave demos with transitions: demo → transition → demo → transition → demo
       const sequence: SessionData[] = [];
       shuffledDemos.forEach((demo, index) => {
         sequence.push(demo as SessionData);
         if (index < shuffledDemos.length - 1) {
-          sequence.push(transitionSessionData as SessionData);
+          sequence.push(transition);
         }
       });
-      return sequence;
+      return [...sequence, transition];
     };
 
-    const getRandomDelay = () => Math.random() * (30000 - 20000) + 20000; // 20-30 seconds
+    const getRandomDelay = () => Math.random() * (30000 - 10000) + 10000; // 10-30 seconds
 
     let timeoutId: number;
     let currentSequence = createDemoSequence();
@@ -135,7 +163,14 @@ export function useHomepage() {
           currentIndex = 0;
         }
 
-        quickLoadSessionData(currentSequence[currentIndex]);
+        const sessionData = currentSequence[currentIndex];
+        if (sessionData.name === "Demo5") {
+          setEnabled(false);
+        } else {
+          setEnabled(true);
+        }
+
+        quickLoadSessionData(sessionData);
 
         scheduleNext();
       }, getRandomDelay());
@@ -146,9 +181,12 @@ export function useHomepage() {
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [hasStarted, isWebGPU, quickLoadSessionData]);
+  }, [hasStarted, isWebGPU, isPlaying, quickLoadSessionData]);
 
   return {
     hasStarted,
+    isPlaying,
+    play,
+    stop,
   };
 }
