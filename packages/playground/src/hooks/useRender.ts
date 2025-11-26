@@ -11,15 +11,19 @@ export function useRender() {
   const dispatch = useAppDispatch();
   const invertColors = useAppSelector(selectInvertColors);
 
+  const toggleInvertColorsCallback = useCallback(
+    () => dispatch(toggleInvertColors()),
+    [dispatch]
+  );
+
+  const setInvertColorsCallback = useCallback(
+    (v: boolean) => dispatch(setInvertColors(v)),
+    [dispatch]
+  );
+
   return {
     invertColors,
-    toggleInvertColors: useCallback(
-      () => dispatch(toggleInvertColors()),
-      [dispatch]
-    ),
-    setInvertColors: useCallback(
-      (v: boolean) => dispatch(setInvertColors(v)),
-      [dispatch]
-    ),
+    toggleInvertColors: toggleInvertColorsCallback,
+    setInvertColors: setInvertColorsCallback,
   };
 }

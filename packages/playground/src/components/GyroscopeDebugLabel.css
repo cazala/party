@@ -1,0 +1,21 @@
+.gyroscope-debug-label {
+  position: absolute;
+  top: 60px;
+  left: 20px;
+  padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+  z-index: 1000;
+  pointer-events: none;
+  user-select: none;
+  line-height: 1.4;
+}
+
+.gyroscope-debug-label div {
+  margin: 2px 0;
+}
+

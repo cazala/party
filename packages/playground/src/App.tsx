@@ -10,6 +10,7 @@ import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
 import { GlobalHotkeys } from "./components/GlobalHotkeys";
 import { MaxParticlesLabel } from "./components/MaxParticlesLabel";
+import { GyroscopeDebugLabel } from "./components/GyroscopeDebugLabel";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
 import { useHomepage } from "./hooks/useHomepage";
@@ -21,7 +22,7 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode } = useUI();
   const { invertColors } = useRender();
-  const { hasStarted, isPlaying, play, stop } = useHomepage();
+  const { hasStarted, isPlaying, play, stop, gyroData } = useHomepage();
   const hasAutoPlayed = useRef(false);
 
   // Handle fullscreen change events (when user exits via ESC or browser controls)
@@ -80,6 +81,7 @@ function AppContent() {
             <Canvas />
             <Overlay />
             <MaxParticlesLabel />
+            <GyroscopeDebugLabel gyroData={gyroData} />
             {isPlaying && (
               <button
                 onClick={stop}
