@@ -98,7 +98,7 @@ export async function calculateMaxParticles(preferredMaxParticles?: number): Pro
         const roundedLimit = Math.round(calculatedLimit / 1000) * 1000;
         
         // Clamp between reasonable min/max for mobile (8k-10k range)
-        const clampedLimit = Math.max(8000, Math.min(10000, roundedLimit));
+        const clampedLimit = Math.max(mobileBaseLimit, Math.min(10000, roundedLimit));
         
         return preferredMaxParticles ? Math.min(preferredMaxParticles, clampedLimit) : clampedLimit;
       } else {
@@ -109,7 +109,7 @@ export async function calculateMaxParticles(preferredMaxParticles?: number): Pro
         const roundedLimit = Math.round(calculatedLimit / 1000) * 1000;
         
         // Clamp between reasonable min/max
-        const clampedLimit = Math.max(8000, Math.min(100000, roundedLimit));
+        const clampedLimit = Math.max(mobileBaseLimit, Math.min(100000, roundedLimit));
         
         return preferredMaxParticles ? Math.min(preferredMaxParticles, clampedLimit) : clampedLimit;
       }

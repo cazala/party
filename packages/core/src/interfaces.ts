@@ -348,7 +348,11 @@ export abstract class AbstractEngine implements IEngine {
   // Protected helper methods
   protected updateFPS(dt: number): void {
     if (dt > 0) {
-      const instantFps = 1 / dt;
+      // Clamp dt to a minimum to prevent unrealistic FPS values
+      // Minimum dt corresponds to maximum FPS (e.g., 1/144 = ~0.0069s for 144 FPS max)
+      const minDt = 1 / 144; // Cap at 144 FPS maximum
+      const clampedDt = Math.max(dt, minDt);
+      const instantFps = 1 / clampedDt;
       this.fpsEstimate =
         this.fpsEstimate * (1 - this.fpsSmoothing) +
         instantFps * this.fpsSmoothing;
