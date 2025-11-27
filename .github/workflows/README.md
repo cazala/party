@@ -4,8 +4,8 @@
 
 This workflow automatically deploys the playground to Cloudflare Pages:
 
-- **Production**: Deploys to production on every push to `master` branch
-- **Preview**: Creates preview deployments for every pull request to `master`
+- **Production**: Deploys to production on every push to `main` or `master` branch
+- **Preview**: Creates preview deployments for every pull request to `main` or `master`
 
 ### Setup Instructions
 
