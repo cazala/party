@@ -126,35 +126,9 @@ export function useHomepage() {
   useEffect(() => {
     if (!hasStarted || !isWebGPU || !isPlaying) return;
 
-    const shuffleArray = <T,>(array: T[]): T[] => {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      return shuffled;
-    };
-
-    const createDemoSequence = () => {
-      const transition: SessionData = demo1SessionData as SessionData;
-      if (isMobileDevice()) {
-        return [demo3SessionData, transition, demo2SessionData, transition, demo4SessionData,  demo5SessionData] as SessionData[];
-      }
-      const demos = [demo2SessionData, demo3SessionData, demo4SessionData, demo5SessionData] as SessionData[];
-
-      const shuffledDemos = shuffleArray(demos);
-      // Interleave demos with transitions: demo → transition → demo → transition → demo
-      const sequence: SessionData[] = [];
-      shuffledDemos.forEach((demo, index) => {
-        sequence.push(demo as SessionData);
-        if (index < shuffledDemos.length - 1) {
-          sequence.push(transition);
-        }
-      });
-      return [...sequence, transition];
-    };
-
-    const getRandomDelay = () => Math.random() * (30000 - 10000) + 10000; // 10-30 seconds
+    if (isMobileDevice()) {
+      demo3SessionData.modules.environment.gravityStrength = 1000;
+    }
 
     let timeoutId: number;
     const sequence: { sessionData: SessionData, delay: number }[] = [];
