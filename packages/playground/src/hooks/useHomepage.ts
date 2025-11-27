@@ -120,7 +120,10 @@ export function useHomepage() {
     setZoom(1);
     setTrailsEnabled(false);
     setInvertColors(false);
-  }, [interactionInterval, setActive]);
+    setConstrainIterations(50);
+    setCellSize(16);
+    setMaxNeighbors(1000);
+  }, [interactionInterval, setActive, setZoom, setTrailsEnabled, setInvertColors, setConstrainIterations, setCellSize, setMaxNeighbors]);
 
   // Rotate demos with transitions at random intervals between 20-30 seconds
   useEffect(() => {
