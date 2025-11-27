@@ -47,6 +47,23 @@ jobs:
       - name: Build
         run: npx pnpm@9.15.0 --filter=@cazala/party build && npx pnpm@9.15.0 --filter=@cazala/playground build
 
+      - name: Install Wrangler
+        run: npm install -g wrangler@3
+
+      - name: Create Cloudflare Pages project if it doesn't exist
+        run: |
+          # Check if project exists, create if it doesn't
+          if ! wrangler pages project list --account-id=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} 2>/dev/null | grep -q "party"; then
+            echo "Creating Cloudflare Pages project 'party'..."
+            wrangler pages project create party \
+              --account-id=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} \
+              --production-branch=main || true
+          else
+            echo "Project 'party' already exists"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
@@ -55,6 +72,5 @@ jobs:
           projectName: party
           directory: packages/playground/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          # Wrangler version (optional, defaults to latest)
           wranglerVersion: '3'
 

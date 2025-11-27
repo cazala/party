@@ -30,10 +30,12 @@ This workflow automatically deploys the playground to Cloudflare Pages:
      - `CLOUDFLARE_API_TOKEN`: Your API token from step 1
      - `CLOUDFLARE_ACCOUNT_ID`: Your account ID from step 2
 
-4. **Create Cloudflare Pages Project** (if not already created):
-   - Go to Cloudflare Dashboard > Pages
-   - Create a new project named `party-playground` (or update the workflow with your project name)
-   - You can skip the build settings since we're using GitHub Actions
+4. **Create Cloudflare Pages Project** (optional):
+   - The workflow will automatically create the project named `party` if it doesn't exist
+   - Alternatively, you can create it manually:
+     - Go to Cloudflare Dashboard > Pages
+     - Create a new project named `party`
+     - You can skip the build settings since we're using GitHub Actions
 
 ### Workflow Details
 
