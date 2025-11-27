@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { Provider } from "react-redux";
 import { EngineProvider } from "./contexts/EngineContext";
 import { ResetProvider } from "./contexts/ResetContext";
@@ -11,6 +11,7 @@ import { SystemSidebar } from "./components/SystemSidebar";
 import { GlobalHotkeys } from "./components/GlobalHotkeys";
 import { GyroscopeDebugLabel } from "./components/GyroscopeDebugLabel";
 import { Homepage } from "./components/Homepage";
+import { Stats } from "./components/Stats";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
 import { useDemo } from "./hooks/useDemo";
@@ -36,23 +37,9 @@ function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors, setInvertColors } = useRender();
   const { hasStarted, isPlaying: isDemoPlaying, play, stop, gyroData } = useDemo();
-  const { spawnParticles, play: playEngine, maxParticles, getCount, getFPS } = useEngine();
+  const { spawnParticles, play: playEngine } = useEngine();
   const { clearModuleOscillators } = useOscillators();
   const { setIsResetting } = useReset();
-  const [particleCount, setParticleCount] = useState(0);
-  const [fps, setFPS] = useState(0);
-
-  console.log('maxParticles', maxParticles);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setParticleCount(getCount());
-      setFPS(getFPS());
-      console.log('particleCount', particleCount);
-      console.log('fps', fps);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [getCount, getFPS, particleCount, fps]);
 
   const {
     reset: resetEnvironment,
@@ -193,8 +180,9 @@ function AppContent() {
           >
               <Canvas className="canvas" isPlaying={isDemoPlaying} />
               <Overlay isPlaying={isDemoPlaying} />
-            <Homepage onPlay={handlePlay} isVisible={!barsVisible} maxParticles={maxParticles} particleCount={particleCount} fps={fps}/>
+            <Homepage onPlay={handlePlay} isVisible={!barsVisible} />
             <GyroscopeDebugLabel gyroData={gyroData} />
+            <Stats />
           </div>
         </div>
         <div className="right-sidebar">

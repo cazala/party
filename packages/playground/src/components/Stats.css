@@ -1,0 +1,26 @@
+.stats {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.stats-text {
+  color: var(--color-text-secondary, #a3a3b3);
+  font-size: 0.7rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+}
+
+@media (max-width: 768px) {
+  .stats {
+    bottom: 0.5rem;
+    right: 0.5rem;
+  }
+  .stats-text {
+    font-size: 0.6rem;
+  }
+}
+

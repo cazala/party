@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useUI } from "./useUI";
 import { useEngine } from "./useEngine";
 import { useInit } from "./useInit";
@@ -16,6 +16,7 @@ import { useOscillators } from "./useOscillators";
 import { useReset } from "../contexts/ResetContext";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import { isMobileDevice, calculateMaxParticles } from "../utils/deviceCapabilities";
+import { SpawnParticlesConfig } from "../slices/engine";
 
 export function useDemo() {
   const { setBarsVisibility } = useUI();
@@ -51,6 +52,7 @@ export function useDemo() {
   const [demoParticleCount, setDemoParticleCount] = useState(0);
   const [interactionInterval, setInteractionInterval] = useState<number | null>(null);
   const [gyroData, setGyroData] = useState<{ beta: number; gamma: number; angle: number } | null>({ beta: 0, gamma: 0, angle: 90 });
+  const currentSpawnConfigRef = useRef<SpawnParticlesConfig | null>(null);
 
   useEffect(() => {
     if (!hasStarted && isInitialized && !isInitializing) {
@@ -65,17 +67,19 @@ export function useDemo() {
         if (isWebGPU) {
           // Calculate maxParticles for homepage demo based on device capabilities
 
-            spawnParticles({
+            const spawnConfig = {
               numParticles: demoParticleCount,
-              shape: "random",
+              shape: "random" as const,
               spacing: 20,
               particleSize: 3,
               radius: 100,
               colors: ["#ffffff"],
-              velocityConfig: { speed: 100, direction: "random", angle: 0 },
+              velocityConfig: { speed: 100, direction: "random" as const, angle: 0 },
               innerRadius: 50,
               squareSize: 200,
-            });
+            };
+            currentSpawnConfigRef.current = spawnConfig;
+            spawnParticles(spawnConfig);
           setZoom(isMobileDevice() ? 0.2 : 0.3);
           setCamera({ x: 0, y: 0 });
           setTrailsEnabled(true);
@@ -418,12 +422,29 @@ export function useDemo() {
     };
   }, [hasStarted, isWebGPU, setCustomAngleDegrees]);
 
+  const reduceParticles = useCallback(() => {
+    if (!currentSpawnConfigRef.current || !isWebGPU) return;
+    
+    const config = currentSpawnConfigRef.current;
+    const newCount = Math.floor(config.numParticles / 2);
+    
+    if (newCount > 0) {
+      const newConfig = {
+        ...config,
+        numParticles: newCount,
+      };
+      currentSpawnConfigRef.current = newConfig;
+      spawnParticles(newConfig);
+    }
+  }, [isWebGPU, spawnParticles]);
+
   return {
     hasStarted,
     isPlaying,
     play,
     stop,
     gyroData, // Export for debug label
+    reduceParticles,
   };
 }
 

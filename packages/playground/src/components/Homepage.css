@@ -99,10 +99,12 @@
   .homepage-subtitle {
     font-size: 0.8rem;
     margin: 0 0 2rem 0;
+    font-weight: bold;
   }
   .homepage-button {
     font-size: 0.8rem;
     padding: 0.5rem 1rem;
+    font-weight: bold;
   }
 }
 

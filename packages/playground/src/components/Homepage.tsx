@@ -8,12 +8,9 @@ import "./Homepage.css";
 interface HomepageProps {
   onPlay: () => void;
   isVisible: boolean;
-  maxParticles: number;
-  particleCount: number;
-  fps: number;
 }
 
-export function Homepage({ onPlay, isVisible, maxParticles, particleCount, fps }: HomepageProps) {
+export function Homepage({ onPlay, isVisible }: HomepageProps) {
   const [showWarning, setShowWarning] = useState(false);
   const isMobile = isMobileDeviceSync();
   const { canvasRef, screenToWorld } = useEngine();
@@ -142,9 +139,6 @@ export function Homepage({ onPlay, isVisible, maxParticles, particleCount, fps }
     <div className="homepage">
       <h1 className="homepage-title">Party</h1>
       <p className="homepage-subtitle">particle system and physics engine</p>
-      {/* <p className="homepage-subtitle">max particles: {maxParticles}</p>
-      <p className="homepage-subtitle">particle count: {particleCount}</p>
-      <p className="homepage-subtitle">fps: {fps}</p> */}
       <div className="homepage-buttons">
         <button className="homepage-button homepage-button-play" onClick={handlePlayClick}>
           Play
