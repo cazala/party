@@ -33,7 +33,7 @@ export function TopBar() {
   const { removeAllLines } = useLines();
   const { resetHistory, undo, redo, canUndo, canRedo } = useHistory();
   const { toggleFullscreenMode } = useUI();
-  const { isPlaying: isDemoPlaying, play: playDemo, stop: stopDemo } = useHomepage();
+  const { isHomepage: isDemoPlaying, play: playDemo, stop: stopDemo } = useHomepage();
   const { setEnabled: setTrailsEnabled, setDecay: setTrailsDecay } = useTrails();
 
   const handlePlayPause = () => {

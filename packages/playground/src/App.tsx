@@ -35,7 +35,7 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors, setInvertColors } = useRender();
-  const { hasStarted, isPlaying, play, stop, gyroData } = useHomepage();
+  const { hasStarted, isHomepage, play, stop, gyroData } = useHomepage();
   const { spawnParticles, play: playEngine, maxParticles, getCount, getFPS } = useEngine();
   const { clearModuleOscillators } = useOscillators();
   const { setIsResetting } = useReset();
@@ -191,8 +191,8 @@ function AppContent() {
             className={`canvas-container ${invertColors ? "invert-colors" : ""
               }`}
           >
-            <Canvas className="canvas" isPlaying={isPlaying} />
-            <Overlay isPlaying={isPlaying} />
+              <Canvas className="canvas" isPlaying={isHomepage} />
+              <Overlay isPlaying={isHomepage} />
             <Homepage onPlay={handlePlay} isVisible={!barsVisible} maxParticles={maxParticles} particleCount={particleCount} fps={fps}/>
             <GyroscopeDebugLabel gyroData={gyroData} />
           </div>

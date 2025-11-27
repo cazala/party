@@ -47,41 +47,47 @@ export function useHomepage() {
   const { reset: resetJoints } = useJoints();
 
   const [hasStarted, setHasStarted] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isHomepage, setIsHomepage] = useState(false);
+  const [demoParticleCount, setDemoParticleCount] = useState(0);
   const [interactionInterval, setInteractionInterval] = useState<number | null>(null);
   const [gyroData, setGyroData] = useState<{ beta: number; gamma: number; angle: number } | null>({ beta: 0, gamma: 0, angle: 90 });
 
   useEffect(() => {
     if (!hasStarted && isInitialized && !isInitializing) {
+      if (demoParticleCount === 0) {
+        calculateMaxParticles().then((maxParticles) => {
+          setDemoParticleCount(maxParticles);
+        });
+      } else {
       setHasStarted(true);
       setBarsVisibility(false);
       setInvertColors(true);
-      if (isWebGPU) {
-        // Calculate maxParticles for homepage demo based on device capabilities
-        calculateMaxParticles().then((maxParticles) => {
-          spawnParticles({
-            numParticles: maxParticles,
-            shape: "random",
-            spacing: 20,
-            particleSize: 3,
-            radius: 100,
-            colors: ["#ffffff"],
-            velocityConfig: { speed: 100, direction: "random", angle: 0 },
-            innerRadius: 50,
-            squareSize: 200,
-          });
-        });
-        setZoom(isMobileDevice() ? 0.2 : 0.3);
-        setCamera({ x: 0, y: 0 });
-        setTrailsEnabled(true);
-        setDecay(10);
-        setConstrainIterations(1);
-        setCellSize(16);
-        setMaxNeighbors(100);
-      } else {
-        setGravityStrength(1000);
-        setGravityMode("custom");
-        setCustomAngleDegrees(90);
+        if (isWebGPU) {
+          // Calculate maxParticles for homepage demo based on device capabilities
+
+            spawnParticles({
+              numParticles: demoParticleCount,
+              shape: "random",
+              spacing: 20,
+              particleSize: 3,
+              radius: 100,
+              colors: ["#ffffff"],
+              velocityConfig: { speed: 100, direction: "random", angle: 0 },
+              innerRadius: 50,
+              squareSize: 200,
+            });
+          setZoom(isMobileDevice() ? 0.2 : 0.3);
+          setCamera({ x: 0, y: 0 });
+          setTrailsEnabled(true);
+          setDecay(10);
+          setConstrainIterations(1);
+          setCellSize(16);
+          setMaxNeighbors(100);
+        } else {
+          setGravityStrength(1000);
+          setGravityMode("custom");
+          setCustomAngleDegrees(90);
+        }
       }
     }
   }, [
@@ -102,12 +108,13 @@ export function useHomepage() {
     setTrailsEnabled,
     setDecay,
     setInvertColors,
+    demoParticleCount,
   ]);
 
   const play = useCallback((useInteraction: boolean = true) => {
     if (!hasStarted || !isWebGPU) return;
 
-    setIsPlaying(true);
+    setIsHomepage(true);
 
     // Only start the interaction interval if useInteraction is true (homepage demo)
     if (useInteraction) {
@@ -124,7 +131,7 @@ export function useHomepage() {
   }, [hasStarted, isWebGPU, quickLoadSessionData, setActive, setStrength, setRadius, setPosition, setMode, setCamera]);
 
   const stop = useCallback(() => {
-    setIsPlaying(false);
+    setIsHomepage(false);
 
     // Clear the interaction interval
     if (interactionInterval !== null) {
@@ -193,7 +200,7 @@ export function useHomepage() {
 
   // Rotate demos with transitions at random intervals between 20-30 seconds
   useEffect(() => {
-    if (!hasStarted || !isWebGPU || !isPlaying) return;
+    if (!hasStarted || !isWebGPU || !isHomepage) return;
 
     if (isMobileDevice()) {
       demo3SessionData.modules.environment.gravityStrength = 1000;
@@ -243,7 +250,7 @@ export function useHomepage() {
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [hasStarted, isWebGPU, isPlaying, quickLoadSessionData]);
+  }, [hasStarted, isWebGPU, isHomepage, quickLoadSessionData]);
 
   // Gyroscope/device orientation handler for CPU mode
   useEffect(() => {
@@ -413,7 +420,7 @@ export function useHomepage() {
 
   return {
     hasStarted,
-    isPlaying,
+    isHomepage,
     play,
     stop,
     gyroData, // Export for debug label

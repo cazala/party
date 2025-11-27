@@ -15,14 +15,14 @@ import { useGrabTool } from "./individual-tools/useGrabTool";
 import { useDrawTool } from "./individual-tools/useDrawTool";
 import { useShapeTool } from "./individual-tools/useShapeTool";
 
-export function useTools(isPlaying: boolean = false): UseToolsReturn {
+export function useTools(isHomepage: boolean = false): UseToolsReturn {
   const { isInitialized } = useEngine();
   const toolManager = useToolManager();
   const overlay = useOverlay();
 
   // Initialize all tool hooks
   const spawnTool = useSpawnTool(toolManager.isSpawnMode);
-  const interactionTool = useInteractTool(toolManager.isInteractionMode, isPlaying);
+  const interactionTool = useInteractTool(toolManager.isInteractionMode, isHomepage);
   const removeTool = useRemoveTool(toolManager.isRemoveMode);
   const jointTool = useJointTool(toolManager.isJointMode);
   const pinTool = usePinTool(toolManager.isPinMode);

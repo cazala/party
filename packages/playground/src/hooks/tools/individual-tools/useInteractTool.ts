@@ -40,15 +40,15 @@ const interactionToolState: InteractionToolState = {
   adjustStartStrength: 0,
 };
 
-export function useInteractTool(isActive: boolean, isPlaying: boolean) {
+export function useInteractTool(isActive: boolean, isHomepage: boolean) {
   const { canvasRef, interaction, screenToWorld, engine } = useEngine();
   const { strength, radius, setStrength, setRadius, setMode } =
     useInteraction();
 
   const state = interactionToolState;
 
-  // Disable tool when demo is playing
-  const toolActive = isActive && !isPlaying;
+  // Disable tool when homepage is active
+  const toolActive = isActive && !isHomepage;
 
   const renderOverlay: ToolRenderFunction = useCallback(
     (ctx, _size, mouse) => {
