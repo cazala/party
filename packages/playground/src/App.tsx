@@ -9,7 +9,6 @@ import { ModulesSidebar } from "./components/ModulesSidebar";
 import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
 import { GlobalHotkeys } from "./components/GlobalHotkeys";
-import { MaxParticlesLabel } from "./components/MaxParticlesLabel";
 import { GyroscopeDebugLabel } from "./components/GyroscopeDebugLabel";
 import { Homepage } from "./components/Homepage";
 import { useUI } from "./hooks/useUI";
@@ -26,7 +25,6 @@ import {
   useBehavior,
   useSensors,
   useJoints,
-  useTrails,
 } from "./hooks/modules";
 import { RESTART_AFFECTED_MODULES } from "./constants/modules";
 import { store } from "./slices/store";
@@ -38,8 +36,7 @@ function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors, setInvertColors } = useRender();
   const { hasStarted, isPlaying, play, stop, gyroData } = useHomepage();
-  const { spawnParticles, play: playEngine, setZoom } = useEngine();
-  const { setEnabled: setTrailsEnabled } = useTrails();
+  const { spawnParticles, play: playEngine } = useEngine();
   const { clearModuleOscillators } = useOscillators();
   const { setIsResetting } = useReset();
 
@@ -76,12 +73,12 @@ function AppContent() {
 
     // Reset all modules (like clicking the Reset button)
     setIsResetting(true);
-    
+
     // Clear oscillators for each module first
     RESTART_AFFECTED_MODULES.forEach(moduleName => {
       clearModuleOscillators(moduleName);
     });
-    
+
     // Then reset all module states
     resetEnvironment();
     resetBoundary();
@@ -90,7 +87,7 @@ function AppContent() {
     resetBehavior();
     resetSensors();
     resetJoints();
-    
+
     // Clear reset flag after a brief delay
     setTimeout(() => setIsResetting(false), 10);
 
@@ -109,7 +106,7 @@ function AppContent() {
       particleMass: 1,
       gridJoints: false,
     });
-    
+
     // Start the engine
     playEngine();
   }, [
@@ -167,9 +164,8 @@ function AppContent() {
 
   return (
     <div
-      className={`app ${
-        barsVisible && hasStarted ? "bars-visible" : "bars-hidden"
-      }`}
+      className={`app ${barsVisible && hasStarted ? "bars-visible" : "bars-hidden"
+        }`}
     >
       <TopBar />
       <GlobalHotkeys />
@@ -178,36 +174,13 @@ function AppContent() {
         <div className="playground">
           <Toolbar />
           <div
-            className={`canvas-container ${
-              invertColors ? "invert-colors" : ""
-            }`}
+            className={`canvas-container ${invertColors ? "invert-colors" : ""
+              }`}
           >
             <Canvas className="canvas" isPlaying={isPlaying} />
             <Overlay isPlaying={isPlaying} />
             <Homepage onPlay={handlePlay} isVisible={!barsVisible} />
-            <MaxParticlesLabel />
             <GyroscopeDebugLabel gyroData={gyroData} />
-            {isPlaying && (
-              <button
-                onClick={stop}
-                style={{
-                  position: "absolute",
-                  top: "20px",
-                  right: "20px",
-                  padding: "10px 20px",
-                  backgroundColor: "rgba(0, 0, 0, 0.7)",
-                  color: "white",
-                  border: "1px solid rgba(255, 255, 255, 0.3)",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontFamily: "inherit",
-                  zIndex: 1000,
-                }}
-              >
-                Stop Demo
-              </button>
-            )}
           </div>
         </div>
         <div className="right-sidebar">
