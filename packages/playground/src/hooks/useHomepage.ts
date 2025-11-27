@@ -4,11 +4,11 @@ import { useEngine } from "./useEngine";
 import { useEnvironment } from "./modules/useEnvironment";
 import { useSession } from "./useSession";
 import { SessionData } from "../types/session";
-import transitionSessionData from "../sessions/demo1.json";
-import demo1SessionData from "../sessions/demo2.json";
-import demo2SessionData from "../sessions/demo3.json";
-import demo3SessionData from "../sessions/demo4.json";
-import demo4SessionData from "../sessions/demo5.json";
+import demo1SessionData from "../sessions/demo1.json";
+import demo2SessionData from "../sessions/demo2.json";
+import demo3SessionData from "../sessions/demo3.json";
+import demo4SessionData from "../sessions/demo4.json";
+import demo5SessionData from "../sessions/demo5.json";
 import { useInteraction, useTrails } from "./modules";
 import { useRender } from "./useRender";
 import { isMobileDevice } from "../utils/deviceCapabilities";
@@ -45,7 +45,7 @@ export function useHomepage() {
       setInvertColors(true);
       if (isWebGPU) {
         spawnParticles({
-          numParticles: 40000,
+          numParticles: 35000,
           shape: "random",
           spacing: 20,
           particleSize: 3,
@@ -93,11 +93,6 @@ export function useHomepage() {
 
     setIsPlaying(true);
 
-    // Start with a random demo
-    const demos = [demo1SessionData, demo2SessionData, demo3SessionData];
-    const randomDemo = demos[Math.floor(Math.random() * demos.length)] as SessionData;
-    quickLoadSessionData(randomDemo);
-
     // Start the interaction interval
     const intervalId = window.setInterval(() => {
       setActive(true);
@@ -138,11 +133,11 @@ export function useHomepage() {
     };
 
     const createDemoSequence = () => {
-      const transition: SessionData = transitionSessionData as SessionData;
+      const transition: SessionData = demo1SessionData as SessionData;
       if (isMobileDevice()) {
-        return [demo2SessionData, transition, demo1SessionData, transition, demo3SessionData,  demo4SessionData] as SessionData[];
+        return [demo3SessionData, transition, demo2SessionData, transition, demo4SessionData,  demo5SessionData] as SessionData[];
       }
-      const demos = [demo1SessionData, demo2SessionData, demo3SessionData, demo4SessionData] as SessionData[];
+      const demos = [demo2SessionData, demo3SessionData, demo4SessionData, demo5SessionData] as SessionData[];
 
       const shuffledDemos = shuffleArray(demos);
       // Interleave demos with transitions: demo → transition → demo → transition → demo
@@ -159,30 +154,42 @@ export function useHomepage() {
     const getRandomDelay = () => Math.random() * (30000 - 10000) + 10000; // 10-30 seconds
 
     let timeoutId: number;
-    let currentSequence = createDemoSequence();
-    let currentIndex = 0; // Start at 0 to begin the sequence
+    const sequence: { sessionData: SessionData, delay: number }[] = [];
+    sequence.push({ sessionData: demo3SessionData as SessionData, delay: isMobileDevice() ? 10000 : 15000 });
+    sequence.push({ sessionData: demo1SessionData as SessionData, delay: 15000 });
+    sequence.push({ sessionData: demo4SessionData as SessionData, delay: 30000 });
+    sequence.push({ sessionData: demo1SessionData as SessionData, delay: 10000 });
+    sequence.push({ sessionData: demo5SessionData as SessionData, delay: 20000 });
+    sequence.push({ sessionData: demo1SessionData as SessionData, delay: 10000 });
+    sequence.push({ sessionData: demo2SessionData as SessionData, delay: 25000 });
+    sequence.push({ sessionData: demo1SessionData as SessionData, delay: 15000 });
+
+    let currentIndex = 0;
+
+    void quickLoadSessionData(sequence[0]?.sessionData);
 
     const scheduleNext = () => {
       timeoutId = setTimeout(() => {
         currentIndex++;
 
         // If we've completed the sequence, create a new one
-        if (currentIndex >= currentSequence.length) {
-          currentSequence = createDemoSequence();
+        if (currentIndex >= sequence.length) {
+          // currentSequence = createDemoSequence();
           currentIndex = 0;
+          sequence[currentIndex].delay = 10000;
         }
 
-        const sessionData = currentSequence[currentIndex];
-        if (sessionData.name === "Demo5") {
+        const sessionData = sequence[currentIndex]?.sessionData;
+        if (sessionData?.name === "Demo5") {
           setTrailsEnabled(false);
         } else {
           setTrailsEnabled(true);
         }
 
-        quickLoadSessionData(sessionData);
+        void quickLoadSessionData(sessionData);
 
         scheduleNext();
-      }, getRandomDelay());
+      }, sequence[currentIndex]?.delay);
     };
 
     scheduleNext();

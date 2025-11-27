@@ -10,7 +10,7 @@
   "modules": {
     "environment": {
       "enabled": true,
-      "gravityStrength": 0,
+      "gravityStrength": 3000,
       "dirX": 0,
       "dirY": 0,
       "inertia": 0,
