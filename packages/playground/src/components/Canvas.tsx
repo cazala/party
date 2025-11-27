@@ -6,9 +6,11 @@ import { useTools } from "../hooks/useTools";
 export function Canvas({
   className,
   style,
+  isPlaying = false,
 }: {
   className?: string;
   style?: React.CSSProperties;
+  isPlaying?: boolean;
 }) {
   const { canvasRef, canvasDimensions, runtime, handleWheel, isInitialized } = useEngine();
   const {
@@ -19,7 +21,7 @@ export function Canvas({
     isJointMode,
     isPinMode,
     isRemoveMode,
-  } = useTools();
+  } = useTools(isPlaying);
 
   // Add wheel event listener for zoom
   useEffect(() => {

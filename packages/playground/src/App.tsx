@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { Provider } from "react-redux";
 import { EngineProvider } from "./contexts/EngineContext";
 import { ResetProvider } from "./contexts/ResetContext";
@@ -15,16 +15,119 @@ import { Homepage } from "./components/Homepage";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
 import { useHomepage } from "./hooks/useHomepage";
+import { useEngine } from "./hooks/useEngine";
+import { useOscillators } from "./hooks/useOscillators";
+import { useReset } from "./contexts/ResetContext";
+import {
+  useEnvironment,
+  useBoundary,
+  useCollisions,
+  useFluids,
+  useBehavior,
+  useSensors,
+  useJoints,
+  useTrails,
+} from "./hooks/modules";
+import { RESTART_AFFECTED_MODULES } from "./constants/modules";
 import { store } from "./slices/store";
 
 import "./styles/index.css";
 import "./App.css";
 
 function AppContent() {
-  const { barsVisible, restoreBarsFromFullscreenMode } = useUI();
-  const { invertColors } = useRender();
+  const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
+  const { invertColors, setInvertColors } = useRender();
   const { hasStarted, isPlaying, play, stop, gyroData } = useHomepage();
+  const { spawnParticles, play: playEngine, setZoom } = useEngine();
+  const { setEnabled: setTrailsEnabled } = useTrails();
+  const { clearModuleOscillators } = useOscillators();
+  const { setIsResetting } = useReset();
+
+  const {
+    reset: resetEnvironment,
+  } = useEnvironment();
+  const {
+    reset: resetBoundary,
+  } = useBoundary();
+  const {
+    reset: resetCollisions,
+  } = useCollisions();
+  const {
+    reset: resetFluids,
+  } = useFluids();
+  const {
+    reset: resetBehavior,
+  } = useBehavior();
+  const {
+    reset: resetSensors,
+  } = useSensors();
+  const {
+    reset: resetJoints,
+  } = useJoints();
+
   const hasAutoPlayed = useRef(false);
+
+  const handlePlay = useCallback(() => {
+    // Stop the demo
+    stop();
+
+    // Show sidebars (enter playground mode)
+    setBarsVisibility(true);
+
+    // Reset all modules (like clicking the Reset button)
+    setIsResetting(true);
+    
+    // Clear oscillators for each module first
+    RESTART_AFFECTED_MODULES.forEach(moduleName => {
+      clearModuleOscillators(moduleName);
+    });
+    
+    // Then reset all module states
+    resetEnvironment();
+    resetBoundary();
+    resetCollisions();
+    resetFluids();
+    resetBehavior();
+    resetSensors();
+    resetJoints();
+    
+    // Clear reset flag after a brief delay
+    setTimeout(() => setIsResetting(false), 10);
+
+    // Restart simulation with default configuration
+    spawnParticles({
+      numParticles: 900,
+      shape: "grid",
+      spacing: 12,
+      particleSize: 5,
+      radius: 100,
+      innerRadius: 50,
+      squareSize: 200,
+      cornerRadius: 0,
+      colors: [],
+      velocityConfig: { speed: 0, direction: "random", angle: 0 },
+      particleMass: 1,
+      gridJoints: false,
+    });
+    
+    // Start the engine
+    playEngine();
+  }, [
+    stop,
+    setBarsVisibility,
+    setInvertColors,
+    setIsResetting,
+    clearModuleOscillators,
+    resetEnvironment,
+    resetBoundary,
+    resetCollisions,
+    resetFluids,
+    resetBehavior,
+    resetSensors,
+    resetJoints,
+    spawnParticles,
+    playEngine,
+  ]);
 
   // Handle fullscreen change events (when user exits via ESC or browser controls)
   useEffect(() => {
@@ -79,9 +182,9 @@ function AppContent() {
               invertColors ? "invert-colors" : ""
             }`}
           >
-            <Canvas className="canvas"/>
-            <Overlay />
-            <Homepage />
+            <Canvas className="canvas" isPlaying={isPlaying} />
+            <Overlay isPlaying={isPlaying} />
+            <Homepage onPlay={handlePlay} isVisible={!barsVisible} />
             <MaxParticlesLabel />
             <GyroscopeDebugLabel gyroData={gyroData} />
             {isPlaying && (

@@ -2,10 +2,10 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { useEngine } from "../hooks/useEngine";
 import { useTools } from "../hooks/useTools";
 
-export function Overlay() {
+export function Overlay({ isPlaying = false }: { isPlaying?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { size, canvasRef: mainCanvasRef, runtime } = useEngine();
-  const { renderOverlay, isSpawnMode } = useTools();
+  const { renderOverlay, isSpawnMode } = useTools(isPlaying);
   const animationFrameRef = useRef<number>();
   const isDragging = useRef(false);
   const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false);

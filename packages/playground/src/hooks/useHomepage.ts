@@ -117,6 +117,9 @@ export function useHomepage() {
     // Deactivate interaction
     setActive(false);
     setStrength(10000);
+    setZoom(1);
+    setTrailsEnabled(false);
+    setInvertColors(false);
   }, [interactionInterval, setActive]);
 
   // Rotate demos with transitions at random intervals between 20-30 seconds

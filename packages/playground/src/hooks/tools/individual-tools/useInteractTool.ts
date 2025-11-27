@@ -3,7 +3,6 @@ import { useEngine } from "../../useEngine";
 import { ToolHandlers, ToolRenderFunction } from "../types";
 import { drawDashedCircle, drawDashedLine, drawDot } from "../shared";
 import { useInteraction } from "../../modules/useInteraction";
-import { useHomepage } from "../../useHomepage";
 
 // Interaction tool configuration
 const MIN_RADIUS = 0;
@@ -41,11 +40,10 @@ const interactionToolState: InteractionToolState = {
   adjustStartStrength: 0,
 };
 
-export function useInteractTool(isActive: boolean) {
+export function useInteractTool(isActive: boolean, isPlaying: boolean) {
   const { canvasRef, interaction, screenToWorld, engine } = useEngine();
   const { strength, radius, setStrength, setRadius, setMode } =
     useInteraction();
-  const { isPlaying } = useHomepage();
 
   const state = interactionToolState;
 
