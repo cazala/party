@@ -52,17 +52,20 @@ jobs:
 
       - name: Create Cloudflare Pages project if it doesn't exist
         run: |
+          # Set up wrangler authentication
+          export CLOUDFLARE_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          
           # Check if project exists, create if it doesn't
-          if ! wrangler pages project list --account-id=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} 2>/dev/null | grep -q "party"; then
+          if ! wrangler pages project list 2>/dev/null | grep -q "party"; then
             echo "Creating Cloudflare Pages project 'party'..."
-            wrangler pages project create party \
-              --account-id=${{ secrets.CLOUDFLARE_ACCOUNT_ID }} \
-              --production-branch=main || true
+            wrangler pages project create party --production-branch=main || true
           else
             echo "Project 'party' already exists"
           fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
