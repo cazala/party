@@ -13,7 +13,7 @@ import { GyroscopeDebugLabel } from "./components/GyroscopeDebugLabel";
 import { Homepage } from "./components/Homepage";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
-import { useHomepage } from "./hooks/useHomepage";
+import { useDemo } from "./hooks/useDemo";
 import { useEngine } from "./hooks/useEngine";
 import { useOscillators } from "./hooks/useOscillators";
 import { useReset } from "./contexts/ResetContext";
@@ -35,7 +35,7 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors, setInvertColors } = useRender();
-  const { hasStarted, isHomepage, play, stop, gyroData } = useHomepage();
+  const { hasStarted, isPlaying: isDemoPlaying, play, stop, gyroData } = useDemo();
   const { spawnParticles, play: playEngine, maxParticles, getCount, getFPS } = useEngine();
   const { clearModuleOscillators } = useOscillators();
   const { setIsResetting } = useReset();
@@ -191,8 +191,8 @@ function AppContent() {
             className={`canvas-container ${invertColors ? "invert-colors" : ""
               }`}
           >
-              <Canvas className="canvas" isPlaying={isHomepage} />
-              <Overlay isPlaying={isHomepage} />
+              <Canvas className="canvas" isPlaying={isDemoPlaying} />
+              <Overlay isPlaying={isDemoPlaying} />
             <Homepage onPlay={handlePlay} isVisible={!barsVisible} maxParticles={maxParticles} particleCount={particleCount} fps={fps}/>
             <GyroscopeDebugLabel gyroData={gyroData} />
           </div>

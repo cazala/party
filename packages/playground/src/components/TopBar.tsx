@@ -15,7 +15,7 @@ import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
 import { useHistory } from "../hooks/useHistory";
 import { useUI } from "../hooks/useUI";
-import { useHomepage } from "../hooks/useHomepage";
+import { useDemo } from "../hooks/useDemo";
 import { useTrails } from "../hooks/modules/useTrails";
 import { isMobileDevice } from "../utils/deviceCapabilities";
 import { HelpModal } from "./HelpModal";
@@ -33,7 +33,7 @@ export function TopBar() {
   const { removeAllLines } = useLines();
   const { resetHistory, undo, redo, canUndo, canRedo } = useHistory();
   const { toggleFullscreenMode } = useUI();
-  const { isHomepage: isDemoPlaying, play: playDemo, stop: stopDemo } = useHomepage();
+  const { isPlaying: isDemoPlaying, play: playDemo, stop: stopDemo } = useDemo();
   const { setEnabled: setTrailsEnabled, setDecay: setTrailsDecay } = useTrails();
 
   const handlePlayPause = () => {

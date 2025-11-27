@@ -17,7 +17,7 @@ import { useReset } from "../contexts/ResetContext";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import { isMobileDevice, calculateMaxParticles } from "../utils/deviceCapabilities";
 
-export function useHomepage() {
+export function useDemo() {
   const { setBarsVisibility } = useUI();
   const {
     isInitialized,
@@ -47,7 +47,7 @@ export function useHomepage() {
   const { reset: resetJoints } = useJoints();
 
   const [hasStarted, setHasStarted] = useState(false);
-  const [isHomepage, setIsHomepage] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [demoParticleCount, setDemoParticleCount] = useState(0);
   const [interactionInterval, setInteractionInterval] = useState<number | null>(null);
   const [gyroData, setGyroData] = useState<{ beta: number; gamma: number; angle: number } | null>({ beta: 0, gamma: 0, angle: 90 });
@@ -114,7 +114,7 @@ export function useHomepage() {
   const play = useCallback((useInteraction: boolean = true) => {
     if (!hasStarted || !isWebGPU) return;
 
-    setIsHomepage(true);
+    setIsPlaying(true);
 
     // Only start the interaction interval if useInteraction is true (homepage demo)
     if (useInteraction) {
@@ -131,7 +131,7 @@ export function useHomepage() {
   }, [hasStarted, isWebGPU, quickLoadSessionData, setActive, setStrength, setRadius, setPosition, setMode, setCamera]);
 
   const stop = useCallback(() => {
-    setIsHomepage(false);
+    setIsPlaying(false);
 
     // Clear the interaction interval
     if (interactionInterval !== null) {
@@ -200,7 +200,7 @@ export function useHomepage() {
 
   // Rotate demos with transitions at random intervals between 20-30 seconds
   useEffect(() => {
-    if (!hasStarted || !isWebGPU || !isHomepage) return;
+    if (!hasStarted || !isWebGPU || !isPlaying) return;
 
     if (isMobileDevice()) {
       demo3SessionData.modules.environment.gravityStrength = 1000;
@@ -250,7 +250,7 @@ export function useHomepage() {
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [hasStarted, isWebGPU, isHomepage, quickLoadSessionData]);
+  }, [hasStarted, isWebGPU, isPlaying, quickLoadSessionData]);
 
   // Gyroscope/device orientation handler for CPU mode
   useEffect(() => {
@@ -420,9 +420,10 @@ export function useHomepage() {
 
   return {
     hasStarted,
-    isHomepage,
+    isPlaying,
     play,
     stop,
     gyroData, // Export for debug label
   };
 }
+
