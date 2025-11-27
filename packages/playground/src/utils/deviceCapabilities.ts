@@ -8,7 +8,7 @@
 /**
  * Detects if the device is mobile based on user agent and screen size
  */
-function isMobileDevice(): boolean {
+export function isMobileDevice(): boolean {
   // Check user agent for mobile devices
   const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
   const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
@@ -77,7 +77,7 @@ export async function calculateMaxParticles(preferredMaxParticles?: number): Pro
   
   // Base limits: mobile devices typically handle fewer particles
   const mobileBaseLimit = 8000;
-  const desktopBaseLimit = 40000;
+  const desktopBaseLimit = 50000;
   
   // If WebGPU is available, try to get a more accurate estimate
   if (navigator.gpu) {

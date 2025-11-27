@@ -11,6 +11,7 @@ import { SystemSidebar } from "./components/SystemSidebar";
 import { GlobalHotkeys } from "./components/GlobalHotkeys";
 import { MaxParticlesLabel } from "./components/MaxParticlesLabel";
 import { GyroscopeDebugLabel } from "./components/GyroscopeDebugLabel";
+import { Homepage } from "./components/Homepage";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
 import { useHomepage } from "./hooks/useHomepage";
@@ -78,8 +79,9 @@ function AppContent() {
               invertColors ? "invert-colors" : ""
             }`}
           >
-            <Canvas />
+            <Canvas className="canvas"/>
             <Overlay />
+            <Homepage />
             <MaxParticlesLabel />
             <GyroscopeDebugLabel gyroData={gyroData} />
             {isPlaying && (

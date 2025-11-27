@@ -11,6 +11,7 @@ import demo3SessionData from "../sessions/demo4.json";
 import demo4SessionData from "../sessions/demo5.json";
 import { useInteraction, useTrails } from "./modules";
 import { useRender } from "./useRender";
+import { isMobileDevice } from "../utils/deviceCapabilities";
 
 export function useHomepage() {
   const { setBarsVisibility } = useUI();
@@ -26,7 +27,7 @@ export function useHomepage() {
     setMaxNeighbors,
   } = useEngine();
   const { setGravityStrength, setMode: setGravityMode, setCustomAngleDegrees } = useEnvironment();
-  const { setEnabled, setDecay } = useTrails();
+  const { setEnabled: setTrailsEnabled, setDecay } = useTrails();
   const { quickLoadSessionData } = useSession();
   const { setStrength, setRadius, setActive, setPosition, setMode } =
     useInteraction();
@@ -54,18 +55,16 @@ export function useHomepage() {
           innerRadius: 50,
           squareSize: 200,
         });
-        setZoom(0.2);
+        setZoom(isMobileDevice() ? 0.2 : 0.3);
         setCamera({ x: 0, y: 0 });
-        setEnabled(true);
+        setTrailsEnabled(true);
         setDecay(10);
         setConstrainIterations(1);
         setCellSize(16);
         setMaxNeighbors(100);
       } else {
         setGravityStrength(1000);
-        // Set gravity to custom mode for gyroscope control
         setGravityMode("custom");
-        // Set initial angle to 90° (down) when phone is upright
         setCustomAngleDegrees(90);
       }
     }
@@ -84,7 +83,7 @@ export function useHomepage() {
     setConstrainIterations,
     setCellSize,
     setMaxNeighbors,
-    setEnabled,
+    setTrailsEnabled,
     setDecay,
     setInvertColors,
   ]);
@@ -139,8 +138,11 @@ export function useHomepage() {
     };
 
     const createDemoSequence = () => {
-      const demos = [demo1SessionData, demo2SessionData, demo3SessionData, demo4SessionData] as SessionData[];
       const transition: SessionData = transitionSessionData as SessionData;
+      if (isMobileDevice()) {
+        return [demo2SessionData, transition, demo1SessionData, transition, demo3SessionData,  demo4SessionData] as SessionData[];
+      }
+      const demos = [demo1SessionData, demo2SessionData, demo3SessionData, demo4SessionData] as SessionData[];
 
       const shuffledDemos = shuffleArray(demos);
       // Interleave demos with transitions: demo → transition → demo → transition → demo
@@ -172,9 +174,9 @@ export function useHomepage() {
 
         const sessionData = currentSequence[currentIndex];
         if (sessionData.name === "Demo5") {
-          setEnabled(false);
+          setTrailsEnabled(false);
         } else {
-          setEnabled(true);
+          setTrailsEnabled(true);
         }
 
         quickLoadSessionData(sessionData);
@@ -292,7 +294,6 @@ export function useHomepage() {
       setCustomAngleDegrees(angleDeg);
     };
 
-    let cleanup: (() => void) | null = null;
     let timeoutId: number | null = null;
     let listenerAdded = false;
 

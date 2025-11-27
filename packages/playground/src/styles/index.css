@@ -108,14 +108,15 @@ body {
 
 .canvas-container {
   flex: 1;
-  background-color: #000000;
+  
   position: relative;
   overflow: hidden;
   filter: blur(0.5px);
 }
 
-.canvas-container.invert-colors {
+.canvas-container.invert-colors .canvas {
   filter: invert(1) contrast(2);
+  background-color: #000000;
 }
 
 .canvas-container canvas {

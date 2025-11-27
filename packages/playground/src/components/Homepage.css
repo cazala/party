@@ -1,0 +1,41 @@
+.homepage {
+  position: fixed;
+  top: calc(50% - 25px);
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.homepage-title {
+  font-family: -apple-system, BlinkMacSystemFont, "San Francisco", "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  font-size: 4rem;
+  font-weight: 600;
+  color: #000000;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.homepage-subtitle {
+  font-family: -apple-system, BlinkMacSystemFont, "San Francisco", "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #64748b;
+  margin: 0;
+  letter-spacing: 0.01em;
+  width: 1000px;
+}
+
+@media (max-width: 1024px) {
+  .homepage-subtitle {
+    width: 800px;
+  }
+  .homepage-title {
+    font-size: 3rem;
+  }
+  .homepage-subtitle {
+    font-size: 0.8rem;
+  }
+}
+
