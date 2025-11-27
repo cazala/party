@@ -25,6 +25,7 @@ import {
   selectConstrainIterations,
   selectGridCellSize,
   selectMaxNeighbors,
+  selectMaxParticles,
   selectCamera,
   selectZoom,
   selectSize,
@@ -48,7 +49,7 @@ import {
   setInitialized,
   setInitializing,
   setError,
-  setMaxParticles,
+  setMaxParticles as setMaxParticlesAction,
   setConstrainIterations as setConstrainIterationsAction,
   setGridCellSize as setGridCellSizeAction,
   setClearColor as setClearColorAction,
@@ -70,7 +71,6 @@ import {
   importLinesSettings,
   importJointsSettings,
 } from "../slices/modules";
-import { calculateMaxParticles } from "../utils/deviceCapabilities";
 
 export interface UseEngineProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -90,6 +90,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const constrainIterations = useAppSelector(selectConstrainIterations);
   const gridCellSize = useAppSelector(selectGridCellSize);
   const maxNeighbors = useAppSelector(selectMaxNeighbors);
+  const maxParticles = useAppSelector(selectMaxParticles);
   const camera = useAppSelector(selectCamera);
   const zoom = useAppSelector(selectZoom);
   const size = useAppSelector(selectSize);
@@ -249,11 +250,11 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
         dispatch(setWebGPU(shouldUseWebGPU));
 
-        // Calculate appropriate maxParticles based on device capabilities
-        const maxParticles = await calculateMaxParticles();
+        // Use default maxParticles for playground (100k)
+        const maxParticles = 100000;
         
         // Store maxParticles in Redux state
-        dispatch(setMaxParticles(maxParticles));
+        dispatch(setMaxParticlesAction(maxParticles));
 
         // Create modules first
         const environment = new Environment({
@@ -585,6 +586,13 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     [dispatch]
   );
 
+  const setMaxParticles = useCallback(
+    (value: number) => {
+      dispatch(setMaxParticlesAction(value));
+    },
+    [dispatch]
+  );
+
   const addParticle = useCallback(
     (particle: {
       position: { x: number; y: number };
@@ -676,6 +684,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     zoom,
     runtime,
     maxNeighbors,
+    maxParticles,
 
     // Action functions (wrapped thunks)
     play,
@@ -688,6 +697,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     setCellSize,
     setClearColor,
     setMaxNeighbors,
+    setMaxParticles,
     addParticle,
     spawnParticles,
     toggleRuntime,

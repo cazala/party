@@ -15,6 +15,9 @@ import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
 import { useHistory } from "../hooks/useHistory";
 import { useUI } from "../hooks/useUI";
+import { useHomepage } from "../hooks/useHomepage";
+import { useTrails } from "../hooks/modules/useTrails";
+import { isMobileDevice } from "../utils/deviceCapabilities";
 import { HelpModal } from "./HelpModal";
 import { SaveSessionModal } from "./modals/SaveSessionModal";
 import { LoadSessionModal } from "./modals/LoadSessionModal";
@@ -24,12 +27,14 @@ export function TopBar() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [loadModalOpen, setLoadModalOpen] = useState(false);
-  const { isPlaying, play, pause, clear, spawnParticles, getCount } = useEngine();
+  const { isPlaying, play, pause, clear, spawnParticles, getCount, isWebGPU, setZoom, setCamera } = useEngine();
   const { initState, gridJoints, setGridJoints } = useInit();
   const { removeAllJoints } = useJoints();
   const { removeAllLines } = useLines();
   const { resetHistory, undo, redo, canUndo, canRedo } = useHistory();
   const { toggleFullscreenMode } = useUI();
+  const { isPlaying: isDemoPlaying, play: playDemo, stop: stopDemo } = useHomepage();
+  const { setEnabled: setTrailsEnabled, setDecay: setTrailsDecay } = useTrails();
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -94,6 +99,39 @@ export function TopBar() {
     gridJoints,
     setGridJoints,
   ]);
+
+  const handleDemoToggle = () => {
+    if (isDemoPlaying) {
+      stopDemo();
+    } else {
+      // Only start demo if WebGPU is available
+      if (isWebGPU) {
+        // Spawn 35k particles with random shape
+        spawnParticles({
+          numParticles: 35000,
+          shape: "random",
+          spacing: 20,
+          particleSize: 3,
+          radius: 100,
+          colors: ["#ffffff"],
+          velocityConfig: { speed: 100, direction: "random", angle: 0 },
+          innerRadius: 50,
+          squareSize: 200,
+        });
+        
+        // Set zoom and camera (reset zoom to 0.2 for mobile, 0.3 for desktop)
+        setZoom(isMobileDevice() ? 0.2 : 0.3);
+        setCamera({ x: 0, y: 0 });
+        
+        // Enable trails module
+        setTrailsEnabled(true);
+        setTrailsDecay(10);
+        
+        // Start the demo without interaction force (playground mode)
+        playDemo(false);
+      }
+    }
+  };
 
 
   return (
@@ -178,6 +216,13 @@ export function TopBar() {
           </div>
         </div>
         <div className="topbar-right">
+          <button
+            className={`demo-button ${isDemoPlaying ? "demo-active" : ""}`}
+            onClick={handleDemoToggle}
+            title={isDemoPlaying ? "Stop Demo" : "Start Demo"}
+          >
+            <span>Demo</span>
+          </button>
           <button
             className="fullscreen-button"
             aria-label="Fullscreen"

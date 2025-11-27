@@ -131,6 +131,41 @@
   border-bottom-right-radius: 6px;
 }
 
+.topbar-right .demo-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  outline: none;
+  margin-right: 24px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.topbar-right .demo-button.demo-active {
+  background: rgba(255, 176, 32, 0.2);
+  border-color: var(--color-active-pause);
+  color: var(--color-text-primary);
+}
+
+.topbar-right .demo-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.topbar-right .demo-button.demo-active:hover {
+  background: rgba(255, 176, 32, 0.3);
+  border-color: var(--color-active-pause);
+}
+
 .topbar-right .help-button,
 .topbar-right .fullscreen-button {
   display: flex;
@@ -219,6 +254,12 @@
 
   .tool-group {
     margin-left: 12px;
+  }
+
+  .topbar-right .demo-button {
+    padding: 6px 12px;
+    font-size: 12px;
+    margin-right: 12px;
   }
 
   .topbar-right .help-button,

@@ -46,6 +46,7 @@ export interface EngineContextType {
   constrainIterations: number;
   gridCellSize: number;
   maxNeighbors: number;
+  maxParticles: number;
   clearColor: { r: number; g: number; b: number; a: number };
   size: { width: number; height: number };
   canvasDimensions: { width: number; height: number };
@@ -63,6 +64,7 @@ export interface EngineContextType {
   setConstrainIterations: (iterations: number) => void;
   setCellSize: (cellSize: number) => void;
   setMaxNeighbors: (value: number) => void;
+  setMaxParticles: (value: number) => void;
   setClearColor: (color: {
     r: number;
     g: number;

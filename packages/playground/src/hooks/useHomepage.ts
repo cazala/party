@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useUI } from "./useUI";
 import { useEngine } from "./useEngine";
+import { useInit } from "./useInit";
 import { useEnvironment } from "./modules/useEnvironment";
 import { useSession } from "./useSession";
 import { SessionData } from "../types/session";
@@ -9,9 +10,12 @@ import demo2SessionData from "../sessions/demo2.json";
 import demo3SessionData from "../sessions/demo3.json";
 import demo4SessionData from "../sessions/demo4.json";
 import demo5SessionData from "../sessions/demo5.json";
-import { useInteraction, useTrails } from "./modules";
+import { useInteraction, useTrails, useBoundary, useCollisions, useFluids, useBehavior, useSensors, useJoints } from "./modules";
 import { useRender } from "./useRender";
-import { isMobileDevice } from "../utils/deviceCapabilities";
+import { useOscillators } from "./useOscillators";
+import { useReset } from "../contexts/ResetContext";
+import { RESTART_AFFECTED_MODULES } from "../constants/modules";
+import { isMobileDevice, calculateMaxParticles } from "../utils/deviceCapabilities";
 
 export function useHomepage() {
   const { setBarsVisibility } = useUI();
@@ -26,12 +30,21 @@ export function useHomepage() {
     setCellSize,
     setMaxNeighbors,
   } = useEngine();
-  const { setGravityStrength, setMode: setGravityMode, setCustomAngleDegrees } = useEnvironment();
+  const { initState } = useInit();
+  const { setGravityStrength, setMode: setGravityMode, setCustomAngleDegrees, reset: resetEnvironment } = useEnvironment();
   const { setEnabled: setTrailsEnabled, setDecay } = useTrails();
   const { quickLoadSessionData } = useSession();
   const { setStrength, setRadius, setActive, setPosition, setMode } =
     useInteraction();
   const { setInvertColors } = useRender();
+  const { clearModuleOscillators } = useOscillators();
+  const { setIsResetting } = useReset();
+  const { reset: resetBoundary } = useBoundary();
+  const { reset: resetCollisions } = useCollisions();
+  const { reset: resetFluids } = useFluids();
+  const { reset: resetBehavior } = useBehavior();
+  const { reset: resetSensors } = useSensors();
+  const { reset: resetJoints } = useJoints();
 
   const [hasStarted, setHasStarted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -44,16 +57,19 @@ export function useHomepage() {
       setBarsVisibility(false);
       setInvertColors(true);
       if (isWebGPU) {
-        spawnParticles({
-          numParticles: 35000,
-          shape: "random",
-          spacing: 20,
-          particleSize: 3,
-          radius: 100,
-          colors: ["#ffffff"],
-          velocityConfig: { speed: 100, direction: "random", angle: 0 },
-          innerRadius: 50,
-          squareSize: 200,
+        // Calculate maxParticles for homepage demo based on device capabilities
+        calculateMaxParticles().then((maxParticles) => {
+          spawnParticles({
+            numParticles: maxParticles,
+            shape: "random",
+            spacing: 20,
+            particleSize: 3,
+            radius: 100,
+            colors: ["#ffffff"],
+            velocityConfig: { speed: 100, direction: "random", angle: 0 },
+            innerRadius: 50,
+            squareSize: 200,
+          });
         });
         setZoom(isMobileDevice() ? 0.2 : 0.3);
         setCamera({ x: 0, y: 0 });
@@ -88,21 +104,23 @@ export function useHomepage() {
     setInvertColors,
   ]);
 
-  const play = useCallback(() => {
+  const play = useCallback((useInteraction: boolean = true) => {
     if (!hasStarted || !isWebGPU) return;
 
     setIsPlaying(true);
 
-    // Start the interaction interval
-    const intervalId = window.setInterval(() => {
-      setActive(true);
-      setStrength(100000);
-      setRadius(700);
-      setPosition(0, 0);
-      setMode("repel");
-      setCamera({ x: 0, y: 0 });
-    }, 16);
-    setInteractionInterval(intervalId);
+    // Only start the interaction interval if useInteraction is true (homepage demo)
+    if (useInteraction) {
+      const intervalId = window.setInterval(() => {
+        setActive(true);
+        setStrength(100000);
+        setRadius(700);
+        setPosition(0, 0);
+        setMode("repel");
+        setCamera({ x: 0, y: 0 });
+      }, 16);
+      setInteractionInterval(intervalId);
+    }
   }, [hasStarted, isWebGPU, quickLoadSessionData, setActive, setStrength, setRadius, setPosition, setMode, setCamera]);
 
   const stop = useCallback(() => {
@@ -117,13 +135,61 @@ export function useHomepage() {
     // Deactivate interaction
     setActive(false);
     setStrength(10000);
+    
+    // Reset engine settings
     setZoom(1);
     setTrailsEnabled(false);
     setInvertColors(false);
     setConstrainIterations(50);
     setCellSize(16);
     setMaxNeighbors(1000);
-  }, [interactionInterval, setActive, setZoom, setTrailsEnabled, setInvertColors, setConstrainIterations, setCellSize, setMaxNeighbors]);
+    setCamera({ x: 0, y: 0 });
+
+    // Reset all modules (like clicking the Reset button)
+    setIsResetting(true);
+    
+    // Clear oscillators for each module first
+    RESTART_AFFECTED_MODULES.forEach(moduleName => {
+      clearModuleOscillators(moduleName);
+    });
+    
+    // Then reset all module states
+    resetEnvironment();
+    resetBoundary();
+    resetCollisions();
+    resetFluids();
+    resetBehavior();
+    resetSensors();
+    resetJoints();
+    
+    // Clear reset flag after a brief delay
+    setTimeout(() => setIsResetting(false), 10);
+
+    // Respawn particles with current init module values
+    spawnParticles(initState);
+  }, [
+    interactionInterval,
+    setActive,
+    setStrength,
+    setZoom,
+    setTrailsEnabled,
+    setInvertColors,
+    setConstrainIterations,
+    setCellSize,
+    setMaxNeighbors,
+    setCamera,
+    setIsResetting,
+    clearModuleOscillators,
+    resetEnvironment,
+    resetBoundary,
+    resetCollisions,
+    resetFluids,
+    resetBehavior,
+    resetSensors,
+    resetJoints,
+    spawnParticles,
+    initState,
+  ]);
 
   // Rotate demos with transitions at random intervals between 20-30 seconds
   useEffect(() => {

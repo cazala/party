@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Provider } from "react-redux";
 import { EngineProvider } from "./contexts/EngineContext";
 import { ResetProvider } from "./contexts/ResetContext";
@@ -36,9 +36,23 @@ function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors, setInvertColors } = useRender();
   const { hasStarted, isPlaying, play, stop, gyroData } = useHomepage();
-  const { spawnParticles, play: playEngine } = useEngine();
+  const { spawnParticles, play: playEngine, maxParticles, getCount, getFPS } = useEngine();
   const { clearModuleOscillators } = useOscillators();
   const { setIsResetting } = useReset();
+  const [particleCount, setParticleCount] = useState(0);
+  const [fps, setFPS] = useState(0);
+
+  console.log('maxParticles', maxParticles);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setParticleCount(getCount());
+      setFPS(getFPS());
+      console.log('particleCount', particleCount);
+      console.log('fps', fps);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [getCount, getFPS, particleCount, fps]);
 
   const {
     reset: resetEnvironment,
@@ -179,7 +193,7 @@ function AppContent() {
           >
             <Canvas className="canvas" isPlaying={isPlaying} />
             <Overlay isPlaying={isPlaying} />
-            <Homepage onPlay={handlePlay} isVisible={!barsVisible} />
+            <Homepage onPlay={handlePlay} isVisible={!barsVisible} maxParticles={maxParticles} particleCount={particleCount} fps={fps}/>
             <GyroscopeDebugLabel gyroData={gyroData} />
           </div>
         </div>
