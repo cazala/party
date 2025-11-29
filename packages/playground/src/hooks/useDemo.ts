@@ -18,6 +18,13 @@ import { useReset } from "../contexts/ResetContext";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import { isMobileDevice, calculateMaxParticles } from "../utils/deviceCapabilities";
 
+interface DemoSequenceItem {
+  sessionData: SessionData;
+  duration: number; // Demo duration in ms
+  maxParticles: number; // Target maxParticles for this demo
+  transitionDuration: number; // Interpolation duration in ms
+}
+
 export function useDemo() {
   const { setBarsVisibility } = useUI();
   const {
@@ -31,6 +38,7 @@ export function useDemo() {
     setCellSize,
     setMaxNeighbors,
     setMaxParticles,
+    maxParticles: currentMaxParticles,
   } = useEngine();
   const { initState } = useInit();
   const { setGravityStrength, setMode: setGravityMode, setCustomAngleDegrees, reset: resetEnvironment } = useEnvironment();
@@ -50,18 +58,29 @@ export function useDemo() {
 
   const [hasStarted, setHasStarted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [demoParticleCount, setDemoParticleCount] = useState(0);
+  const [deviceMaxParticles, setDeviceMaxParticles] = useState<number>(0); // Device capability (from calculateMaxParticles)
+  const [demoParticleCount, setDemoParticleCount] = useState(0); // 2x deviceMaxParticles for homepage demo
   const [interactionInterval, setInteractionInterval] = useState<number | null>(null);
   const [gyroData, setGyroData] = useState<{ beta: number; gamma: number; angle: number } | null>({ beta: 0, gamma: 0, angle: 90 });
   const currentSpawnConfigRef = useRef<SpawnParticlesConfig | null>(null);
+  const [targetMaxParticles, setTargetMaxParticles] = useState<number | null>(null);
+  const [targetTransitionDuration, setTargetTransitionDuration] = useState<number>(300);
+  const interpolationAnimationFrameRef = useRef<number | null>(null);
+  const currentMaxParticlesRef = useRef<number | null>(null);
+
+  // Calculate device capabilities on mount
+  useEffect(() => {
+    if (deviceMaxParticles === 0) {
+      calculateMaxParticles().then((maxParticles) => {
+        setDeviceMaxParticles(maxParticles);
+        setDemoParticleCount(maxParticles); // Homepage demo uses 2x device capability
+      });
+    }
+  }, [deviceMaxParticles]);
 
   useEffect(() => {
     if (!hasStarted && isInitialized && !isInitializing) {
-      if (demoParticleCount === 0) {
-        calculateMaxParticles().then((maxParticles) => {
-          setDemoParticleCount(maxParticles);
-        });
-      } else {
+      if (demoParticleCount > 0) {
       setHasStarted(true);
       setBarsVisibility(false);
       setInvertColors(true);
@@ -211,49 +230,108 @@ export function useDemo() {
       demo3SessionData.modules.environment.gravityStrength = 1000;
     }
 
+    // Wait for device capabilities to be calculated
+    if (deviceMaxParticles === 0) {
+      return;
+    }
+
+    // Calculate particle counts based on device capabilities
+    const highPerformanceMaxParticles = deviceMaxParticles; // For less demanding demos
+    const lowPerformanceMaxParticles = deviceMaxParticles / 4; // For more demanding demos (Demo1, Demo5, Demo2)
+
     let timeoutId: number;
-    const sequence: { sessionData: SessionData, delay: number }[] = [];
-    sequence.push({ sessionData: demo3SessionData as SessionData, delay: isMobileDevice() ? 10000 : 15000 });
-    sequence.push({ sessionData: demo1SessionData as SessionData, delay: 15000 });
-    sequence.push({ sessionData: demo4SessionData as SessionData, delay: 30000 });
-    sequence.push({ sessionData: demo1SessionData as SessionData, delay: 10000 });
-    sequence.push({ sessionData: demo5SessionData as SessionData, delay: 20000 });
-    sequence.push({ sessionData: demo1SessionData as SessionData, delay: 10000 });
-    sequence.push({ sessionData: demo2SessionData as SessionData, delay: 25000 });
-    sequence.push({ sessionData: demo1SessionData as SessionData, delay: 15000 });
+    const sequence: DemoSequenceItem[] = [
+      {
+        sessionData: demo3SessionData as SessionData,
+        duration: 15000,
+        maxParticles: highPerformanceMaxParticles,
+        transitionDuration: 5000, // 5s for increasing particles
+      },
+      {
+        sessionData: demo1SessionData as SessionData,
+        duration: 15000,
+        maxParticles: lowPerformanceMaxParticles,
+        transitionDuration: 0, // 300ms for decreasing particles
+      },
+      {
+        sessionData: demo4SessionData as SessionData,
+        duration: 30000,
+        maxParticles: highPerformanceMaxParticles,
+        transitionDuration: 5000,
+      },
+      {
+        sessionData: demo1SessionData as SessionData,
+        duration: 10000,
+        maxParticles: lowPerformanceMaxParticles,
+        transitionDuration: 0,
+      },
+      {
+        sessionData: demo5SessionData as SessionData,
+        duration: 20000,
+        maxParticles: lowPerformanceMaxParticles,
+        transitionDuration: 0,
+      },
+      {
+        sessionData: demo1SessionData as SessionData,
+        duration: 10000,
+        maxParticles: lowPerformanceMaxParticles,
+        transitionDuration: 0,
+      },
+      {
+        sessionData: demo2SessionData as SessionData,
+        duration: 25000,
+        maxParticles: lowPerformanceMaxParticles,
+        transitionDuration: 0,
+      },
+      {
+        sessionData: demo1SessionData as SessionData,
+        duration: 15000,
+        maxParticles: lowPerformanceMaxParticles,
+        transitionDuration: 0,
+      },
+    ];
 
     let currentIndex = 0;
 
-    void quickLoadSessionData(sequence[0]?.sessionData);
+    // Set initial maxParticles for first demo
+    const initialItem = sequence[0];
+    if (initialItem) {
+      setTargetMaxParticles(initialItem.maxParticles);
+      setTargetTransitionDuration(initialItem.transitionDuration);
+    }
+
+    void quickLoadSessionData(initialItem?.sessionData);
 
     const scheduleNext = () => {
+      const currentItem = sequence[currentIndex];
+      if (!currentItem) return;
+
       timeoutId = setTimeout(() => {
         currentIndex++;
 
-        // If we've completed the sequence, create a new one
+        // If we've completed the sequence, restart
         if (currentIndex >= sequence.length) {
-          // currentSequence = createDemoSequence();
           currentIndex = 0;
-          sequence[currentIndex].delay = 10000;
         }
 
-        const sessionData = sequence[currentIndex]?.sessionData;
+        const nextItem = sequence[currentIndex];
+        if (!nextItem) return;
+
+        const sessionData = nextItem.sessionData;
         if (sessionData?.name === "Demo5") {
           setTrailsEnabled(false);
         } else {
           setTrailsEnabled(true);
         }
 
-        // if (sessionData?.name === "Demo1" || sessionData?.name === "Demo5" || sessionData?.name === "Demo2") {
-        //   setMaxParticles(30000);
-        // } else {
-        //   setMaxParticles(100000);
-        // }
+        // Set target maxParticles and transition duration
+        setTargetMaxParticles(nextItem.maxParticles);
+        setTargetTransitionDuration(nextItem.transitionDuration);
 
         void quickLoadSessionData(sessionData);
 
         scheduleNext();
-      }, sequence[currentIndex]?.delay);
+      }, currentItem.duration);
     };
 
     scheduleNext();
@@ -261,7 +339,68 @@ export function useDemo() {
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [hasStarted, isWebGPU, isPlaying, quickLoadSessionData]);
+  }, [hasStarted, isWebGPU, isPlaying, quickLoadSessionData, setTrailsEnabled, deviceMaxParticles]);
+
+  // Update ref when currentMaxParticles changes (for interpolation start value)
+  useEffect(() => {
+    currentMaxParticlesRef.current = currentMaxParticles;
+  }, [currentMaxParticles]);
+
+  // Interpolate maxParticles smoothly when target changes
+  useEffect(() => {
+    if (targetMaxParticles === null) {
+      return;
+    }
+
+    // Cancel any existing animation
+    if (interpolationAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(interpolationAnimationFrameRef.current);
+      interpolationAnimationFrameRef.current = null;
+    }
+
+    // If transition duration is 0, set immediately without animation
+    if (targetTransitionDuration === 0) {
+      setMaxParticles(targetMaxParticles);
+      setTargetMaxParticles(null);
+      return;
+    }
+
+    const startValue = currentMaxParticlesRef.current ?? deviceMaxParticles * 2;
+    const target = targetMaxParticles;
+    const startTime = performance.now();
+    const duration = targetTransitionDuration;
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1); // Clamp to 0-1
+
+      // Use easeInOutCubic for smooth interpolation
+      const easedProgress = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+      const currentValue = Math.round(startValue + (target - startValue) * easedProgress);
+      setMaxParticles(currentValue);
+
+      if (progress < 1) {
+        interpolationAnimationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        // Interpolation complete - ensure we end exactly at target
+        setMaxParticles(target);
+        setTargetMaxParticles(null);
+        interpolationAnimationFrameRef.current = null;
+      }
+    };
+
+    interpolationAnimationFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (interpolationAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(interpolationAnimationFrameRef.current);
+        interpolationAnimationFrameRef.current = null;
+      }
+    };
+  }, [targetMaxParticles, targetTransitionDuration, deviceMaxParticles, setMaxParticles]);
 
   // Gyroscope/device orientation handler for CPU mode
   useEffect(() => {
