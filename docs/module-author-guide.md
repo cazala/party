@@ -102,15 +102,15 @@ CPU descriptor context includes helpers such as:
 
 See built-in forces for examples:
 
-- [`Environment`](../../packages/core/src/modules/forces/environment.ts): global forces and damping
-- [`Boundary`](../../packages/core/src/modules/forces/boundary.ts): bounds, warp/kill, tangential friction, optional repulsion
-- [`Collisions`](../../packages/core/src/modules/forces/collisions.ts): pairwise collision response with position correction
-- [`Behavior`](../../packages/core/src/modules/forces/behavior.ts): boids-like steering
-- [`Fluids`](../../packages/core/src/modules/forces/fluids.ts): SPH-like density and pressure with state + apply
-- [`Sensors`](../../packages/core/src/modules/forces/sensors.ts): trail/color sampling steering
-- [`Interaction`](../../packages/core/src/modules/forces/interaction.ts): mouse-driven attract/repel
-- [`Joints`](../../packages/core/src/modules/forces/joints.ts): distance constraints with collision options and momentum preservation
-- [`Grab`](../../packages/core/src/modules/forces/grab.ts): single-particle grabbing during drag
+- [`Environment`](../packages/core/src/modules/forces/environment.ts): global forces and damping
+- [`Boundary`](../packages/core/src/modules/forces/boundary.ts): bounds, warp/kill, tangential friction, optional repulsion
+- [`Collisions`](../packages/core/src/modules/forces/collisions.ts): pairwise collision response with position correction
+- [`Behavior`](../packages/core/src/modules/forces/behavior.ts): boids-like steering
+- [`Fluids`](../packages/core/src/modules/forces/fluids.ts): SPH-like density and pressure with state + apply
+- [`Sensors`](../packages/core/src/modules/forces/sensors.ts): trail/color sampling steering
+- [`Interaction`](../packages/core/src/modules/forces/interaction.ts): mouse-driven attract/repel
+- [`Joints`](../packages/core/src/modules/forces/joints.ts): distance constraints with collision options and momentum preservation
+- [`Grab`](../packages/core/src/modules/forces/grab.ts): single-particle grabbing during drag
 
 ### Render modules
 
@@ -120,7 +120,7 @@ WebGPU render descriptor
 
 - Fullscreen pass: `{ kind: RenderPassKind.Fullscreen, vertex?, fragment, bindings, readsScene, writesScene }`
 - Compute pass over the scene texture: `{ kind: RenderPassKind.Compute, kernel, bindings, readsScene, writesScene }`
-- Instanced fullscreen: `{ instanced: true, instanceFrom: "someArrayInput" }` (see [`Lines`](../../packages/core/src/modules/render/lines.ts))
+- Instanced fullscreen: `{ instanced: true, instanceFrom: "someArrayInput" }` (see [`Lines`](../packages/core/src/modules/render/lines.ts))
 
 CPU render descriptor
 
@@ -129,13 +129,13 @@ CPU render descriptor
 
 Examples in core:
 
-- [`Particles`](../../packages/core/src/modules/render/particles.ts): fullscreen draw of instanced particles; custom color and hue modes; ring style for pinned particles
-- [`Trails`](../../packages/core/src/modules/render/trails.ts): compute-like two-pass effect (decay + blur) or canvas equivalents on CPU
-- [`Lines`](../../packages/core/src/modules/render/lines.ts): instanced line quads on GPU, stroke lines on CPU
+- [`Particles`](../packages/core/src/modules/render/particles.ts): fullscreen draw of instanced particles; custom color and hue modes; ring style for pinned particles
+- [`Trails`](../packages/core/src/modules/render/trails.ts): compute-like two-pass effect (decay + blur) or canvas equivalents on CPU
+- [`Lines`](../packages/core/src/modules/render/lines.ts): instanced line quads on GPU, stroke lines on CPU
 
 ### Arrays and large inputs
 
-- Declare array inputs with `DataType.ARRAY` (e.g., index lists for [`Lines`](../../packages/core/src/modules/render/lines.ts)/[`Joints`](../../packages/core/src/modules/forces/joints.ts)).
+- Declare array inputs with `DataType.ARRAY` (e.g., index lists for [`Lines`](../packages/core/src/modules/render/lines.ts)/[`Joints`](../packages/core/src/modules/forces/joints.ts)).
 - WebGPU path uploads them to buffers; CPU path receives them as JS arrays.
 - Use `getLength(name)` and `getUniform(name, indexExpr)` in WGSL to read items.
 

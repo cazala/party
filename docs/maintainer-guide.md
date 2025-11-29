@@ -5,17 +5,17 @@ This document explains the internal architecture of the core library for contrib
 ### Code organization
 
 - `packages/core/src/`
-  - [`engine.ts`](../../packages/core/src/engine.ts): facade that selects runtime (`cpu`/`webgpu`/`auto`) and delegates the full `IEngine` API
-  - [`interfaces.ts`](../../packages/core/src/interfaces.ts): `IEngine`, `IParticle`, `AbstractEngine` common logic (view, modules, config, oscillators, export/import, FPS)
-  - [`module.ts`](../../packages/core/src/module.ts): `Module` base class, `ModuleRole`, `DataType`, and uniform plumbing
-  - [`modules/forces/*`](../../packages/core/src/modules/forces/): built-in forces (environment, boundary, collisions, behavior, fluids, sensors, interaction, joints, grab)
-  - [`modules/render/*`](../../packages/core/src/modules/render/): built-in render modules (particles, trails, lines)
-  - [`runtimes/cpu/*`](../../packages/core/src/runtimes/cpu/): CPU engine and helpers (Canvas2D rendering, neighbor queries, descriptors)
-  - [`runtimes/webgpu/*`](../../packages/core/src/runtimes/webgpu/): WebGPU engine and builders (GPU resources, program/pipeline builders, spatial grid, shaders)
+  - [`engine.ts`](../packages/core/src/engine.ts): facade that selects runtime (`cpu`/`webgpu`/`auto`) and delegates the full `IEngine` API
+  - [`interfaces.ts`](../packages/core/src/interfaces.ts): `IEngine`, `IParticle`, `AbstractEngine` common logic (view, modules, config, oscillators, export/import, FPS)
+  - [`module.ts`](../packages/core/src/module.ts): `Module` base class, `ModuleRole`, `DataType`, and uniform plumbing
+  - [`modules/forces/*`](../packages/core/src/modules/forces/): built-in forces (environment, boundary, collisions, behavior, fluids, sensors, interaction, joints, grab)
+  - [`modules/render/*`](../packages/core/src/modules/render/): built-in render modules (particles, trails, lines)
+  - [`runtimes/cpu/*`](../packages/core/src/runtimes/cpu/): CPU engine and helpers (Canvas2D rendering, neighbor queries, descriptors)
+  - [`runtimes/webgpu/*`](../packages/core/src/runtimes/webgpu/): WebGPU engine and builders (GPU resources, program/pipeline builders, spatial grid, shaders)
 
 ### Engine selection and lifecycle
 
-- Top-level [`Engine`](../../packages/core/src/engine.ts) constructs either [`WebGPUEngine`](../../packages/core/src/runtimes/webgpu/engine.ts) or [`CPUEngine`](../../packages/core/src/runtimes/cpu/engine.ts) based on `runtime`.
+- Top-level [`Engine`](../packages/core/src/engine.ts) constructs either [`WebGPUEngine`](../packages/core/src/runtimes/webgpu/engine.ts) or [`CPUEngine`](../packages/core/src/runtimes/cpu/engine.ts) based on `runtime`.
 - When `runtime === "auto"`, initialization attempts WebGPU first and falls back to CPU if device/adapter creation fails (cleanup is handled, and the CPU engine is re-initialized with the same options).
 - The selected concrete engine provides all `IEngine` methods; the facade also exposes helpers like pin/unpin and `isSupported(module)`.
 
@@ -31,14 +31,14 @@ Shared functionality across both runtimes:
 
 ### WebGPU runtime
 
-Key components (see [`runtimes/webgpu/`](../../packages/core/src/runtimes/webgpu/)):
+Key components (see [`runtimes/webgpu/`](../packages/core/src/runtimes/webgpu/)):
 
-- [`GPUResources`](../../packages/core/src/runtimes/webgpu/gpu-resources.ts): device/context acquisition, swapchain, shared bind groups, uniform buffers, scene textures
-- [`ModuleRegistry`](../../packages/core/src/runtimes/webgpu/module-registry.ts): collects modules; attaches uniform writers/readers; materializes pass/phase requirements
-- [`SimulationPipeline`](../../packages/core/src/runtimes/webgpu/simulation-pipeline.ts): builds the compute program by concatenating module-provided WGSL snippets across phases (`global`, `state`, `apply`, `constrain`, `correct`); dispatches with configured `workgroupSize`
-- [`RenderPipeline`](../../packages/core/src/runtimes/webgpu/render-pipeline.ts): executes module render passes (Fullscreen/Compute/Instanced) in sequence, ping-ponging the scene texture as needed
-- [`SpacialGrid`](../../packages/core/src/runtimes/webgpu/spacial-grid.ts): grid uniforms/buffers and neighbor iterators used by simulation WGSL
-- [`ParticleStore`](../../packages/core/src/runtimes/webgpu/particle-store.ts): GPU storage for particle arrays (positions, velocities, size, mass, color, etc.) with known stride
+- [`GPUResources`](../packages/core/src/runtimes/webgpu/gpu-resources.ts): device/context acquisition, swapchain, shared bind groups, uniform buffers, scene textures
+- [`ModuleRegistry`](../packages/core/src/runtimes/webgpu/module-registry.ts): collects modules; attaches uniform writers/readers; materializes pass/phase requirements
+- [`SimulationPipeline`](../packages/core/src/runtimes/webgpu/simulation-pipeline.ts): builds the compute program by concatenating module-provided WGSL snippets across phases (`global`, `state`, `apply`, `constrain`, `correct`); dispatches with configured `workgroupSize`
+- [`RenderPipeline`](../packages/core/src/runtimes/webgpu/render-pipeline.ts): executes module render passes (Fullscreen/Compute/Instanced) in sequence, ping-ponging the scene texture as needed
+- [`SpacialGrid`](../packages/core/src/runtimes/webgpu/spacial-grid.ts): grid uniforms/buffers and neighbor iterators used by simulation WGSL
+- [`ParticleStore`](../packages/core/src/runtimes/webgpu/particle-store.ts): GPU storage for particle arrays (positions, velocities, size, mass, color, etc.) with known stride
 
 Execution order (per frame):
 
@@ -58,7 +58,7 @@ Performance considerations:
 Parallels the WebGPU phases with pure TypeScript:
 
 - Simulation phases implemented via `CPUDescriptor` callbacks (`state`, `apply`, `constrain`, `correct`)
-- Neighbor queries via a spatial grid with `getNeighbors(position, radius)` (see [`spatial-grid.ts`](../../packages/core/src/runtimes/cpu/spatial-grid.ts))
+- Neighbor queries via a spatial grid with `getNeighbors(position, radius)` (see [`spatial-grid.ts`](../packages/core/src/runtimes/cpu/spatial-grid.ts))
 - Rendering via Canvas2D
   - Composition: modules declare how to interact with the canvas clear/draw order
   - Effects like Trails use immediate-mode approximations (decay fill, canvas blur)
@@ -91,7 +91,7 @@ Parallels the WebGPU phases with pure TypeScript:
 
 ### Extending the system
 
-- Add new modules under [`modules/forces/*`](../../packages/core/src/modules/forces/) or [`modules/render/*`](../../packages/core/src/modules/render/)
+- Add new modules under [`modules/forces/*`](../packages/core/src/modules/forces/) or [`modules/render/*`](../packages/core/src/modules/render/)
 - For WebGPU: extend builders if the WGSL DSL needs new helpers
 - For CPU: ensure compositing and sampling utilities cover your pass
 - Update the playground to expose controls for new inputs
