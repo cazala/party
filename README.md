@@ -12,6 +12,20 @@ A high-performance particle physics simulation system with interactive playgroun
 - **Real-time Oscillators**: Animate any module parameter with configurable frequency and bounds
 - **Interactive Playground**: React-based interface with undo/redo, hotkeys, and live parameter adjustment
 
+## Documentation
+
+Comprehensive documentation is available in the [`docs/`](./docs) directory:
+
+- **[User Guide](./docs/user-guide.md)**: Complete guide for using the core library as an end user. Covers engine API, runtime selection, module configuration, particle management, oscillators, and all built-in force and render modules with examples.
+
+- **[Maintainer Guide](./docs/maintainer-guide.md)**: Internal architecture documentation for contributors. Explains code organization, dual runtime system (CPU/WebGPU), module system, spatial grid, pipelines, oscillators, and how to extend the system.
+
+- **[Module Author Guide](./docs/module-author-guide.md)**: Step-by-step guide for creating custom force and render modules. Covers the module lifecycle, input/output system, CPU and WebGPU implementations, and best practices.
+
+- **[Playground User Guide](./docs/playground-user-guide.md)**: Guide for using the interactive playground application. Covers the UI, tools, session management, oscillators, hotkeys, and workflow tips.
+
+- **[Playground Maintainer Guide](./docs/playground-maintainer-guide.md)**: Technical documentation for maintaining and extending the playground. Covers architecture, state management (Redux), component structure, hooks, tools system, and development workflows.
+
 ## Packages
 
 This is a monorepo containing two main packages:
