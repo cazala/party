@@ -39,6 +39,7 @@ import {
   setConstrainIterationsThunk,
   setCellSizeThunk,
   setMaxNeighborsThunk,
+  setMaxParticlesThunk,
   setClearColorThunk,
   toggleRuntime as toggleRuntimeAction,
   addParticleThunk,
@@ -253,8 +254,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         // Use default maxParticles for playground (100k)
         const maxParticles = 100000;
         
-        // Store maxParticles in Redux state
-        dispatch(setMaxParticlesAction(maxParticles));
+        // Store maxParticles in Redux state (null means no limit)
+        dispatch(setMaxParticlesAction(null));
 
         // Create modules first
         const environment = new Environment({
@@ -587,8 +588,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   );
 
   const setMaxParticles = useCallback(
-    (value: number) => {
-      dispatch(setMaxParticlesAction(value));
+    (value: number | null) => {
+      dispatch(setMaxParticlesThunk(value));
     },
     [dispatch]
   );

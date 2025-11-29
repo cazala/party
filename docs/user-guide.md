@@ -143,7 +143,7 @@ engine.play();
 - **State**: `isPlaying()`, `getFPS()`
 - **View**: `getSize()`, `setSize(w,h)`, `setCamera(x,y)`, `getCamera()`, `setZoom(z)`, `getZoom()`
 - **Particles**: `addParticle(p)`, `setParticles(p[])`, `getParticles()`, `getParticle(i)`, `clear()`, `getCount()`
-- **Config**: `getClearColor()/setClearColor()`, `getCellSize()/setCellSize()`, `getMaxNeighbors()/setMaxNeighbors()`, `getConstrainIterations()/setConstrainIterations()`
+- **Config**: `getClearColor()/setClearColor()`, `getCellSize()/setCellSize()`, `getMaxNeighbors()/setMaxNeighbors()`, `getMaxParticles()/setMaxParticles()`, `getConstrainIterations()/setConstrainIterations()`
 - **Modules**: `getModule(name)` returns the module instance by name
 - **Serialization**: `export()` returns `{ [moduleName]: settings }`; `import(settings)` applies them
 - **Oscillators**: see “Oscillators” below
@@ -170,7 +170,7 @@ Notes
 - `addParticle(p)` / `setParticles(p[])` / `getParticles()` / `getParticle(i)` / `clear()`
   - Manage particle data. For bulk changes prefer `setParticles()` to minimize sync overhead.
 - `getCount()` / `getFPS()`
-  - Inspect particle count and smoothed FPS estimate.
+  - Inspect particle count and smoothed FPS estimate. `getCount()` returns the effective count (actual count limited by `maxParticles` if set).
 - `export()` / `import(settings)`
   - Serialize/restore module inputs (including `enabled`). Great for presets and sharing scenes.
 - `getModule(name)`
@@ -184,6 +184,8 @@ Performance-critical settings
   - Spatial grid resolution for neighbor queries. Smaller cells improve locality but increase bookkeeping; larger cells reduce overhead but widen searches. Typical: 8–64.
 - `setMaxNeighbors(value: number)`
   - Cap neighbors considered per particle in neighbor-based modules (collisions, behavior, fluids). Higher = more accurate in dense scenes, but slower. Typical: 64–256.
+- `setMaxParticles(value: number | null)`
+  - Limit the number of particles processed in simulation and rendering. When set to a number, only particles with index < `maxParticles` are processed. Set to `null` (default) to process all particles. Useful for performance tuning: if you have 100k particles but set `maxParticles` to 20k, only the first 20k will be simulated/rendered. `getCount()` returns the effective count (min of actual count and `maxParticles`).
 - `setConstrainIterations(iterations: number)`
   - Number of constraint iterations per frame (affects boundary/collision correction and joints). More = more stable/rigid, but slower. Defaults: CPU ≈ 5, WebGPU ≈ 50.
 

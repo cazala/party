@@ -5,6 +5,7 @@ import { useInit } from "./useInit";
 import { useEnvironment } from "./modules/useEnvironment";
 import { useSession } from "./useSession";
 import { SessionData } from "../types/session";
+import { SpawnParticlesConfig } from "../slices/engine";
 import demo1SessionData from "../sessions/demo1.json";
 import demo2SessionData from "../sessions/demo2.json";
 import demo3SessionData from "../sessions/demo3.json";
@@ -16,7 +17,6 @@ import { useOscillators } from "./useOscillators";
 import { useReset } from "../contexts/ResetContext";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import { isMobileDevice, calculateMaxParticles } from "../utils/deviceCapabilities";
-import { SpawnParticlesConfig } from "../slices/engine";
 
 export function useDemo() {
   const { setBarsVisibility } = useUI();
@@ -30,6 +30,7 @@ export function useDemo() {
     setConstrainIterations,
     setCellSize,
     setMaxNeighbors,
+    setMaxParticles,
   } = useEngine();
   const { initState } = useInit();
   const { setGravityStrength, setMode: setGravityMode, setCustomAngleDegrees, reset: resetEnvironment } = useEnvironment();
@@ -242,6 +243,12 @@ export function useDemo() {
         } else {
           setTrailsEnabled(true);
         }
+
+        // if (sessionData?.name === "Demo1" || sessionData?.name === "Demo5" || sessionData?.name === "Demo2") {
+        //   setMaxParticles(30000);
+        // } else {
+        //   setMaxParticles(100000);
+        // }
 
         void quickLoadSessionData(sessionData);
 

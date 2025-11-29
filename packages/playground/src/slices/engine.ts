@@ -64,7 +64,7 @@ export interface EngineState {
   constrainIterations: number;
   gridCellSize: number;
   maxNeighbors: number;
-  maxParticles: number;
+  maxParticles: number | null;
   clearColor: { r: number; g: number; b: number; a: number };
   size: { width: number; height: number };
   camera: { x: number; y: number };
@@ -90,7 +90,7 @@ const initialState: EngineState = {
   constrainIterations: 1,
   gridCellSize: 16,
   maxNeighbors: 1000,
-  maxParticles: 40000,
+  maxParticles: null,
   clearColor: { r: 0, g: 0, b: 0, a: 1 },
   size: { width: 800, height: 600 },
   camera: { x: 0, y: 0 },
@@ -134,7 +134,7 @@ export const engineSlice = createSlice({
     setMaxNeighbors: (state, action: PayloadAction<number>) => {
       state.maxNeighbors = action.payload;
     },
-    setMaxParticles: (state, action: PayloadAction<number>) => {
+    setMaxParticles: (state, action: PayloadAction<number | null>) => {
       state.maxParticles = action.payload;
     },
     setClearColor: (
@@ -269,6 +269,17 @@ export const setMaxNeighborsThunk = createAsyncThunk(
     if (engine) {
       engine.setMaxNeighbors(maxNeighbors);
       dispatch(engineSlice.actions.setMaxNeighbors(maxNeighbors));
+    }
+  }
+);
+
+export const setMaxParticlesThunk = createAsyncThunk(
+  "engine/setMaxParticles",
+  async (maxParticles: number | null, { dispatch }) => {
+    const engine = getEngine();
+    if (engine) {
+      engine.setMaxParticles(maxParticles);
+      dispatch(engineSlice.actions.setMaxParticles(maxParticles));
     }
   }
 );

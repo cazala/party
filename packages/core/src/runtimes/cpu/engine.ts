@@ -92,7 +92,15 @@ export class CPUEngine extends AbstractEngine {
   }
 
   getCount(): number {
-    return this.particles.length;
+    const actualCount = this.particles.length;
+    if (this.maxParticles === null) {
+      return actualCount;
+    }
+    return Math.min(actualCount, this.maxParticles);
+  }
+
+  protected getEffectiveCount(): number {
+    return this.getCount();
   }
 
   // Override setSize to also update spatial grid
@@ -148,6 +156,10 @@ export class CPUEngine extends AbstractEngine {
 
   protected onMaxNeighborsChanged(): void {
     // No additional state to update on CPU when max neighbors changes
+  }
+
+  protected onMaxParticlesChanged(): void {
+    // No additional state to update on CPU when max particles changes
   }
 
   private animate = (): void => {
@@ -210,6 +222,8 @@ export class CPUEngine extends AbstractEngine {
   }
 
   private update(dt: number): void {
+    const effectiveCount = this.getEffectiveCount();
+    
     // Update spatial grid with current particle positions and camera
     this.grid.setCamera(
       this.view.getCamera().x,
@@ -217,8 +231,8 @@ export class CPUEngine extends AbstractEngine {
       this.view.getZoom()
     );
     this.grid.clear();
-    for (const particle of this.particles) {
-      this.grid.insert(particle);
+    for (let i = 0; i < effectiveCount; i++) {
+      this.grid.insert(this.particles[i]);
     }
 
     // Global state for modules that need it
@@ -258,7 +272,7 @@ export class CPUEngine extends AbstractEngine {
             // Always add enabled
             input.enabled = module.isEnabled() ? 1 : 0;
 
-            for (let pi = 0; pi < this.particles.length; pi++) {
+            for (let pi = 0; pi < effectiveCount; pi++) {
               const particle = this.particles[pi];
               if (particle.mass <= 0) continue;
               const setState = (name: string, value: number) => {
@@ -301,7 +315,7 @@ export class CPUEngine extends AbstractEngine {
             // Always add enabled
             input.enabled = module.isEnabled() ? 1 : 0;
 
-            for (let pi = 0; pi < this.particles.length; pi++) {
+            for (let pi = 0; pi < effectiveCount; pi++) {
               const particle = this.particles[pi];
               if (particle.mass <= 0) continue;
               const getState = (name: string, pid?: number) => {
@@ -327,7 +341,8 @@ export class CPUEngine extends AbstractEngine {
     }
 
     // Third pass: integration (once per particle)
-    for (const particle of this.particles) {
+    for (let i = 0; i < effectiveCount; i++) {
+      const particle = this.particles[i];
       if (particle.mass <= 0) continue;
       // Capture position before integration
       const prevPos = { x: particle.position.x, y: particle.position.y };
@@ -358,7 +373,7 @@ export class CPUEngine extends AbstractEngine {
               }
               // Always add enabled
               input.enabled = module.isEnabled() ? 1 : 0;
-              for (let pi = 0; pi < this.particles.length; pi++) {
+              for (let pi = 0; pi < effectiveCount; pi++) {
                 const particle = this.particles[pi];
                 if (particle.mass <= 0) continue;
                 const getState = (name: string, pid?: number) => {
@@ -400,7 +415,7 @@ export class CPUEngine extends AbstractEngine {
             // Always add enabled
             input.enabled = module.isEnabled() ? 1 : 0;
 
-            for (let index = 0; index < this.particles.length; index++) {
+            for (let index = 0; index < effectiveCount; index++) {
               const particle = this.particles[index];
               if (particle.mass <= 0) continue;
               const getState = (name: string, pid?: number) => {
@@ -547,7 +562,9 @@ export class CPUEngine extends AbstractEngine {
           });
 
           // Render each visible particle
-          for (const particle of this.particles) {
+          const effectiveCount = this.getEffectiveCount();
+          for (let i = 0; i < effectiveCount; i++) {
+            const particle = this.particles[i];
             if (particle.mass == 0) continue;
 
             // Transform world position to screen position

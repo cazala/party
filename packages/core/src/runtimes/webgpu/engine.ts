@@ -30,7 +30,7 @@ export class WebGPUEngine extends AbstractEngine {
   private sim: SimulationPipeline;
   private render: RenderPipeline;
   private grid: SpacialGrid;
-  private maxParticles: number;
+  private bufferMaxParticles: number; // Buffer allocation size (separate from effective maxParticles)
   private workgroupSize: number;
   private simStrideValue: number = 0;
   private shouldSyncNextTick: boolean = false;
@@ -51,10 +51,13 @@ export class WebGPUEngine extends AbstractEngine {
       ...options,
       constrainIterations: options.constrainIterations ?? 50,
     });
-    this.maxParticles = options.maxParticles ?? 100000;
+    // Buffer allocation size (separate from effective maxParticles limit)
+    this.bufferMaxParticles = options.maxParticles ?? 100000;
+    // Set effective maxParticles limit (null means no limit)
+    this.setMaxParticles(options.maxParticles ?? null);
     this.workgroupSize = options.workgroupSize ?? 64;
     this.resources = new GPUResources({ canvas: options.canvas });
-    this.particles = new ParticleStore(this.maxParticles, 12);
+    this.particles = new ParticleStore(this.bufferMaxParticles, 12);
     this.registry = new ModuleRegistry([...options.forces, ...options.render]);
     this.sim = new SimulationPipeline();
     this.render = new RenderPipeline();
@@ -65,14 +68,14 @@ export class WebGPUEngine extends AbstractEngine {
     await this.resources.initialize();
 
     // Core buffers
-    this.resources.createParticleBuffer(this.maxParticles, 12);
+    this.resources.createParticleBuffer(this.bufferMaxParticles, 12);
     this.resources.createRenderUniformBuffer(24);
 
     // Build program + module uniform buffers
     this.registry.initialize(this.resources);
     const program = this.registry.getProgram();
     if (program.extraBindings.simState) {
-      this.resources.createSimStateBuffer(this.maxParticles, 4);
+      this.resources.createSimStateBuffer(this.bufferMaxParticles, 4);
     }
 
     // Build compute pipelines
@@ -168,7 +171,11 @@ export class WebGPUEngine extends AbstractEngine {
   }
 
   getCount(): number {
-    return this.particles.getCount();
+    const actualCount = this.particles.getCount();
+    if (this.maxParticles === null) {
+      return actualCount;
+    }
+    return Math.min(actualCount, this.maxParticles);
   }
 
   clear(): void {
@@ -203,19 +210,21 @@ export class WebGPUEngine extends AbstractEngine {
     if (this.playing) {
       // Update engine-owned oscillators before simulation uniforms are written
       this.updateOscillators(dt);
-      // Update simulation uniforms (dt, count, simStride, maxSize)
+      // Update simulation uniforms (dt, count, simStride, maxSize, maxParticles)
+      const actualCount = this.particles.getCount();
       this.resources.writeSimulationUniform(this.registry.getProgram(), {
         dt,
-        count: this.particles.getCount(),
+        count: actualCount,
         simStride: this.simStrideValue,
         maxSize: this.getMaxSize(),
         iteration: 0,
         maxNeighbors: this.getMaxNeighbors(),
+        maxParticles: this.maxParticles ?? -1, // Use -1 as sentinel for null
       });
 
       // Run simulation passes
       this.sim.runPasses(encoder, this.resources, {
-        particleCount: this.particles.getCount(),
+        particleCount: this.getCount(), // Use effective count
         gridCellCount: this.grid.getCellCount(),
         workgroupSize: this.workgroupSize,
         constrainIterations: this.constrainIterations,
@@ -236,7 +245,7 @@ export class WebGPUEngine extends AbstractEngine {
       }
     }
 
-    const particleCount = this.particles.getCount();
+    const particleCount = this.getCount(); // Use effective count
 
     // Always run render passes to keep displaying current state
     const lastView = this.render.runPasses(
@@ -307,5 +316,9 @@ export class WebGPUEngine extends AbstractEngine {
 
   protected onMaxNeighborsChanged(): void {
     // Max neighbors affects only simulation-side neighbor iterator cap; no immediate rebuild needed
+  }
+
+  protected onMaxParticlesChanged(): void {
+    // Max particles affects effective count; no immediate rebuild needed
   }
 }

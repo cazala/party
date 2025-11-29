@@ -41,6 +41,21 @@ export function HelpModal({
       </section>
 
       <section>
+        <h3>Oscillators</h3>
+        <ul>
+          <li>
+            <b>Cmd/Ctrl + Click</b> on slider: Add oscillator
+          </li>
+          <li>
+            <b>Cmd/Ctrl + Click</b> on oscillator: Cycle speed
+          </li>
+          <li>
+            <b>Click</b> on oscillator: Remove oscillator
+          </li>
+        </ul>
+      </section>
+
+      <section>
         <h3>Tools</h3>
         <ul>
           <li>

@@ -287,6 +287,12 @@ export class Engine implements IEngine {
   setMaxNeighbors(size: number): void {
     this.engine.setMaxNeighbors(size);
   }
+  getMaxParticles(): number | null {
+    return this.engine.getMaxParticles();
+  }
+  setMaxParticles(value: number | null): void {
+    this.engine.setMaxParticles(value);
+  }
   getModule(name: string): Module | undefined {
     return this.engine.getModule(name);
   }

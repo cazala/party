@@ -25,7 +25,7 @@ Shared functionality across both runtimes:
 
 - Animation control: `play()/pause()/stop()/toggle()`, dt clamping, FPS smoothing
 - View: `View` tracks camera, zoom, and canvas size; view changes trigger runtime hooks
-- Configuration: `cellSize`, `maxNeighbors`, `constrainIterations`, `clearColor`
+- Configuration: `cellSize`, `maxNeighbors`, `maxParticles`, `constrainIterations`, `clearColor`
 - Modules: array of `Module` instances; `export()`/`import()` serialize module inputs, including `enabled`
 - Oscillators: `OscillatorManager` writes into module inputs each frame via `module.write()` and triggers `onModuleSettingsChanged()`
 

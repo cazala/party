@@ -46,6 +46,8 @@ export interface IEngine {
   setCellSize(size: number): void;
   getMaxNeighbors(): number;
   setMaxNeighbors(size: number): void;
+  getMaxParticles(): number | null;
+  setMaxParticles(value: number | null): void;
   getConstrainIterations(): number;
   setConstrainIterations(iterations: number): void;
   getModule(name: string): Module | undefined;
@@ -121,6 +123,7 @@ export abstract class AbstractEngine implements IEngine {
   protected clearColor: { r: number; g: number; b: number; a: number };
   protected cellSize: number;
   protected maxNeighbors: number;
+  protected maxParticles: number | null = null;
   protected view: View;
   protected modules: Module[];
   protected maxSize: number = 0;
@@ -414,6 +417,18 @@ export abstract class AbstractEngine implements IEngine {
     this.onMaxNeighborsChanged();
   }
 
+  getMaxParticles(): number | null {
+    return this.maxParticles;
+  }
+
+  setMaxParticles(value: number | null): void {
+    if (value !== null && value < 0) {
+      throw new Error("Max particles must be non-negative or null");
+    }
+    this.maxParticles = value;
+    this.onMaxParticlesChanged();
+  }
+
   getConstrainIterations(): number {
     return this.constrainIterations;
   }
@@ -453,6 +468,10 @@ export abstract class AbstractEngine implements IEngine {
   }
 
   protected onMaxNeighborsChanged(): void {
+    // Override in subclasses if needed
+  }
+
+  protected onMaxParticlesChanged(): void {
     // Override in subclasses if needed
   }
 

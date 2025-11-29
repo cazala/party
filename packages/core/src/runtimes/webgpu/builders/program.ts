@@ -119,6 +119,7 @@ export function buildProgram(modules: readonly Module[]): Program {
       "maxSize",
       "iteration",
       "maxNeighbors",
+      "maxParticles",
     ] as const,
     1
   );
@@ -278,8 +279,15 @@ export function buildProgram(modules: readonly Module[]): Program {
     .expr;
   const countExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping
     .count.expr;
+  const maxParticlesExpr = layouts.find((l) => l.moduleName === "simulation")!.mapping
+    .maxParticles.expr;
   const maxSizeExpr = layouts.find((l) => l.moduleName === "simulation")!
     .mapping.maxSize.expr;
+  
+  // Effective count is min(count, maxParticles) when maxParticles >= 0 (not null)
+  // We use -1 as the sentinel value for null in the shader
+  // select(if_false, if_true, condition) - returns if_true when condition is true
+  const effectiveCountExpr = `select(u32(${countExpr}), min(u32(${countExpr}), u32(${maxParticlesExpr})), ${maxParticlesExpr} >= 0.0)`;
 
   const baseState = ["prevX", "prevY", "posIntX", "posIntY"] as const;
   const stateSlots: Record<string, number> = {};
@@ -350,7 +358,7 @@ export function buildProgram(modules: readonly Module[]): Program {
   globals.push(`// Internal simulation helpers`);
   globals.push(
     `fn SIM_STATE_STRIDE() -> u32 { return u32(${simLayout.mapping.simStride.expr}); }
-fn SIM_COUNT() -> u32 { return u32(${simLayout.mapping.count.expr}); }
+fn SIM_COUNT() -> u32 { return ${effectiveCountExpr}; }
 fn SIM_ITERATION() -> u32 { return u32(${simLayout.mapping.iteration.expr}); }
 fn SIM_MAX_NEIGHBORS() -> u32 { return u32(${simLayout.mapping.maxNeighbors.expr}); }
 fn sim_state_index(pid: u32, slot: u32) -> u32 { return pid * SIM_STATE_STRIDE() + slot; }
@@ -558,17 +566,17 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
   });
 
-  const statePass = `@compute @workgroup_size(64)\nfn state_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = u32(${countExpr});\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  ${stateStmts.join(
+  const statePass = `@compute @workgroup_size(64)\nfn state_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = ${effectiveCountExpr};\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  ${stateStmts.join(
     "\n  "
   )}\n  particles[index] = particle;\n}`;
-  const applyPass = `@compute @workgroup_size(64)\nfn apply_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = u32(${countExpr});\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  ${applyStmts.join(
+  const applyPass = `@compute @workgroup_size(64)\nfn apply_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = ${effectiveCountExpr};\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  ${applyStmts.join(
     "\n  "
   )}\n  particles[index] = particle;\n}`;
-  const integratePass = `@compute @workgroup_size(64)\nfn integrate_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = u32(${countExpr});\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  sim_state_write(index, 0u, particle.position.x);\n  sim_state_write(index, 1u, particle.position.y);\n  particle.velocity += particle.acceleration * ${dtExpr};\n  particle.position += particle.velocity * ${dtExpr};\n  sim_state_write(index, 2u, particle.position.x);\n  sim_state_write(index, 3u, particle.position.y);\n  particle.acceleration = vec2<f32>(0.0, 0.0);\n  particles[index] = particle;\n}`;
-  const constrainPass = `@compute @workgroup_size(64)\nfn constrain_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = u32(${countExpr});\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  ${constrainStmts.join(
+  const integratePass = `@compute @workgroup_size(64)\nfn integrate_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = ${effectiveCountExpr};\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  sim_state_write(index, 0u, particle.position.x);\n  sim_state_write(index, 1u, particle.position.y);\n  particle.velocity += particle.acceleration * ${dtExpr};\n  particle.position += particle.velocity * ${dtExpr};\n  sim_state_write(index, 2u, particle.position.x);\n  sim_state_write(index, 3u, particle.position.y);\n  particle.acceleration = vec2<f32>(0.0, 0.0);\n  particles[index] = particle;\n}`;
+  const constrainPass = `@compute @workgroup_size(64)\nfn constrain_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = ${effectiveCountExpr};\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  ${constrainStmts.join(
     "\n  "
   )}\n  particles[index] = particle;\n}`;
-  const correctPass = `@compute @workgroup_size(64)\nfn correct_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = u32(${countExpr});\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  \n  // Compute position variables from integration state\n  let prevPos = vec2<f32>(sim_state_read(index, 0u), sim_state_read(index, 1u));\n  let postPos = vec2<f32>(sim_state_read(index, 2u), sim_state_read(index, 3u));\n  \n  ${correctStmts.join(
+  const correctPass = `@compute @workgroup_size(64)\nfn correct_pass(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let index = gid.x;\n  let count = ${effectiveCountExpr};\n  if (index >= count) { return; }\n  var particle = particles[index];\n  if (particle.mass <= 0.0) { return; }\n  \n  // Compute position variables from integration state\n  let prevPos = vec2<f32>(sim_state_read(index, 0u), sim_state_read(index, 1u));\n  let postPos = vec2<f32>(sim_state_read(index, 2u), sim_state_read(index, 3u));\n  \n  ${correctStmts.join(
     "\n  "
   )}\n  particles[index] = particle;\n}`;
   const mainPass = `@compute @workgroup_size(64)\nfn main(@builtin(global_invocation_id) _gid: vec3<u32>) {}`;
