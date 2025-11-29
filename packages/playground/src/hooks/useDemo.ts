@@ -238,12 +238,13 @@ export function useDemo() {
     // Calculate particle counts based on device capabilities
     const highPerformanceMaxParticles = deviceMaxParticles; // For less demanding demos
     const lowPerformanceMaxParticles = deviceMaxParticles / 4; // For more demanding demos (Demo1, Demo5, Demo2)
+    const mediumPerformanceMaxParticles = deviceMaxParticles / 2.5;
 
     let timeoutId: number;
     const sequence: DemoSequenceItem[] = [
       {
         sessionData: demo3SessionData as SessionData,
-        duration: 15000,
+        duration: isMobileDevice() ? 12000 : 15000,
         maxParticles: highPerformanceMaxParticles,
         transitionDuration: 5000, // 5s for increasing particles
       },
@@ -280,8 +281,8 @@ export function useDemo() {
       {
         sessionData: demo2SessionData as SessionData,
         duration: 25000,
-        maxParticles: lowPerformanceMaxParticles,
-        transitionDuration: 0,
+        maxParticles: isMobileDevice() ? lowPerformanceMaxParticles : mediumPerformanceMaxParticles,
+        transitionDuration: 2500,
       },
       {
         sessionData: demo1SessionData as SessionData,
