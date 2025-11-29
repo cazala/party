@@ -18,9 +18,9 @@ Comprehensive documentation is available in the [`docs/`](./docs) directory:
 
 - **[User Guide](./docs/user-guide.md)**: Complete guide for using the core library as an end user. Covers engine API, runtime selection, module configuration, particle management, oscillators, and all built-in force and render modules with examples.
 
-- **[Maintainer Guide](./docs/maintainer-guide.md)**: Internal architecture documentation for contributors. Explains code organization, dual runtime system (CPU/WebGPU), module system, spatial grid, pipelines, oscillators, and how to extend the system.
-
 - **[Module Author Guide](./docs/module-author-guide.md)**: Step-by-step guide for creating custom force and render modules. Covers the module lifecycle, input/output system, CPU and WebGPU implementations, and best practices.
+
+- **[Maintainer Guide](./docs/maintainer-guide.md)**: Internal architecture documentation for contributors. Explains code organization, dual runtime system (CPU/WebGPU), module system, spatial grid, pipelines, oscillators, and how to extend the system.
 
 - **[Playground User Guide](./docs/playground-user-guide.md)**: Guide for using the interactive playground application. Covers the UI, tools, session management, oscillators, hotkeys, and workflow tips.
 
@@ -317,18 +317,12 @@ party/
 - **maxNeighbors**: Neighbor query limit (64-256 typical)
 - **constrainIterations**: Constraint solver iterations (CPU: ~5, WebGPU: ~50)
 - **workgroupSize**: WebGPU compute workgroup size (32-256)
-
-## Use Cases
-
-- **Creative Coding**: Interactive art installations and generative graphics
-- **Game Development**: Particle effects, flocking AI, and physics simulation
-- **Education**: Physics simulation and algorithm visualization
-- **Research**: Multi-agent systems and emergent behavior studies
-- **Prototyping**: Rapid experimentation with particle dynamics
+- **maxParticles**: Limit the number of particles processed in simulation and rendering. When set to a number, only particles with index < `maxParticles` are processed. Set to `null` (default) to process all particles. Useful for performance tuning. 
 
 ## Browser Support
 
-- **WebGPU**: Chrome 113+, Edge 113+, Firefox (experimental)
+- **WebGPU**: Chrome 113+, Edge 113+, Safari 18+, Firefox (experimental)
+- **Mobile**: iOS 18+ (Safari), Android (Chrome 113+)
 - **CPU Fallback**: All modern browsers with Canvas2D support
 - **Auto-Detection**: Seamless fallback when WebGPU is unavailable
 
