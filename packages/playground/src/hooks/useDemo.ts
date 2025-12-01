@@ -11,6 +11,7 @@ import demo2SessionData from "../sessions/demo2.json";
 import demo3SessionData from "../sessions/demo3.json";
 import demo4SessionData from "../sessions/demo4.json";
 import demo5SessionData from "../sessions/demo5.json";
+import demo6SessionData from "../sessions/demo6.json";
 import { useInteraction, useTrails, useBoundary, useCollisions, useFluids, useBehavior, useSensors, useJoints } from "./modules";
 import { useRender } from "./useRender";
 import { useOscillators } from "./useOscillators";
@@ -89,10 +90,10 @@ export function useDemo() {
 
             const spawnConfig = {
               numParticles: demoParticleCount,
-              shape: "random" as const,
-              spacing: 20,
+              shape: isMobileDevice() ? "random" as const : "circle" as const,
               particleSize: 3,
-              radius: 100,
+              spacing: 0,
+              radius: 500,
               colors: ["#ffffff"],
               velocityConfig: { speed: 100, direction: "random" as const, angle: 0 },
               innerRadius: 50,
@@ -237,8 +238,9 @@ export function useDemo() {
 
     // Calculate particle counts based on device capabilities
     const highPerformanceMaxParticles = deviceMaxParticles; // For less demanding demos
-    const lowPerformanceMaxParticles = deviceMaxParticles / 4; // For more demanding demos (Demo1, Demo5, Demo2)
-    const mediumPerformanceMaxParticles = deviceMaxParticles / 2.5;
+    const lowPerformanceMaxParticles = deviceMaxParticles / 4 | 0; // For more demanding demos (Demo1, Demo5, Demo2)
+    const veryLowPerformanceMaxParticles = deviceMaxParticles / 6 | 0; // For very demanding demos (Demo6)
+    const mediumPerformanceMaxParticles = deviceMaxParticles / 2.5 | 0;
 
     let timeoutId: number;
     const sequence: DemoSequenceItem[] = [
@@ -273,22 +275,16 @@ export function useDemo() {
         transitionDuration: 0,
       },
       {
-        sessionData: demo1SessionData as SessionData,
-        duration: 10000,
-        maxParticles: lowPerformanceMaxParticles,
+        sessionData: demo6SessionData as SessionData,
+        duration: 20000,
+        maxParticles: veryLowPerformanceMaxParticles,
         transitionDuration: 0,
       },
       {
         sessionData: demo2SessionData as SessionData,
         duration: 25000,
-        maxParticles: isMobileDevice() ? lowPerformanceMaxParticles : mediumPerformanceMaxParticles,
+        maxParticles: isMobileDevice() ? veryLowPerformanceMaxParticles : mediumPerformanceMaxParticles,
         transitionDuration: 2500,
-      },
-      {
-        sessionData: demo1SessionData as SessionData,
-        duration: 15000,
-        maxParticles: lowPerformanceMaxParticles,
-        transitionDuration: 0,
       },
     ];
 
@@ -319,7 +315,7 @@ export function useDemo() {
         if (!nextItem) return;
 
         const sessionData = nextItem.sessionData;
-        if (sessionData?.name === "Demo5") {
+        if (sessionData?.name === "Demo5" || sessionData?.name === "Demo6") {
           setTrailsEnabled(false);
         } else {
           setTrailsEnabled(true);

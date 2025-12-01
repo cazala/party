@@ -5,3 +5,4 @@ packages/core/node_modules
 packages/playground/node_modules
 .DS_Store
 **/.DS_Store
+packages/playground/.DS_Store

@@ -76,8 +76,8 @@ export async function calculateMaxParticles(preferredMaxParticles?: number): Pro
   const isMobile = isMobileDevice();
   
   // Base limits: mobile devices typically handle fewer particles
-  const mobileBaseLimit = 30000;
-  const desktopBaseLimit = 100000;
+  const mobileBaseLimit = 24000;
+  const desktopBaseLimit = 80000;
   
   // If WebGPU is available, try to get a more accurate estimate
   if (navigator.gpu) {
