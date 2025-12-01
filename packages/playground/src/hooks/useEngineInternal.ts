@@ -57,6 +57,7 @@ import {
   setCamera as setCameraAction,
   setZoom as setZoomAction,
   SpawnParticlesConfig,
+  engineSlice,
 } from "../slices/engine";
 import {
   selectModules,
@@ -386,7 +387,21 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         dispatch(setInitializing(false));
         isInitializing = false; // Reset guard
 
-        dispatch(playThunk());
+        // Start the engine after ensuring everything is ready
+        // Use requestAnimationFrame to ensure the engine is fully initialized
+        // and the canvas is ready before starting the animation loop
+        requestAnimationFrame(() => {
+          // Double-check engine is still available (in case cleanup happened)
+          if (engineRef.current === engine) {
+            try {
+              engine.play();
+              dispatch(engineSlice.actions.setPlaying(true));
+            } catch (err) {
+              console.error("[Engine] Error starting engine:", err);
+              dispatch(setError(err instanceof Error ? err.message : "Failed to start engine"));
+            }
+          }
+        });
 
         // Setup cleanup
         cleanup = () => {

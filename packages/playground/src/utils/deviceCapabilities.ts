@@ -82,7 +82,7 @@ export async function calculateMaxParticles(preferredMaxParticles?: number): Pro
   // If WebGPU is available, try to get a more accurate estimate
   if (navigator.gpu) {
     try {
-      const gpuScore = await estimateGPUCapability();
+      const gpuScore = await Promise.race([estimateGPUCapability(), new Promise<number>((_resolve, reject) => setTimeout(() => reject(new Error('GPU score timed out after 1 second')), 1000))]);
       
       if (isMobile) {
         // For mobile devices, use a more conservative approach

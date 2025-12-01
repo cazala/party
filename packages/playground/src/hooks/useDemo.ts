@@ -82,25 +82,24 @@ export function useDemo() {
   useEffect(() => {
     if (!hasStarted && isInitialized && !isInitializing) {
       if (demoParticleCount > 0) {
-      setHasStarted(true);
-      setBarsVisibility(false);
-      setInvertColors(true);
+        setHasStarted(true);
+        setBarsVisibility(false);
+        setInvertColors(true);
         if (isWebGPU) {
           // Calculate maxParticles for homepage demo based on device capabilities
-
-            const spawnConfig = {
-              numParticles: demoParticleCount,
-              shape: isMobileDevice() ? "random" as const : "circle" as const,
-              particleSize: 3,
-              spacing: 0,
-              radius: 500,
-              colors: ["#ffffff"],
-              velocityConfig: { speed: 100, direction: "random" as const, angle: 0 },
-              innerRadius: 50,
-              squareSize: 200,
-            };
-            currentSpawnConfigRef.current = spawnConfig;
-            spawnParticles(spawnConfig);
+          const spawnConfig = {
+            numParticles: demoParticleCount,
+            shape: isMobileDevice() ? "random" as const : "circle" as const,
+            particleSize: 3,
+            spacing: 0,
+            radius: 500,
+            colors: ["#ffffff"],
+            velocityConfig: { speed: 100, direction: "random" as const, angle: 0 },
+            innerRadius: 50,
+            squareSize: 200,
+          };
+          currentSpawnConfigRef.current = spawnConfig;
+          spawnParticles(spawnConfig);
           setZoom(isMobileDevice() ? 0.2 : 0.3);
           setCamera({ x: 0, y: 0 });
           setTrailsEnabled(true);
@@ -167,7 +166,7 @@ export function useDemo() {
     // Deactivate interaction
     setActive(false);
     setStrength(10000);
-    
+
     // Reset engine settings
     setZoom(1);
     setTrailsEnabled(false);
@@ -179,12 +178,12 @@ export function useDemo() {
 
     // Reset all modules (like clicking the Reset button)
     setIsResetting(true);
-    
+
     // Clear oscillators for each module first
     RESTART_AFFECTED_MODULES.forEach(moduleName => {
       clearModuleOscillators(moduleName);
     });
-    
+
     // Then reset all module states
     resetEnvironment();
     resetBoundary();
@@ -193,7 +192,7 @@ export function useDemo() {
     resetBehavior();
     resetSensors();
     resetJoints();
-    
+
     // Clear reset flag after a brief delay
     setTimeout(() => setIsResetting(false), 10);
 
@@ -403,7 +402,7 @@ export function useDemo() {
   useEffect(() => {
     // Early return for WebGPU mode - but still return a cleanup function
     if (!hasStarted || isWebGPU) {
-      return () => {}; // Return empty cleanup to maintain hook consistency
+      return () => { }; // Return empty cleanup to maintain hook consistency
     }
 
     // Check if HTTPS is required (device orientation requires secure context)
@@ -411,7 +410,7 @@ export function useDemo() {
     if (!isSecureContext) {
       console.warn('[Gyroscope] Device orientation requires HTTPS or localhost');
       setGyroData({ beta: 0, gamma: 0, angle: 90 });
-      return () => {}; // Return empty cleanup to maintain hook consistency
+      return () => { }; // Return empty cleanup to maintain hook consistency
     }
 
     let hasReceivedEvent = false;
@@ -438,7 +437,7 @@ export function useDemo() {
 
       const beta = event.beta ?? 0; // Front-to-back tilt (-180 to 180, 0 when upright)
       const gamma = event.gamma ?? 0; // Left-to-right tilt (-90 to 90, 0 when upright)
-      
+
       // Log first few events to debug
       if (!hasReceivedEvent) {
         console.log('[Gyroscope] First event values:', { beta, gamma, rawBeta: event.beta, rawGamma: event.gamma });
@@ -447,7 +446,7 @@ export function useDemo() {
       // Convert device orientation to gravity angle
       // Angle system: 0° = right, 90° = down, 180° = left, 270° = up
       // When device is upright (beta=0, gamma=0): angle should be 90° (down)
-      
+
       // Get screen orientation to adjust for device rotation
       let orientationOffset = 0;
       if (window.orientation !== undefined) {
@@ -457,15 +456,15 @@ export function useDemo() {
         // screen.orientation.angle: 0 = portrait, 90 = landscape, 180 = portrait upside down, 270 = landscape
         orientationOffset = screen.orientation.angle;
       }
-      
+
       // Calculate gravity angle from device tilt
       // beta: front-to-back tilt (positive = forward, negative = backward)
       // gamma: left-to-right tilt (positive = right, negative = left)
-      
+
       // Gravity should point in the direction the device is tilted
       // Use atan2 to get the angle from beta and gamma
       let angleDeg = 90; // Default to down (90°)
-      
+
       if (Math.abs(beta) > 1 || Math.abs(gamma) > 1) {
         // Device is tilted, calculate angle from tilt
         // atan2(gamma, beta) gives angle in standard math coordinates:
@@ -473,16 +472,16 @@ export function useDemo() {
         // - beta=-90, gamma=0 → 180° (backward/left)
         // - beta=0, gamma=90 → 90° (right/up)
         // - beta=0, gamma=-90 → -90° (left/down)
-        
+
         const tiltAngleRad = Math.atan2(gamma, beta);
         let tiltAngleDeg = (tiltAngleRad * 180) / Math.PI;
-        
+
         // Convert from standard math coordinates to our system
         // Standard: 0°=right, 90°=up, 180°=left, 270°=down
         // Ours: 0°=right, 90°=down, 180°=left, 270°=up
         // We need to flip vertically: ourAngle = (90 - standardAngle) % 360
         angleDeg = ((90 - tiltAngleDeg + 360) % 360);
-        
+
         // Adjust for screen orientation
         // When device is rotated, we need to rotate the gravity angle accordingly
         // orientationOffset tells us how much the screen is rotated
@@ -493,10 +492,10 @@ export function useDemo() {
         // Adjust for screen orientation
         angleDeg = ((90 - orientationOffset + 360) % 360);
       }
-      
+
       // Update debug data
       setGyroData({ beta, gamma, angle: angleDeg });
-      
+
       // Update gravity angle
       setCustomAngleDegrees(angleDeg);
     };
@@ -510,7 +509,7 @@ export function useDemo() {
       console.log('[Gyroscope] Secure context:', isSecureContext);
       console.log('[Gyroscope] Protocol:', location.protocol);
       console.log('[Gyroscope] Hostname:', location.hostname);
-      
+
       // Request permission on iOS 13+
       if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
         console.log('[Gyroscope] Requesting permission (iOS 13+)');
@@ -537,7 +536,7 @@ export function useDemo() {
         console.log('[Gyroscope] Adding listener directly (non-iOS or older iOS)');
         window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
         listenerAdded = true;
-        
+
         // Set a timeout to check if we're receiving events
         timeoutId = window.setTimeout(() => {
           if (!hasReceivedEvent) {
@@ -567,10 +566,10 @@ export function useDemo() {
 
   const reduceParticles = useCallback(() => {
     if (!currentSpawnConfigRef.current || !isWebGPU) return;
-    
+
     const config = currentSpawnConfigRef.current;
     const newCount = Math.floor(config.numParticles / 2);
-    
+
     if (newCount > 0) {
       const newConfig = {
         ...config,
