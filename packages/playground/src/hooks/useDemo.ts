@@ -26,6 +26,9 @@ interface DemoSequenceItem {
   transitionDuration: number; // Interpolation duration in ms
 }
 
+let interactionInterval: number | null = null;
+let demoTimout: number | null = null;
+
 export function useDemo() {
   const { setBarsVisibility } = useUI();
   const {
@@ -61,13 +64,13 @@ export function useDemo() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [deviceMaxParticles, setDeviceMaxParticles] = useState<number>(0); // Device capability (from calculateMaxParticles)
   const [demoParticleCount, setDemoParticleCount] = useState(0); // 2x deviceMaxParticles for homepage demo
-  const [interactionInterval, setInteractionInterval] = useState<number | null>(null);
   const [gyroData, setGyroData] = useState<{ beta: number; gamma: number; angle: number } | null>({ beta: 0, gamma: 0, angle: 90 });
   const currentSpawnConfigRef = useRef<SpawnParticlesConfig | null>(null);
   const [targetMaxParticles, setTargetMaxParticles] = useState<number | null>(null);
   const [targetTransitionDuration, setTargetTransitionDuration] = useState<number>(300);
   const interpolationAnimationFrameRef = useRef<number | null>(null);
   const currentMaxParticlesRef = useRef<number | null>(null);
+  const [canStart, setCanStart] = useState(false);
 
   // Calculate device capabilities on mount
   useEffect(() => {
@@ -79,6 +82,41 @@ export function useDemo() {
     }
   }, [deviceMaxParticles]);
 
+  const startDemo = useCallback(() => {
+    // Calculate maxParticles for homepage demo based on device capabilities
+    const spawnConfig = {
+      numParticles: demoParticleCount,
+      shape: isMobileDevice() ? "random" as const : "circle" as const,
+      particleSize: 3,
+      spacing: 0,
+      radius: 500,
+      colors: ["#ffffff"],
+      velocityConfig: { speed: 100, direction: "random" as const, angle: 0 },
+      innerRadius: 50,
+      squareSize: 200,
+    };
+    currentSpawnConfigRef.current = spawnConfig;
+    spawnParticles(spawnConfig);
+    setZoom(isMobileDevice() ? 0.2 : 0.3);
+    setCamera({ x: 0, y: 0 });
+    setTrailsEnabled(true);
+    setDecay(10);
+    setConstrainIterations(1);
+    setCellSize(16);
+    setMaxNeighbors(100);
+  }, [
+    demoParticleCount,
+    spawnParticles,
+    setZoom,
+    setCamera,
+    setTrailsEnabled,
+    setDecay,
+    setConstrainIterations,
+    setCellSize,
+    setMaxNeighbors,
+    isMobileDevice,
+  ]);
+
   useEffect(() => {
     if (!hasStarted && isInitialized && !isInitializing) {
       if (demoParticleCount > 0) {
@@ -86,27 +124,8 @@ export function useDemo() {
         setBarsVisibility(false);
         setInvertColors(true);
         if (isWebGPU) {
-          // Calculate maxParticles for homepage demo based on device capabilities
-          const spawnConfig = {
-            numParticles: demoParticleCount,
-            shape: isMobileDevice() ? "random" as const : "circle" as const,
-            particleSize: 3,
-            spacing: 0,
-            radius: 500,
-            colors: ["#ffffff"],
-            velocityConfig: { speed: 100, direction: "random" as const, angle: 0 },
-            innerRadius: 50,
-            squareSize: 200,
-          };
-          currentSpawnConfigRef.current = spawnConfig;
-          spawnParticles(spawnConfig);
-          setZoom(isMobileDevice() ? 0.2 : 0.3);
-          setCamera({ x: 0, y: 0 });
-          setTrailsEnabled(true);
-          setDecay(10);
-          setConstrainIterations(1);
-          setCellSize(16);
-          setMaxNeighbors(100);
+          setCanStart(true);
+
         } else {
           setGravityStrength(1000);
           setGravityMode("custom");
@@ -123,25 +142,22 @@ export function useDemo() {
     setGravityStrength,
     setGravityMode,
     setCustomAngleDegrees,
-    spawnParticles,
-    setZoom,
-    setCamera,
-    setConstrainIterations,
-    setCellSize,
-    setMaxNeighbors,
-    setTrailsEnabled,
-    setDecay,
     setInvertColors,
     demoParticleCount,
+    setCanStart,
   ]);
 
   const play = useCallback((useInteraction: boolean = true) => {
-    if (!hasStarted || !isWebGPU) return;
+    if (!hasStarted || !isWebGPU || isPlaying) return;
 
     setIsPlaying(true);
 
     // Only start the interaction interval if useInteraction is true (homepage demo)
     if (useInteraction) {
+      if (interactionInterval !== null) {
+        clearInterval(interactionInterval);
+        interactionInterval = null;
+      }
       const intervalId = window.setInterval(() => {
         setActive(true);
         setStrength(100000);
@@ -150,7 +166,7 @@ export function useDemo() {
         setMode("repel");
         setCamera({ x: 0, y: 0 });
       }, 16);
-      setInteractionInterval(intervalId);
+      interactionInterval = intervalId;
     }
   }, [hasStarted, isWebGPU, quickLoadSessionData, setActive, setStrength, setRadius, setPosition, setMode, setCamera]);
 
@@ -160,7 +176,7 @@ export function useDemo() {
     // Clear the interaction interval
     if (interactionInterval !== null) {
       clearInterval(interactionInterval);
-      setInteractionInterval(null);
+      interactionInterval = null;
     }
 
     // Deactivate interaction
@@ -222,6 +238,13 @@ export function useDemo() {
     initState,
   ]);
 
+  useEffect(() => {
+    if (canStart) {
+      play(true);
+      startDemo();
+    }
+  }, [canStart, play, startDemo]);
+
   // Rotate demos with transitions at random intervals between 20-30 seconds
   useEffect(() => {
     if (!hasStarted || !isWebGPU || !isPlaying) return;
@@ -241,7 +264,6 @@ export function useDemo() {
     const veryLowPerformanceMaxParticles = deviceMaxParticles / 6 | 0; // For very demanding demos (Demo6)
     const mediumPerformanceMaxParticles = deviceMaxParticles / 2.5 | 0;
 
-    let timeoutId: number;
     const sequence: DemoSequenceItem[] = [
       {
         sessionData: demo3SessionData as SessionData,
@@ -302,7 +324,12 @@ export function useDemo() {
       const currentItem = sequence[currentIndex];
       if (!currentItem) return;
 
-      timeoutId = setTimeout(() => {
+      if (demoTimout !== null) {
+        clearTimeout(demoTimout);
+        demoTimout = null;
+      }
+
+      demoTimout = setTimeout(() => {
         currentIndex++;
 
         // If we've completed the sequence, restart
@@ -333,7 +360,7 @@ export function useDemo() {
     scheduleNext();
 
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
+      if (demoTimout) clearTimeout(demoTimout);
     };
   }, [hasStarted, isWebGPU, isPlaying, quickLoadSessionData, setTrailsEnabled, deviceMaxParticles]);
 

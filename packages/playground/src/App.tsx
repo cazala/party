@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { Provider } from "react-redux";
 import { EngineProvider } from "./contexts/EngineContext";
 import { ResetProvider } from "./contexts/ResetContext";
@@ -36,8 +36,8 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors, setInvertColors } = useRender();
-  const { hasStarted, isPlaying: isDemoPlaying, play, stop, gyroData } = useDemo();
-  const { spawnParticles, play: playEngine } = useEngine();
+  const { hasStarted, isPlaying: isDemoPlaying, stop, play: playDemo, gyroData } = useDemo();
+  const { spawnParticles, play } = useEngine();
   const { clearModuleOscillators } = useOscillators();
   const { setIsResetting } = useReset();
 
@@ -62,8 +62,6 @@ function AppContent() {
   const {
     reset: resetJoints,
   } = useJoints();
-
-  const hasAutoPlayed = useRef(false);
 
   const handlePlay = useCallback(() => {
     // Stop the demo
@@ -109,7 +107,7 @@ function AppContent() {
     });
 
     // Start the engine
-    playEngine();
+    play();
   }, [
     stop,
     setBarsVisibility,
@@ -124,7 +122,7 @@ function AppContent() {
     resetSensors,
     resetJoints,
     spawnParticles,
-    playEngine,
+    play,
   ]);
 
   // Handle fullscreen change events (when user exits via ESC or browser controls)
@@ -155,20 +153,13 @@ function AppContent() {
     };
   }, [restoreBarsFromFullscreenMode, barsVisible]);
 
-  // Start playing demos automatically when ready (only once)
-  useEffect(() => {
-    if (hasStarted && !hasAutoPlayed.current) {
-      hasAutoPlayed.current = true;
-      play();
-    }
-  }, [hasStarted, play]);
 
   return (
     <div
       className={`app ${barsVisible && hasStarted ? "bars-visible" : "bars-hidden"
         }`}
     >
-      <TopBar />
+      <TopBar isDemoPlaying={isDemoPlaying} stopDemo={stop} playDemo={() => playDemo(false)}/>
       <GlobalHotkeys />
       <div className="app-content">
         <SystemSidebar />
