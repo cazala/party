@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { Provider } from "react-redux";
 import { EngineProvider } from "./contexts/EngineContext";
 import { ResetProvider } from "./contexts/ResetContext";
@@ -36,10 +36,12 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors, setInvertColors } = useRender();
-  const { hasStarted, isPlaying: isDemoPlaying, play, stop, gyroData } = useDemo();
+  const { hasStarted, isPlaying: isDemoPlaying, stop, play: playDemo, gyroData } = useDemo();
   const { spawnParticles, play: playEngine } = useEngine();
   const { clearModuleOscillators } = useOscillators();
   const { setIsResetting } = useReset();
+  // fix2 pattern: homepage vs playground is an explicit state, not derived from barsVisible
+  const [isHomepage, setIsHomepage] = useState(true);
 
   const {
     reset: resetEnvironment,
@@ -63,11 +65,13 @@ function AppContent() {
     reset: resetJoints,
   } = useJoints();
 
-  const hasAutoPlayed = useRef(false);
 
   const handlePlay = useCallback(() => {
     // Stop the demo
     stop();
+
+    // Enter playground mode
+    setIsHomepage(false);
 
     // Show sidebars (enter playground mode)
     setBarsVisibility(true);
@@ -125,6 +129,7 @@ function AppContent() {
     resetJoints,
     spawnParticles,
     playEngine,
+    setIsHomepage,
   ]);
 
   // Handle fullscreen change events (when user exits via ESC or browser controls)
@@ -155,20 +160,18 @@ function AppContent() {
     };
   }, [restoreBarsFromFullscreenMode, barsVisible]);
 
-  // Start playing demos automatically when ready (only once)
-  useEffect(() => {
-    if (hasStarted && !hasAutoPlayed.current) {
-      hasAutoPlayed.current = true;
-      play();
-    }
-  }, [hasStarted, play]);
+  // Race condition fix: Auto-play is now handled in useDemo hook via canStart flag
 
   return (
     <div
       className={`app ${barsVisible && hasStarted ? "bars-visible" : "bars-hidden"
         }`}
     >
-      <TopBar />
+      <TopBar
+        isDemoPlaying={isDemoPlaying}
+        stopDemo={stop}
+        playDemo={() => playDemo(false)}
+      />
       <GlobalHotkeys />
       <div className="app-content">
         <SystemSidebar />
@@ -180,9 +183,9 @@ function AppContent() {
           >
               <Canvas className="canvas" isPlaying={isDemoPlaying} />
               <Overlay isPlaying={isDemoPlaying} />
-            <Homepage onPlay={handlePlay} isVisible={!barsVisible} />
+            <Homepage onPlay={handlePlay} isVisible={isHomepage} />
             <GyroscopeDebugLabel gyroData={gyroData} />
-            <Stats />
+            <Stats isVisible={isHomepage} />
           </div>
         </div>
         <div className="right-sidebar">

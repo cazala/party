@@ -3,7 +3,7 @@ import { useEngine } from "../hooks/useEngine";
 import { useDemo } from "../hooks/useDemo";
 import "./Stats.css";
 
-export function Stats() {
+export function Stats({ isVisible }: { isVisible: boolean }) {
   const { getCount, getFPS } = useEngine();
   const { isPlaying, hasStarted, reduceParticles } = useDemo();
   const [particleCount, setParticleCount] = useState(0);
@@ -53,7 +53,7 @@ export function Stats() {
   }, [hasStarted, isPlaying, getCount, getFPS, reduceParticles]);
 
   // Show stats when demo has started
-  if (!hasStarted) {
+  if (!hasStarted || !isVisible) {
     return null;
   }
 
