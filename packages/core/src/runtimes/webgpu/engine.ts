@@ -113,6 +113,11 @@ export class WebGPUEngine extends AbstractEngine {
 
   destroy(): void {
     this.pause();
+    // Stop animation loop to prevent using destroyed resources
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
     this.resources.dispose();
   }
 

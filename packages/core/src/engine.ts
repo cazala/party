@@ -101,14 +101,15 @@ export class Engine implements IEngine {
   stop(): void {
     this.engine.stop();
   }
+  destroy(): void {
+    this.engine.destroy();
+  }
+
   isPlaying(): boolean {
     return this.engine.isPlaying();
   }
   toggle(): void {
     this.engine.toggle();
-  }
-  destroy(): void {
-    this.engine.destroy();
   }
   getSize(): { width: number; height: number } {
     return this.engine.getSize();

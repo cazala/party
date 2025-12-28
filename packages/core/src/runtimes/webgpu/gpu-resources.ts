@@ -1098,7 +1098,10 @@ export class GPUResources {
     return this.arrayLengthBuffers.get(`${moduleName}_${arrayKey}_length`);
   }
 
+  // REVERTED: Making dispose() synchronous again for now
+  // TODO: Test adding async cleanup step by step
   dispose(): void {
+    // Basic cleanup - just destroy buffers and textures
     this.particleBuffer?.destroy();
     this.moduleUniformBuffers.forEach((muf) => muf.buffer.destroy());
     this.combinedArrayStorageBuffers.forEach((buffer) => buffer.destroy());
@@ -1130,5 +1133,26 @@ export class GPUResources {
     this.imageComputePipelines.clear();
     this.computeBindGroupLayout = null;
     this.computePipelineLayout = null;
+    
+    // TESTING: Uncommented context.unconfigure() - test if this breaks toggle
+    if (this.context) {
+      try {
+        this.context.unconfigure();
+      } catch (error) {
+        console.warn("[WebGPU] Error unconfiguring context:", error);
+      }
+    }
+    this.context = null;
+    
+    // STILL COMMENTED OUT: Device cleanup - test after context.unconfigure() works
+    // if (this.device) {
+    //   try {
+    //     this.device.destroy();
+    //   } catch (error) {
+    //     console.warn("[WebGPU] Error destroying device:", error);
+    //   }
+    // }
+    // this.device = null;
+    // this.adapter = null;
   }
 }

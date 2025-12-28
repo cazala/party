@@ -401,7 +401,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
         // Setup cleanup
         cleanup = () => {
-          engine.destroy();
+          if (engineRef.current) {
+            engineRef.current.destroy();
+          }
           engineRef.current = null;
           environmentRef.current = null;
           boundaryRef.current = null;
@@ -430,35 +432,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     initEngine();
 
     return cleanup || undefined;
-
-    // THIS BREAKS THE TOGGLE BETWEEN CPU AND WEBGPU
-
-    // // Add page unload handler to ensure cleanup happens even if React doesn't unmount properly
-    // const handleBeforeUnload = () => {
-    //   console.log("[Engine] Page unloading - cleaning up engine");
-    //   if (engineRef.current) {
-    //     try {
-    //       engineRef.current.destroy();
-    //       engineRef.current = null;
-    //     } catch (err) {
-    //       console.warn("[Engine] Error during page unload cleanup:", err);
-    //     }
-    //   }
-    // };
-
-    // // Use pagehide event (more reliable than beforeunload for mobile)
-    // window.addEventListener("pagehide", handleBeforeUnload);
-    // window.addEventListener("beforeunload", handleBeforeUnload);
-
-    // return () => {
-    //   // Cleanup on component unmount
-    //   if (cleanup) {
-    //     cleanup();
-    //   }
-    //   // Remove unload handlers
-    //   window.removeEventListener("pagehide", handleBeforeUnload);
-    //   window.removeEventListener("beforeunload", handleBeforeUnload);
-    // };
   }, [canvasRef, isWebGPU, dispatch]);
 
   // Apply configuration changes to existing engine (without recreating it)
