@@ -1,0 +1,63 @@
+name: Publish (OIDC)
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types:
+      - published
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - name: Install
+        run: pnpm -w install --frozen-lockfile
+
+      - name: Set version (@next)
+        if: github.event_name == 'push'
+        run: node ./scripts/set-next-version.mjs
+
+      - name: Set version (release tag)
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: node ./scripts/set-release-version.mjs
+
+      - name: Build core
+        run: pnpm --filter @cazala/party build
+
+      - name: Publish @next
+        if: github.event_name == 'push'
+        working-directory: packages/core
+        run: npm publish --tag next --access public --ignore-scripts
+
+      - name: Publish release
+        if: github.event_name == 'release'
+        working-directory: packages/core
+        run: npm publish --access public --ignore-scripts
+
+
