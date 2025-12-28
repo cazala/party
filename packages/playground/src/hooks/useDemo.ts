@@ -72,6 +72,7 @@ export function useDemo() {
   const interpolationAnimationFrameRef = useRef<number | null>(null);
   const currentMaxParticlesRef = useRef<number | null>(null);
   const [canStart, setCanStart] = useState(false);
+  const prevIsWebGPURef = useRef<boolean>(isWebGPU);
 
   // Calculate device capabilities on mount
   useEffect(() => {
@@ -259,6 +260,21 @@ export function useDemo() {
     initState,
   ]);
 
+  // Runtime toggle safety:
+  // If WebGPU runtime changes (webgpu <-> cpu), stop demo automation so it doesn't
+  // unexpectedly resume 30s later and overwrite the user's playground settings.
+  useEffect(() => {
+    const prev = prevIsWebGPURef.current;
+    if (prev === isWebGPU) return;
+
+    // Only stop if anything demo-related is active. This preserves normal behavior on initial mount.
+    if (isPlaying || interactionInterval !== null || demoTimout !== null) {
+      stop();
+    }
+
+    prevIsWebGPURef.current = isWebGPU;
+  }, [isWebGPU, isPlaying, stop]);
+
   // Race condition fix: Start demo only after engine is fully ready
   useEffect(() => {
     if (canStart) {
@@ -272,6 +288,8 @@ export function useDemo() {
 
   // Rotate demos with transitions at random intervals between 20-30 seconds
   useEffect(() => {
+    // Demo sequence runs whenever demo is playing (homepage auto-demo OR Demo button).
+    // It is explicitly stopped on runtime toggles via the isWebGPU watcher above.
     if (!hasStarted || !isWebGPU || !isPlaying) return;
 
     if (isMobileDevice()) {
