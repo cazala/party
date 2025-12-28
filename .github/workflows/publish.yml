@@ -35,7 +35,7 @@ jobs:
           cache: pnpm
 
       - name: Install
-        run: pnpm -w install --frozen-lockfile
+        run: pnpm -w install --frozen-lockfile --prod=false
 
       - name: Set version (@next)
         if: github.event_name == 'push'
@@ -48,7 +48,7 @@ jobs:
         run: node ./scripts/set-release-version.mjs
 
       - name: Build core
-        run: pnpm --filter @cazala/party build
+        run: pnpm -C packages/core build
 
       - name: Publish @next
         if: github.event_name == 'push'
