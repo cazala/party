@@ -2,7 +2,8 @@
  * Device Capabilities Detection
  * 
  * Detects device capabilities to determine appropriate particle limits.
- * Uses GPU adapter limits when available, falls back to mobile detection.
+ * Uses simple mobile/desktop detection to avoid exhausting GPU adapters.
+ * No longer requests GPU adapters to prevent adapter exhaustion issues.
  */
 
 /**
@@ -19,52 +20,8 @@ export function isMobileDevice(): boolean {
   return mobileRegex.test(userAgent) || (isSmallScreen && 'ontouchstart' in window);
 }
 
-/**
- * Estimates device performance tier based on GPU adapter limits
- * Returns a score from 0-1 representing relative performance
- */
-async function estimateGPUCapability(): Promise<number> {
-  if (!navigator.gpu) {
-    return 0; // No WebGPU, will use CPU fallback
-  }
-
-  try {
-    const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) {
-      return 0;
-    }
-
-    const limits = adapter.limits;
-    
-    // Normalize key metrics to a 0-1 score
-    // Higher buffer sizes and compute units indicate better performance
-    const maxBufferSize = limits.maxBufferSize || limits.maxStorageBufferBindingSize || 0;
-    const maxComputeWorkgroupStorageSize = limits.maxComputeWorkgroupStorageSize || 0;
-    const maxComputeInvocationsPerWorkgroup = limits.maxComputeInvocationsPerWorkgroup || 0;
-    
-    // Normalize values (using more conservative ranges to better distinguish mobile from desktop)
-    // maxBufferSize: mobile ~256MB-512MB, desktop ~2GB-4GB+
-    // Use 2GB as normalization point to make mobile scores lower
-    const bufferScore = Math.min(1, maxBufferSize / (2 * 1024 * 1024 * 1024)); // Normalize to 2GB
-    
-    // maxComputeWorkgroupStorageSize: mobile ~16KB, desktop ~32KB
-    // Use 32KB as normalization (most devices max this out, so less discriminative)
-    const workgroupStorageScore = Math.min(1, maxComputeWorkgroupStorageSize / 32768);
-    
-    // maxComputeInvocationsPerWorkgroup: mobile ~256-512, desktop ~1024
-    // Use 1024 as normalization
-    const invocationsScore = Math.min(1, maxComputeInvocationsPerWorkgroup / 1024);
-    
-    // Weighted average - heavily favor buffer size (most discriminative)
-    // Reduced weight on other metrics since they're less variable
-    const score = (bufferScore * 0.8) + (workgroupStorageScore * 0.1) + (invocationsScore * 0.1);
-    
-    return Math.max(0, Math.min(1, score));
-  } catch (error) {
-    // If adapter request fails, return 0
-    return 0;
-  }
-}
+// Removed estimateGPUCapability - no longer requesting GPU adapter for capability detection
+// This prevents adapter exhaustion. We now only use mobile/desktop detection.
 
 /**
  * Calculates appropriate maxParticles based on device capabilities
@@ -76,49 +33,11 @@ export async function calculateMaxParticles(preferredMaxParticles?: number): Pro
   const isMobile = isMobileDevice();
   
   // Base limits: mobile devices typically handle fewer particles
+  // No longer requesting GPU adapter to avoid adapter exhaustion
   const mobileBaseLimit = 24000;
   const desktopBaseLimit = 80000;
   
-  // If WebGPU is available, try to get a more accurate estimate
-  if (navigator.gpu) {
-    try {
-      const gpuScore = await Promise.race([estimateGPUCapability(), new Promise<number>((_resolve, reject) => setTimeout(() => reject(new Error('GPU score timed out after 1 second')), 1000))]);
-      
-      if (isMobile) {
-        // For mobile devices, use a more conservative approach
-        // Cap the GPU score influence to keep mobile devices closer to mobileBaseLimit
-        // Apply a curve that keeps mobile scores lower
-        const mobileAdjustedScore = Math.pow(gpuScore, 2); // Stronger curve to reduce high scores
-        const mobileMaxLimit = 10000; // Cap mobile devices at 10k even with high GPU score
-        
-        // Interpolate between mobileBaseLimit and mobileMaxLimit
-        const calculatedLimit = mobileBaseLimit + (mobileMaxLimit - mobileBaseLimit) * mobileAdjustedScore;
-        
-        // Round to nearest 1000 for cleaner numbers
-        const roundedLimit = Math.round(calculatedLimit / 1000) * 1000;
-        
-        // Clamp between reasonable min/max for mobile (8k-10k range)
-        const clampedLimit = Math.max(mobileBaseLimit, Math.min(10000, roundedLimit));
-        
-        return preferredMaxParticles ? Math.min(preferredMaxParticles, clampedLimit) : clampedLimit;
-      } else {
-        // For desktop, use full range
-        const calculatedLimit = mobileBaseLimit + (desktopBaseLimit - mobileBaseLimit) * gpuScore;
-        
-        // Round to nearest 1000 for cleaner numbers
-        const roundedLimit = Math.round(calculatedLimit / 1000) * 1000;
-        
-        // Clamp between reasonable min/max
-        const clampedLimit = Math.max(mobileBaseLimit, Math.min(100000, roundedLimit));
-        
-        return preferredMaxParticles ? Math.min(preferredMaxParticles, clampedLimit) : clampedLimit;
-      }
-    } catch (error) {
-      // Fall through to mobile/desktop detection
-    }
-  }
-  
-  // Fallback: use mobile/desktop detection
+  // Simple mobile/desktop detection - no GPU adapter requests
   const baseLimit = isMobile ? mobileBaseLimit : desktopBaseLimit;
   return preferredMaxParticles ? Math.min(preferredMaxParticles, baseLimit) : baseLimit;
 }

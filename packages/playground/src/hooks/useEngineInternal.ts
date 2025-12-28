@@ -172,8 +172,12 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           preservedState = null; // Reset if there was an error
         }
 
-        // Give a small delay for WebGPU context cleanup
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        // Give a delay for WebGPU context cleanup
+        // Increased delay to ensure adapter and device are fully released
+        // This is critical for preventing adapter acquisition failures on reload
+        console.log("[Engine] Waiting 200ms for WebGPU context cleanup");
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        console.log("[Engine] Cleanup delay complete");
       }
       if (!canvasRef.current) {
         isInitializing = false; // Reset guard
@@ -233,20 +237,12 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       try {
 
         if (isAutoMode) {
-          // Auto-detect WebGPU support with timeout to prevent hanging
+          // Auto-detect WebGPU support - just check if navigator.gpu exists
+          // Don't request adapter here to avoid adapter exhaustion
+          // The actual adapter will be requested in gpu-resources.ts when needed
           if (navigator.gpu) {
-            try {
-              const adapterPromise = navigator.gpu.requestAdapter();
-              const timeoutPromise = new Promise<GPUAdapter | null>((resolve) =>
-                setTimeout(() => resolve(null), 3000)
-              );
-              const adapter = await Promise.race([adapterPromise, timeoutPromise]);
-              if (adapter) {
-                shouldUseWebGPU = true;
-              }
-            } catch (error) {
-              // Silently fall back to CPU if WebGPU detection fails
-            }
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            shouldUseWebGPU = true;
           }
         }
 
@@ -434,6 +430,35 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     initEngine();
 
     return cleanup || undefined;
+
+    // THIS BREAKS THE TOGGLE BETWEEN CPU AND WEBGPU
+
+    // // Add page unload handler to ensure cleanup happens even if React doesn't unmount properly
+    // const handleBeforeUnload = () => {
+    //   console.log("[Engine] Page unloading - cleaning up engine");
+    //   if (engineRef.current) {
+    //     try {
+    //       engineRef.current.destroy();
+    //       engineRef.current = null;
+    //     } catch (err) {
+    //       console.warn("[Engine] Error during page unload cleanup:", err);
+    //     }
+    //   }
+    // };
+
+    // // Use pagehide event (more reliable than beforeunload for mobile)
+    // window.addEventListener("pagehide", handleBeforeUnload);
+    // window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // return () => {
+    //   // Cleanup on component unmount
+    //   if (cleanup) {
+    //     cleanup();
+    //   }
+    //   // Remove unload handlers
+    //   window.removeEventListener("pagehide", handleBeforeUnload);
+    //   window.removeEventListener("beforeunload", handleBeforeUnload);
+    // };
   }, [canvasRef, isWebGPU, dispatch]);
 
   // Apply configuration changes to existing engine (without recreating it)
