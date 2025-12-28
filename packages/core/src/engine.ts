@@ -58,7 +58,7 @@ export class Engine implements IEngine {
 
         // Destroy the failed WebGPU engine
         try {
-          this.engine.destroy();
+          await this.engine.destroy();
         } catch (destroyError) {
           console.warn("Error destroying failed WebGPU engine:", destroyError);
         }
@@ -101,8 +101,8 @@ export class Engine implements IEngine {
   stop(): void {
     this.engine.stop();
   }
-  destroy(): void {
-    this.engine.destroy();
+  destroy(): Promise<void> {
+    return this.engine.destroy();
   }
 
   isPlaying(): boolean {

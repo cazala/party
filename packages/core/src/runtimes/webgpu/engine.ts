@@ -111,14 +111,14 @@ export class WebGPUEngine extends AbstractEngine {
     // since it's handled in the animate method
   }
 
-  destroy(): void {
+  async destroy(): Promise<void> {
     this.pause();
     // Stop animation loop to prevent using destroyed resources
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
-    this.resources.dispose();
+    await this.resources.dispose();
   }
 
   // Override setSize to also update WebGPU-specific resources

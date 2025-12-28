@@ -132,10 +132,11 @@ export class CPUEngine extends AbstractEngine {
     return Promise.resolve(this.particles[index]);
   }
 
-  destroy(): void {
+  destroy(): Promise<void> {
     this.pause();
     this.particles = [];
     this.grid.clear();
+    return Promise.resolve();
   }
 
   // Handle configuration changes

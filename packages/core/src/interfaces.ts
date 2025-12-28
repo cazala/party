@@ -22,7 +22,7 @@ export interface IEngine {
   stop(): void;
   toggle(): void;
   isPlaying(): boolean;
-  destroy(): void;
+  destroy(): Promise<void>;
   getSize(): { width: number; height: number };
   setSize(width: number, height: number): void;
   setCamera(x: number, y: number): void;
@@ -160,7 +160,7 @@ export abstract class AbstractEngine implements IEngine {
 
   // Abstract methods that must be implemented by subclasses
   abstract initialize(): Promise<void>;
-  abstract destroy(): void;
+  abstract destroy(): Promise<void>;
   abstract setSize(width: number, height: number): void;
   abstract addParticle(p: IParticle): void;
   abstract setParticles(p: IParticle[]): void;

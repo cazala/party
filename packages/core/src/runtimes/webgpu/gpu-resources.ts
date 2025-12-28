@@ -74,6 +74,10 @@ export class GPUResources {
   public adapter: GPUAdapter | null = null;
   public format: GPUTextureFormat = "bgra8unorm";
 
+  // Tracks an in-flight dispose so we can (a) avoid overlapping cleanups and
+  // (b) wait for cleanup before re-initializing on rapid reloads.
+  private disposePromise: Promise<void> | null = null;
+
   constructor(options: {
     canvas: HTMLCanvasElement;
     requiredFeatures?: GPUFeatureName[];
@@ -86,6 +90,16 @@ export class GPUResources {
     if (this.isInitialized()) return;
     if (!navigator.gpu) {
       throw new Error("WebGPU not supported");
+    }
+
+    // If we're in the middle of disposing (common during rapid reloads / runtime toggles),
+    // wait for it to finish before requesting a new adapter/device.
+    if (this.disposePromise) {
+      try {
+        await this.disposePromise;
+      } catch {
+        // ignore
+      }
     }
 
     // Safari workaround: Ensure canvas is visible and has dimensions before WebGPU initialization
@@ -180,6 +194,11 @@ export class GPUResources {
     }
   }
 
+  /**
+   * Starts disposal (idempotent) and returns a promise you can await *optionally*.
+   * We keep the public destroy()/dispose() calls synchronous to avoid breaking runtime toggle,
+   * but callers that care (like runtime toggle) can await this promise.
+   */
   isInitialized(): boolean {
     return this.device !== null && this.context !== null;
   }
@@ -1098,9 +1117,15 @@ export class GPUResources {
     return this.arrayLengthBuffers.get(`${moduleName}_${arrayKey}_length`);
   }
 
-  // REVERTED: Making dispose() synchronous again for now
-  // TODO: Test adding async cleanup step by step
-  dispose(): void {
+  dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    this.disposePromise = this.disposeAsync().finally(() => {
+      this.disposePromise = null;
+    });
+    return this.disposePromise;
+  }
+
+  private async disposeAsync(): Promise<void> {
     // Basic cleanup - just destroy buffers and textures
     this.particleBuffer?.destroy();
     this.moduleUniformBuffers.forEach((muf) => muf.buffer.destroy());
@@ -1133,8 +1158,21 @@ export class GPUResources {
     this.imageComputePipelines.clear();
     this.computeBindGroupLayout = null;
     this.computePipelineLayout = null;
-    
-    // TESTING: Uncommented context.unconfigure() - working so far
+
+    // Key fix for reload perf degradation:
+    // Wait briefly for any queued work to complete before tearing down the context/device.
+    // This prevents Chrome GPU-process resource buildup from overlapping device lifetimes.
+    if (this.device) {
+      try {
+        await Promise.race([
+          this.device.queue.onSubmittedWorkDone(),
+          new Promise((resolve) => setTimeout(resolve, 150)),
+        ]);
+      } catch {
+        // ignore
+      }
+    }
+
     if (this.context) {
       try {
         this.context.unconfigure();
@@ -1142,9 +1180,10 @@ export class GPUResources {
         console.warn("[WebGPU] Error unconfiguring context:", error);
       }
     }
-    this.context = null;
-    
-    // TESTING: Uncommented device.destroy() - test if this breaks toggle
+
+    // Give the browser a tick to process unconfigure before destroying the device.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     if (this.device) {
       try {
         this.device.destroy();
@@ -1152,6 +1191,8 @@ export class GPUResources {
         console.warn("[WebGPU] Error destroying device:", error);
       }
     }
+
+    this.context = null;
     this.device = null;
     this.adapter = null;
   }

@@ -152,7 +152,13 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
             modulesState: { ...modulesState },
           };
 
-          currentEngine.destroy();
+          // IMPORTANT: Await destroy so we don't overlap WebGPU device lifetimes.
+          // Cap wait time so UI doesn't hang if GPU is wedged.
+          await Promise.race([
+            currentEngine.destroy(),
+            new Promise((resolve) => setTimeout(resolve, 400)),
+          ]);
+
           engineRef.current = null;
           environmentRef.current = null;
           boundaryRef.current = null;
@@ -402,7 +408,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         // Setup cleanup
         cleanup = () => {
           if (engineRef.current) {
-            engineRef.current.destroy();
+            // React cleanup can't be async; fire-and-forget.
+            void engineRef.current.destroy();
           }
           engineRef.current = null;
           environmentRef.current = null;
@@ -433,6 +440,28 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
     return cleanup || undefined;
   }, [canvasRef, isWebGPU, dispatch]);
+
+  // One-time page unload cleanup (must NOT depend on isWebGPU / dispatch or it will break runtime toggle).
+  // This is important because in dev (React strict mode / hot reload) and on rapid reloads,
+  // React teardown is not always enough to prevent overlapping WebGPU device lifetimes.
+  useEffect(() => {
+    const handlePageHide = () => {
+      const eng = engineRef.current;
+      if (!eng) return;
+      try {
+        void eng.destroy();
+      } catch (err) {
+        console.warn("[Engine] Error during pagehide cleanup:", err);
+      }
+    };
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", handlePageHide);
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", handlePageHide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Apply configuration changes to existing engine (without recreating it)
   useEffect(() => {
