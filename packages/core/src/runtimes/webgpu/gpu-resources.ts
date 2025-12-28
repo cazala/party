@@ -1134,7 +1134,7 @@ export class GPUResources {
     this.computeBindGroupLayout = null;
     this.computePipelineLayout = null;
     
-    // TESTING: Uncommented context.unconfigure() - test if this breaks toggle
+    // TESTING: Uncommented context.unconfigure() - working so far
     if (this.context) {
       try {
         this.context.unconfigure();
@@ -1144,15 +1144,15 @@ export class GPUResources {
     }
     this.context = null;
     
-    // STILL COMMENTED OUT: Device cleanup - test after context.unconfigure() works
-    // if (this.device) {
-    //   try {
-    //     this.device.destroy();
-    //   } catch (error) {
-    //     console.warn("[WebGPU] Error destroying device:", error);
-    //   }
-    // }
-    // this.device = null;
-    // this.adapter = null;
+    // TESTING: Uncommented device.destroy() - test if this breaks toggle
+    if (this.device) {
+      try {
+        this.device.destroy();
+      } catch (error) {
+        console.warn("[WebGPU] Error destroying device:", error);
+      }
+    }
+    this.device = null;
+    this.adapter = null;
   }
 }
