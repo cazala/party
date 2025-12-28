@@ -9,9 +9,9 @@ import { ModulesSidebar } from "./components/ModulesSidebar";
 import { Toolbar } from "./components/ToolBar";
 import { SystemSidebar } from "./components/SystemSidebar";
 import { GlobalHotkeys } from "./components/GlobalHotkeys";
-import { GyroscopeDebugLabel } from "./components/GyroscopeDebugLabel";
 import { Homepage } from "./components/Homepage";
 import { Stats } from "./components/Stats";
+import { CpuGyroDemoController } from "./components/CpuGyroDemoController";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
 import { useDemo } from "./hooks/useDemo";
@@ -36,7 +36,7 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors, setInvertColors } = useRender();
-  const { hasStarted, isPlaying: isDemoPlaying, stop, play: playDemo, gyroData } = useDemo();
+  const { hasStarted, isPlaying: isDemoPlaying, stop, play: playDemo } = useDemo();
   const { spawnParticles, play: playEngine } = useEngine();
   const { clearModuleOscillators } = useOscillators();
   const { setIsResetting } = useReset();
@@ -167,6 +167,7 @@ function AppContent() {
       className={`app ${barsVisible && hasStarted ? "bars-visible" : "bars-hidden"
         }`}
     >
+      <CpuGyroDemoController isHomepage={isHomepage} />
       <TopBar
         isDemoPlaying={isDemoPlaying}
         stopDemo={stop}
@@ -184,7 +185,6 @@ function AppContent() {
               <Canvas className="canvas" isPlaying={isDemoPlaying} />
               <Overlay isPlaying={isDemoPlaying} />
             <Homepage onPlay={handlePlay} isVisible={isHomepage} />
-            <GyroscopeDebugLabel gyroData={gyroData} />
             <Stats isVisible={isHomepage} />
           </div>
         </div>

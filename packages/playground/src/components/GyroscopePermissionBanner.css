@@ -1,0 +1,40 @@
+.gyro-banner {
+  position: absolute;
+  top: 0;
+  z-index: 500;
+  width: 100%;
+  background: rgba(20, 20, 20, 0.92);
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.gyro-banner__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.gyro-banner__text {
+  font-size: 13px;
+  line-height: 1.2;
+  opacity: 0.95;
+}
+
+.gyro-banner__button {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+}
+
+.gyro-banner__button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+

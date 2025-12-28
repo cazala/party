@@ -13,7 +13,7 @@ interface HomepageProps {
 export function Homepage({ onPlay, isVisible }: HomepageProps) {
   const [showWarning, setShowWarning] = useState(false);
   const isMobile = isMobileDeviceSync();
-  const { canvasRef, screenToWorld } = useEngine();
+  const { canvasRef, screenToWorld, isWebGPU } = useEngine();
   const { setPosition, setActive, setMode, setStrength, setRadius } = useInteraction();
   const isMouseDownRef = useRef(false);
 
@@ -31,8 +31,13 @@ export function Homepage({ onPlay, isVisible }: HomepageProps) {
 
     // Configure interaction for homepage demo
     setMode("attract");
-    setStrength(50000);
-    setRadius(400);
+    if (isWebGPU) {
+      setStrength(50000);
+      setRadius(400);
+    } else {
+      setStrength(isMobile ? 5000 : 5000);
+      setRadius(isMobile ? 400 : 400);
+    }
 
     const handleMouseDown = (e: MouseEvent) => {
       // Only handle left mouse button
@@ -102,7 +107,7 @@ export function Homepage({ onPlay, isVisible }: HomepageProps) {
       setActive(false);
       isMouseDownRef.current = false;
     };
-  }, [isVisible, showWarning, canvasRef, screenToWorld, setPosition, setActive, setMode, setStrength, setRadius]);
+  }, [isVisible, showWarning, canvasRef, screenToWorld, setPosition, setActive, setMode, setStrength, setRadius, isWebGPU, isMobile]);
 
   if (!isVisible) return null;
 
