@@ -48,7 +48,7 @@ jobs:
         run: node ./scripts/set-release-version.mjs
 
       - name: Build core
-        run: pnpm -C packages/core build
+        run: pnpm --filter @cazala/party exec rollup -c
 
       - name: Publish @next
         if: github.event_name == 'push'
