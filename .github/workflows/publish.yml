@@ -34,6 +34,11 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: pnpm
 
+      - name: Debug npm auth mode
+        run: |
+          echo "npm: $(npm --version)"
+          node -e "console.log('NODE_AUTH_TOKEN present:', !!process.env.NODE_AUTH_TOKEN)"
+
       - name: Install
         run: pnpm -r install --frozen-lockfile --prod=false
 
@@ -56,11 +61,15 @@ jobs:
       - name: Publish @next
         if: github.event_name == 'push'
         working-directory: packages/core
+        env:
+          NODE_AUTH_TOKEN: ""
         run: npm publish --tag next --access public --ignore-scripts
 
       - name: Publish release
         if: github.event_name == 'release'
         working-directory: packages/core
+        env:
+          NODE_AUTH_TOKEN: ""
         run: npm publish --access public --ignore-scripts
 
 
