@@ -36,5 +36,5 @@ If you prefer to configure via Cloudflare Pages dashboard instead of GitHub Acti
 
 ## Project Name
 
-The workflow uses `party-playground` as the project name. If you use a different name in Cloudflare Pages, update the `projectName` in `.github/workflows/deploy-cloudflare-pages.yml`.
+The workflow uses `party` as the project name. If you use a different name in Cloudflare Pages, update the `--project-name` value in `.github/workflows/deploy-cloudflare-pages.yml`.
 
