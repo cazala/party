@@ -21,12 +21,12 @@
   "author": "cazala",
   "license": "MIT",
   "scripts": {
-    "setup": "npm install && npx pnpm@9.15.0 install",
-    "dev": "npx pnpm@9.15.0 --filter=@cazala/playground dev",
-    "build": "npx pnpm@9.15.0 --filter=@cazala/party build && npx pnpm@9.15.0 --filter=@cazala/playground build",
-    "build:core": "npx pnpm@9.15.0 --filter=@cazala/party build",
-    "build:playground": "npx pnpm@9.15.0 --filter=@cazala/playground build",
-    "type-check": "npx pnpm@9.15.0 --filter=@cazala/party build && npx pnpm@9.15.0 --filter=@cazala/playground type-check",
+    "setup": "npm install && npx pnpm@9.15.9 install",
+    "dev": "npx pnpm@9.15.9 --filter=@cazala/playground dev",
+    "build": "npx pnpm@9.15.9 --filter=@cazala/party build && npx pnpm@9.15.9 --filter=@cazala/playground build",
+    "build:core": "npx pnpm@9.15.9 --filter=@cazala/party build",
+    "build:playground": "npx pnpm@9.15.9 --filter=@cazala/playground build",
+    "type-check": "npx pnpm@9.15.9 --filter=@cazala/party build && npx pnpm@9.15.9 --filter=@cazala/playground type-check",
     "test": "echo 'No tests specified' && exit 0"
   },
   "devDependencies": {
@@ -34,7 +34,7 @@
     "pnpm": "^9.15.0",
     "typescript": "^5.0.0"
   },
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@9.15.9",
   "workspaces": [
     "packages/*"
   ]
