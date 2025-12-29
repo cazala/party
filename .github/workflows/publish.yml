@@ -34,6 +34,9 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: pnpm
 
+      - name: Upgrade npm (required for OIDC trusted publishing)
+        run: npm install -g npm@latest
+
       - name: Debug npm auth mode
         run: |
           echo "npm: $(npm --version)"
@@ -63,13 +66,19 @@ jobs:
         working-directory: packages/core
         env:
           NODE_AUTH_TOKEN: ""
-        run: npm publish --tag next --access public --ignore-scripts
+        run: |
+          echo "npm (publish): $(npm --version)"
+          node -e "console.log('NODE_AUTH_TOKEN present (publish):', !!process.env.NODE_AUTH_TOKEN)"
+          npm publish --tag next --access public --ignore-scripts
 
       - name: Publish release
         if: github.event_name == 'release'
         working-directory: packages/core
         env:
           NODE_AUTH_TOKEN: ""
-        run: npm publish --access public --ignore-scripts
+        run: |
+          echo "npm (publish): $(npm --version)"
+          node -e "console.log('NODE_AUTH_TOKEN present (publish):', !!process.env.NODE_AUTH_TOKEN)"
+          npm publish --access public --ignore-scripts
 
 
