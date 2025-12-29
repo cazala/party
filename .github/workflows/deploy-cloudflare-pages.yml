@@ -45,7 +45,10 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm -w install --frozen-lockfile
+        run: pnpm -r install --frozen-lockfile --prod=false
+
+      - name: Verify build tooling
+        run: pnpm --filter @cazala/party exec -- rollup --version
 
       - name: Build
         run: pnpm --filter=@cazala/party build && pnpm --filter=@cazala/playground build
