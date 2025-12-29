@@ -29,7 +29,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.0
+          version: 9.15.9
 
       - name: Get pnpm store directory
         shell: bash
@@ -45,10 +45,10 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: npx pnpm@9.15.0 install
+        run: pnpm -w install --frozen-lockfile
 
       - name: Build
-        run: npx pnpm@9.15.0 --filter=@cazala/party build && npx pnpm@9.15.0 --filter=@cazala/playground build
+        run: pnpm --filter=@cazala/party build && pnpm --filter=@cazala/playground build
 
       - name: Install Wrangler
         run: npm install -g wrangler@3
