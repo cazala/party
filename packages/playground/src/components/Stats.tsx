@@ -1,11 +1,19 @@
 import { useEffect, useState, useRef } from "react";
 import { useEngine } from "../hooks/useEngine";
-import { useDemo } from "../hooks/useDemo";
 import "./Stats.css";
 
-export function Stats({ isVisible }: { isVisible: boolean }) {
+export function Stats({
+  isVisible,
+  hasStarted,
+  isPlaying,
+  reduceParticles,
+}: {
+  isVisible: boolean;
+  hasStarted: boolean;
+  isPlaying: boolean;
+  reduceParticles: () => void;
+}) {
   const { getCount, getFPS } = useEngine();
-  const { isPlaying, hasStarted, reduceParticles } = useDemo();
   const [particleCount, setParticleCount] = useState(0);
   const [fps, setFPS] = useState(0);
   const lowFpsCountRef = useRef(0);

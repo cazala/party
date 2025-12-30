@@ -36,7 +36,7 @@ import "./App.css";
 function AppContent() {
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors, setInvertColors } = useRender();
-  const { hasStarted, isPlaying: isDemoPlaying, stop, play: playDemo } = useDemo();
+  const { hasStarted, isPlaying: isDemoPlaying, stop, play: playDemo, reduceParticles } = useDemo();
   const { spawnParticles, play: playEngine } = useEngine();
   const { clearModuleOscillators } = useOscillators();
   const { setIsResetting } = useReset();
@@ -185,7 +185,12 @@ function AppContent() {
               <Canvas className="canvas" isPlaying={isDemoPlaying} />
               <Overlay isPlaying={isDemoPlaying} />
             <Homepage onPlay={handlePlay} isVisible={isHomepage} />
-            <Stats isVisible={isHomepage} />
+            <Stats
+              isVisible={isHomepage}
+              hasStarted={hasStarted}
+              isPlaying={isDemoPlaying}
+              reduceParticles={reduceParticles}
+            />
           </div>
         </div>
         <div className="right-sidebar">
