@@ -113,7 +113,9 @@ jobs:
             const issue_number = context.payload.pull_request.number;
 
             const url = process.env.PREVIEW_URL;
-            const sha = context.sha;
+            // For pull_request events, context.sha is the temporary merge commit SHA.
+            // Use the PR head SHA so reviewers can find the real commit in the repo.
+            const sha = context.payload.pull_request?.head?.sha || context.sha;
 
             const body = [
               marker,
