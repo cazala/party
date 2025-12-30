@@ -109,6 +109,7 @@ jobs:
           wrangler pages deploy packages/playground/dist \
             --project-name party \
             --branch "pr-${{ github.event.pull_request.number }}" \
+            --commit-dirty=true \
             2>&1 | tee wrangler-deploy.log
 
           PREVIEW_URL="$(grep -Eo 'https://[^ ]+\.pages\.dev[^ ]*' wrangler-deploy.log | head -n 1 || true)"
@@ -183,10 +184,12 @@ jobs:
         run: |
           wrangler pages deploy packages/playground/dist \
             --project-name party \
-            --branch "${{ github.ref_name }}"
+            --branch "${{ github.ref_name }}" \
+            --commit-dirty=true
 
           # Deploy the subpath build to the second Pages project.
           wrangler pages deploy packages/playground/dist-party-assets \
             --project-name party-assets \
-            --branch "${{ github.ref_name }}"
+            --branch "${{ github.ref_name }}" \
+            --commit-dirty=true
 
