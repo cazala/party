@@ -1,0 +1,165 @@
+name: playground
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Get pnpm store directory
+        id: pnpm_store
+        shell: bash
+        run: |
+          STORE_PATH="$(pnpm store path --silent)"
+          echo "STORE_PATH=${STORE_PATH}" >> "$GITHUB_ENV"
+          echo "store_path=${STORE_PATH}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm_store.outputs.store_path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm -r install --frozen-lockfile --prod=false
+
+      - name: Verify build tooling
+        run: pnpm --filter @cazala/party exec -- rollup --version
+
+      - name: Build
+        run: pnpm --filter=@cazala/party build && pnpm --filter=@cazala/playground build
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@3
+
+      - name: Create Cloudflare Pages project if it doesn't exist
+        run: |
+          # Set up wrangler authentication
+          export CLOUDFLARE_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          
+          # Check if project exists, create if it doesn't
+          if ! wrangler pages project list 2>/dev/null | grep -q "party"; then
+            echo "Creating Cloudflare Pages project 'party'..."
+            wrangler pages project create party --production-branch=main || true
+          else
+            echo "Project 'party' already exists"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy to Cloudflare Pages (preview)
+        id: deploy_preview
+        if: github.event_name == 'pull_request'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          # Capture deploy output so we can extract the preview URL for the PR comment.
+          wrangler pages deploy packages/playground/dist \
+            --project-name party \
+            --branch "pr-${{ github.event.pull_request.number }}" \
+            2>&1 | tee wrangler-deploy.log
+
+          PREVIEW_URL="$(grep -Eo 'https://[^ ]+\.pages\.dev[^ ]*' wrangler-deploy.log | head -n 1 || true)"
+          if [ -z "${PREVIEW_URL}" ]; then
+            echo "Could not detect Cloudflare Pages preview URL from wrangler output."
+            echo "url=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Detected preview URL: ${PREVIEW_URL}"
+          echo "url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR with preview URL
+        if: github.event_name == 'pull_request' && steps.deploy_preview.outputs.url != ''
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const marker = '<!-- party-preview-url -->';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const url = process.env.PREVIEW_URL;
+            // For pull_request events, context.sha is the temporary merge commit SHA.
+            // Use the PR head SHA so reviewers can find the real commit in the repo.
+            const sha = context.payload.pull_request?.head?.sha || context.sha;
+
+            const body = [
+              marker,
+              `**Preview deployment ready**`,
+              '',
+              `- **URL**: ${url}`,
+              `- **Commit**: ${sha}`,
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            // If multiple marker comments exist (e.g. from a historical bug), update the most recent one.
+            const existing = [...comments]
+              .reverse()
+              .find(c => typeof c.body === 'string' && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+
+      - name: Deploy to Cloudflare Pages (production)
+        if: github.event_name == 'push'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          wrangler pages deploy packages/playground/dist \
+            --project-name party \
+            --branch "${{ github.ref_name }}"
+
