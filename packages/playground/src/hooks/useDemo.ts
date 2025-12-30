@@ -203,6 +203,8 @@ export function useDemo() {
 
     // Reset engine settings
     setZoom(1);
+    // Restore the normal playground maxParticles (100k). Demos adjust this dynamically.
+    setMaxParticles(100000);
     setTrailsEnabled(false);
     setInvertColors(false);
     setConstrainIterations(50);
@@ -237,6 +239,7 @@ export function useDemo() {
     setActive,
     setStrength,
     setZoom,
+    setMaxParticles,
     setTrailsEnabled,
     setInvertColors,
     setConstrainIterations,
