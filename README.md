@@ -1,4 +1,4 @@
-# Party 🎉
+# Party 🎉 - https://caza.la/party
 
 A high-performance particle physics simulation system with interactive playground, built with TypeScript and WebGPU/CPU dual runtime support.
 
