@@ -78,7 +78,8 @@ jobs:
           export CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
           
           # Check if project exists, create if it doesn't
-          if ! wrangler pages project list 2>/dev/null | grep -q "party"; then
+          # NOTE: avoid substring matches (e.g. "party-assets" should not satisfy "party")
+          if ! wrangler pages project list 2>/dev/null | grep -qE '(^|[[:space:]])party([[:space:]]|$)'; then
             echo "Creating Cloudflare Pages project 'party'..."
             wrangler pages project create party --production-branch=main || true
           else
@@ -86,7 +87,7 @@ jobs:
           fi
 
           # Second project for the subpath build (used as upstream for caza.la/party reverse proxy).
-          if ! wrangler pages project list 2>/dev/null | grep -q "party-assets"; then
+          if ! wrangler pages project list 2>/dev/null | grep -qE '(^|[[:space:]])party-assets([[:space:]]|$)'; then
             echo "Creating Cloudflare Pages project 'party-assets'..."
             wrangler pages project create party-assets --production-branch=main || true
           else
