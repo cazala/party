@@ -57,16 +57,10 @@ jobs:
 
           pnpm --filter=@cazala/party build
 
-          # Typecheck once, then build twice:
-          # - root build (default base="/") for party.caza.la
-          # - subpath build (base="/party/") for caza.la/party via the edge Worker
+          # Typecheck + build once (base="/party/").
           pnpm --filter=@cazala/playground type-check
 
-          # Root build (existing)
-          pnpm --filter=@cazala/playground exec -- vite build
-
-          # Subpath build (separate output dir) - used as upstream for caza.la/party reverse-proxy
-          VITE_PUBLIC_BASE=/party/ pnpm --filter=@cazala/playground exec -- vite build --outDir dist-party-assets
+          VITE_PUBLIC_BASE=/party/ pnpm --filter=@cazala/playground exec -- vite build
 
       - name: Install Wrangler
         run: npm install -g wrangler@3
@@ -77,21 +71,13 @@ jobs:
           export CLOUDFLARE_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
           export CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
           
-          # Check if project exists, create if it doesn't
-          # NOTE: avoid substring matches (e.g. "party-assets" should not satisfy "party")
-          if ! wrangler pages project list 2>/dev/null | grep -qE '(^|[[:space:]])party([[:space:]]|$)'; then
-            echo "Creating Cloudflare Pages project 'party'..."
-            wrangler pages project create party --production-branch=main || true
+          # Check if project exists, create if it doesn't.
+          # NOTE: avoid substring matches.
+          if ! wrangler pages project list 2>/dev/null | grep -qE '(^|[[:space:]])party-playground([[:space:]]|$)'; then
+            echo "Creating Cloudflare Pages project 'party-playground'..."
+            wrangler pages project create party-playground --production-branch=main || true
           else
-            echo "Project 'party' already exists"
-          fi
-
-          # Second project for the subpath build (used as upstream for caza.la/party reverse proxy).
-          if ! wrangler pages project list 2>/dev/null | grep -qE '(^|[[:space:]])party-assets([[:space:]]|$)'; then
-            echo "Creating Cloudflare Pages project 'party-assets'..."
-            wrangler pages project create party-assets --production-branch=main || true
-          else
-            echo "Project 'party-assets' already exists"
+            echo "Project 'party-playground' already exists"
           fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -108,7 +94,7 @@ jobs:
 
           # Capture deploy output so we can extract the preview URL for the PR comment.
           wrangler pages deploy packages/playground/dist \
-            --project-name party \
+            --project-name party-playground \
             --branch "pr-${{ github.event.pull_request.number }}" \
             --commit-dirty=true \
             2>&1 | tee wrangler-deploy.log
@@ -184,13 +170,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           wrangler pages deploy packages/playground/dist \
-            --project-name party \
-            --branch "${{ github.ref_name }}" \
-            --commit-dirty=true
-
-          # Deploy the subpath build to the second Pages project.
-          wrangler pages deploy packages/playground/dist-party-assets \
-            --project-name party-assets \
+            --project-name party-playground \
             --branch "${{ github.ref_name }}" \
             --commit-dirty=true
 
