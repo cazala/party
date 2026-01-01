@@ -42,10 +42,4 @@ export async function calculateMaxParticles(preferredMaxParticles?: number): Pro
   return preferredMaxParticles ? Math.min(preferredMaxParticles, baseLimit) : baseLimit;
 }
 
-/**
- * Quick synchronous check for mobile device (for initial estimates)
- */
-export function isMobileDeviceSync(): boolean {
-  return isMobileDevice();
-}
 

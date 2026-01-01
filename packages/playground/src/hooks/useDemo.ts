@@ -19,7 +19,7 @@ import { useReset } from "../contexts/ResetContext";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import { isMobileDevice, calculateMaxParticles } from "../utils/deviceCapabilities";
 
-const HOMEPAGE_INTERACTION = { strength: 100_000, radius: 800, mode: "repel" as const };
+const HOMEPAGE_INTERACTION = { strength: 100_000, radius: isMobileDevice() ? 700 : 800, mode: "repel" as const };
 
 interface DemoSequenceItem {
   sessionData: SessionData;
@@ -228,6 +228,8 @@ export function useDemo() {
     setConstrainIterations(1);
     setCellSize(16);
     setMaxNeighbors(100);
+    await nextFrame();
+    await nextFrame();
     await nextFrame();
     if (signal.aborted) return;
 

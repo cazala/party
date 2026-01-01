@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
-import { isMobileDeviceSync } from "../utils/deviceCapabilities";
+import { isMobileDevice } from "../utils/deviceCapabilities";
 import { useEngine } from "../hooks/useEngine";
 import { useInteraction } from "../hooks/modules/useInteraction";
 import "./Homepage.css";
@@ -12,7 +12,7 @@ interface HomepageProps {
 
 export function Homepage({ onPlay, isVisible }: HomepageProps) {
   const [showWarning, setShowWarning] = useState(false);
-  const isMobile = isMobileDeviceSync();
+  const isMobile = isMobileDevice();
   const { canvasRef, screenToWorld, isWebGPU } = useEngine();
   const { setPosition, setActive, setMode, setStrength, setRadius } = useInteraction();
   const isMouseDownRef = useRef(false);
@@ -28,16 +28,6 @@ export function Homepage({ onPlay, isVisible }: HomepageProps) {
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    // Configure interaction for homepage demo
-    setMode("attract");
-    if (isWebGPU) {
-      setStrength(50000);
-      setRadius(400);
-    } else {
-      setStrength(isMobile ? 5000 : 5000);
-      setRadius(isMobile ? 400 : 400);
-    }
 
     const handleMouseDown = (e: MouseEvent) => {
       // Only handle left mouse button
