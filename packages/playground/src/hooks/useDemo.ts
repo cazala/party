@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useUI } from "./useUI";
 import { useEngine } from "./useEngine";
 import { useInit } from "./useInit";
@@ -19,16 +19,14 @@ import { useReset } from "../contexts/ResetContext";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import { isMobileDevice, calculateMaxParticles } from "../utils/deviceCapabilities";
 
+const HOMEPAGE_INTERACTION = { strength: 100_000, radius: 800, mode: "repel" as const };
+
 interface DemoSequenceItem {
   sessionData: SessionData;
   duration: number; // Demo duration in ms
   maxParticles: number; // Target maxParticles for this demo
   transitionDuration: number; // Interpolation duration in ms
 }
-
-// Module-level variables to prevent loss on re-renders (race condition fix)
-let interactionInterval: number | null = null;
-let demoTimout: number | null = null;
 
 export function useDemo() {
   const { setBarsVisibility } = useUI();
@@ -39,17 +37,20 @@ export function useDemo() {
     spawnParticles,
     setZoom,
     setCamera,
+    camera,
     setConstrainIterations,
     setCellSize,
     setMaxNeighbors,
     setMaxParticles,
     maxParticles: currentMaxParticles,
+    engine: engineInstance,
+    interaction: engineInteraction,
   } = useEngine();
   const { initState } = useInit();
-  const { setGravityStrength, setMode: setGravityMode, setCustomAngleDegrees, reset: resetEnvironment } = useEnvironment();
+  const { reset: resetEnvironment } = useEnvironment();
   const { setEnabled: setTrailsEnabled, setDecay } = useTrails();
   const { quickLoadSessionData } = useSession();
-  const { setStrength, setRadius, setActive, setPosition, setMode } =
+  const { setStrength, setRadius, setActive, setPosition, setMode, setEnabled: setInteractionEnabled, isEnabled: isInteractionEnabled } =
     useInteraction();
   const { setInvertColors } = useRender();
   const { clearModuleOscillators } = useOscillators();
@@ -70,8 +71,69 @@ export function useDemo() {
   const [targetTransitionDuration, setTargetTransitionDuration] = useState<number>(300);
   const interpolationAnimationFrameRef = useRef<number | null>(null);
   const currentMaxParticlesRef = useRef<number | null>(null);
-  const [canStart, setCanStart] = useState(false);
   const prevIsWebGPURef = useRef<boolean>(isWebGPU);
+  const startupAbortRef = useRef<AbortController | null>(null);
+  const startupStateRef = useRef<"idle" | "starting" | "running">("idle");
+  const interactionTickCountRef = useRef(0);
+  const interactionIntervalRef = useRef<number | null>(null);
+  const demoTimeoutRef = useRef<number | null>(null);
+
+  // The engine can be re-created (strict mode, runtime toggle, hot reload, etc.).
+  // Any setInterval callback that closes over engine/module references can keep writing to the OLD engine.
+  // Keep "live refs" so the interval always targets the latest engine/module.
+  const engineInstanceRef = useRef(engineInstance);
+  const engineInteractionRef = useRef(engineInteraction);
+  const cameraRef = useRef(camera);
+  const isInteractionEnabledRef = useRef(isInteractionEnabled);
+  const setInteractionEnabledRef = useRef(setInteractionEnabled);
+  const setModeRef = useRef(setMode);
+  const setStrengthRef = useRef(setStrength);
+  const setRadiusRef = useRef(setRadius);
+  const setPositionRef = useRef(setPosition);
+  const setActiveRef = useRef(setActive);
+
+  useEffect(() => {
+    engineInstanceRef.current = engineInstance;
+  }, [engineInstance]);
+  useEffect(() => {
+    engineInteractionRef.current = engineInteraction;
+  }, [engineInteraction]);
+  useEffect(() => {
+    cameraRef.current = camera;
+  }, [camera]);
+  useEffect(() => {
+    isInteractionEnabledRef.current = isInteractionEnabled;
+    setInteractionEnabledRef.current = setInteractionEnabled;
+  }, [isInteractionEnabled, setInteractionEnabled]);
+  useEffect(() => {
+    setModeRef.current = setMode;
+    setStrengthRef.current = setStrength;
+    setRadiusRef.current = setRadius;
+    setPositionRef.current = setPosition;
+    setActiveRef.current = setActive;
+  }, [setMode, setStrength, setRadius, setPosition, setActive]);
+
+  // Ensure we don't keep intervals/timeouts alive across unmounts.
+  useEffect(() => {
+    return () => {
+      if (interactionIntervalRef.current !== null) {
+        try {
+          clearInterval(interactionIntervalRef.current);
+        } catch {
+          // ignore
+        }
+        interactionIntervalRef.current = null;
+      }
+      if (demoTimeoutRef.current !== null) {
+        try {
+          clearTimeout(demoTimeoutRef.current);
+        } catch {
+          // ignore
+        }
+        demoTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Calculate device capabilities on mount
   useEffect(() => {
@@ -83,8 +145,104 @@ export function useDemo() {
     }
   }, [deviceMaxParticles]);
 
-  // Extract demo start logic to separate callback (race condition fix)
-  const startDemo = useCallback(() => {
+  const abortStartup = useCallback((reason: string) => {
+    if (startupAbortRef.current) {
+      startupAbortRef.current.abort(reason);
+      startupAbortRef.current = null;
+    }
+  }, []);
+
+  const ensureHomepageInteractionRunning = useCallback(() => {
+    // Ensure module isn't disabled by a loaded session.
+    if (!isInteractionEnabledRef.current) {
+      setInteractionEnabledRef.current(true);
+    }
+
+    const getCameraCenter = () => {
+      try {
+        return engineInstanceRef.current?.getCamera() ?? cameraRef.current;
+      } catch {
+        return cameraRef.current;
+      }
+    };
+
+    const applyOnce = () => {
+      const center = getCameraCenter();
+      const ei = engineInteractionRef.current;
+      if (ei) {
+        if (!ei.isEnabled()) ei.setEnabled(true);
+        ei.setMode(HOMEPAGE_INTERACTION.mode);
+        ei.setStrength(HOMEPAGE_INTERACTION.strength);
+        ei.setRadius(HOMEPAGE_INTERACTION.radius);
+        ei.setPosition(center.x, center.y);
+        ei.setActive(true);
+      } else {
+        setModeRef.current(HOMEPAGE_INTERACTION.mode);
+        setStrengthRef.current(HOMEPAGE_INTERACTION.strength);
+        setRadiusRef.current(HOMEPAGE_INTERACTION.radius);
+        setPositionRef.current(center.x, center.y);
+        setActiveRef.current(true);
+      }
+    };
+
+    applyOnce();
+
+    // Ensure an interval is running to keep it pinned to camera center.
+    if (interactionIntervalRef.current === null) {
+      interactionTickCountRef.current = 0;
+      const intervalId = window.setInterval(() => {
+        interactionTickCountRef.current += 1;
+        const center = getCameraCenter();
+
+        const ei = engineInteractionRef.current;
+        if (ei) {
+          if (!ei.isEnabled()) ei.setEnabled(true);
+          ei.setMode(HOMEPAGE_INTERACTION.mode);
+          ei.setStrength(HOMEPAGE_INTERACTION.strength);
+          ei.setRadius(HOMEPAGE_INTERACTION.radius);
+          ei.setPosition(center.x, center.y);
+          ei.setActive(true);
+        } else {
+          setModeRef.current(HOMEPAGE_INTERACTION.mode);
+          setStrengthRef.current(HOMEPAGE_INTERACTION.strength);
+          setRadiusRef.current(HOMEPAGE_INTERACTION.radius);
+          setPositionRef.current(center.x, center.y);
+          setActiveRef.current(true);
+        }
+      }, 16);
+      interactionIntervalRef.current = intervalId;
+    }
+  }, []);
+
+  // Extract demo start logic to separate callback, but make it async so we can add sleeps & frames.
+  const startDemo = useCallback(async (signal: AbortSignal) => {
+    if (signal.aborted) return;
+    const nextFrame = () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    // IMPORTANT ordering:
+    // - perf constraints first (so the big spawn doesn't lock the sim)
+    // - camera/zoom next (so spawning uses the intended view/bounds)
+    // - spawn particles last
+    const zoom = isMobileDevice() ? 0.2 : 0.3;
+    setConstrainIterations(1);
+    setCellSize(16);
+    setMaxNeighbors(100);
+    await nextFrame();
+    if (signal.aborted) return;
+
+    setZoom(zoom);
+    await nextFrame();
+    if (signal.aborted) return;
+
+    setCamera({ x: 0, y: 0 });
+    await nextFrame();
+    if (signal.aborted) return;
+
+    // Start homepage interaction ASAP (right after view is configured), so it doesn't "kick in late".
+    ensureHomepageInteractionRunning();
+    await nextFrame();
+
     // Calculate maxParticles for homepage demo based on device capabilities
     const spawnConfig = {
       numParticles: demoParticleCount,
@@ -98,14 +256,14 @@ export function useDemo() {
       squareSize: 200,
     };
     currentSpawnConfigRef.current = spawnConfig;
+
     spawnParticles(spawnConfig);
-    setZoom(isMobileDevice() ? 0.2 : 0.3);
-    setCamera({ x: 0, y: 0 });
+    await nextFrame();
+    if (signal.aborted) return;
+
     setTrailsEnabled(true);
     setDecay(10);
-    setConstrainIterations(1);
-    setCellSize(16);
-    setMaxNeighbors(100);
+    await nextFrame();
   }, [
     demoParticleCount,
     spawnParticles,
@@ -116,78 +274,124 @@ export function useDemo() {
     setConstrainIterations,
     setCellSize,
     setMaxNeighbors,
-    isMobileDevice,
   ]);
+
+  const play = useCallback(
+    (useInteraction: boolean = true) => {
+      // Prevent multiple simultaneous play calls.
+      if (!isWebGPU || !isInitialized || isInitializing || isPlaying) return;
+
+      setIsPlaying(true);
+      if (!hasStarted) setHasStarted(true);
+
+      if (useInteraction) {
+        ensureHomepageInteractionRunning();
+      }
+    },
+    [
+      ensureHomepageInteractionRunning,
+      hasStarted,
+      isInitialized,
+      isInitializing,
+      isPlaying,
+      isWebGPU,
+    ]
+  );
 
   useEffect(() => {
     // NOTE: Homepage vs playground is handled by App-level state (see App.tsx isHomepage).
     // This effect should run once when the app boots and the engine becomes ready.
-    if (!hasStarted && isInitialized && !isInitializing) {
-      if (demoParticleCount > 0) {
-        setHasStarted(true);
-        setBarsVisibility(false);
-        setInvertColors(true);
-        if (isWebGPU) {
-          // Set flag to start demo after engine is fully ready (race condition fix)
-          setCanStart(true);
-        } else {
-          // CPU fallback demo is handled by CpuGyroDemoController (homepage only)
-        }
+    if (startupStateRef.current !== "idle") return;
+
+    const shouldAutostart =
+      !hasStarted &&
+      !isPlaying &&
+      isInitialized &&
+      !isInitializing &&
+      demoParticleCount > 0 &&
+      isWebGPU;
+
+    if (!shouldAutostart) return;
+
+    // Fire a single “transactional” startup: either we start demo fully, or we don't start at all.
+    // This avoids partial states where sessions rotate but the homepage spawn/zoom/interval didn't happen.
+    startupStateRef.current = "starting";
+    abortStartup("restarting autostart");
+    const abortController = new AbortController();
+    startupAbortRef.current = abortController;
+
+    (async () => {
+      // Latch immediately to prevent re-entrant autostarts on state changes during startup.
+      startupStateRef.current = "starting";
+
+      // UI setup
+      setBarsVisibility(false);
+      setInvertColors(true);
+      // Mandatory: yield at least one frame for layout/engine refs to settle.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      if (abortController.signal.aborted) return;
+
+      // Mark started only when we are actually about to spawn/setup.
+      setHasStarted(true);
+
+      // Make sure any previous intervals/timeouts are cleared before starting.
+      if (interactionIntervalRef.current !== null) {
+        clearInterval(interactionIntervalRef.current);
+        interactionIntervalRef.current = null;
       }
-    }
+      if (demoTimeoutRef.current !== null) {
+        clearTimeout(demoTimeoutRef.current);
+        demoTimeoutRef.current = null;
+      }
+
+      await startDemo(abortController.signal);
+      if (abortController.signal.aborted) return;
+
+      // Start demo automation LAST (session rotation + optional “center interaction”)
+      // so we never run rotations without having spawned the initial particles.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      play(true);
+
+      startupStateRef.current = "running";
+    })().catch((err) => {
+      // If something goes wrong during startup, allow a future attempt to retry.
+      startupStateRef.current = "idle";
+      // eslint-disable-next-line no-console
+      console.warn("[useDemo] autostart failed", err);
+    });
   }, [
+    abortStartup,
+    demoParticleCount,
     hasStarted,
     isInitialized,
     isInitializing,
+    isPlaying,
     isWebGPU,
+    play,
     setBarsVisibility,
-    setGravityStrength,
-    setGravityMode,
-    setCustomAngleDegrees,
     setInvertColors,
-    demoParticleCount,
-    setCanStart,
+    startDemo,
   ]);
 
-  const play = useCallback((useInteraction: boolean = true) => {
-    // Race condition fix: prevent multiple simultaneous play calls
-    if (!hasStarted || !isWebGPU || isPlaying) return;
-
-    setIsPlaying(true);
-
-    // Only start the interaction interval if useInteraction is true (homepage demo)
-    if (useInteraction) {
-      // Race condition fix: clear any existing interval before creating new one
-      if (interactionInterval !== null) {
-        clearInterval(interactionInterval);
-        interactionInterval = null;
-      }
-      const intervalId = window.setInterval(() => {
-        setActive(true);
-        setStrength(100000);
-        setRadius(700);
-        setPosition(0, 0);
-        setMode("repel");
-        setCamera({ x: 0, y: 0 });
-      }, 16);
-      interactionInterval = intervalId;
-    }
-  }, [hasStarted, isWebGPU, isPlaying, quickLoadSessionData, setActive, setStrength, setRadius, setPosition, setMode, setCamera]);
+  // Ensure any pending startup is cancelled on unmount.
+  useEffect(() => {
+    return () => abortStartup("useDemo unmount");
+  }, [abortStartup]);
 
   const stop = useCallback(() => {
     setIsPlaying(false);
-    // Prevent the canStart effect from re-triggering after stop()
-    setCanStart(false);
+    abortStartup("stop()");
+    startupStateRef.current = "idle";
 
-    // Clear the interaction interval (race condition fix: use module-level variable)
-    if (interactionInterval !== null) {
-      clearInterval(interactionInterval);
-      interactionInterval = null;
+    // Clear the interaction interval
+    if (interactionIntervalRef.current !== null) {
+      clearInterval(interactionIntervalRef.current);
+      interactionIntervalRef.current = null;
     }
     // Clear any scheduled demo rotation timeout
-    if (demoTimout !== null) {
-      clearTimeout(demoTimout);
-      demoTimout = null;
+    if (demoTimeoutRef.current !== null) {
+      clearTimeout(demoTimeoutRef.current);
+      demoTimeoutRef.current = null;
     }
     // Cancel any pending maxParticles interpolation animation
     if (interpolationAnimationFrameRef.current !== null) {
@@ -235,7 +439,6 @@ export function useDemo() {
     // Respawn particles with current init module values
     spawnParticles(initState);
   }, [
-    setCanStart,
     setActive,
     setStrength,
     setZoom,
@@ -258,6 +461,8 @@ export function useDemo() {
     resetJoints,
     spawnParticles,
     initState,
+    abortStartup,
+    isPlaying,
   ]);
 
   // Runtime toggle safety:
@@ -268,29 +473,22 @@ export function useDemo() {
     if (prev === isWebGPU) return;
 
     // Only stop if anything demo-related is active. This preserves normal behavior on initial mount.
-    if (isPlaying || interactionInterval !== null || demoTimout !== null) {
+    if (
+      isPlaying ||
+      interactionIntervalRef.current !== null ||
+      demoTimeoutRef.current !== null
+    ) {
       stop();
     }
 
     prevIsWebGPURef.current = isWebGPU;
   }, [isWebGPU, isPlaying, stop]);
 
-  // Race condition fix: Start demo only after engine is fully ready
-  useEffect(() => {
-    if (canStart) {
-      play(true);
-      startDemo();
-      // One-shot latch: avoid re-triggering demo when callbacks change identity
-      // (e.g. when isPlaying toggles) while canStart remains true.
-      setCanStart(false);
-    }
-  }, [canStart, play, startDemo, setCanStart]);
-
   // Rotate demos with transitions at random intervals between 20-30 seconds
   useEffect(() => {
     // Demo sequence runs whenever demo is playing (homepage auto-demo OR Demo button).
     // It is explicitly stopped on runtime toggles via the isWebGPU watcher above.
-    if (!hasStarted || !isWebGPU || !isPlaying) return;
+    if (!isWebGPU || !isInitialized || isInitializing || !isPlaying) return;
 
     if (isMobileDevice()) {
       demo3SessionData.modules.environment.gravityStrength = 1000;
@@ -367,13 +565,13 @@ export function useDemo() {
       const currentItem = sequence[currentIndex];
       if (!currentItem) return;
 
-      // Race condition fix: clear any existing timeout before creating new one
-      if (demoTimout !== null) {
-        clearTimeout(demoTimout);
-        demoTimout = null;
+      // Clear any existing timeout before creating a new one
+      if (demoTimeoutRef.current !== null) {
+        clearTimeout(demoTimeoutRef.current);
+        demoTimeoutRef.current = null;
       }
 
-      demoTimout = setTimeout(() => {
+      demoTimeoutRef.current = window.setTimeout(() => {
         currentIndex++;
 
         // If we've completed the sequence, restart
@@ -404,12 +602,12 @@ export function useDemo() {
     scheduleNext();
 
     return () => {
-      if (demoTimout) {
-        clearTimeout(demoTimout);
-        demoTimout = null;
+      if (demoTimeoutRef.current !== null) {
+        clearTimeout(demoTimeoutRef.current);
+        demoTimeoutRef.current = null;
       }
     };
-  }, [hasStarted, isWebGPU, isPlaying, quickLoadSessionData, setTrailsEnabled, deviceMaxParticles]);
+  }, [isWebGPU, isInitialized, isInitializing, isPlaying, quickLoadSessionData, setTrailsEnabled, deviceMaxParticles]);
 
   // Update ref when currentMaxParticles changes (for interpolation start value)
   useEffect(() => {
