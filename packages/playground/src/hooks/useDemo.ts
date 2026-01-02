@@ -248,10 +248,10 @@ export function useDemo() {
     // Calculate maxParticles for homepage demo based on device capabilities
     const spawnConfig = {
       numParticles: demoParticleCount,
-      shape: isMobileDevice() ? "random" as const : "circle" as const,
+      shape: "circle" as const,
       particleSize: 3,
       spacing: 0,
-      radius: 500,
+      radius: isMobileDevice() ? 600 : 500,
       colors: ["#ffffff"],
       velocityConfig: { speed: 100, direction: "random" as const, angle: 0 },
       innerRadius: 50,
@@ -516,37 +516,31 @@ export function useDemo() {
       },
       {
         sessionData: demo1SessionData as SessionData,
-        duration: 15000,
+        duration: isMobileDevice() ? 12000 : 15000,
         maxParticles: lowPerformanceMaxParticles,
         transitionDuration: 0, // 300ms for decreasing particles
       },
       {
         sessionData: demo4SessionData as SessionData,
-        duration: 30000,
+        duration: 15000,
         maxParticles: highPerformanceMaxParticles,
         transitionDuration: 5000,
       },
       {
-        sessionData: demo1SessionData as SessionData,
-        duration: 10000,
-        maxParticles: lowPerformanceMaxParticles,
-        transitionDuration: 0,
-      },
-      {
         sessionData: demo5SessionData as SessionData,
-        duration: 20000,
+        duration: 15000,
         maxParticles: lowPerformanceMaxParticles,
         transitionDuration: 0,
       },
       {
         sessionData: demo6SessionData as SessionData,
-        duration: 20000,
+        duration: 15000,
         maxParticles: veryLowPerformanceMaxParticles,
         transitionDuration: 0,
       },
       {
         sessionData: demo2SessionData as SessionData,
-        duration: 25000,
+        duration: 20000,
         maxParticles: isMobileDevice() ? veryLowPerformanceMaxParticles : mediumPerformanceMaxParticles,
         transitionDuration: 2500,
       },
