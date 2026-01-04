@@ -4,6 +4,7 @@ import { useEnvironment } from "../hooks/modules/useEnvironment";
 import { GyroscopePermissionBanner } from "./GyroscopePermissionBanner";
 import { useGyroscope } from "../hooks/useGyroscope";
 import { isMobileDevice } from "../utils/deviceCapabilities";
+import { useRender } from "../hooks/useRender";
 
 /**
  * CPU fallback demo controller:
@@ -14,8 +15,9 @@ import { isMobileDevice } from "../utils/deviceCapabilities";
 export function CpuGyroDemoController(props: { isHomepage: boolean }) {
   const { isHomepage } = props;
   const { isWebGPU, isInitialized, isInitializing, spawnParticles } = useEngine();
+  const { setInvertColors } = useRender();
   const { setGravityStrength, setMode, setCustomAngleDegrees } = useEnvironment();
-  const [hasRequestedPermission, setHasRequestedPermission] = useState<boolean> (false);
+  const [hasRequestedPermission, setHasRequestedPermission] = useState<boolean>(false);
 
   const enabled = useMemo(
     () => isHomepage && isInitialized && !isInitializing && !isWebGPU,
@@ -30,16 +32,17 @@ export function CpuGyroDemoController(props: { isHomepage: boolean }) {
     setGravityStrength(1000);
     setMode("custom");
     setCustomAngleDegrees(90);
+    setInvertColors(true);
     setTimeout(() => {
-    spawnParticles({
-            numParticles: isMobileDevice() ? 600 : 1000,
-            shape: "circle",
-            spacing: 0,
-            particleSize: 5,
-            radius: 100,
-        })
+      spawnParticles({
+        numParticles: isMobileDevice() ? 600 : 1000,
+        shape: "circle",
+        spacing: 0,
+        particleSize: 5,
+        radius: 100,
+      })
     }, 16);
-  }, [enabled, setGravityStrength, setMode, setCustomAngleDegrees,spawnParticles]);
+  }, [enabled, setGravityStrength, setMode, setCustomAngleDegrees, spawnParticles, setInvertColors]);
 
   // Drive gravity direction from gyroscope angle.
   useEffect(() => {
@@ -54,7 +57,7 @@ export function CpuGyroDemoController(props: { isHomepage: boolean }) {
     !hasRequestedPermission &&
     gyro.permissionState !== "granted" &&
     gyro.permissionState !== "unsupported" &&
-    gyro.permissionState !== "insecure_context" 
+    gyro.permissionState !== "insecure_context"
     && gyro.isSecureContext;
 
 

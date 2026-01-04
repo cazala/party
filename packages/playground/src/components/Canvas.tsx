@@ -63,8 +63,8 @@ export function Canvas({
   // This ensures consistent coordinate systems between visual and simulation space
   const canvasStyle = {
     ...style,
-    width: `${canvasDimensions.width}px`,
-    height: `${canvasDimensions.height}px`,
+    width: "100%",
+    height: "100%",
   };
 
   return (

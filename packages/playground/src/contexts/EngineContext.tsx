@@ -3,7 +3,7 @@ import React, {
   useRef,
   ReactNode,
   useEffect,
-  useMemo,
+  useState,
 } from "react";
 import {
   Engine,
@@ -30,7 +30,7 @@ import {
   SpawnParticlesConfig,
 } from "../slices/engine";
 import { loadAvailableSessionsThunk } from "../slices/session";
-import { selectBarsVisible, LAYOUT_CONSTANTS } from "../slices/ui";
+import { selectBarsVisible } from "../slices/ui";
 
 // Define the context interface - same as what useEngine returns
 export interface EngineContextType {
@@ -116,29 +116,43 @@ export function EngineProvider({ children }: EngineProviderProps) {
   const size = useWindowSize();
   const barsVisible = useAppSelector(selectBarsVisible);
 
-  // Memoize canvas dimensions calculation to prevent unnecessary re-renders
-  const canvasDimensions = useMemo(() => {
-    if (barsVisible) {
-      const minWidth =
-        LAYOUT_CONSTANTS.LEFT_SIDEBAR_WIDTH +
-        LAYOUT_CONSTANTS.RIGHT_SIDEBAR_WIDTH;
-      const minHeight =
-        LAYOUT_CONSTANTS.TOPBAR_HEIGHT + LAYOUT_CONSTANTS.TOOLBAR_HEIGHT;
-      // Ensure we never return negative dimensions
-      const calculatedWidth = size.width > minWidth ? size.width - minWidth : 1;
-      const calculatedHeight = size.height > minHeight ? size.height - minHeight : 1;
-      return {
-        width: Math.max(1, calculatedWidth),
-        height: Math.max(1, calculatedHeight),
-      };
-    } else {
-      // Full window when bars are hidden - ensure non-negative
-      return {
-        width: Math.max(1, size.width || 1),
-        height: Math.max(1, size.height || 1),
-      };
-    }
-  }, [size.width, size.height, barsVisible]);
+  // Measure the actual rendered container size (instead of using hardcoded layout constants).
+  // This avoids incorrect widths (e.g. ~600px smaller / 1px on small screens) when UI panels
+  // are hidden/overlayed or when responsive CSS changes the layout.
+  const [canvasDimensions, setCanvasDimensions] = useState(() => ({
+    width: Math.max(1, size.width || 1),
+    height: Math.max(1, size.height || 1),
+  }));
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const target = canvas?.parentElement ?? canvas;
+    if (!target) return;
+
+    const updateFromRect = () => {
+      const rect = target.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(rect.width));
+      const height = Math.max(1, Math.floor(rect.height));
+      setCanvasDimensions((prev) =>
+        prev.width === width && prev.height === height ? prev : { width, height }
+      );
+    };
+
+    updateFromRect();
+
+    const ro = new ResizeObserver(() => updateFromRect());
+    ro.observe(target);
+
+    // Extra safety for browsers/layout changes where ResizeObserver may lag.
+    window.addEventListener("resize", updateFromRect);
+    window.addEventListener("orientationchange", updateFromRect);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", updateFromRect);
+      window.removeEventListener("orientationchange", updateFromRect);
+    };
+  }, [barsVisible]);
 
   // Initialize engine using the internal hook
 
