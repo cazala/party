@@ -35,6 +35,7 @@ export class WebGPUEngine extends AbstractEngine {
   private simStrideValue: number = 0;
   private shouldSyncNextTick: boolean = false;
   private animationId: number | null = null;
+  private didSwapchainWarmup: boolean = false;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -86,6 +87,13 @@ export class WebGPUEngine extends AbstractEngine {
     this.resources.canvas.width = size.width;
     this.resources.canvas.height = size.height;
     this.render.ensureTargets(this.resources, size.width, size.height);
+
+    // Safari/WebKit workaround:
+    // On WebKit's WebGPU implementation, the first present can stay blank until the canvas
+    // experiences a "real" resize (even 1px). Apps have been working around this by
+    // jiggling size once after starting. We do it here, once, after the final canvas size
+    // is set and before the first present.
+    await this.warmupSwapchainIfNeeded(size.width, size.height);
 
     // Configure grid storage + uniforms
     this.grid.configure(this.view.getSnapshot(), this.resources, program);
@@ -276,6 +284,50 @@ export class WebGPUEngine extends AbstractEngine {
         resolve();
       });
     });
+  }
+
+  private isWebKitWebGPU(): boolean {
+    // We specifically want WebKit's WebGPU, not Chromium/Blink.
+    // - On iOS, *all* browsers use WebKit, so we treat them as WebKit.
+    // - On macOS, Safari is WebKit; Chrome/Edge/Opera are not (even though their UA includes "AppleWebKit").
+    try {
+      if (typeof navigator === "undefined") return false;
+      const ua = navigator.userAgent || "";
+      const isIOS = /iPad|iPhone|iPod/.test(ua);
+      if (isIOS) return true;
+      const isAppleWebKit = /AppleWebKit\//.test(ua);
+      const isSafari = /Safari\//.test(ua);
+      const isChromiumLike = /(Chrome|Chromium|Edg|OPR)\//.test(ua);
+      return isAppleWebKit && isSafari && !isChromiumLike;
+    } catch {
+      return false;
+    }
+  }
+
+  private async warmupSwapchainIfNeeded(
+    width: number,
+    height: number
+  ): Promise<void> {
+    if (this.didSwapchainWarmup) return;
+    if (!this.isWebKitWebGPU()) return;
+    if (height <= 1) return;
+
+    this.didSwapchainWarmup = true;
+
+    // 1px "resize" to force WebKit to fully bind the swapchain/currentTexture.
+    // We wait a couple of animation frames to match real-world workarounds that proved reliable.
+    try {
+      this.resources.canvas.width = width;
+      this.resources.canvas.height = height - 1;
+      await this.waitForNextTick();
+      this.resources.canvas.width = width;
+      this.resources.canvas.height = height;
+      await this.waitForNextTick();
+      // Re-ensure targets (idempotent) in case any implementation ties resources to canvas size.
+      this.render.ensureTargets(this.resources, width, height);
+    } catch {
+      // If anything goes wrong, fail open: rendering may still work on other browsers.
+    }
   }
 
   // Override export to use module registry
