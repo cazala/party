@@ -1,0 +1,96 @@
+.webgpuFallbackBanner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 210, 76, 0.55);
+
+  background: rgba(10, 10, 10, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.2px;
+
+  user-select: none;
+  pointer-events: auto;
+  max-width: calc(100vw - 24px);
+}
+
+.webgpuFallbackBanner__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(248, 210, 76, 0.95);
+}
+
+.webgpuFallbackBanner__iconSvg {
+  display: block;
+}
+
+.webgpuFallbackBanner__text {
+  white-space: nowrap;
+}
+
+.webgpuFallbackBanner__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 0;
+
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.92);
+
+  cursor: pointer;
+}
+
+.webgpuFallbackBanner__close:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.webgpuFallbackBanner__close:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.webgpuFallbackBanner__close:focus-visible {
+  outline: 2px solid rgba(248, 210, 76, 0.9);
+  outline-offset: 2px;
+}
+
+.webgpuFallbackBanner__closeSvg {
+  display: block;
+}
+
+@media (max-width: 520px) {
+  .webgpuFallbackBanner {
+    left: 12px;
+    right: 12px;
+    transform: none;
+
+    width: auto;
+    border-radius: 12px;
+    padding: 10px 12px;
+    justify-content: space-between;
+  }
+
+  .webgpuFallbackBanner__text {
+    flex: 1;
+    min-width: 0;
+    white-space: normal;
+  }
+}
+

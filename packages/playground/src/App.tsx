@@ -42,6 +42,7 @@ function AppContent() {
   const { setIsResetting } = useReset();
   // fix2 pattern: homepage vs playground is an explicit state, not derived from barsVisible
   const [isHomepage, setIsHomepage] = useState(true);
+  const [isWebGPUWarningDismissed, setIsWebGPUWarningDismissed] = useState(false);
 
   const {
     reset: resetEnvironment,
@@ -167,7 +168,10 @@ function AppContent() {
       className={`app ${barsVisible && hasStarted ? "bars-visible" : "bars-hidden"
         }`}
     >
-      <CpuGyroDemoController isHomepage={isHomepage} />
+      <CpuGyroDemoController
+        isHomepage={isHomepage}
+        isWebGPUWarningDismissed={isWebGPUWarningDismissed}
+      />
       <TopBar
         isDemoPlaying={isDemoPlaying}
         stopDemo={stop}
@@ -184,7 +188,12 @@ function AppContent() {
           >
               <Canvas className="canvas" isPlaying={isDemoPlaying} />
               <Overlay isPlaying={isDemoPlaying} />
-            <Homepage onPlay={handlePlay} isVisible={isHomepage} />
+            <Homepage
+              onPlay={handlePlay}
+              isVisible={isHomepage}
+              isWebGPUWarningDismissed={isWebGPUWarningDismissed}
+              onDismissWebGPUWarning={() => setIsWebGPUWarningDismissed(true)}
+            />
             <Stats
               isVisible={isHomepage}
               hasStarted={hasStarted}

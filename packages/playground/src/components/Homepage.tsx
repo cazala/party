@@ -3,17 +3,25 @@ import { AlertTriangle } from "lucide-react";
 import { isMobileDevice } from "../utils/deviceCapabilities";
 import { useEngine } from "../hooks/useEngine";
 import { useInteraction } from "../hooks/modules/useInteraction";
+import { WebGPUFallbackBanner } from "./WebGPUFallbackBanner";
 import "./Homepage.css";
 
 interface HomepageProps {
   onPlay: () => void;
   isVisible: boolean;
+  isWebGPUWarningDismissed: boolean;
+  onDismissWebGPUWarning: () => void;
 }
 
-export function Homepage({ onPlay, isVisible }: HomepageProps) {
+export function Homepage({
+  onPlay,
+  isVisible,
+  isWebGPUWarningDismissed,
+  onDismissWebGPUWarning,
+}: HomepageProps) {
   const [showWarning, setShowWarning] = useState(false);
   const isMobile = isMobileDevice();
-  const { canvasRef, screenToWorld, isWebGPU } = useEngine();
+  const { canvasRef, screenToWorld, isWebGPU, isInitialized, isInitializing } = useEngine();
   const { setPosition, setActive, setMode, setStrength, setRadius } = useInteraction();
   const isMouseDownRef = useRef(false);
 
@@ -116,38 +124,54 @@ export function Homepage({ onPlay, isVisible }: HomepageProps) {
   if (showWarning) {
     const iconSize = isMobile ? 64 : 64;
     return (
-      <div className="homepage">
-        <div className="homepage-warning-icon">
-          <AlertTriangle size={iconSize} color="#000000" strokeWidth={2} />
+      <>
+        {!isWebGPU && isInitialized && !isInitializing && !isWebGPUWarningDismissed && (
+          <WebGPUFallbackBanner
+            dismissed={isWebGPUWarningDismissed}
+            onDismiss={onDismissWebGPUWarning}
+          />
+        )}
+        <div className="homepage">
+          <div className="homepage-warning-icon">
+            <AlertTriangle size={iconSize} color="#000000" strokeWidth={2} />
+          </div>
+          <p className="homepage-subtitle">playground not available on mobile</p>
+          <div className="homepage-buttons">
+            <button className="homepage-button homepage-button-back" onClick={handleBack}>
+              Back
+            </button>
+          </div>
         </div>
-        <p className="homepage-subtitle">playground not available on mobile</p>
-        <div className="homepage-buttons">
-          <button className="homepage-button homepage-button-back" onClick={handleBack}>
-            Back
-          </button>
-        </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="homepage">
-      <h1 className="homepage-title">Party</h1>
-      <p className="homepage-subtitle">particle system and physics engine</p>
-      <div className="homepage-buttons">
-        <button className="homepage-button homepage-button-play" onClick={handlePlayClick}>
-          Play
-        </button>
-        <a
-          href="https://github.com/cazala/party"
-          target="_self"
-          rel="noopener noreferrer"
-          className="homepage-button homepage-button-learn"
-        >
-          Learn
-        </a>
+    <>
+      {!isWebGPU && isInitialized && !isInitializing && !isWebGPUWarningDismissed && (
+        <WebGPUFallbackBanner
+          dismissed={isWebGPUWarningDismissed}
+          onDismiss={onDismissWebGPUWarning}
+        />
+      )}
+      <div className="homepage">
+        <h1 className="homepage-title">Party</h1>
+        <p className="homepage-subtitle">particle system and physics engine</p>
+        <div className="homepage-buttons">
+          <button className="homepage-button homepage-button-play" onClick={handlePlayClick}>
+            Play
+          </button>
+          <a
+            href="https://github.com/cazala/party"
+            target="_self"
+            rel="noopener noreferrer"
+            className="homepage-button homepage-button-learn"
+          >
+            Learn
+          </a>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

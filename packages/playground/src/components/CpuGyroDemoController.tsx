@@ -12,8 +12,8 @@ import { useRender } from "../hooks/useRender";
  * - Uses device orientation (gyroscope) to drive gravity direction
  * - Shows a small top banner to request permission (iOS) only when needed
  */
-export function CpuGyroDemoController(props: { isHomepage: boolean }) {
-  const { isHomepage } = props;
+export function CpuGyroDemoController(props: { isHomepage: boolean; isWebGPUWarningDismissed: boolean }) {
+  const { isHomepage, isWebGPUWarningDismissed } = props;
   const { isWebGPU, isInitialized, isInitializing, spawnParticles } = useEngine();
   const { setInvertColors } = useRender();
   const { setGravityStrength, setMode, setCustomAngleDegrees } = useEnvironment();
@@ -53,12 +53,13 @@ export function CpuGyroDemoController(props: { isHomepage: boolean }) {
 
   const shouldShowBanner =
     enabled &&
+    isWebGPUWarningDismissed &&
     gyro.requiresPermission &&
     !hasRequestedPermission &&
     gyro.permissionState !== "granted" &&
     gyro.permissionState !== "unsupported" &&
-    gyro.permissionState !== "insecure_context"
-    && gyro.isSecureContext;
+    gyro.permissionState !== "insecure_context" &&
+    gyro.isSecureContext;
 
 
 
