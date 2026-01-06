@@ -1,40 +1,95 @@
-.gyro-banner {
-  position: absolute;
-  top: 0;
-  z-index: 500;
-  width: 100%;
-  background: rgba(20, 20, 20, 0.92);
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(8px);
-}
+.gyroBanner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
 
-.gyro-banner__content {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+
   padding: 10px 12px;
-}
+  border-radius: 999px;
+  border: 1px solid rgba(248, 210, 76, 0.55);
 
-.gyro-banner__text {
+  background: rgba(10, 10, 10, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  color: rgba(255, 255, 255, 0.95);
   font-size: 13px;
-  line-height: 1.2;
-  opacity: 0.95;
+  line-height: 1;
+  letter-spacing: 0.2px;
+
+  user-select: none;
+  pointer-events: auto;
+  max-width: calc(100vw - 24px);
 }
 
-.gyro-banner__button {
-  font-size: 12px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+.gyroBanner__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(248, 210, 76, 0.95);
+}
+
+.gyroBanner__iconSvg {
+  display: block;
+}
+
+.gyroBanner__text {
+  white-space: nowrap;
+}
+
+.gyroBanner__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 2px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 0;
+
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.92);
+
   cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.gyro-banner__button:hover {
-  background: rgba(255, 255, 255, 0.18);
+.gyroBanner__action:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.gyroBanner__action:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.gyroBanner__action:focus-visible {
+  outline: 2px solid rgba(248, 210, 76, 0.9);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .gyroBanner {
+    left: 12px;
+    right: 12px;
+    transform: none;
+
+    width: auto;
+    border-radius: 12px;
+    padding: 10px 12px;
+    justify-content: space-between;
+  }
+
+  .gyroBanner__text {
+    flex: 1;
+    min-width: 0;
+    white-space: normal;
+  }
 }
 
 
