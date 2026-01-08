@@ -372,3 +372,309 @@ ${forceCode}
 }
 `;
 }
+
+/**
+ * Grid shader: Assign cellId to each particle
+ * Writes cellId to grid texture
+ */
+export const gridAssignCellsFragmentShader = `#version 300 es
+precision highp float;
+
+in vec2 v_texCoord;
+out vec4 fragColor;
+
+uniform sampler2D u_particleTexture;
+uniform vec2 u_texelSize;
+uniform int u_particleCount;
+
+// Grid uniforms
+uniform vec2 u_gridMin;      // minX, minY
+uniform vec2 u_gridMax;      // maxX, maxY
+uniform vec2 u_gridDims;     // cols, rows
+uniform float u_gridCellSize;
+
+// Helper to get particle data
+vec2 getTexelCoord(int particleId, int texelOffset) {
+  int texelIndex = particleId * 3 + texelOffset;
+  int x = texelIndex % int(1.0 / u_texelSize.x);
+  int y = texelIndex / int(1.0 / u_texelSize.x);
+  return vec2(float(x), float(y)) * u_texelSize + u_texelSize * 0.5;
+}
+
+void main() {
+  // Each pixel represents one particle
+  ivec2 pixelCoord = ivec2(gl_FragCoord.xy);
+  int particleId = pixelCoord.y * int(1.0 / u_texelSize.x) + pixelCoord.x;
+
+  if (particleId >= u_particleCount) {
+    // Out of range, store invalid cell ID
+    fragColor = vec4(-1.0, float(particleId), 0.0, 0.0);
+    return;
+  }
+
+  // Read particle position
+  vec2 coord0 = getTexelCoord(particleId, 0);
+  vec4 texel0 = texture(u_particleTexture, coord0);
+  vec2 position = texel0.xy;
+
+  // Read mass to check if particle is active
+  vec2 coord1 = getTexelCoord(particleId, 1);
+  vec4 texel1 = texture(u_particleTexture, coord1);
+  float mass = texel1.w;
+
+  // Inactive particles (mass == 0) get invalid cell ID
+  if (mass == 0.0) {
+    fragColor = vec4(-1.0, float(particleId), 0.0, 0.0);
+    return;
+  }
+
+  // Calculate cell index
+  int col = int(floor((position.x - u_gridMin.x) / u_gridCellSize));
+  int row = int(floor((position.y - u_gridMin.y) / u_gridCellSize));
+
+  // Clamp to grid bounds
+  col = max(0, min(col, int(u_gridDims.x) - 1));
+  row = max(0, min(row, int(u_gridDims.y) - 1));
+
+  int cellId = row * int(u_gridDims.x) + col;
+
+  // Store (cellId, particleId) - we'll use this for sorting
+  fragColor = vec4(float(cellId), float(particleId), 0.0, 0.0);
+}
+`;
+
+/**
+ * Grid shader: Build cell ranges from sorted indices
+ * For each cell, finds the start and count of particles in that cell
+ */
+export const gridBuildRangesFragmentShader = `#version 300 es
+precision highp float;
+
+in vec2 v_texCoord;
+out vec4 fragColor;
+
+uniform sampler2D u_sortedIndices;
+uniform vec2 u_sortedTexelSize;
+uniform int u_particleCount;
+uniform int u_cellCount;
+
+void main() {
+  // Each pixel represents one grid cell
+  ivec2 pixelCoord = ivec2(gl_FragCoord.xy);
+  int cellTexWidth = int(1.0 / u_sortedTexelSize.x);
+  int cellId = pixelCoord.y * cellTexWidth + pixelCoord.x;
+
+  if (cellId >= u_cellCount) {
+    // Out of range
+    fragColor = vec4(0.0, 0.0, 0.0, 0.0);
+    return;
+  }
+
+  // Search through sorted particles to find range for this cell
+  int start = -1;
+  int count = 0;
+
+  int particleTexWidth = int(1.0 / u_sortedTexelSize.x);
+
+  for (int i = 0; i < 100000; i++) {
+    if (i >= u_particleCount) break;
+
+    // Read sorted index entry
+    int px = i % particleTexWidth;
+    int py = i / particleTexWidth;
+    vec2 coord = (vec2(float(px), float(py)) + 0.5) * u_sortedTexelSize;
+    vec4 entry = texture(u_sortedIndices, coord);
+
+    int entryCellId = int(entry.x);
+
+    if (entryCellId == cellId) {
+      if (start == -1) {
+        start = i;
+      }
+      count++;
+    } else if (entryCellId > cellId && start != -1) {
+      // We've passed this cell's range
+      break;
+    }
+  }
+
+  if (start == -1) {
+    start = 0;
+    count = 0;
+  }
+
+  // Store (start, count) for this cell
+  fragColor = vec4(float(start), float(count), 0.0, 0.0);
+}
+`;
+
+/**
+ * Bitonic sort pass for GPU sorting
+ * This implements one stage of bitonic sort on (cellId, particleId) pairs
+ */
+export function generateBitonicSortFragmentShader(
+  stage: number,
+  step: number
+): string {
+  return `#version 300 es
+precision highp float;
+
+in vec2 v_texCoord;
+out vec4 fragColor;
+
+uniform sampler2D u_sortedIndices;
+uniform vec2 u_texelSize;
+uniform int u_particleCount;
+
+const int STAGE = ${stage};
+const int STEP = ${step};
+
+void main() {
+  ivec2 pixelCoord = ivec2(gl_FragCoord.xy);
+  int texWidth = int(1.0 / u_texelSize.x);
+  int index = pixelCoord.y * texWidth + pixelCoord.x;
+
+  if (index >= u_particleCount) {
+    fragColor = texelFetch(u_sortedIndices, pixelCoord, 0);
+    return;
+  }
+
+  // Bitonic sort logic
+  int distance = 1 << (STEP);
+  int blockSize = 1 << (STAGE + 1);
+
+  int partner = index ^ distance;
+
+  if (partner >= u_particleCount) {
+    fragColor = texelFetch(u_sortedIndices, pixelCoord, 0);
+    return;
+  }
+
+  // Read current and partner values
+  vec4 current = texelFetch(u_sortedIndices, pixelCoord, 0);
+
+  int partnerX = partner % texWidth;
+  int partnerY = partner / texWidth;
+  vec4 partnerValue = texelFetch(u_sortedIndices, ivec2(partnerX, partnerY), 0);
+
+  float currentKey = current.x;
+  float partnerKey = partnerValue.x;
+
+  // Determine sort direction
+  bool ascending = ((index / blockSize) % 2) == 0;
+
+  // Swap if needed
+  bool shouldSwap = (ascending && currentKey > partnerKey) || (!ascending && currentKey < partnerKey);
+
+  if (shouldSwap && index > partner) {
+    fragColor = partnerValue;
+  } else if (shouldSwap && index < partner) {
+    fragColor = current;
+  } else if (!shouldSwap && index > partner) {
+    fragColor = current;
+  } else {
+    fragColor = partnerValue;
+  }
+
+  // Simpler: just output current if lower index, partner if higher index after swap decision
+  if (shouldSwap) {
+    fragColor = (index < partner) ? partnerValue : current;
+  } else {
+    fragColor = current;
+  }
+}
+`;
+}
+
+/**
+ * GLSL helper functions for neighbor iteration
+ * These are included in shaders that need neighbor queries
+ */
+export const neighborIteratorHelpers = `
+// Neighbor query helpers
+uniform sampler2D u_gridCellRanges;
+uniform sampler2D u_gridSortedIndices;
+uniform vec2 u_gridCellRangesTexelSize;
+uniform vec2 u_gridSortedIndicesTexelSize;
+uniform vec2 u_gridMin;
+uniform vec2 u_gridMax;
+uniform vec2 u_gridDims;
+uniform float u_gridCellSize;
+uniform int u_maxNeighbors;
+
+// Get cell index from position
+int gridCellIndex(vec2 pos) {
+  int col = int(floor((pos.x - u_gridMin.x) / u_gridCellSize));
+  int row = int(floor((pos.y - u_gridMin.y) / u_gridCellSize));
+  col = max(0, min(col, int(u_gridDims.x) - 1));
+  row = max(0, min(row, int(u_gridDims.y) - 1));
+  return row * int(u_gridDims.x) + col;
+}
+
+// Get cell index from row/col
+int gridCellIndexFromRC(int row, int col) {
+  int r = max(0, min(row, int(u_gridDims.y) - 1));
+  int c = max(0, min(col, int(u_gridDims.x) - 1));
+  return r * int(u_gridDims.x) + c;
+}
+
+// Read cell range (start, count) for a cell
+vec2 readCellRange(int cellId) {
+  int cellTexWidth = int(1.0 / u_gridCellRangesTexelSize.x);
+  int cellX = cellId % cellTexWidth;
+  int cellY = cellId / cellTexWidth;
+  vec2 coord = (vec2(float(cellX), float(cellY)) + 0.5) * u_gridCellRangesTexelSize;
+  vec4 range = texture(u_gridCellRanges, coord);
+  return range.xy; // (start, count)
+}
+
+// Read sorted particle ID at index
+int readSortedParticleId(int index) {
+  int texWidth = int(1.0 / u_gridSortedIndicesTexelSize.x);
+  int px = index % texWidth;
+  int py = index / texWidth;
+  vec2 coord = (vec2(float(px), float(py)) + 0.5) * u_gridSortedIndicesTexelSize;
+  vec4 entry = texture(u_gridSortedIndices, coord);
+  return int(entry.y); // particleId is stored in .y component
+}
+
+// Iterate neighbors within radius
+// Returns array of neighbor IDs (caller must allocate)
+// Usage:
+//   int neighbors[64];
+//   int count = getNeighbors(position, radius, selfIndex, neighbors, 64);
+int getNeighbors(vec2 pos, float radius, int selfIndex, out int neighbors[64], int maxCount) {
+  int count = 0;
+
+  // Calculate search bounds in grid space
+  int centerCol = int(floor((pos.x - u_gridMin.x) / u_gridCellSize));
+  int centerRow = int(floor((pos.y - u_gridMin.y) / u_gridCellSize));
+  int reach = max(1, int(ceil(radius / u_gridCellSize)));
+
+  // Scan neighboring cells
+  for (int dr = -reach; dr <= reach; dr++) {
+    for (int dc = -reach; dc <= reach; dc++) {
+      int cellId = gridCellIndexFromRC(centerRow + dr, centerCol + dc);
+      vec2 range = readCellRange(cellId);
+      int start = int(range.x);
+      int cellCount = int(range.y);
+
+      // Iterate particles in this cell
+      for (int i = 0; i < cellCount; i++) {
+        if (count >= maxCount || count >= u_maxNeighbors) {
+          return count;
+        }
+
+        int particleId = readSortedParticleId(start + i);
+        if (particleId != selfIndex) {
+          neighbors[count] = particleId;
+          count++;
+        }
+      }
+    }
+  }
+
+  return count;
+}
+`;
+

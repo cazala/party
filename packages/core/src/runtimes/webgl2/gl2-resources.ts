@@ -23,15 +23,26 @@ export interface SceneTextures {
   fboB: WebGLFramebuffer;
 }
 
+export interface GridTextures {
+  cellIds: WebGLTexture;
+  cellIdsFbo: WebGLFramebuffer;
+  sortedIndices: WebGLTexture;
+  sortedIndicesFbo: WebGLFramebuffer;
+  cellRanges: WebGLTexture;
+  cellRangesFbo: WebGLFramebuffer;
+}
+
 export class GL2Resources {
   public canvas: HTMLCanvasElement;
   public gl: WebGL2RenderingContext | null = null;
 
   private particleTextures: ParticleTextures | null = null;
   private sceneTextures: SceneTextures | null = null;
+  private gridTextures: GridTextures | null = null;
   private currentParticleTexture: "A" | "B" = "A";
   private currentSceneTexture: "A" | "B" = "A";
   private particleTextureSize: { width: number; height: number } | null = null;
+  private gridTextureSize: { width: number; height: number } | null = null;
   private programs: Map<string, WebGLProgram> = new Map();
   private buffers: Map<string, WebGLBuffer> = new Map();
 
@@ -432,6 +443,71 @@ export class GL2Resources {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
+  /**
+   * Create grid textures for neighbor queries.
+   * Uses RGBA32F textures to store:
+   * - cellIds: cellId for each particle (1 texel per particle)
+   * - sortedIndices: sorted (cellId, particleId) pairs (2 components per particle)
+   * - cellRanges: [start, count] for each grid cell
+   */
+  createGridTextures(cellCount: number, _maxPerCell: number): void {
+    const gl = this.getGL();
+
+    // Clean up old grid textures if they exist
+    if (this.gridTextures) {
+      gl.deleteTexture(this.gridTextures.cellIds);
+      gl.deleteFramebuffer(this.gridTextures.cellIdsFbo);
+      gl.deleteTexture(this.gridTextures.sortedIndices);
+      gl.deleteFramebuffer(this.gridTextures.sortedIndicesFbo);
+      gl.deleteTexture(this.gridTextures.cellRanges);
+      gl.deleteFramebuffer(this.gridTextures.cellRangesFbo);
+    }
+
+    // Calculate texture sizes
+    // We need textures sized to hold maxParticles entries for cellIds and sortedIndices
+    // For cellRanges, we need cellCount entries
+    const maxParticles = this.particleTextureSize
+      ? (this.particleTextureSize.width * this.particleTextureSize.height) / 3
+      : 100000;
+
+    const particleTexSize = Math.ceil(Math.sqrt(maxParticles));
+    const cellTexSize = Math.ceil(Math.sqrt(cellCount));
+
+    this.gridTextureSize = { width: particleTexSize, height: particleTexSize };
+
+    // CellIds texture: stores cellId for each particle (R32F would work but using RGBA32F for consistency)
+    const cellIds = this.createFloatTexture(particleTexSize, particleTexSize);
+    const cellIdsFbo = this.createFramebuffer(cellIds);
+
+    // SortedIndices texture: stores (cellId, particleId) pairs after sorting
+    const sortedIndices = this.createFloatTexture(
+      particleTexSize,
+      particleTexSize
+    );
+    const sortedIndicesFbo = this.createFramebuffer(sortedIndices);
+
+    // CellRanges texture: stores (start, count) for each cell
+    const cellRanges = this.createFloatTexture(cellTexSize, cellTexSize);
+    const cellRangesFbo = this.createFramebuffer(cellRanges);
+
+    this.gridTextures = {
+      cellIds,
+      cellIdsFbo,
+      sortedIndices,
+      sortedIndicesFbo,
+      cellRanges,
+      cellRangesFbo,
+    };
+  }
+
+  getGridTextures(): GridTextures | null {
+    return this.gridTextures;
+  }
+
+  getGridTextureSize(): { width: number; height: number } | null {
+    return this.gridTextureSize;
+  }
+
   async dispose(): Promise<void> {
     const gl = this.gl;
     if (!gl) return;
@@ -452,6 +528,17 @@ export class GL2Resources {
       gl.deleteFramebuffer(this.sceneTextures.fboA);
       gl.deleteFramebuffer(this.sceneTextures.fboB);
       this.sceneTextures = null;
+    }
+
+    // Delete grid textures
+    if (this.gridTextures) {
+      gl.deleteTexture(this.gridTextures.cellIds);
+      gl.deleteFramebuffer(this.gridTextures.cellIdsFbo);
+      gl.deleteTexture(this.gridTextures.sortedIndices);
+      gl.deleteFramebuffer(this.gridTextures.sortedIndicesFbo);
+      gl.deleteTexture(this.gridTextures.cellRanges);
+      gl.deleteFramebuffer(this.gridTextures.cellRangesFbo);
+      this.gridTextures = null;
     }
 
     // Delete programs
