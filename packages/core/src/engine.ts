@@ -7,7 +7,7 @@ export type EngineOptions = {
   canvas: HTMLCanvasElement;
   forces: Module<string, any>[];
   render: Module<string, any>[];
-  runtime: "cpu" | "webgpu" | "auto";
+  runtime: "cpu" | "webgpu" | "webgl2" | "auto";
   constrainIterations?: number;
   clearColor?: { r: number; g: number; b: number; a: number };
   cellSize?: number;
@@ -18,8 +18,8 @@ export type EngineOptions = {
 
 export class Engine implements IEngine {
   private engine: IEngine;
-  private actualRuntime: "cpu" | "webgpu"; // The actual runtime being used
-  private preferredRuntime: "cpu" | "webgpu" | "auto"; // The requested runtime (can be 'auto')
+  private actualRuntime: "cpu" | "webgpu" | "webgl2"; // The actual runtime being used
+  private preferredRuntime: "cpu" | "webgpu" | "webgl2" | "auto"; // The requested runtime (can be 'auto')
   private originalOptions: EngineOptions; // Store original options for fallback
 
   constructor(options: EngineOptions) {
@@ -27,7 +27,7 @@ export class Engine implements IEngine {
     this.originalOptions = { ...options }; // Store original options for fallback
 
     // Determine actual runtime to use
-    let targetRuntime: "cpu" | "webgpu" | "auto";
+    let targetRuntime: "cpu" | "webgpu" | "webgl2" | "auto";
     if (options.runtime === "auto") {
       // Synchronous check - we'll handle WebGPU availability in initialize()
       targetRuntime = "webgpu"; // Default to WebGPU for auto, fallback to CPU if it fails
@@ -39,6 +39,8 @@ export class Engine implements IEngine {
 
     if (targetRuntime === "webgpu") {
       this.engine = new WebGPUEngine(options);
+    } else if (targetRuntime === "webgl2") {
+      throw new Error("WebGL2 runtime initialization failed: WebGL2 runtime is not yet implemented");
     } else {
       this.engine = new CPUEngine(options);
     }
@@ -88,8 +90,8 @@ export class Engine implements IEngine {
     }
   }
 
-  // Get the actual runtime being used (cpu or webgpu)
-  getActualRuntime(): "cpu" | "webgpu" {
+  // Get the actual runtime being used (cpu, webgpu, or webgl2)
+  getActualRuntime(): "cpu" | "webgpu" | "webgl2" {
     return this.actualRuntime;
   }
   play(): void {
@@ -304,6 +306,10 @@ export class Engine implements IEngine {
       if (this.actualRuntime === "webgpu") {
         // For WebGPU, check if the module has a webgpu() method that doesn't throw
         module.webgpu();
+        return true;
+      } else if (this.actualRuntime === "webgl2") {
+        // For WebGL2, check if the module has a webgl2() method that doesn't throw
+        module.webgl2();
         return true;
       } else {
         // For CPU, check if the module has a cpu() method that doesn't throw

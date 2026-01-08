@@ -108,6 +108,9 @@ export abstract class Module<
 
   abstract webgpu(): WebGPUDescriptor<Inputs, StateKeys>;
   abstract cpu(): CPUDescriptor<Inputs, StateKeys>;
+  webgl2(): WebGL2Descriptor<Inputs, StateKeys> {
+    throw new Error(`Module ${this.name} does not support WebGL2 runtime`);
+  }
 }
 
 export interface WebGPUForceDescriptor<
@@ -421,3 +424,28 @@ export type CPUDescriptor<
   >,
   StateKeys extends string | number | symbol = string
 > = CPUForceDescriptor<Inputs, StateKeys> | CPURenderDescriptor<Inputs>;
+
+// WebGL2 descriptor types (placeholder for future implementation)
+// For now, WebGL2 modules will have similar structure to WebGPU
+export type WebGL2ForceDescriptor<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >,
+  StateKeys extends string | number | symbol = string
+> = WebGPUForceDescriptor<Inputs, StateKeys>;
+
+export type WebGL2RenderDescriptor<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >
+> = WebGPURenderDescriptor<Inputs>;
+
+export type WebGL2Descriptor<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >,
+  StateKeys extends string | number | symbol = string
+> = WebGL2ForceDescriptor<Inputs, StateKeys> | WebGL2RenderDescriptor<Inputs>;
