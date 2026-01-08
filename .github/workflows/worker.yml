@@ -46,11 +46,11 @@ jobs:
         run: pnpm -r install --frozen-lockfile --prod=false
 
       - name: Typecheck
-        run: pnpm --filter worker typecheck
+        run: pnpm --filter worker run typecheck
 
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm --filter worker deploy
+        run: pnpm --filter worker run deploy
 

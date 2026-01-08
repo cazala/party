@@ -24,12 +24,12 @@ Configured in `wrangler.toml`:
 - **Typecheck**:
 
 ```bash
-pnpm --filter worker typecheck
+pnpm --filter worker run typecheck
 ```
 
 - **Deploy**:
 
 ```bash
-pnpm --filter worker deploy
+pnpm --filter worker run deploy
 ```
 
