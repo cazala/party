@@ -1,0 +1,161 @@
+{
+  "project": "@cazala/party",
+  "branchName": "ralph/webgl2-runtime",
+  "description": "Add a WebGL2 runtime (GPU simulation + GPU rendering) and update auto fallback order to WebGPU → WebGL2 → CPU.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add WebGL2 runtime option to Engine API",
+      "description": "As a library user, I want to select runtime: \"webgl2\" so I can run the engine on GPUs where WebGPU is unavailable.",
+      "acceptanceCriteria": [
+        "EngineOptions.runtime type includes \"webgl2\".",
+        "Engine#getActualRuntime() can return \"webgl2\".",
+        "runtime: \"webgl2\" throws a clear error if WebGL2 initialization fails.",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Completed in commit de88142. WebGL2 runtime option added to Engine API with proper type support and error handling."
+    },
+    {
+      "id": "US-002",
+      "title": "Auto runtime selects WebGL2 before CPU",
+      "description": "As a library user, I want runtime: \"auto\" to try WebGPU first, then WebGL2, then CPU, so I get the best performance my browser supports.",
+      "acceptanceCriteria": [
+        "In a WebGPU-disabled environment with WebGL2 available, runtime: \"auto\" selects WebGL2.",
+        "If WebGL2 initialization fails, runtime: \"auto\" falls back to CPU.",
+        "Console logs make the fallback chain explicit (attempted + selected).",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Completed in commit 570a617. Auto runtime now attempts WebGPU → WebGL2 → CPU with explicit console logging for each step of the fallback chain."
+    },
+    {
+      "id": "US-003",
+      "title": "Implement WebGL2 GPU particle store + ping-pong simulation pipeline",
+      "description": "As a developer, I want particle state to live on the GPU in WebGL2 so simulation can run without per-particle JS loops.",
+      "acceptanceCriteria": [
+        "WebGL2 runtime allocates particle state storage on GPU (textures or buffers) and seeds it from setParticles().",
+        "A baseline simulation loop exists on GPU: integrate velocity/position, reset acceleration (no forces).",
+        "play()/pause()/stop() work and do not leak GL resources.",
+        "setSize() updates viewport and render targets correctly.",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Completed in commit e9af8be. WebGL2 runtime uses RGBA32F textures for particle storage (3 texels per particle), implements ping-pong rendering for simulation, fragment shader-based Verlet integration, proper resource cleanup, and setSize() support."
+    },
+    {
+      "id": "US-004",
+      "title": "Implement WebGL2 render pipeline and Particles render module",
+      "description": "As a user, I want to see particles rendered correctly under WebGL2 runtime.",
+      "acceptanceCriteria": [
+        "WebGL2 render pipeline supports a scene texture/FBO ping-pong and a final present to canvas.",
+        "Particles.webgl2() renders from the WebGL2 particle store (no CPU draw loop).",
+        "Rendering respects clearColor and module enabled state.",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Completed in commit 81e330e. WebGL2 render pipeline with scene texture ping-pong working. Particles module fully integrated with 3 color modes (Default/Custom/Hue), pinned particle hollow circle rendering, alpha blending, and proper enabled state handling."
+    },
+    {
+      "id": "US-005",
+      "title": "Implement WebGL2 force modules that do not require neighbor queries",
+      "description": "As a user, I want core forces to work on WebGL2 with real performance gains.",
+      "acceptanceCriteria": [
+        "Environment.webgl2() implements GPU kernels for relevant phases.",
+        "Interaction.webgl2() implements GPU kernels for attract/repel.",
+        "Boundary.webgl2() implements GPU kernels for bounce/warp/kill/none behavior.",
+        "Grab.webgl2() implements GPU kernels for single-particle grabbing.",
+        "Behavior is reasonably consistent with existing runtimes (document acceptable differences).",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add WebGL2 neighbor infrastructure (grid + sort + cell ranges)",
+      "description": "As a developer, I need a GPU neighbor-iteration primitive in WebGL2 so neighbor-based modules can be ported.",
+      "acceptanceCriteria": [
+        "GPU pass computes cellId per particle based on view/world grid settings.",
+        "GPU sorting exists for (cellId, particleId) (bitonic or similar), fully on GPU.",
+        "GPU pass builds a per-cell range table [start,end) over the sorted particle list.",
+        "GLSL helpers expose a neighbor iterator that supports scanning neighboring cells and respects maxNeighbors.",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Port neighbor-based force modules to WebGL2 GPU simulation",
+      "description": "As a user, I want collisions/fluids/behavior/joints/sensors to work under WebGL2 with performance comparable to WebGPU on non-WebGPU browsers.",
+      "acceptanceCriteria": [
+        "Collisions.webgl2() uses the neighbor iterator and applies constraint/correct logic on GPU.",
+        "Behavior.webgl2() uses the neighbor iterator for boids-style steering.",
+        "Fluids.webgl2() uses state + apply passes on GPU (density/pressure/viscosity).",
+        "Joints.webgl2() supports array inputs (a/b indices, rest lengths, CSR lists) and runs on GPU.",
+        "Sensors.webgl2() samples the scene texture on GPU (no default readPixels CPU readback path).",
+        "Modules respect enabled and produce stable results (define tolerance tests or visual checks).",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Implement WebGL2 render modules Lines + Trails",
+      "description": "As a user, I want WebGL2 rendering parity with the existing built-in render modules.",
+      "acceptanceCriteria": [
+        "Lines.webgl2() renders line segments based on module array inputs.",
+        "Trails.webgl2() implements decay + diffuse using fullscreen passes and scene ping-pong.",
+        "Render ordering matches render[] array order semantics.",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Update playground UX for WebGL2 + fallbacks",
+      "description": "As a playground user, I want to see which runtime I’m on and why, and to be able to force WebGL2.",
+      "acceptanceCriteria": [
+        "Playground runtime selector includes \"webgl2\".",
+        "Fallback banner supports: WebGPU→WebGL2 and WebGL2→CPU.",
+        "UI displays getActualRuntime() result.",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Update docs for WebGL2 runtime",
+      "description": "As a library user/module author, I need documentation explaining what WebGL2 runtime is, how auto behaves, and how to support WebGL2 in custom modules.",
+      "acceptanceCriteria": [
+        "docs/user-guide.md updated: runtime selection now WebGPU→WebGL2→CPU; examples updated.",
+        "docs/module-author-guide.md updated: add webgl2() descriptor guidance and constraints (neighbor infra, arrays, scene sampling).",
+        "docs/maintainer-guide.md updated: document new WebGL2 runtime architecture and key components.",
+        "packages/core/README.md updated: multi-runtime messaging and browser support.",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
+

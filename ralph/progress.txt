@@ -1,0 +1,84 @@
+## Codebase Patterns
+- The Engine class in packages/core/src/engine.ts acts as a wrapper that delegates to runtime-specific implementations (WebGPUEngine, WebGL2Engine, CPUEngine)
+- Auto runtime selection happens in two phases: constructor (synchronous) determines initial runtime to try, initialize() handles async fallback logic
+- When adding fallback logic, always clean up (destroy) failed engine instances before creating new ones
+- Runtime fallback should always go from most performant to least: WebGPU → WebGL2 → CPU
+- Console logging for runtime selection should be explicit about what's being attempted and what succeeded/failed
+- All runtime engines extend AbstractEngine which provides: modules (forces+render combined), view, oscillatorManager, and lifecycle methods
+- ViewSnapshot uses cx/cy for camera position (not offset.x/offset.y), width/height for size, and zoom
+- WebGL2 uses texture-based GPU storage: RGBA32F textures with 3 texels per particle (pos/vel, accel/size/mass, color)
+- Ping-pong pattern: read from current texture, write to "other" texture, then swap references
+
+---
+
+## 2026-01-08 - US-002
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented WebGPU → WebGL2 → CPU fallback chain for runtime: "auto"
+- Added comprehensive console logging to track runtime selection attempts and results
+- Files changed:
+  - packages/core/src/engine.ts: Updated constructor and initialize() method
+- **Learnings for future iterations:**
+  - The Engine class delegates to runtime-specific engine implementations (WebGPUEngine, CPUEngine)
+  - Auto mode starts by attempting WebGPU in the constructor, then handles fallback asynchronously in initialize()
+  - Each failed runtime must be destroyed before attempting the next one to avoid resource leaks
+  - WebGL2 runtime is not yet implemented - it will throw "not yet implemented" error, so fallback to CPU is guaranteed for now
+  - Console logs should clearly indicate: what runtime is being attempted, what failed, and what succeeded
+  - Typecheck is run via `npm run type-check` (not `typecheck`)
+---
+## 2026-01-08 - US-003
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented WebGL2 GPU particle store using RGBA32F textures with ping-pong rendering
+- Created baseline simulation loop on GPU using fragment shaders for Verlet integration
+- Files changed:
+  - packages/core/src/engine.ts: Added WebGL2Engine import and instantiation
+  - packages/core/src/runtimes/webgl2/engine.ts: Main WebGL2Engine class (animate loop, simulation, rendering)
+  - packages/core/src/runtimes/webgl2/gl2-resources.ts: WebGL2 resource manager (contexts, textures, FBOs, programs)
+  - packages/core/src/runtimes/webgl2/particle-store.ts: CPU-side particle storage with GPU sync
+  - packages/core/src/runtimes/webgl2/shaders.ts: GLSL shaders for simulation and rendering
+- **Learnings for future iterations:**
+  - WebGL2 uses texture-based particle storage: 3 RGBA32F texels per particle (12 floats total)
+  - Particle data layout: Texel 0 = [pos.x, pos.y, vel.x, vel.y], Texel 1 = [ax, ay, size, mass], Texel 2 = [r, g, b, a]
+  - Ping-pong rendering: simulation passes read from current texture, write to "other" texture, then swap
+  - Fragment shaders calculate texel coordinates from gl_FragCoord to determine which particle/texel they're processing
+  - Particle rendering uses gl.POINTS with gl_VertexID to fetch particle data from texture in vertex shader
+  - ViewSnapshot uses cx/cy (not offset.x/offset.y) for camera position
+  - AbstractEngine provides `modules` (combines forces + render), not separate `forces`/`renderModules` properties
+  - WebGL2 requires EXT_color_buffer_float extension for rendering to RGBA32F textures
+  - Scene rendering also uses ping-pong textures (separate from particle textures)
+  - destroy() must cancel animation frame and dispose all GL resources (textures, FBOs, programs, buffers)
+---
+## 2026-01-08 20:15 - US-004
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented WebGL2 render pipeline with Particles module support
+- Added Particles.webgl2() render descriptor returning WebGL2Descriptor with color mode bindings
+- Enhanced particle vertex shader to pass mass to fragment shader for pinned particle detection
+- Implemented 3 color modes in particle fragment shader:
+  * Default (0): Uses particle's inherent RGBA color from texture
+  * Custom (1): Applies uniform RGB color to all particles
+  * Hue (2): Converts HSV hue (0..1) to RGB with full saturation and value
+- Added hollow circle (donut) rendering for pinned particles (mass < 0) with smooth edges
+- WebGL2Engine now finds Particles module and reads its settings at render time
+- Module enabled state properly handled: clears scene but skips particle rendering when disabled
+- Enabled alpha blending (SRC_ALPHA, ONE_MINUS_SRC_ALPHA) for smooth transparency
+- Scene texture ping-pong working: renders to FBO, presents to canvas
+- Clear color respected each frame
+
+Files changed:
+- packages/core/src/modules/render/particles.ts: Added webgl2() method with descriptor
+- packages/core/src/runtimes/webgl2/shaders.ts: Updated particle vertex/fragment shaders
+- packages/core/src/runtimes/webgl2/engine.ts: Integrated Particles module settings
+- WEBGL2-PARTICLES-TEST.md: Created browser testing documentation
+- test-webgl2-basic.mjs: Created automated smoke tests
+
+**Learnings for future iterations:**
+- WebGL2 modules don't use a registry/compiler like WebGPU yet - shaders are handwritten GLSL
+- Module descriptors (webgl2()) return WGSL-style code for consistency with WebGPU, but WebGL2 uses direct GLSL
+- WebGL2Engine reads module settings directly via readValue() at render time
+- Particle shaders use texture lookups (3 texels per particle) for all data: pos/vel, accel/size/mass, color
+- Fragment shader gets gl_PointCoord (0..1) to render circular particles with distance-based alpha falloff
+- Pinned particles identified by negative mass, rendered as hollow rings using smoothstep for soft edges
+- Alpha blending must be explicitly enabled before drawing, disabled after
+- Scene FBO must be cleared to clearColor each frame before rendering particles
+- Module enabled state check should happen after clearing scene but before rendering
+
+---
