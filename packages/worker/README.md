@@ -14,7 +14,7 @@ The browser URL stays on **`caza.la/party...`** (no redirects to `*.pages.dev`, 
 
 Configured in `wrangler.toml`:
 
-- **Worker name**: `cazala-edge-party`
+- **Worker name**: `cazala-party-worker`
 - **Route**: `caza.la/party*`
 - **Upstream**: `vars.UPSTREAM_ORIGIN` (default: `https://party.caza.la`)
 - **Response header**: `x-edge-proxy: cazala-party-worker`
