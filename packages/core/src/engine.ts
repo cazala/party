@@ -30,7 +30,8 @@ export class Engine implements IEngine {
     let targetRuntime: "cpu" | "webgpu" | "webgl2" | "auto";
     if (options.runtime === "auto") {
       // Synchronous check - we'll handle WebGPU availability in initialize()
-      targetRuntime = "webgpu"; // Default to WebGPU for auto, fallback to CPU if it fails
+      targetRuntime = "webgpu"; // Default to WebGPU for auto, fallback to WebGL2 then CPU if it fails
+      console.log("Auto runtime selection: Attempting WebGPU...");
     } else {
       targetRuntime = options.runtime;
     }
@@ -50,42 +51,83 @@ export class Engine implements IEngine {
   async initialize(): Promise<void> {
     try {
       await this.engine.initialize();
-    } catch (error) {
-      // Handle fallback for auto mode or WebGPU failures
-      if (this.preferredRuntime === "auto" && this.actualRuntime === "webgpu") {
-        console.warn(
-          "WebGPU initialization failed, falling back to CPU runtime:",
-          error
-        );
-
-        // Destroy the failed WebGPU engine
-        try {
-          await this.engine.destroy();
-        } catch (destroyError) {
-          console.warn("Error destroying failed WebGPU engine:", destroyError);
-        }
-
-        // Create CPU engine with same options
-        this.actualRuntime = "cpu";
-        const fallbackOptions = {
-          ...this.originalOptions,
-          runtime: "cpu",
-        };
-        this.engine = new CPUEngine(fallbackOptions);
-
-        // Initialize the CPU engine
-        await this.engine.initialize();
-      } else {
-        throw error; // Re-throw if not auto mode or already CPU
+      // Log successful runtime selection for auto mode
+      if (this.preferredRuntime === "auto") {
+        console.log(`Auto runtime selection: Successfully initialized ${this.actualRuntime.toUpperCase()} runtime`);
       }
-    }
+    } catch (error) {
+      // Handle fallback for auto mode
+      if (this.preferredRuntime === "auto") {
+        if (this.actualRuntime === "webgpu") {
+          // WebGPU failed, try WebGL2
+          console.warn(
+            "Auto runtime selection: WebGPU initialization failed, attempting WebGL2...",
+            error
+          );
 
-    // Log runtime selection for auto mode
-    if (this.preferredRuntime === "auto") {
-      if (this.actualRuntime === "cpu") {
-        console.warn(
-          "Auto runtime selection: Using CPU (WebGPU not available or failed)"
-        );
+          // Destroy the failed WebGPU engine
+          try {
+            await this.engine.destroy();
+          } catch (destroyError) {
+            console.warn("Error destroying failed WebGPU engine:", destroyError);
+          }
+
+          // Try WebGL2
+          this.actualRuntime = "webgl2";
+          try {
+            // WebGL2 is not implemented yet, so this will throw
+            throw new Error("WebGL2 runtime initialization failed: WebGL2 runtime is not yet implemented");
+          } catch (webgl2Error) {
+            // WebGL2 failed, fall back to CPU
+            console.warn(
+              "Auto runtime selection: WebGL2 initialization failed, falling back to CPU...",
+              webgl2Error
+            );
+
+            // Create CPU engine with same options
+            this.actualRuntime = "cpu";
+            const fallbackOptions = {
+              ...this.originalOptions,
+              runtime: "cpu",
+            };
+            this.engine = new CPUEngine(fallbackOptions);
+
+            // Initialize the CPU engine
+            await this.engine.initialize();
+            console.log("Auto runtime selection: Successfully initialized CPU runtime");
+          }
+        } else if (this.actualRuntime === "webgl2") {
+          // WebGL2 failed in auto mode, fall back to CPU
+          console.warn(
+            "Auto runtime selection: WebGL2 initialization failed, falling back to CPU...",
+            error
+          );
+
+          // Destroy the failed WebGL2 engine (if it has a destroy method)
+          try {
+            await this.engine.destroy();
+          } catch (destroyError) {
+            console.warn("Error destroying failed WebGL2 engine:", destroyError);
+          }
+
+          // Create CPU engine with same options
+          this.actualRuntime = "cpu";
+          const fallbackOptions = {
+            ...this.originalOptions,
+            runtime: "cpu",
+          };
+          this.engine = new CPUEngine(fallbackOptions);
+
+          // Initialize the CPU engine
+          await this.engine.initialize();
+          console.log("Auto runtime selection: Successfully initialized CPU runtime");
+        } else {
+          // Already on CPU, can't fall back further
+          throw error;
+        }
+      } else {
+        // Not auto mode, re-throw the error
+        throw error;
       }
     }
   }
