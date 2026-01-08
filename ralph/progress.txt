@@ -10,6 +10,10 @@
 - Ping-pong pattern: read from current texture, write to "other" texture, then swap references
 - WebGL2 modules: Read settings directly via module.readValue() at render time (no registry/compiler like WebGPU yet)
 - Render modules should check isEnabled() before rendering, but still clear scene even when disabled
+- WebGL2 neighbor infrastructure uses textures (cellIds, sortedIndices, cellRanges) since WebGL2 lacks compute shaders/storage buffers
+- Grid passes run every frame in simulation loop: assign cells → sort → build ranges, before force application
+- GLSL getNeighbors() helper function provides neighbor iteration within radius, respects maxNeighbors limit
+- SpacialGrid manages grid configuration and automatically resizes when view changes (pan/zoom/resize)
 
 ---
 
