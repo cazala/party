@@ -25,6 +25,41 @@ function getUserAgent(): string {
   return navigator.userAgent || (navigator as any).vendor || "";
 }
 
+function hasTelegramWebViewSignals(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as any;
+
+  // Telegram Web Apps commonly inject one of these.
+  if (w.Telegram?.WebApp) return true;
+  if (w.TelegramWebviewProxy) return true;
+  if (w.TelegramGameProxy) return true;
+
+  // Telegram Web Apps also append tgWebApp* params to the URL.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("tgWebAppPlatform")) return true;
+    if (params.has("tgWebAppVersion")) return true;
+    if (params.has("tgWebAppStartParam")) return true;
+  } catch {
+    // ignore
+  }
+
+  return false;
+}
+
+function hasGenericWebViewBridgeSignals(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as any;
+
+  // iOS WKWebView bridge (not present in Safari).
+  if (w.webkit?.messageHandlers) return true;
+
+  // React Native WebView
+  if (w.ReactNativeWebView) return true;
+
+  return false;
+}
+
 /**
  * Best-effort WebView / in-app browser detection.
  * There is no perfect, standards-based way to detect "in-app browser" vs Safari/Chrome,
@@ -32,6 +67,10 @@ function getUserAgent(): string {
  */
 export function isProbablyWebView(): boolean {
   const ua = getUserAgent();
+
+  // Prefer high-signal runtime checks over UA guessing.
+  if (hasTelegramWebViewSignals()) return true;
+  if (hasGenericWebViewBridgeSignals()) return true;
 
   // Known in-app browser tokens (not exhaustive, but high-signal).
   // Telegram: "Telegram"
