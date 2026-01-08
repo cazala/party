@@ -9,6 +9,7 @@ import { Vector } from "../../vector";
 import {
   Module,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   ModuleRole,
   CPUDescriptor,
   DataType,
@@ -280,6 +281,49 @@ export class Environment extends Module<"environment", EnvironmentInputs> {
           particle.velocity.multiply(1 - damping * 0.2);
         }
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<EnvironmentInputs> {
+    return {
+      apply: ({ particleVar, dtVar, getUniform }) => `
+  // Gravity as force: acceleration += dir * strength
+  let mode = ${getUniform("mode")};
+  var gdir = vec2<f32>(${getUniform("dirX")}, ${getUniform("dirY")});
+  if (mode == 1.0) {
+    let cx = (GRID_MINX() + GRID_MAXX()) * 0.5;
+    let cy = (GRID_MINY() + GRID_MAXY()) * 0.5;
+    gdir = vec2<f32>(cx, cy) - ${particleVar}.position;
+  } else if (mode == 2.0) {
+    let cx = (GRID_MINX() + GRID_MAXX()) * 0.5;
+    let cy = (GRID_MINY() + GRID_MAXY()) * 0.5;
+    gdir = ${particleVar}.position - vec2<f32>(cx, cy);
+  }
+  let glen = length(gdir);
+  if (glen > 0.0) {
+    ${particleVar}.acceleration += (gdir / glen) * ${getUniform(
+        "gravityStrength"
+      )};
+  }
+
+  // Inertia: acceleration += velocity * dt * inertia
+  let inertia = ${getUniform("inertia")};
+  if (inertia > 0.0) {
+    ${particleVar}.acceleration += ${particleVar}.velocity * (${dtVar}) * inertia;
+  }
+
+  // Friction: acceleration += -velocity * friction
+  let friction = ${getUniform("friction")};
+  if (friction > 0.0) {
+    ${particleVar}.acceleration += -${particleVar}.velocity * friction;
+  }
+
+  // Damping: directly scale velocity (post-force effect in CPU code)
+  let damping = ${getUniform("damping")};
+  if (damping != 0.0) {
+    ${particleVar}.velocity *= (1.0 - damping * 0.2);
+  }
+`,
     };
   }
 }

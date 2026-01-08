@@ -260,3 +260,115 @@ void main() {
   fragColor = texture(u_sceneTexture, v_texCoord);
 }
 `;
+
+/**
+ * Force application pass: apply forces to particle acceleration
+ * This is a generic force shader that will be dynamically generated
+ * based on enabled modules
+ */
+export function generateForceFragmentShader(forceCode: string): string {
+  return `#version 300 es
+precision highp float;
+
+in vec2 v_texCoord;
+out vec4 fragColor;
+
+uniform sampler2D u_particleTexture;
+uniform vec2 u_texelSize;
+uniform float u_dt;
+uniform int u_particleCount;
+
+// View uniforms for grid calculations
+uniform vec2 u_viewOffset;
+uniform float u_viewZoom;
+uniform vec2 u_viewSize;
+
+// Module-specific uniforms will be added here dynamically
+
+// Helper to get particle data texel index from particle ID
+vec2 getTexelCoord(int particleId, int texelOffset) {
+  int texelIndex = particleId * 3 + texelOffset;
+  int x = texelIndex % int(1.0 / u_texelSize.x);
+  int y = texelIndex / int(1.0 / u_texelSize.x);
+  return vec2(float(x), float(y)) * u_texelSize + u_texelSize * 0.5;
+}
+
+// Grid boundary helpers (matches WebGPU GRID_* macros)
+float GRID_MINX() {
+  float halfW = u_viewSize.x / (2.0 * max(u_viewZoom, 0.0001));
+  return u_viewOffset.x - halfW;
+}
+
+float GRID_MAXX() {
+  float halfW = u_viewSize.x / (2.0 * max(u_viewZoom, 0.0001));
+  return u_viewOffset.x + halfW;
+}
+
+float GRID_MINY() {
+  float halfH = u_viewSize.y / (2.0 * max(u_viewZoom, 0.0001));
+  return u_viewOffset.y - halfH;
+}
+
+float GRID_MAXY() {
+  float halfH = u_viewSize.y / (2.0 / max(u_viewZoom, 0.0001));
+  return u_viewOffset.y + halfH;
+}
+
+// Particle struct (logical representation)
+struct Particle {
+  vec2 position;
+  vec2 velocity;
+  vec2 acceleration;
+  float size;
+  float mass;
+  vec4 color;
+};
+
+void main() {
+  // Determine which texel and which particle we're processing
+  ivec2 texelCoord = ivec2(gl_FragCoord.xy);
+  int texelIndex = texelCoord.y * int(1.0 / u_texelSize.x) + texelCoord.x;
+  int particleId = texelIndex / 3;
+  int texelOffset = texelIndex % 3;
+
+  // If this texel is beyond active particles, pass through
+  if (particleId >= u_particleCount) {
+    fragColor = texelFetch(u_particleTexture, texelCoord, 0);
+    return;
+  }
+
+  // Read particle data
+  vec2 coord0 = getTexelCoord(particleId, 0);
+  vec2 coord1 = getTexelCoord(particleId, 1);
+  vec2 coord2 = getTexelCoord(particleId, 2);
+
+  vec4 texel0 = texture(u_particleTexture, coord0); // pos.xy, vel.xy
+  vec4 texel1 = texture(u_particleTexture, coord1); // ax, ay, size, mass
+  vec4 texel2 = texture(u_particleTexture, coord2); // color
+
+  // Build particle struct
+  Particle p;
+  p.position = texel0.xy;
+  p.velocity = texel0.zw;
+  p.acceleration = texel1.xy;
+  p.size = texel1.z;
+  p.mass = texel1.w;
+  p.color = texel2;
+
+  // Apply forces (dynamically injected code)
+${forceCode}
+
+  // Write back modified data
+  if (texelOffset == 0) {
+    // Position and velocity unchanged in force pass
+    fragColor = texel0;
+  } else if (texelOffset == 1) {
+    // Updated acceleration, keep size and mass
+    fragColor = vec4(p.acceleration, texel1.zw);
+  } else {
+    // Color unchanged
+    fragColor = texel2;
+  }
+}
+`;
+}

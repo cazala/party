@@ -9,6 +9,7 @@
 import {
   Module,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   ModuleRole,
   CPUDescriptor,
   DataType,
@@ -151,6 +152,27 @@ export class Grab extends Module<"grab", GrabInputs> {
           particle.velocity.y = 0;
         }
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<GrabInputs> {
+    return {
+      correct: ({ particleVar, getUniform }) => `{
+  // Only the invocation matching the grabbed index should apply the correction
+  let gi_f = ${getUniform("grabbedIndex")};
+  let gi = u32(gi_f);
+  if (gi != index) { return; }
+  let count = arrayLength(&particles);
+  if (gi < 0 || gi >= count || count == 0u) { return; }
+
+  // Update only this particle (current invocation)
+  if (${particleVar}.mass > 0.0) {
+    ${particleVar}.position.x = ${getUniform("positionX")};
+    ${particleVar}.position.y = ${getUniform("positionY")};
+    ${particleVar}.velocity.x = 0.0;
+    ${particleVar}.velocity.y = 0.0;
+  }
+}`,
     };
   }
 }

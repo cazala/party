@@ -7,6 +7,7 @@
 import {
   Module,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   ModuleRole,
   CPUDescriptor,
   DataType,
@@ -149,6 +150,28 @@ export class Interaction extends Module<"interaction", InteractionInputs> {
         particle.acceleration.x += forceX;
         particle.acceleration.y += forceY;
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<InteractionInputs> {
+    return {
+      apply: ({ particleVar, getUniform }) => `{
+  if (${getUniform("active")} == 0.0 ) { return; }
+  // Compute vector from particle to position
+  let dx = ${getUniform("positionX")} - ${particleVar}.position.x;
+  let dy = ${getUniform("positionY")} - ${particleVar}.position.y;
+  let dist2 = dx*dx + dy*dy;
+  let rad = ${getUniform("radius")};
+  let r2 = rad * rad;
+  if (dist2 <= 0.0 || dist2 > r2) { return; }
+  let dist = sqrt(dist2);
+  let dir = vec2<f32>(dx, dy) / dist;
+  let falloff = 1.0 - (dist / rad);
+  let f = ${getUniform("strength")} * falloff;
+  let mode = ${getUniform("mode")} ;
+  let force = select(dir * f, -dir * f, mode == 1.0);
+  ${particleVar}.acceleration += force;
+}`,
     };
   }
 }

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGL2 Forces Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #1a1a1a;
+      color: white;
+    }
+    canvas {
+      border: 1px solid #444;
+      display: block;
+      margin: 20px auto;
+      background: black;
+      cursor: crosshair;
+    }
+    .controls {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #2a2a2a;
+      border-radius: 8px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      background: #4a4a4a;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #5a5a5a;
+    }
+    button.active {
+      background: #0a7a0a;
+    }
+    .info {
+      margin: 10px 0;
+      padding: 10px;
+      background: #333;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <h1>WebGL2 Forces Test</h1>
+    <div class="info">
+      <strong>Runtime:</strong> <span id="runtime">Loading...</span><br>
+      <strong>Particle Count:</strong> <span id="count">0</span><br>
+      <strong>FPS:</strong> <span id="fps">0</span>
+    </div>
+    <h3>Environment (Gravity)</h3>
+    <div>
+      <button onclick="toggleGravity()">Toggle Gravity</button>
+      <button onclick="setGravityDown()">Gravity Down</button>
+      <button onclick="setGravityUp()">Gravity Up</button>
+      <button onclick="setGravityInwards()">Gravity Inwards</button>
+    </div>
+    <h3>Boundary</h3>
+    <div>
+      <button onclick="setBoundaryBounce()">Bounce</button>
+      <button onclick="setBoundaryWarp()">Warp</button>
+      <button onclick="setBoundaryKill()">Kill</button>
+      <button onclick="setBoundaryNone()">None</button>
+    </div>
+    <h3>Interaction</h3>
+    <div>
+      <button id="attractBtn" onclick="toggleAttract()">Attract (Click)</button>
+      <button onclick="setRepel()">Repel Mode</button>
+    </div>
+  </div>
+  <canvas id="canvas" width="800" height="600"></canvas>
+
+  <script type="module">
+    import { Engine, Particles, Environment, Boundary, Interaction } from 'http://localhost:3000/node_modules/@cazala/party/dist/index.js';
+
+    const canvas = document.getElementById('canvas');
+    const particles = new Particles({ enabled: true });
+    const environment = new Environment({
+      enabled: false,
+      gravityStrength: 100,
+      gravityDirection: 'down'
+    });
+    const boundary = new Boundary({
+      enabled: true,
+      mode: 'bounce',
+      restitution: 0.9
+    });
+    const interaction = new Interaction({
+      enabled: true,
+      mode: 'attract',
+      strength: 10000,
+      radius: 200,
+      active: false
+    });
+
+    const engine = new Engine({
+      canvas,
+      runtime: 'webgl2',
+      forces: [environment, boundary, interaction],
+      render: [particles]
+    });
+
+    await engine.initialize();
+
+    // Update UI
+    document.getElementById('runtime').textContent = engine.getActualRuntime();
+
+    // Add some test particles
+    const testParticles = [];
+    for (let i = 0; i < 200; i++) {
+      testParticles.push({
+        x: Math.random() * 800,
+        y: Math.random() * 600,
+        vx: (Math.random() - 0.5) * 200,
+        vy: (Math.random() - 0.5) * 200,
+        mass: 1,
+        size: 5 + Math.random() * 10,
+        color: {
+          r: Math.random(),
+          g: Math.random(),
+          b: Math.random(),
+          a: 1
+        }
+      });
+    }
+
+    engine.setParticles(testParticles);
+    engine.play();
+
+    // Update counters
+    setInterval(() => {
+      document.getElementById('count').textContent = engine.getCount();
+      document.getElementById('fps').textContent = Math.round(engine.getFPS());
+    }, 100);
+
+    // Mouse interaction
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      interaction.setPosition(x, y);
+      interaction.setActive(true);
+      document.getElementById('attractBtn').classList.add('active');
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (interaction.isActive()) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        interaction.setPosition(x, y);
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      interaction.setActive(false);
+      document.getElementById('attractBtn').classList.remove('active');
+    });
+
+    // Control functions
+    window.toggleGravity = () => {
+      environment.setEnabled(!environment.isEnabled());
+      console.log('Gravity enabled:', environment.isEnabled());
+    };
+
+    window.setGravityDown = () => {
+      environment.setGravityDirection('down');
+      environment.setEnabled(true);
+      console.log('Gravity: down');
+    };
+
+    window.setGravityUp = () => {
+      environment.setGravityDirection('up');
+      environment.setEnabled(true);
+      console.log('Gravity: up');
+    };
+
+    window.setGravityInwards = () => {
+      environment.setGravityDirection('inwards');
+      environment.setEnabled(true);
+      console.log('Gravity: inwards');
+    };
+
+    window.setBoundaryBounce = () => {
+      boundary.setMode('bounce');
+      console.log('Boundary: bounce');
+    };
+
+    window.setBoundaryWarp = () => {
+      boundary.setMode('warp');
+      console.log('Boundary: warp');
+    };
+
+    window.setBoundaryKill = () => {
+      boundary.setMode('kill');
+      console.log('Boundary: kill');
+    };
+
+    window.setBoundaryNone = () => {
+      boundary.setMode('none');
+      console.log('Boundary: none');
+    };
+
+    window.toggleAttract = () => {
+      interaction.setActive(!interaction.isActive());
+    };
+
+    window.setRepel = () => {
+      interaction.setMode('repel');
+      console.log('Interaction: repel');
+    };
+  </script>
+</body>
+</html>

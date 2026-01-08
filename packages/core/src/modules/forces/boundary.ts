@@ -11,6 +11,7 @@
 import {
   Module,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   ModuleRole,
   CPUDescriptor,
   DataType,
@@ -351,6 +352,124 @@ export class Boundary extends Module<"boundary", BoundaryInputs> {
           // none: no boundary constraints; repel force above still applies
         }
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<BoundaryInputs> {
+    return {
+      apply: ({ particleVar, getUniform }) => `{
+  // Bounce using global grid extents
+  let halfSize = ${particleVar}.size;
+  let minX = GRID_MINX();
+  let maxX = GRID_MAXX();
+  let minY = GRID_MINY();
+  let maxY = GRID_MAXY();
+  let bounce = ${getUniform("restitution")};
+  let friction = ${getUniform("friction")};
+  let mode = ${getUniform("mode")};
+  let repelDist = ${getUniform("repelDistance")};
+  let repelStrength = ${getUniform("repelStrength")};
+
+  // Repel force applied for all modes
+  if (repelStrength > 0.0) {
+    let distLeft = (${particleVar}.position.x - halfSize) - minX;
+    let distRight = maxX - (${particleVar}.position.x + halfSize);
+    let distTop = (${particleVar}.position.y - halfSize) - minY;
+    let distBottom = maxY - (${particleVar}.position.y + halfSize);
+
+    var fx = 0.0;
+    var fy = 0.0;
+    if (repelDist <= 0.0) {
+      if (distLeft < 0.0) { fx += repelStrength; }
+      if (distRight < 0.0) { fx -= repelStrength; }
+      if (distTop < 0.0) { fy += repelStrength; }
+      if (distBottom < 0.0) { fy -= repelStrength; }
+    } else {
+      // Outside of bounds: apply full-strength push back in
+      if (distLeft < 0.0) { fx += repelStrength; }
+      if (distRight < 0.0) { fx -= repelStrength; }
+      if (distTop < 0.0) { fy += repelStrength; }
+      if (distBottom < 0.0) { fy -= repelStrength; }
+
+      // Inside within repel distance: scale by proximity
+      if (distLeft < repelDist && distLeft > 0.0) {
+        let ratio = (repelDist - distLeft) / repelDist;
+        fx += ratio * repelStrength;
+      }
+      if (distRight < repelDist && distRight > 0.0) {
+        let ratio = (repelDist - distRight) / repelDist;
+        fx -= ratio * repelStrength;
+      }
+      if (distTop < repelDist && distTop > 0.0) {
+        let ratio = (repelDist - distTop) / repelDist;
+        fy += ratio * repelStrength;
+      }
+      if (distBottom < repelDist && distBottom > 0.0) {
+        let ratio = (repelDist - distBottom) / repelDist;
+        fy -= ratio * repelStrength;
+      }
+    }
+    ${particleVar}.acceleration += vec2<f32>(fx, fy);
+  }
+
+  if (mode == 0.0) {
+    // bounce
+    // X axis
+    if (${particleVar}.position.x - halfSize < minX) {
+      ${particleVar}.position.x = minX + halfSize;
+      ${particleVar}.velocity.x = -${particleVar}.velocity.x * bounce;
+      ${particleVar}.velocity.y *= max(0.0, 1.0 - friction);
+    } else if (${particleVar}.position.x + halfSize > maxX) {
+      ${particleVar}.position.x = maxX - halfSize;
+      ${particleVar}.velocity.x = -${particleVar}.velocity.x * bounce;
+      ${particleVar}.velocity.y *= max(0.0, 1.0 - friction);
+    }
+
+    // Y axis
+    if (${particleVar}.position.y - halfSize < minY) {
+      ${particleVar}.position.y = minY + halfSize;
+      ${particleVar}.velocity.y = -${particleVar}.velocity.y * bounce;
+      ${particleVar}.velocity.x *= max(0.0, 1.0 - friction);
+    } else if (${particleVar}.position.y + halfSize > maxY) {
+      ${particleVar}.position.y = maxY - halfSize;
+      ${particleVar}.velocity.y = -${particleVar}.velocity.y * bounce;
+      ${particleVar}.velocity.x *= max(0.0, 1.0 - friction);
+    }
+  } else if (mode == 1.0) {
+    // warp
+    // Only warp once the particle is fully outside the bounds
+    let eps = 1.0; // spawn just outside the opposite edge so it slides in
+    if (${particleVar}.position.x + halfSize < minX) {
+      ${particleVar}.position.x = maxX + halfSize + eps;
+    } else if (${particleVar}.position.x - halfSize > maxX) {
+      ${particleVar}.position.x = minX - halfSize - eps;
+    }
+    if (${particleVar}.position.y + halfSize < minY) {
+      ${particleVar}.position.y = maxY + halfSize + eps;
+    } else if (${particleVar}.position.y - halfSize > maxY) {
+      ${particleVar}.position.y = minY - halfSize - eps;
+    }
+  } else if (mode == 2.0) {
+    // kill
+    // Only kill once the particle is fully outside the bounds
+    if (${particleVar}.position.x - halfSize < minX) {
+      ${particleVar}.position.x = minX - halfSize * 4;
+      ${particleVar}.mass = 0.0;
+    } else if (${particleVar}.position.x + halfSize > maxX) {
+      ${particleVar}.position.x = maxX + halfSize * 4;
+      ${particleVar}.mass = 0.0;
+    }
+    if (${particleVar}.position.y - halfSize < minY) {
+      ${particleVar}.position.y = minY - halfSize * 4;
+      ${particleVar}.mass = 0.0;
+    } else if (${particleVar}.position.y + halfSize > maxY) {
+      ${particleVar}.position.y = maxY + halfSize * 4;
+      ${particleVar}.mass = 0.0;
+    }
+  } else if (mode == 3.0) {
+    // none: no boundary constraints; repel force above still applies
+  }
+}`,
     };
   }
 }

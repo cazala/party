@@ -23,6 +23,7 @@ import {
   particleFragmentShader,
   copyVertexShader,
   copyFragmentShader,
+  generateForceFragmentShader,
 } from "./shaders";
 
 export class WebGL2Engine extends AbstractEngine {
@@ -101,6 +102,76 @@ export class WebGL2Engine extends AbstractEngine {
       copyVertexShader,
       copyFragmentShader
     );
+
+    // Build force application shader from enabled modules
+    this.buildForceShader();
+  }
+
+  private buildForceShader(): void {
+    // Collect force code from enabled force modules
+    const forceModules = this.modules.filter(
+      (m) => m.role === "force" && m.isEnabled()
+    );
+
+    if (forceModules.length === 0) {
+      // No forces to apply
+      return;
+    }
+
+    let forceCode = "";
+    for (const module of forceModules) {
+      try {
+        const descriptor = module.webgl2();
+        if ("apply" in descriptor && descriptor.apply) {
+          const code = descriptor.apply({
+            particleVar: "p",
+            dtVar: "u_dt",
+            maxSizeVar: "0.0", // Not used in these modules yet
+            getUniform: (id: string) => `u_${module.name}_${String(id)}`,
+            getLength: (_id: string) => `0`, // Arrays not supported yet
+            getState: () => "0.0", // State not supported yet
+          });
+          forceCode += `  // ${module.name}\n${code}\n`;
+        }
+      } catch (e) {
+        // Module doesn't support WebGL2, skip it
+        console.warn(`Module ${module.name} does not support WebGL2:`, e);
+      }
+    }
+
+    if (forceCode) {
+      // Convert WGSL-style code to GLSL
+      forceCode = this.convertWGSLtoGLSL(forceCode);
+
+      const fragmentShader = generateForceFragmentShader(forceCode);
+      this.resources.createProgram(
+        "forces",
+        fullscreenVertexShader,
+        fragmentShader
+      );
+    }
+  }
+
+  private convertWGSLtoGLSL(wgslCode: string): string {
+    // Convert WGSL syntax to GLSL
+    let glsl = wgslCode;
+
+    // Replace 'let' with appropriate GLSL declaration
+    glsl = glsl.replace(/\blet\b/g, "float");
+
+    // Replace 'var' with appropriate GLSL declaration
+    glsl = glsl.replace(/\bvar\b/g, "vec2");
+
+    // Replace vec2<f32> with vec2
+    glsl = glsl.replace(/vec2<f32>/g, "vec2");
+
+    // Replace select(a, b, cond) with (cond ? b : a) - note reversed order
+    glsl = glsl.replace(
+      /select\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g,
+      "($3 ? $2 : $1)"
+    );
+
+    return glsl;
   }
 
   protected startAnimationLoop(): void {
@@ -184,6 +255,9 @@ export class WebGL2Engine extends AbstractEngine {
     if (this.playing) {
       this.updateOscillators(dt);
 
+      // Run force application pass (applies forces to acceleration)
+      this.runForcePass(dt);
+
       // Run simulation pass: integrate velocity/position, reset acceleration
       this.runIntegrationPass(dt);
 
@@ -211,6 +285,83 @@ export class WebGL2Engine extends AbstractEngine {
     // Continue animation loop
     this.animationId = requestAnimationFrame(this.animate);
   };
+
+  private runForcePass(dt: number): void {
+    const gl = this.resources.getGL();
+    const program = this.resources.getProgram("forces");
+    if (!program) return; // No forces to apply
+
+    gl.useProgram(program);
+
+    // Set up to render to the "other" particle texture
+    const targetFbo = this.resources.getOtherParticleFramebuffer();
+    const sourceTex = this.resources.getCurrentParticleTexture();
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, targetFbo);
+
+    // Calculate texture size
+    const texelsNeeded = this.bufferMaxParticles * 3;
+    const texSize = Math.ceil(Math.sqrt(texelsNeeded));
+
+    gl.viewport(0, 0, texSize, texSize);
+
+    // Bind source particle texture
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, sourceTex);
+
+    // Set base uniforms
+    const particleTexLoc = gl.getUniformLocation(program, "u_particleTexture");
+    const texelSizeLoc = gl.getUniformLocation(program, "u_texelSize");
+    const dtLoc = gl.getUniformLocation(program, "u_dt");
+    const countLoc = gl.getUniformLocation(program, "u_particleCount");
+
+    gl.uniform1i(particleTexLoc, 0);
+    gl.uniform2f(texelSizeLoc, 1.0 / texSize, 1.0 / texSize);
+    gl.uniform1f(dtLoc, dt);
+    gl.uniform1i(countLoc, this.getCount());
+
+    // Set view uniforms for grid calculations
+    const snapshot = this.view.getSnapshot();
+    const size = this.view.getSize();
+    const offsetLoc = gl.getUniformLocation(program, "u_viewOffset");
+    const zoomLoc = gl.getUniformLocation(program, "u_viewZoom");
+    const sizeLoc = gl.getUniformLocation(program, "u_viewSize");
+
+    gl.uniform2f(offsetLoc, snapshot.cx, snapshot.cy);
+    gl.uniform1f(zoomLoc, snapshot.zoom);
+    gl.uniform2f(sizeLoc, size.width, size.height);
+
+    // Set module-specific uniforms
+    const forceModules = this.modules.filter(
+      (m) => m.role === "force" && m.isEnabled()
+    );
+    for (const module of forceModules) {
+      const inputs = module.read();
+      for (const [key, value] of Object.entries(inputs)) {
+        const uniformName = `u_${module.name}_${key}`;
+        const loc = gl.getUniformLocation(program, uniformName);
+        if (loc !== null) {
+          gl.uniform1f(loc, value as number);
+        }
+      }
+    }
+
+    // Set up vertex attributes
+    const positionLoc = gl.getAttribLocation(program, "a_position");
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+
+    // Draw fullscreen quad
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // Cleanup
+    gl.disableVertexAttribArray(positionLoc);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    // Swap particle textures (ping-pong)
+    this.resources.swapParticleTextures();
+  }
 
   private runIntegrationPass(dt: number): void {
     const gl = this.resources.getGL();
