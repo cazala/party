@@ -381,7 +381,35 @@ fn grid_cell_index(pos: vec2<f32>) -> u32 { let col = i32(floor((pos.x - GRID_MI
 fn grid_cell_index_from_rc(r: i32, c: i32) -> u32 { let rr = max(0, min(r, i32(GRID_ROWS()) - 1)); let cc = max(0, min(c, i32(GRID_COLS()) - 1)); return u32(rr) * GRID_COLS() + u32(cc); }
 struct NeighborIter { cx: i32, cy: i32, r: i32, c: i32, k: u32, reach: i32, maxK: u32, base: u32, emitted: u32, maxEmit: u32 }
 fn neighbor_iter_init(pos: vec2<f32>, radius: f32) -> NeighborIter { let cx = i32(floor((pos.x - GRID_MINX()) / GRID_CELL_SIZE())); let cy = i32(floor((pos.y - GRID_MINY()) / GRID_CELL_SIZE())); let reach = max(1, i32(ceil(radius / GRID_CELL_SIZE()))); var it: NeighborIter; it.cx = cx; it.cy = cy; it.reach = reach; it.r = cy - reach; it.c = cx - reach; let firstCell = grid_cell_index_from_rc(it.r, it.c); let cnt = atomicLoad(&GRID_COUNTS[firstCell]); it.maxK = min(cnt, GRID_MAX_PER_CELL()); it.base = firstCell * GRID_MAX_PER_CELL(); it.k = 0u; it.emitted = 0u; it.maxEmit = max(1u, SIM_MAX_NEIGHBORS()); return it; }
-fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 { loop { if ((*it).emitted >= (*it).maxEmit) { return NEIGHBOR_NONE; } if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } if ((*it).k < (*it).maxK) { let id = GRID_INDICES[(*it).base + (*it).k]; (*it).k = (*it).k + 1u; if (id != selfIndex) { (*it).emitted = (*it).emitted + 1u; return id; } else { continue; } } (*it).c = (*it).c + 1; if ((*it).c > (*it).cx + (*it).reach) { (*it).c = (*it).cx - (*it).reach; (*it).r = (*it).r + 1; } if ((*it).r > (*it).cy + (*it).reach) { return NEIGHBOR_NONE; } let cell = grid_cell_index_from_rc((*it).r, (*it).c); let cnt = atomicLoad(&GRID_COUNTS[cell]); (*it).maxK = min(cnt, GRID_MAX_PER_CELL()); (*it).base = cell * GRID_MAX_PER_CELL(); (*it).k = 0u; } }`
+fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 {
+  // Naga (Firefox) sometimes fails to prove that a loop always returns, so
+  // we structure this as break + return result to keep validation happy.
+  var result: u32 = NEIGHBOR_NONE;
+  loop {
+    if ((*it).emitted >= (*it).maxEmit) { break; }
+    if ((*it).r > (*it).cy + (*it).reach) { break; }
+    if ((*it).k < (*it).maxK) {
+      let id = GRID_INDICES[(*it).base + (*it).k];
+      (*it).k = (*it).k + 1u;
+      if (id != selfIndex) {
+        (*it).emitted = (*it).emitted + 1u;
+        result = id;
+        break;
+      } else {
+        continue;
+      }
+    }
+    (*it).c = (*it).c + 1;
+    if ((*it).c > (*it).cx + (*it).reach) { (*it).c = (*it).cx - (*it).reach; (*it).r = (*it).r + 1; }
+    if ((*it).r > (*it).cy + (*it).reach) { break; }
+    let cell = grid_cell_index_from_rc((*it).r, (*it).c);
+    let cnt = atomicLoad(&GRID_COUNTS[cell]);
+    (*it).maxK = min(cnt, GRID_MAX_PER_CELL());
+    (*it).base = cell * GRID_MAX_PER_CELL();
+    (*it).k = 0u;
+  }
+  return result;
+}`
   );
 
   // Optional: allow force modules to inject globals
