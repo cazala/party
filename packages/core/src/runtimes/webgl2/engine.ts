@@ -268,8 +268,6 @@ export class WebGL2Engine extends AbstractEngine {
     const program = this.resources.getProgram("particles");
     if (!program) return;
 
-    gl.useProgram(program);
-
     // Render to current scene framebuffer
     const sceneFbo = this.resources.getCurrentSceneFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFbo);
@@ -277,10 +275,20 @@ export class WebGL2Engine extends AbstractEngine {
     const size = this.view.getSize();
     gl.viewport(0, 0, size.width, size.height);
 
-    // Clear scene
+    // Always clear scene
     const c = this.clearColor;
     gl.clearColor(c.r, c.g, c.b, c.a);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Find Particles module and check if enabled
+    const particlesModule = this.modules.find((m) => m.name === "particles");
+    if (!particlesModule || !particlesModule.isEnabled()) {
+      // Skip rendering particles if module is not present or disabled, but keep cleared scene
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      return;
+    }
+
+    gl.useProgram(program);
 
     // Bind particle texture
     const particleTex = this.resources.getCurrentParticleTexture();
@@ -309,9 +317,29 @@ export class WebGL2Engine extends AbstractEngine {
     gl.uniform1f(zoomLoc, snapshot.zoom);
     gl.uniform2f(sizeLoc, size.width, size.height);
 
+    // Particles module uniforms
+    const colorType = particlesModule.readValue("colorType");
+    const customColorR = particlesModule.readValue("customColorR");
+    const customColorG = particlesModule.readValue("customColorG");
+    const customColorB = particlesModule.readValue("customColorB");
+    const hue = particlesModule.readValue("hue");
+
+    const colorTypeLoc = gl.getUniformLocation(program, "u_colorType");
+    const customColorLoc = gl.getUniformLocation(program, "u_customColor");
+    const hueLoc = gl.getUniformLocation(program, "u_hue");
+
+    gl.uniform1f(colorTypeLoc, colorType);
+    gl.uniform3f(customColorLoc, customColorR, customColorG, customColorB);
+    gl.uniform1f(hueLoc, hue);
+
+    // Enable alpha blending for transparency
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
     // Draw particles as points (using vertex ID to fetch data)
     gl.drawArrays(gl.POINTS, 0, this.getCount());
 
+    gl.disable(gl.BLEND);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 

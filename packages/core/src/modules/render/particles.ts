@@ -7,6 +7,7 @@
 import {
   Module,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   ModuleRole,
   RenderPassKind,
   CPUDescriptor,
@@ -226,6 +227,87 @@ export class Particles extends Module<"particles", ParticlesInputs> {
           utils.drawCircle(screenX, screenY, screenSize, rgba);
         }
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<ParticlesInputs> {
+    // WebGL2 uses the same descriptor structure as WebGPU
+    // The descriptor returns GLSL fragment code that will be converted appropriately
+    return {
+      passes: [
+        {
+          kind: RenderPassKind.Fullscreen,
+          fragment: ({ getUniform }) => `{
+  let center = vec2<f32>(0.5, 0.5);
+  let dist = distance(uv, center);
+
+  // Fetch uniforms
+  let colorType = ${getUniform("colorType")};
+  let custom = vec3<f32>(
+    ${getUniform("customColorR")},
+    ${getUniform("customColorG")},
+    ${getUniform("customColorB")}
+  );
+  let hue = ${getUniform("hue")};
+  var baseColor = color;
+  if (colorType == 1.0) {
+    baseColor = vec4<f32>(custom, 1.0); // Custom RGB with alpha 1
+  } else if (colorType == 2.0) {
+    // Inline hue->RGB conversion at full saturation/value
+    let h = fract(hue) * 6.0;
+    let i = floor(h);
+    let f = h - i;
+    let q = 1.0 - f;
+    var rgb = vec3<f32>(1.0, 0.0, 0.0);
+    if (i < 1.0) {
+      rgb = vec3<f32>(1.0, f, 0.0);
+    } else if (i < 2.0) {
+      rgb = vec3<f32>(q, 1.0, 0.0);
+    } else if (i < 3.0) {
+      rgb = vec3<f32>(0.0, 1.0, f);
+    } else if (i < 4.0) {
+      rgb = vec3<f32>(0.0, q, 1.0);
+    } else if (i < 5.0) {
+      rgb = vec3<f32>(f, 0.0, 1.0);
+    } else {
+      rgb = vec3<f32>(1.0, 0.0, q);
+    }
+    baseColor = vec4<f32>(rgb, 1.0);
+  }
+
+  var finalColor = baseColor.rgb;
+  var finalAlpha = baseColor.a;
+
+  // Pinned particles render as hollow circles (donut shape)
+  if (mass < 0.0) {
+    // Create hollow ring effect
+    let innerRadius = 0.30;
+    let outerRadius = 0.45;
+    let edgeSmooth = 0.05;
+
+    // Calculate ring alpha based on distance
+    var ringAlpha = 1.0 - smoothstep(outerRadius - edgeSmooth, outerRadius + edgeSmooth, dist);
+    ringAlpha = ringAlpha * smoothstep(innerRadius - edgeSmooth, innerRadius + edgeSmooth, dist);
+
+    finalAlpha = finalAlpha * ringAlpha;
+  } else {
+    // Normal solid particle
+    finalAlpha = finalAlpha * (1.0 - smoothstep(0.45, 0.5, dist));
+  }
+
+  return vec4<f32>(finalColor, finalAlpha);
+}`,
+          bindings: [
+            "colorType",
+            "customColorR",
+            "customColorG",
+            "customColorB",
+            "hue",
+          ] as const,
+          readsScene: false,
+          writesScene: true,
+        },
+      ],
     };
   }
 }

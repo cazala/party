@@ -101,6 +101,7 @@ uniform float u_viewZoom;
 uniform vec2 u_viewSize;
 
 out vec4 v_color;
+out float v_mass;
 
 // Helper to get particle data texel coord from particle ID
 vec2 getTexelCoord(int particleId, int texelOffset) {
@@ -118,6 +119,7 @@ void main() {
     gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
     gl_PointSize = 0.0;
     v_color = vec4(0.0);
+    v_mass = 1.0;
     return;
   }
 
@@ -132,7 +134,9 @@ void main() {
 
   vec2 position = texel0.xy;
   float size = texel1.z;
+  float mass = texel1.w;
   v_color = texel2;
+  v_mass = mass;
 
   // Transform to view space
   vec2 viewPos = (position - u_viewOffset) * u_viewZoom;
@@ -147,24 +151,87 @@ void main() {
 
 /**
  * Particle rendering fragment shader
+ * Supports three color modes: Default (0), Custom (1), Hue (2)
+ * Renders pinned particles (mass < 0) as hollow circles
  */
 export const particleFragmentShader = `#version 300 es
 precision highp float;
 
 in vec4 v_color;
+in float v_mass;
 out vec4 fragColor;
 
+uniform float u_colorType;
+uniform vec3 u_customColor;
+uniform float u_hue;
+
+// HSV to RGB conversion (S=1, V=1)
+vec3 hueToRGB(float h) {
+  float h6 = fract(h) * 6.0;
+  float i = floor(h6);
+  float f = h6 - i;
+  float q = 1.0 - f;
+
+  if (i < 1.0) {
+    return vec3(1.0, f, 0.0);
+  } else if (i < 2.0) {
+    return vec3(q, 1.0, 0.0);
+  } else if (i < 3.0) {
+    return vec3(0.0, 1.0, f);
+  } else if (i < 4.0) {
+    return vec3(0.0, q, 1.0);
+  } else if (i < 5.0) {
+    return vec3(f, 0.0, 1.0);
+  } else {
+    return vec3(1.0, 0.0, q);
+  }
+}
+
 void main() {
-  // Draw circular particles
+  // Calculate distance from center
   vec2 coord = gl_PointCoord * 2.0 - 1.0;
   float dist = length(coord);
-  if (dist > 1.0) {
-    discard;
+
+  // Determine base color based on colorType
+  vec4 baseColor = v_color;
+  if (u_colorType == 1.0) {
+    // Custom color mode
+    baseColor = vec4(u_customColor, 1.0);
+  } else if (u_colorType == 2.0) {
+    // Hue color mode
+    vec3 rgb = hueToRGB(u_hue);
+    baseColor = vec4(rgb, 1.0);
   }
 
-  // Soft edge
-  float alpha = 1.0 - smoothstep(0.8, 1.0, dist);
-  fragColor = vec4(v_color.rgb, v_color.a * alpha);
+  vec3 finalColor = baseColor.rgb;
+  float finalAlpha = baseColor.a;
+
+  // Pinned particles (mass < 0) render as hollow circles (donut shape)
+  if (v_mass < 0.0) {
+    // Create hollow ring effect
+    float innerRadius = 0.30;
+    float outerRadius = 0.45;
+    float edgeSmooth = 0.05;
+
+    // Discard if outside outer radius
+    if (dist > outerRadius + edgeSmooth) {
+      discard;
+    }
+
+    // Calculate ring alpha based on distance
+    float ringAlpha = 1.0 - smoothstep(outerRadius - edgeSmooth, outerRadius + edgeSmooth, dist);
+    ringAlpha = ringAlpha * smoothstep(innerRadius - edgeSmooth, innerRadius + edgeSmooth, dist);
+
+    finalAlpha = finalAlpha * ringAlpha;
+  } else {
+    // Normal solid particle
+    if (dist > 0.5) {
+      discard;
+    }
+    finalAlpha = finalAlpha * (1.0 - smoothstep(0.45, 0.5, dist));
+  }
+
+  fragColor = vec4(finalColor, finalAlpha);
 }
 `;
 
