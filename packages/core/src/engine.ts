@@ -1,6 +1,7 @@
 import { IEngine, IParticle } from "./interfaces";
 import { Module } from "./module";
 import { WebGPUEngine } from "./runtimes/webgpu/engine";
+import { WebGL2Engine } from "./runtimes/webgl2/engine";
 import { CPUEngine } from "./runtimes/cpu/engine";
 
 export type EngineOptions = {
@@ -41,7 +42,7 @@ export class Engine implements IEngine {
     if (targetRuntime === "webgpu") {
       this.engine = new WebGPUEngine(options);
     } else if (targetRuntime === "webgl2") {
-      throw new Error("WebGL2 runtime initialization failed: WebGL2 runtime is not yet implemented");
+      this.engine = new WebGL2Engine(options);
     } else {
       this.engine = new CPUEngine(options);
     }
@@ -75,8 +76,13 @@ export class Engine implements IEngine {
           // Try WebGL2
           this.actualRuntime = "webgl2";
           try {
-            // WebGL2 is not implemented yet, so this will throw
-            throw new Error("WebGL2 runtime initialization failed: WebGL2 runtime is not yet implemented");
+            const webgl2Options = {
+              ...this.originalOptions,
+              runtime: "webgl2",
+            };
+            this.engine = new WebGL2Engine(webgl2Options);
+            await this.engine.initialize();
+            console.log("Auto runtime selection: Successfully initialized WEBGL2 runtime");
           } catch (webgl2Error) {
             // WebGL2 failed, fall back to CPU
             console.warn(
