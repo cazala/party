@@ -12,6 +12,7 @@ import { GlobalHotkeys } from "./components/GlobalHotkeys";
 import { Homepage } from "./components/Homepage";
 import { Stats } from "./components/Stats";
 import { CpuGyroDemoController } from "./components/CpuGyroDemoController";
+import { InAppBrowserBlocker } from "./components/InAppBrowserBlocker";
 import { useUI } from "./hooks/useUI";
 import { useRender } from "./hooks/useRender";
 import { useDemo } from "./hooks/useDemo";
@@ -168,6 +169,7 @@ function AppContent() {
       className={`app ${barsVisible && hasStarted ? "bars-visible" : "bars-hidden"
         }`}
     >
+      <InAppBrowserBlocker />
       <CpuGyroDemoController
         isHomepage={isHomepage}
         isWebGPUWarningDismissed={isWebGPUWarningDismissed}
