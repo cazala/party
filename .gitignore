@@ -3,6 +3,8 @@ packages/playground/dist
 node_modules
 packages/core/node_modules
 packages/playground/node_modules
+.pnpm-store
+.pnpm-store/
 .DS_Store
 **/.DS_Store
 packages/playground/.DS_Store

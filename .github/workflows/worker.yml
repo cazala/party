@@ -1,0 +1,56 @@
+name: worker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/worker/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/worker.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Get pnpm store directory
+        id: pnpm_store
+        shell: bash
+        run: |
+          STORE_PATH="$(pnpm store path --silent)"
+          echo "STORE_PATH=${STORE_PATH}" >> "$GITHUB_ENV"
+          echo "store_path=${STORE_PATH}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm_store.outputs.store_path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm -r install --frozen-lockfile --prod=false
+
+      - name: Typecheck
+        run: pnpm --filter worker typecheck
+
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm --filter worker deploy
+

@@ -1,0 +1,11 @@
+name = "cazala-edge-party"
+main = "src/index.ts"
+compatibility_date = "2025-12-30"
+
+routes = [
+  { pattern = "caza.la/party*", zone_name = "caza.la" }
+]
+
+[vars]
+UPSTREAM_ORIGIN = "https://party.caza.la"
+
