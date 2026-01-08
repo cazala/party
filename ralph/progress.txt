@@ -8,6 +8,8 @@
 - ViewSnapshot uses cx/cy for camera position (not offset.x/offset.y), width/height for size, and zoom
 - WebGL2 uses texture-based GPU storage: RGBA32F textures with 3 texels per particle (pos/vel, accel/size/mass, color)
 - Ping-pong pattern: read from current texture, write to "other" texture, then swap references
+- WebGL2 modules: Read settings directly via module.readValue() at render time (no registry/compiler like WebGPU yet)
+- Render modules should check isEnabled() before rendering, but still clear scene even when disabled
 
 ---
 
