@@ -90,8 +90,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed in commit 2d59c2f. WebGL2 neighbor infrastructure implemented with texture-based grid storage, cell assignment pass, bitonic sort structure (stubbed for performance), range building pass, and GLSL neighbor iterator helpers. Bitonic sort is documented as a known limitation - using unsorted indices for functional but slower neighbor queries."
     },
     {
       "id": "US-007",

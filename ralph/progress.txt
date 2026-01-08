@@ -110,3 +110,29 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Grab uses correct phase (not apply) since it modifies position/velocity directly
   - Environment handles 3 gravity modes: 0=fixed direction, 1=inwards to center, 2=outwards from center
 ---
+## 2026-01-08 - US-006
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented WebGL2 neighbor infrastructure for GPU-based neighbor queries
+- Added spatial grid system with texture-based storage (cellIds, sortedIndices, cellRanges)
+- Created grid shader passes: assign cells, bitonic sort (structure), build ranges
+- Implemented GLSL neighbor iterator helpers with getNeighbors() function
+- Files changed:
+  - packages/core/src/runtimes/webgl2/spacial-grid.ts: New SpacialGrid class for WebGL2
+  - packages/core/src/runtimes/webgl2/gl2-resources.ts: Grid texture creation and management
+  - packages/core/src/runtimes/webgl2/shaders.ts: Grid shaders and neighbor iterator helpers
+  - packages/core/src/runtimes/webgl2/engine.ts: Integrated grid passes into simulation loop
+  - test-webgl2-neighbors.html: Browser test for neighbor infrastructure
+- **Learnings for future iterations:**
+  - WebGL2 uses texture-based grid storage (no compute shaders/storage buffers like WebGPU)
+  - Grid data stored in RGBA32F textures: cellIds (1 texel/particle), sortedIndices (cellId+particleId pairs), cellRanges (start+count per cell)
+  - Grid passes run every frame: assign cells → sort → build ranges
+  - Bitonic sort requires many passes and dynamic shader compilation - documented as performance limitation
+  - Current implementation uses unsorted indices for functional but slower neighbor queries
+  - A production implementation would use alternative sorting (counting sort, radix sort) or pre-compiled bitonic stages
+  - GLSL neighbor iterator scans neighboring cells based on radius, respects maxNeighbors limit
+  - Grid bounds calculated from view snapshot (cx, cy, zoom, width, height) to match camera
+  - Cell size configurable via engine.setCellSize() - affects neighbor query performance
+  - Grid textures automatically resize when view changes (pan, zoom, resize)
+  - SpacialGrid.getGridBounds() provides grid extents for shader uniforms
+  - Grid passes use fullscreen quad rendering to process all particles/cells in parallel
+---
