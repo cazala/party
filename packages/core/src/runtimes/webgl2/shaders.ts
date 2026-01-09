@@ -143,9 +143,13 @@ void main() {
 
   // Convert to clip space (-1 to 1)
   vec2 clipPos = (viewPos / u_viewSize) * 2.0;
+  // Match CPU/WebGPU "Y down" screen space convention
+  clipPos.y = -clipPos.y;
 
   gl_Position = vec4(clipPos, 0.0, 1.0);
-  gl_PointSize = size * u_viewZoom;
+  // IMPORTANT: gl_PointSize is the *diameter* in pixels.
+  // Our engines treat particle.size as a *radius* (see CPU renderer), so multiply by 2.
+  gl_PointSize = 2.0 * size * u_viewZoom;
 }
 `;
 
@@ -209,9 +213,10 @@ void main() {
   // Pinned particles (mass < 0) render as hollow circles (donut shape)
   if (v_mass < 0.0) {
     // Create hollow ring effect
-    float innerRadius = 0.30;
-    float outerRadius = 0.45;
-    float edgeSmooth = 0.05;
+    // Note: coord is in [-1, 1], so dist==1.0 is the edge of the point sprite.
+    float innerRadius = 0.60;
+    float outerRadius = 0.90;
+    float edgeSmooth = 0.06;
 
     // Discard if outside outer radius
     if (dist > outerRadius + edgeSmooth) {
@@ -225,10 +230,11 @@ void main() {
     finalAlpha = finalAlpha * ringAlpha;
   } else {
     // Normal solid particle
-    if (dist > 0.5) {
+    // Note: dist==1.0 is the edge of the point sprite; using 0.5 made particles appear 4x smaller.
+    if (dist > 1.0) {
       discard;
     }
-    finalAlpha = finalAlpha * (1.0 - smoothstep(0.45, 0.5, dist));
+    finalAlpha = finalAlpha * (1.0 - smoothstep(0.90, 1.0, dist));
   }
 
   fragColor = vec4(finalColor, finalAlpha);

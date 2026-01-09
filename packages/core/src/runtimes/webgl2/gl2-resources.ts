@@ -224,9 +224,28 @@ export class GL2Resources {
     }
 
     const { width, height } = this.particleTextureSize;
+    // IMPORTANT:
+    // We use ping-pong particle textures (A/B). During runtime switching / restoration,
+    // it's easy for the engine to render from whichever texture is currently "active"
+    // (or to swap on the first sim tick). To make restoration robust, write the same
+    // CPU snapshot to BOTH textures so either side is valid immediately.
     const currentTex = this.getCurrentParticleTexture();
+    const otherTex = this.getOtherParticleTexture();
 
     gl.bindTexture(gl.TEXTURE_2D, currentTex);
+    gl.texSubImage2D(
+      gl.TEXTURE_2D,
+      0,
+      0,
+      0,
+      width,
+      height,
+      gl.RGBA,
+      gl.FLOAT,
+      data
+    );
+
+    gl.bindTexture(gl.TEXTURE_2D, otherTex);
     gl.texSubImage2D(
       gl.TEXTURE_2D,
       0,
