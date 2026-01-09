@@ -140,3 +140,28 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - SpacialGrid.getGridBounds() provides grid extents for shader uniforms
   - Grid passes use fullscreen quad rendering to process all particles/cells in parallel
 ---
+## 2026-01-09 - US-007
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented webgl2() methods for all five neighbor-based force modules
+- Collisions: GPU neighbor iteration with overlap detection, position correction, impulse-based bounce
+- Behavior: Boids-style steering with separation, alignment, cohesion, chase/avoid, wander
+- Fluids: SPH-inspired simulation with state + apply passes (density/pressure/viscosity)
+- Joints: CSR-based constraint solver with momentum preservation using array inputs
+- Sensors: Scene texture sampling for follow/flee steering with color-aware behaviors
+- Files changed:
+  - packages/core/src/modules/forces/collisions.ts: Added webgl2() with constrain + correct phases
+  - packages/core/src/modules/forces/behavior.ts: Added webgl2() with apply phase for boids
+  - packages/core/src/modules/forces/fluids.ts: Added webgl2() with state + apply phases
+  - packages/core/src/modules/forces/joints.ts: Added webgl2() with state + constrain + correct phases
+  - packages/core/src/modules/forces/sensors.ts: Added webgl2() with global + apply phases
+- **Learnings for future iterations:**
+  - WebGL2 force modules return same descriptor structure as WebGPU for API consistency
+  - Neighbor-based modules use getNeighbors() helper function that reads from grid textures
+  - Modules read neighbor particle data via texture lookups: getTexelCoord(j, offset), texture()
+  - Collisions handles identical-position edge case with pseudo-random separation
+  - Behavior accumulates separate/align/cohesion accumulators from neighbor loop
+  - Fluids uses two-pass approach: state pass computes density, apply pass uses it for pressure
+  - Joints uses CSR (Compressed Sparse Row) format: incidentJointOffsets and incidentJointIndices arrays
+  - Sensors module requires scene texture binding (HAS_SCENE_TEXTURE define) for full functionality
+  - Each module's WGSL-style code gets converted to GLSL by engine.convertWGSLtoGLSL()
+---

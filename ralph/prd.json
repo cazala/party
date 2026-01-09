@@ -108,8 +108,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed in commit 461ede8. Implemented webgl2() methods for all five neighbor-based force modules: Collisions (GPU neighbor iteration with overlap detection and impulse bounce), Behavior (boids-style steering with separation/alignment/cohesion), Fluids (SPH-inspired with density/pressure computation), Joints (CSR-based constraint solver), Sensors (scene texture sampling for follow/flee steering). Each module follows the same descriptor pattern as WebGPU using WGSL-style code converted to GLSL."
     },
     {
       "id": "US-008",
