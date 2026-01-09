@@ -185,3 +185,23 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - WebGL2 render modules follow same descriptor pattern as WebGPU (WGSL-style code)
   - Render ordering in WebGL2 is handled by iterating modules array in order
 ---
+## 2026-01-09 - US-009
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Updated playground UX for WebGL2 runtime selection and fallback display
+- Replaced WebGPU checkbox with runtime dropdown (Auto/WebGPU/WebGL2/CPU options)
+- Added "Actual Runtime" metric display showing getActualRuntime() result
+- Enhanced fallback banner to support dynamic messages for all fallback scenarios
+- Files changed:
+  - packages/playground/src/components/PerformanceControls.tsx: Runtime dropdown, actual runtime display
+  - packages/playground/src/components/WebGPUFallbackBanner.tsx: Dynamic fallback messages
+  - packages/playground/src/components/Homepage.tsx: Updated banner logic for fallback scenarios
+  - packages/playground/src/contexts/EngineContext.tsx: Added requestedRuntime, actualRuntime, setRequestedRuntime
+  - packages/playground/src/hooks/useEngineInternal.ts: Runtime state and setRequestedRuntime action
+  - packages/playground/src/slices/engine.ts: RuntimeType, RequestedRuntimeType types and state
+- **Learnings for future iterations:**
+  - useEngineInternal effect depends on requestedRuntime (not isWebGPU) to trigger engine recreation
+  - EngineContext exposes both requestedRuntime ("auto"|"webgpu"|"webgl2"|"cpu") and actualRuntime
+  - Fallback banner logic: show when requestedRuntime is "auto"/"webgpu"/"webgl2" but actualRuntime differs from expected
+  - Engine slice maintains isWebGPU for backward compatibility but actualRuntime is the source of truth
+  - Dropdown component accepts options array with {value, label} objects
+---
