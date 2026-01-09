@@ -1,8 +1,20 @@
 import { useState } from 'react';
 import './WebGPUFallbackBanner.css';
 
-export type WebGPUFallbackBannerProps = {
+export type RuntimeFallbackBannerProps = {
+  /**
+   * Custom message to display. If not provided, a message will be generated
+   * based on requestedRuntime and actualRuntime.
+   */
   message?: string;
+  /**
+   * The runtime the user requested (e.g., "auto", "webgpu", "webgl2", "cpu").
+   */
+  requestedRuntime?: "auto" | "webgpu" | "webgl2" | "cpu";
+  /**
+   * The actual runtime being used after fallback (e.g., "webgpu", "webgl2", "cpu").
+   */
+  actualRuntime?: "webgpu" | "webgl2" | "cpu";
   /**
    * Controlled "dismissed" state. When provided, the banner visibility is driven by this prop.
    */
@@ -13,11 +25,49 @@ export type WebGPUFallbackBannerProps = {
   onDismiss?: () => void;
 };
 
+/**
+ * Generate a fallback message based on runtime selection.
+ */
+function getFallbackMessage(
+  requestedRuntime?: "auto" | "webgpu" | "webgl2" | "cpu",
+  actualRuntime?: "webgpu" | "webgl2" | "cpu"
+): string {
+  if (!requestedRuntime || !actualRuntime) {
+    return "Runtime fallback occurred.";
+  }
+
+  if (requestedRuntime === "auto") {
+    if (actualRuntime === "webgl2") {
+      return "WebGPU not supported, using WebGL2.";
+    } else if (actualRuntime === "cpu") {
+      return "WebGPU and WebGL2 not supported, using CPU.";
+    }
+  } else if (requestedRuntime === "webgpu") {
+    if (actualRuntime === "webgl2") {
+      return "WebGPU not available, fell back to WebGL2.";
+    } else if (actualRuntime === "cpu") {
+      return "WebGPU not available, fell back to CPU.";
+    }
+  } else if (requestedRuntime === "webgl2") {
+    if (actualRuntime === "cpu") {
+      return "WebGL2 not available, fell back to CPU.";
+    }
+  }
+
+  return "Runtime fallback occurred.";
+}
+
+// Legacy type alias for backward compatibility
+export type WebGPUFallbackBannerProps = RuntimeFallbackBannerProps;
+
 export function WebGPUFallbackBanner({
-  message = 'WebGPU not supported, default to CPU.',
+  message,
+  requestedRuntime,
+  actualRuntime,
   dismissed,
   onDismiss,
-}: WebGPUFallbackBannerProps) {
+}: RuntimeFallbackBannerProps) {
+  const displayMessage = message || getFallbackMessage(requestedRuntime, actualRuntime);
   const [internalDismissed, setInternalDismissed] = useState(false);
   const isDismissed = dismissed ?? internalDismissed;
 
@@ -39,7 +89,7 @@ export function WebGPUFallbackBanner({
           />
         </svg>
       </span>
-      <span className="webgpuFallbackBanner__text">{message}</span>
+      <span className="webgpuFallbackBanner__text">{displayMessage}</span>
       <button
         className="webgpuFallbackBanner__close"
         type="button"

@@ -52,7 +52,9 @@ export interface EngineContextType {
   canvasDimensions: { width: number; height: number };
   camera: { x: number; y: number };
   zoom: number;
-  runtime: "cpu" | "webgpu";
+  runtime: "cpu" | "webgpu" | "webgl2";
+  requestedRuntime: "cpu" | "webgpu" | "webgl2" | "auto";
+  actualRuntime: "cpu" | "webgpu" | "webgl2";
 
   // Action functions
   play: () => void;
@@ -80,6 +82,7 @@ export interface EngineContextType {
   }) => void;
   spawnParticles: (config: SpawnParticlesConfig) => void;
   toggleRuntime: () => Promise<void>;
+  setRequestedRuntime: (runtime: "cpu" | "webgpu" | "webgl2" | "auto") => void;
 
   // Utility functions
   handleWheel: (deltaY: number, centerX: number, centerY: number) => void;

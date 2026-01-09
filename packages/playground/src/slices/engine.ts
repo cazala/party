@@ -54,8 +54,11 @@ export type SpawnParticlesConfig = {
   gridJoints?: boolean;
 };
 
+export type RuntimeType = "cpu" | "webgpu" | "webgl2";
+export type RequestedRuntimeType = RuntimeType | "auto";
+
 export interface EngineState {
-  isWebGPU: boolean;
+  isWebGPU: boolean; // Deprecated - use actualRuntime instead
   isAutoMode: boolean;
   isPlaying: boolean;
   isInitialized: boolean;
@@ -69,6 +72,9 @@ export interface EngineState {
   size: { width: number; height: number };
   camera: { x: number; y: number };
   zoom: number;
+  // New runtime tracking fields
+  requestedRuntime: RequestedRuntimeType; // What the user selected
+  actualRuntime: RuntimeType; // What the engine is actually using
 }
 
 // Engine registry for thunks to access the engine instance
@@ -95,6 +101,9 @@ const initialState: EngineState = {
   size: { width: 800, height: 600 },
   camera: { x: 0, y: 0 },
   zoom: 1,
+  // New runtime fields
+  requestedRuntime: "auto",
+  actualRuntime: "cpu",
 };
 
 export const engineSlice = createSlice({
@@ -159,6 +168,17 @@ export const engineSlice = createSlice({
       state.isAutoMode = false;
       state.isWebGPU = !state.isWebGPU;
       // Note: Constraint iterations will be synced from the actual engine after recreation
+    },
+    setRequestedRuntime: (state, action: PayloadAction<RequestedRuntimeType>) => {
+      state.requestedRuntime = action.payload;
+      state.isAutoMode = action.payload === "auto";
+      // Keep isWebGPU in sync for backward compatibility
+      state.isWebGPU = action.payload === "webgpu";
+    },
+    setActualRuntime: (state, action: PayloadAction<RuntimeType>) => {
+      state.actualRuntime = action.payload;
+      // Keep isWebGPU in sync for backward compatibility
+      state.isWebGPU = action.payload === "webgpu";
     },
     updateEngineState: (state, action: PayloadAction<Partial<EngineState>>) => {
       Object.assign(state, action.payload);
@@ -628,6 +648,8 @@ export const {
   setCamera,
   setZoom,
   toggleRuntime,
+  setRequestedRuntime,
+  setActualRuntime,
   updateEngineState,
   resetEngine,
 } = engineSlice.actions;
@@ -661,3 +683,7 @@ export const selectZoom = (state: { engine: EngineState }) => state.engine.zoom;
 export const selectSize = (state: { engine: EngineState }) => state.engine.size;
 export const selectClearColor = (state: { engine: EngineState }) =>
   state.engine.clearColor;
+export const selectRequestedRuntime = (state: { engine: EngineState }) =>
+  state.engine.requestedRuntime;
+export const selectActualRuntime = (state: { engine: EngineState }) =>
+  state.engine.actualRuntime;

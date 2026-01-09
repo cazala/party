@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Checkbox } from "./ui/Checkbox";
+import { Dropdown } from "./ui/Dropdown";
 import { Slider } from "./ui/Slider";
 import { Field } from "./ui/Field";
 import { Metrics } from "./ui/Metrics";
@@ -7,6 +8,13 @@ import { useEngine } from "../hooks/useEngine";
 import { useAppSelector } from "../hooks/useAppSelector";
 import { useAppDispatch } from "../hooks/useAppDispatch";
 import { selectShowGrid, setShowGrid } from "../slices/performance";
+
+const RUNTIME_OPTIONS = [
+  { value: "auto", label: "Auto" },
+  { value: "webgpu", label: "WebGPU" },
+  { value: "webgl2", label: "WebGL2" },
+  { value: "cpu", label: "CPU" },
+];
 
 export function PerformanceControls() {
   const dispatch = useAppDispatch();
@@ -17,14 +25,15 @@ export function PerformanceControls() {
   const [fps, setFPS] = useState(0);
 
   const {
-    isWebGPU,
     constrainIterations,
     gridCellSize,
     maxNeighbors,
     setConstrainIterations,
     setCellSize,
     setMaxNeighbors,
-    toggleRuntime,
+    setRequestedRuntime,
+    requestedRuntime,
+    actualRuntime,
     getFPS,
     getCount,
   } = useEngine();
@@ -40,11 +49,18 @@ export function PerformanceControls() {
   }, [getFPS, getCount]);
   return (
     <>
-      <Checkbox
-        checked={isWebGPU}
-        onChange={() => toggleRuntime()}
-        label="Use WebGPU"
+      <Dropdown
+        label="Runtime"
+        value={requestedRuntime}
+        onChange={(value) =>
+          setRequestedRuntime(value as "auto" | "webgpu" | "webgl2" | "cpu")
+        }
+        options={RUNTIME_OPTIONS}
       />
+
+      <Field>
+        <Metrics label="Actual Runtime" value={actualRuntime.toUpperCase()} />
+      </Field>
 
       <Slider
         label="Constrain Iterations"

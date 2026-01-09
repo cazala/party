@@ -21,7 +21,14 @@ export function Homepage({
 }: HomepageProps) {
   const [showWarning, setShowWarning] = useState(false);
   const isMobile = isMobileDevice();
-  const { canvasRef, screenToWorld, isWebGPU, isInitialized, isInitializing } = useEngine();
+  const {
+    canvasRef,
+    screenToWorld,
+    isInitialized,
+    isInitializing,
+    requestedRuntime,
+    actualRuntime,
+  } = useEngine();
   const { setPosition, setActive, setMode, setStrength, setRadius } = useInteraction();
   const isMouseDownRef = useRef(false);
 
@@ -105,7 +112,7 @@ export function Homepage({
       setActive(false);
       isMouseDownRef.current = false;
     };
-  }, [isVisible, showWarning, canvasRef, screenToWorld, setPosition, setActive, setMode, setStrength, setRadius, isWebGPU, isMobile]);
+  }, [isVisible, showWarning, canvasRef, screenToWorld, setPosition, setActive, setMode, setStrength, setRadius, isMobile]);
 
   if (!isVisible) return null;
 
@@ -121,12 +128,24 @@ export function Homepage({
     setShowWarning(false);
   };
 
+  // Determine if we should show the fallback banner
+  // Show when: engine is ready AND a fallback occurred (actual differs from expected)
+  const shouldShowFallbackBanner =
+    isInitialized &&
+    !isInitializing &&
+    !isWebGPUWarningDismissed &&
+    ((requestedRuntime === "auto" && actualRuntime !== "webgpu") ||
+      (requestedRuntime === "webgpu" && actualRuntime !== "webgpu") ||
+      (requestedRuntime === "webgl2" && actualRuntime === "cpu"));
+
   if (showWarning) {
     const iconSize = isMobile ? 64 : 64;
     return (
       <>
-        {!isWebGPU && isInitialized && !isInitializing && !isWebGPUWarningDismissed && (
+        {shouldShowFallbackBanner && (
           <WebGPUFallbackBanner
+            requestedRuntime={requestedRuntime}
+            actualRuntime={actualRuntime}
             dismissed={isWebGPUWarningDismissed}
             onDismiss={onDismissWebGPUWarning}
           />
@@ -148,8 +167,10 @@ export function Homepage({
 
   return (
     <>
-      {!isWebGPU && isInitialized && !isInitializing && !isWebGPUWarningDismissed && (
+      {shouldShowFallbackBanner && (
         <WebGPUFallbackBanner
+          requestedRuntime={requestedRuntime}
+          actualRuntime={actualRuntime}
           dismissed={isWebGPUWarningDismissed}
           onDismiss={onDismissWebGPUWarning}
         />

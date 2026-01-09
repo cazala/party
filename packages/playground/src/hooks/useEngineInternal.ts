@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   Environment,
   Boundary,
@@ -30,6 +30,8 @@ import {
   selectZoom,
   selectSize,
   selectClearColor,
+  selectRequestedRuntime,
+  selectActualRuntime,
   playThunk,
   pauseThunk,
   clearThunk,
@@ -56,8 +58,11 @@ import {
   setClearColor as setClearColorAction,
   setCamera as setCameraAction,
   setZoom as setZoomAction,
+  setRequestedRuntime as setRequestedRuntimeAction,
+  setActualRuntime as setActualRuntimeAction,
   SpawnParticlesConfig,
   engineSlice,
+  RequestedRuntimeType,
 } from "../slices/engine";
 import {
   selectModules,
@@ -98,6 +103,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const size = useAppSelector(selectSize);
   const clearColor = useAppSelector(selectClearColor);
   const modulesState = useAppSelector(selectModules);
+  const requestedRuntime = useAppSelector(selectRequestedRuntime);
+  const actualRuntime = useAppSelector(selectActualRuntime);
 
   // Engine and module references
   const engineRef = useRef<Engine | null>(null);
@@ -114,11 +121,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const linesRef = useRef<Lines | null>(null);
   const grabRef = useRef<Grab | null>(null);
 
-  // Local state for engine initialization
-  const [isAutoMode, setIsAutoMode] = useState(true);
-
-  // Engine type string for canvas key
-  const runtime: "cpu" | "webgpu" = isWebGPU ? "webgpu" : "cpu";
+  // Engine type string for canvas key (deprecated, use actualRuntime instead)
+  const runtime: "cpu" | "webgpu" | "webgl2" = actualRuntime;
 
   // Initialize engine
   useEffect(() => {
@@ -237,22 +241,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       dispatch(setInitializing(true));
       dispatch(setError(null));
 
-      // Determine engine type (declare outside try block for catch block access)
-      let shouldUseWebGPU = isAutoMode ? false : isWebGPU;
-
       try {
-
-        if (isAutoMode) {
-          // Auto-detect WebGPU support - just check if navigator.gpu exists
-          // Don't request adapter here to avoid adapter exhaustion
-          // The actual adapter will be requested in gpu-resources.ts when needed
-          if (navigator.gpu) {
-            await new Promise(resolve => requestAnimationFrame(resolve));
-            shouldUseWebGPU = true;
-          }
-        }
-
-        dispatch(setWebGPU(shouldUseWebGPU));
 
         // Use default maxParticles for playground (100k)
         const maxParticles = 100000;
@@ -298,7 +287,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           canvas,
           forces,
           render,
-          runtime: isAutoMode ? "auto" : shouldUseWebGPU ? "webgpu" : "cpu",
+          runtime: requestedRuntime,
           maxParticles,
         });
         
@@ -337,6 +326,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const actualClearColor = engine.getClearColor();
         const actualCamera = engine.getCamera();
         const actualZoom = engine.getZoom();
+        const engineActualRuntime = engine.getActualRuntime();
 
         // Update Redux with actual engine defaults (sync only, don't call engine methods)
         // Note: clearColor will be restored from preservedState below when toggling runtime
@@ -344,7 +334,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         dispatch(setGridCellSizeAction(actualCellSize));
         dispatch(setCameraAction({ x: actualCamera.x, y: actualCamera.y }));
         dispatch(setZoomAction(actualZoom));
-        dispatch(setWebGPU(shouldUseWebGPU));
+        // Update runtime state: set actualRuntime from engine, keep isWebGPU in sync
+        dispatch(setActualRuntimeAction(engineActualRuntime));
+        dispatch(setWebGPU(engineActualRuntime === "webgpu"));
         if (!preservedState) {
           dispatch(setClearColorAction(actualClearColor));
         }
@@ -439,7 +431,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     initEngine();
 
     return cleanup || undefined;
-  }, [canvasRef, isWebGPU, dispatch]);
+  }, [canvasRef, requestedRuntime, dispatch]);
 
   // One-time page unload cleanup (must NOT depend on isWebGPU / dispatch or it will break runtime toggle).
   // This is important because in dev (React strict mode / hot reload) and on rapid reloads,
@@ -657,10 +649,16 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   );
 
   const toggleRuntime = useCallback(async () => {
-    // Preserve current state before toggling
-    setIsAutoMode(false);
+    // Preserve current state before toggling (deprecated - use setRequestedRuntime instead)
     dispatch(toggleRuntimeAction());
   }, [dispatch]);
+
+  const setRequestedRuntime = useCallback(
+    (newRuntime: RequestedRuntimeType) => {
+      dispatch(setRequestedRuntimeAction(newRuntime));
+    },
+    [dispatch]
+  );
 
   // Utility functions
   const screenToWorld = useCallback(
@@ -726,6 +724,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     camera,
     zoom,
     runtime,
+    requestedRuntime,
+    actualRuntime,
     maxNeighbors,
     maxParticles,
 
@@ -744,6 +744,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     addParticle,
     spawnParticles,
     toggleRuntime,
+    setRequestedRuntime,
 
     // Utility functions
     handleWheel,
