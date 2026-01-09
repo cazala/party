@@ -5,12 +5,13 @@ This guide explains how to build your own modules for the engine. There are two 
 - **Force**: runs in the simulation pipeline; can add to `acceleration`/`velocity` and perform constraints/corrections
 - **Render**: runs in the rendering pipeline; can draw fullscreen, draw per-instance quads, or compute over the scene texture
 
-Modules should support both runtimes when possible:
+Modules should support all three runtimes when possible:
 
 - CPU: implement a `cpu()` descriptor
 - WebGPU: implement a `webgpu()` descriptor
+- WebGL2: implement a `webgl2()` descriptor
 
-If you only implement one runtime, the other will be unsupported on that module. The top-level `Engine#isSupported(module)` can be used to test support.
+If you only implement some runtimes, the others will be unsupported for that module. The top-level `Engine#isSupported(module)` can be used to test support.
 
 ### Module base class
 
@@ -34,6 +35,7 @@ import {
   ModuleRole,
   DataType,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   type CPUDescriptor,
 } from "@cazala/party";
 
@@ -54,6 +56,19 @@ export class Wind extends Module<"wind", WindInputs> {
   }
 
   webgpu(): WebGPUDescriptor<WindInputs> {
+    return {
+      apply: ({ particleVar, getUniform }) => `{
+        let d = vec2<f32>(${getUniform("dirX")}, ${getUniform("dirY")});
+        let l = length(d);
+        if (l > 0.0) { ${particleVar}.acceleration += normalize(d) * ${getUniform(
+        "strength"
+      )}; }
+      }`,
+    };
+  }
+
+  // WebGL2 uses WGSL-style code that gets converted to GLSL at runtime
+  webgl2(): WebGL2Descriptor<WindInputs> {
     return {
       apply: ({ particleVar, getUniform }) => `{
         let d = vec2<f32>(${getUniform("dirX")}, ${getUniform("dirY")});
@@ -143,20 +158,57 @@ Examples in core:
 
 - The engine maintains a spatial grid sized by `cellSize` for neighbor queries.
 - WebGPU exposes lightweight neighbor iterators; CPU provides `getNeighbors()`.
+- WebGL2 uses texture-based grid storage with a GLSL `getNeighbors()` helper function.
 - Tune `cellSize` and `maxNeighbors` via the engine for performance vs. accuracy.
 
-### Supporting both runtimes
+### WebGL2 runtime guidance
+
+The WebGL2 runtime provides GPU-accelerated simulation via fragment shaders. Key considerations:
+
+**Descriptor API**
+- WebGL2 descriptors use the same WGSL-style template strings as WebGPU for API consistency.
+- At shader build time, the engine converts WGSL syntax to GLSL using `convertWGSLtoGLSL()`.
+- Basic conversions handled: `let`/`var` keywords, `vec2<f32>` → `vec2`, `select()` → ternary.
+
+**Architecture differences from WebGPU**
+- WebGL2 uses texture-based particle storage (RGBA32F textures with 3 texels per particle) instead of storage buffers.
+- Ping-pong rendering: read from current texture, write to "other" texture, then swap references.
+- No compute shaders; simulation runs via fullscreen fragment shader passes.
+- Grid/neighbor data stored in textures: cellIds, sortedIndices, cellRanges.
+
+**Neighbor queries**
+- WebGL2 provides a `getNeighbors()` GLSL helper for neighbor iteration within a radius.
+- Neighbor queries respect `maxNeighbors` limit.
+- Grid passes run every frame: assign cells → sort → build ranges, before force application.
+- Note: Bitonic sort is currently stubbed for simplicity; functional but not fully optimized.
+
+**Module uniforms**
+- Follow the pattern: `u_<moduleName>_<inputName>` (e.g., `u_environment_gravityStrength`).
+- Read settings via `module.readValue()` at render time (no registry/compiler like WebGPU yet).
+
+**Scene texture**
+- Render modules can read from the scene texture when `HAS_SCENE_TEXTURE` is defined.
+- Sensors module uses scene texture sampling for follow/flee behaviors.
+
+**Known limitations**
+- No storage buffers; all data passed via textures or uniforms.
+- Fragment-shader-only approach limits some compute patterns possible in WebGPU.
+- Array inputs require texture uploads (e.g., Lines indices use R32F textures).
+
+### Supporting all runtimes
 
 When possible:
 
-- Implement both `webgpu()` and `cpu()` for feature parity.
+- Implement all three descriptors: `webgpu()`, `webgl2()`, and `cpu()` for full runtime support.
+- WebGPU and WebGL2 can often share the same WGSL-style code (WebGL2 converts to GLSL automatically).
 - Keep numeric scales similar across runtimes (e.g., damping factors) so scenes feel consistent.
 - For images/trails sampling, prefer engine-provided helpers over direct DOM access on CPU.
 
 ### Testing modules
 
 - Instantiate your module in the playground or your app and include it in the `forces` or `render` arrays.
-- Use `runtime: "auto"` and confirm behavior matches on both CPU and WebGPU.
+- Use `runtime: "auto"` and confirm behavior matches across CPU, WebGPU, and WebGL2.
+- Test each runtime explicitly by setting `runtime: "cpu"`, `runtime: "webgpu"`, or `runtime: "webgl2"`.
 - Validate export/import: the engine will serialize and restore your module inputs automatically.
 
 ### Cross-references

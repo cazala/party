@@ -1,6 +1,6 @@
 ## Party User Guide
 
-This guide shows how to use the core library as an end user: creating an engine, selecting a runtime (CPU/WebGPU), configuring modules, adding particles, and using oscillators. It also documents all built-in force and render modules with their main inputs and simple examples.
+This guide shows how to use the core library as an end user: creating an engine, selecting a runtime (CPU/WebGPU/WebGL2), configuring modules, adding particles, and using oscillators. It also documents all built-in force and render modules with their main inputs and simple examples.
 
 ### Installation
 
@@ -122,7 +122,7 @@ const engine = new Engine({
   canvas,
   forces,
   render,
-  runtime: "auto", // "auto" picks WebGPU when available, otherwise CPU
+  runtime: "auto", // "auto" picks WebGPU → WebGL2 → CPU in order of preference
 });
 
 await engine.initialize();
@@ -136,7 +136,7 @@ engine.play();
   - **canvas**: HTMLCanvasElement used for rendering
   - **forces**: `Module[]` list of force modules
   - **render**: `Module[]` list of render modules
-  - **runtime**: `"cpu" | "webgpu" | "auto"` (use "auto" for best experience)
+  - **runtime**: `"cpu" | "webgpu" | "webgl2" | "auto"` (use "auto" for best experience)
   - Optional: `constrainIterations`, `clearColor`, `cellSize`, `maxNeighbors`, `maxParticles`, `workgroupSize`
 
 - **Lifecycle**: `initialize()`, `play()`, `pause()`, `stop()`, `toggle()`, `destroy()`
@@ -150,14 +150,14 @@ engine.play();
 
 Notes
 
-- When `runtime: "auto"`, the engine tries WebGPU first, then falls back to CPU if unavailable.
-- Pinned particles are represented by a negative `mass`. The top-level `Engine` also includes helpers `pinParticles([...])`, `unpinParticles([...])`, `unpinAll()` (CPU + WebGPU friendly).
+- When `runtime: "auto"`, the engine tries WebGPU first, then WebGL2, then falls back to CPU if neither GPU runtime is available.
+- Pinned particles are represented by a negative `mass`. The top-level `Engine` also includes helpers `pinParticles([...])`, `unpinParticles([...])`, `unpinAll()` (works across all runtimes).
 
 #### Engine methods and lifecycles
 
 - `initialize()`
-  - Creates runtime resources (GPU device/queues or CPU canvas context), binds module uniforms, and builds pipelines. Await this before `play()`.
-  - In `runtime: "auto"`, falls back to CPU if WebGPU initialization fails.
+  - Creates runtime resources (GPU device/queues, WebGL2 context, or CPU canvas context), binds module uniforms, and builds pipelines. Await this before `play()`.
+  - In `runtime: "auto"`, falls back from WebGPU → WebGL2 → CPU until one succeeds.
 - `play()` / `pause()` / `stop()` / `toggle()`
   - Controls the animation loop. Per frame the engine updates oscillators, runs simulation (state → apply → constrain×N → correct), then renders.
   - `stop()` halts and cancels the loop; `pause()` only toggles playing state.
@@ -176,7 +176,7 @@ Notes
 - `getModule(name)`
   - Fetch a module instance to tweak inputs at runtime.
 - `getActualRuntime()`
-  - Returns `"cpu" | "webgpu"` for the active runtime.
+  - Returns `"cpu" | "webgpu" | "webgl2"` for the active runtime.
 
 Performance-critical settings
 
@@ -192,7 +192,11 @@ Performance-critical settings
 ### Runtime selection
 
 - Use `runtime: "auto"` unless you explicitly need one runtime.
-- WebGPU unlocks large particle counts and GPU compute; CPU offers maximum compatibility.
+- **WebGPU**: Best performance for large particle counts with GPU compute shaders. Requires Chrome 113+, Edge 113+, or Firefox Nightly.
+- **WebGL2**: GPU-accelerated rendering and simulation via fragment shaders. Works on most modern browsers including Safari and older Chrome/Firefox versions.
+- **CPU**: Maximum compatibility with Canvas2D rendering. Works in all browsers, including older ones without WebGL2 support.
+
+The fallback chain is: WebGPU → WebGL2 → CPU. The engine automatically selects the best available runtime.
 
 ### Camera and coordinates
 
@@ -475,4 +479,5 @@ lines.setLineWidth(2);
 
 - Start with a small number of modules enabled; add more as needed.
 - Increase `cellSize` for sparser scenes; reduce it for dense ones.
-- WebGPU: prefer `runtime: "auto"` and let the engine fall back if needed.
+- Use `runtime: "auto"` and let the engine select the best runtime (WebGPU → WebGL2 → CPU).
+- WebGL2 provides good GPU performance on browsers without WebGPU support (e.g., Safari, older Chrome).

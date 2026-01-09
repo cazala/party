@@ -1,11 +1,12 @@
 # @cazala/party
 
-A high-performance TypeScript particle physics engine with dual runtime support (WebGPU compute + CPU fallback), modular architecture, and real-time parameter oscillation.
+A high-performance TypeScript particle physics engine with multi-runtime support (WebGPU compute, WebGL2 fragment shaders, and CPU fallback), modular architecture, and real-time parameter oscillation.
 
 ## Features
 
-- **Dual Runtime Architecture**: Automatic WebGPU/CPU runtime selection with seamless fallback
-- **GPU Compute Performance**: WebGPU shaders for parallel particle processing at scale
+- **Multi-Runtime Architecture**: Automatic WebGPU → WebGL2 → CPU fallback chain
+- **GPU Compute Performance**: WebGPU compute shaders for maximum performance at scale
+- **WebGL2 Support**: GPU-accelerated simulation via fragment shaders for broad browser compatibility
 - **Modular Force System**: Pluggable physics modules with four-phase lifecycle
 - **Spatial Grid Optimization**: Efficient O(1) neighbor queries for collision detection
 - **Real-time Oscillators**: Animate any module parameter with configurable frequency and bounds
@@ -105,7 +106,7 @@ const engine = new Engine({
   canvas: HTMLCanvasElement,
   forces: Module[],      // Force modules
   render: Module[],      // Render modules
-  runtime: "auto",       // "auto" | "webgpu" | "cpu"
+  runtime: "auto",       // "auto" | "webgpu" | "webgl2" | "cpu"
   
   // Optional configuration
   constrainIterations: 50,    // Constraint solver iterations
@@ -145,13 +146,14 @@ engine.import(config);
 
 ### Runtime Selection
 
-- **"auto"**: Tries WebGPU first, falls back to CPU if unavailable
-- **"webgpu"**: GPU compute with WGSL shaders (Chrome 113+, Edge 113+)
+- **"auto"**: Tries WebGPU first, then WebGL2, then falls back to CPU
+- **"webgpu"**: GPU compute with WGSL shaders (Chrome 113+, Edge 113+, Firefox Nightly)
+- **"webgl2"**: GPU simulation via fragment shaders (Safari, older Chrome/Firefox, most modern browsers)
 - **"cpu"**: JavaScript simulation with Canvas2D rendering (universal compatibility)
 
 ```typescript
 // Check which runtime is active
-const runtime = engine.getActualRuntime(); // "webgpu" | "cpu"
+const runtime = engine.getActualRuntime(); // "webgpu" | "webgl2" | "cpu"
 
 // Test module support
 const isSupported = engine.isSupported(module);
@@ -533,8 +535,20 @@ export class Wind extends Module<"wind", WindInputs> {
     this.write({ strength: 100, dirX: 1, dirY: 0 });
   }
 
-  // WebGPU implementation
+  // WebGPU implementation (WGSL)
   webgpu() {
+    return {
+      apply: ({ particleVar, getUniform }) => `{
+        let d = vec2<f32>(${getUniform("dirX")}, ${getUniform("dirY")});
+        if (length(d) > 0.0) {
+          ${particleVar}.acceleration += normalize(d) * ${getUniform("strength")};
+        }
+      }`,
+    };
+  }
+
+  // WebGL2 implementation (WGSL-style, converted to GLSL at runtime)
+  webgl2() {
     return {
       apply: ({ particleVar, getUniform }) => `{
         let d = vec2<f32>(${getUniform("dirX")}, ${getUniform("dirY")});
@@ -579,8 +593,9 @@ if (!engine.isSupported(customModule)) {
 ## Browser Support
 
 - **WebGPU**: Chrome 113+, Edge 113+, Firefox Nightly (experimental)
-- **CPU Fallback**: All modern browsers with Canvas2D support
-- **Feature Detection**: Automatic runtime selection with graceful fallback
+- **WebGL2**: Safari 15+, Chrome 56+, Firefox 51+, Edge 79+ (most modern browsers)
+- **CPU Fallback**: All browsers with Canvas2D support
+- **Feature Detection**: Automatic runtime selection with graceful fallback (WebGPU → WebGL2 → CPU)
 
 ## TypeScript Support
 
