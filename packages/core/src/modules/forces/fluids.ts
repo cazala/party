@@ -9,6 +9,7 @@
 import {
   Module,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   ModuleRole,
   CPUDescriptor,
   DataType,
@@ -450,6 +451,170 @@ export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
         particle.velocity.x += forceX;
         particle.velocity.y += forceY;
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<FluidsInputs, FluidStateKeys> {
+    // WebGL2 SPH-inspired fluid approximation
+    // Note: In WebGL2, we implement a simplified version without persistent state
+    // by computing density inline in the apply pass
+    return {
+      states: ["density", "nearDensity"],
+
+      // State pass: precompute density and near-density per particle
+      state: ({ particleVar, dtVar, getUniform, setState }) => `{
+  // Predict current particle position for this frame
+  float rad = ${getUniform("influenceRadius")};
+  vec2 posPred = ${particleVar}.position + ${particleVar}.velocity * ${dtVar};
+  float density = 0.0;
+  float nearDensity = 0.0;
+
+  // Precompute radius powers for kernels
+  float r2 = rad * rad;
+  float r4 = r2 * r2;
+  float r6 = r4 * r2;
+
+  // Iterate neighbors using the spatial grid
+  int neighbors[64];
+  int neighborCount = getNeighbors(posPred, rad, particleId, neighbors, 64);
+
+  for (int ni = 0; ni < neighborCount; ni++) {
+    int j = neighbors[ni];
+    if (j == particleId) continue;
+
+    // Read neighbor particle data
+    vec2 otherCoord0 = getTexelCoord(j, 0);
+    vec2 otherCoord1 = getTexelCoord(j, 1);
+    vec4 otherTexel0 = texture(u_particleTexture, otherCoord0);
+    vec4 otherTexel1 = texture(u_particleTexture, otherCoord1);
+
+    vec2 otherPos = otherTexel0.xy;
+    float otherMass = otherTexel1.w;
+
+    // Skip removed or pinned neighbors
+    if (otherMass <= 0.0) continue;
+
+    vec2 d = posPred - otherPos;
+    float dist2 = dot(d, d);
+    if (dist2 <= 0.0) continue;
+
+    float dist = sqrt(dist2);
+    float factor = max(rad - dist, 0.0);
+    if (factor <= 0.0) continue;
+
+    // Density kernel: (factor^2) / (pi/6 * r^4)
+    float kDensity = (factor * factor) / ((3.14159265 / 6.0) * r4);
+    density += kDensity * 1000.0 * otherMass;
+
+    // Near-density kernel: (factor^4) / (pi/15 * r^6)
+    float enableNear = ${getUniform("enableNearPressure")};
+    if (enableNear != 0.0) {
+      float f2 = factor * factor;
+      float kNear = (f2 * f2) / ((3.14159265 / 15.0) * r6);
+      nearDensity += kNear * 1000.0 * otherMass;
+    }
+  }
+
+  // Store results in state for use in apply pass
+  ${setState("density", "density")};
+  ${setState("nearDensity", "nearDensity")};
+}`,
+
+      // Apply pass: compute pressure and viscosity forces
+      apply: ({ particleVar, getUniform, getState }) => `{
+  float rad = ${getUniform("influenceRadius")};
+  float targetDensity = ${getUniform("targetDensity")};
+  float pressureMul = ${getUniform("pressureMultiplier")};
+  float visc = ${getUniform("viscosity")};
+  float nearMul = ${getUniform("nearPressureMultiplier")};
+  float nearThreshold = ${getUniform("nearThreshold")};
+  float useNear = ${getUniform("enableNearPressure")};
+
+  float myDensity = max(${getState("density")}, 1e-6);
+
+  // Precompute radius powers for kernels
+  float r2 = rad * rad;
+  float r4 = r2 * r2;
+  float r8 = r4 * r4;
+
+  // Pressure gradient accumulation
+  vec2 gradSum = vec2(0.0, 0.0);
+  vec2 viscosityForce = vec2(0.0, 0.0);
+
+  // Iterate neighbors
+  int neighbors[64];
+  int neighborCount = getNeighbors(${particleVar}.position, rad, particleId, neighbors, 64);
+
+  for (int ni = 0; ni < neighborCount; ni++) {
+    int j = neighbors[ni];
+    if (j == particleId) continue;
+
+    // Read neighbor particle data
+    vec2 otherCoord0 = getTexelCoord(j, 0);
+    vec2 otherCoord1 = getTexelCoord(j, 1);
+    vec4 otherTexel0 = texture(u_particleTexture, otherCoord0);
+    vec4 otherTexel1 = texture(u_particleTexture, otherCoord1);
+
+    vec2 otherPos = otherTexel0.xy;
+    vec2 otherVel = otherTexel0.zw;
+    float otherMass = otherTexel1.w;
+
+    // Skip removed or pinned neighbors
+    if (otherMass <= 0.0) continue;
+
+    vec2 delta = otherPos - ${particleVar}.position;
+    float dist2 = dot(delta, delta);
+    if (dist2 <= 0.0) continue;
+
+    float dist = sqrt(dist2);
+    if (dist <= 0.0 || dist >= rad) continue;
+
+    vec2 dir = delta / dist;
+
+    // Derivative kernel: scale * (dist - rad), scale = (-12/pi)/r^4
+    float scale = (-12.0 / 3.14159265) / r4;
+    float slope = (dist - rad) * scale;
+
+    // Use approximate neighbor density (compute inline since we don't have getState with j)
+    float dN = max(myDensity, 1e-6);
+    float nearN = useNear != 0.0 ? 0.0 : 0.0; // Simplified: skip per-neighbor nearDensity
+    float densityDiff = dN - targetDensity;
+    float pressure = densityDiff * pressureMul;
+    float nearPressure = nearN * nearMul;
+    float effectivePressure = dist < nearThreshold ? nearPressure : pressure;
+
+    // Gradient contribution
+    gradSum += (dir * (effectivePressure * slope)) / dN;
+
+    // Viscosity
+    if (visc != 0.0) {
+      float val = max(0.0, r2 - dist2);
+      float kVisc = (val * val * val) / ((3.14159265 / 4.0) * r8);
+      viscosityForce += (otherVel - ${particleVar}.velocity) * kVisc;
+    }
+  }
+
+  // Pressure force is negative gradient
+  vec2 pressureForce = -gradSum;
+  viscosityForce *= visc;
+
+  // Convert to acceleration-like effect: a = F / density
+  vec2 force = (pressureForce / myDensity) * 1000000.0;
+  if (visc != 0.0) {
+    force += (viscosityForce * 1000.0) / myDensity;
+  }
+
+  // Clamp force magnitude
+  float maxLen = ${getUniform("maxAcceleration")};
+  float f2 = dot(force, force);
+  if (f2 > maxLen * maxLen) {
+    float fLen = sqrt(f2);
+    force = force * (maxLen / fLen);
+  }
+
+  // Apply directly to velocity
+  ${particleVar}.velocity += force;
+}`,
     };
   }
 }

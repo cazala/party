@@ -2,6 +2,7 @@ import {
   Module,
   ModuleRole,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   CPUDescriptor,
   DataType,
 } from "../../module";
@@ -1231,6 +1232,126 @@ export class Joints extends Module<"joints", JointsInputs> {
         particle.velocity.y =
           particle.velocity.y * (1 - momentum) + actualVelocityY * momentum;
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<JointsInputs, "prevX" | "prevY"> {
+    // WebGL2 joints constraint: maintains distance constraints between connected particles
+    // Uses CSR (Compressed Sparse Row) for incident joint lookup
+    return {
+      states: ["prevX", "prevY"] as const,
+
+      // Store pre-physics positions for momentum preservation
+      state: ({ particleVar, getLength, setState, getUniform }) => `{
+  int offLen = int(${getLength("incidentJointOffsets")});
+  if (offLen > 1) {
+    int idx1 = particleId + 1;
+    if (idx1 < offLen) {
+      int s = int(${getUniform("incidentJointOffsets", "particleId")});
+      int e = int(${getUniform("incidentJointOffsets", "idx1")});
+      if (e > s) {
+        ${setState("prevX", `${particleVar}.position.x`)};
+        ${setState("prevY", `${particleVar}.position.y`)};
+      }
+    }
+  }
+}`,
+
+      // Constrain: per-particle correction using CSR
+      constrain: ({ particleVar, getUniform, getLength }) => `{
+  int lenA = int(${getLength("aIndexes")});
+  int lenB = int(${getLength("bIndexes")});
+  int lenR = int(${getLength("restLengths")});
+  int jointCount = min(lenA, min(lenB, lenR));
+  if (jointCount == 0) return;
+
+  int offsetsLen = int(${getLength("incidentJointOffsets")});
+  int idx1 = particleId + 1;
+  if (offsetsLen <= 1 || idx1 >= offsetsLen) return;
+
+  int start = int(${getUniform("incidentJointOffsets", "particleId")});
+  int end = int(${getUniform("incidentJointOffsets", "idx1")});
+  if (end <= start) return;
+
+  float half = 0.5;
+
+  // Process incident joints
+  for (int k = start; k < end; k++) {
+    int j = int(${getUniform("incidentJointIndices", "k")});
+    if (j >= jointCount) continue;
+
+    int a = int(${getUniform("aIndexes", "j")});
+    int b = int(${getUniform("bIndexes", "j")});
+    float rest = ${getUniform("restLengths", "j")};
+    if (rest <= 0.0) continue;
+
+    int otherIndex = (a == particleId) ? b : ((b == particleId) ? a : -1);
+    if (otherIndex == -1) continue;
+
+    // Read other particle data
+    vec2 otherCoord0 = getTexelCoord(otherIndex, 0);
+    vec2 otherCoord1 = getTexelCoord(otherIndex, 1);
+    vec4 otherTexel0 = texture(u_particleTexture, otherCoord0);
+    vec4 otherTexel1 = texture(u_particleTexture, otherCoord1);
+
+    vec2 otherPos = otherTexel0.xy;
+    float otherMass = otherTexel1.w;
+
+    if (${particleVar}.mass == 0.0 || otherMass == 0.0) continue;
+
+    vec2 delta = otherPos - ${particleVar}.position;
+    float dist2 = dot(delta, delta);
+    if (dist2 < 1e-8) continue;
+
+    float invDist = inversesqrt(dist2);
+    float dist = 1.0 / max(invDist, 1e-8);
+    vec2 dir = delta * invDist;
+    float rl = rest > 0.0 ? rest : dist;
+    float diff = dist - rl;
+    if (abs(diff) < 1e-6) continue;
+
+    float invM_self = ${particleVar}.mass > 0.0 ? 1.0 / ${particleVar}.mass : 0.0;
+    float invM_other = otherMass > 0.0 ? 1.0 / otherMass : 0.0;
+    float invSum = invM_self + invM_other;
+    if (invSum <= 0.0) continue;
+
+    vec2 corr = dir * (diff * (invM_self / invSum)) * half;
+    ${particleVar}.position += corr;
+  }
+}`,
+
+      // Correct: momentum preservation after constraint solving
+      correct: ({ particleVar, getUniform, getLength, getState, dtVar }) => `{
+  int jointCount = int(${getLength("aIndexes")});
+  if (jointCount == 0) return;
+
+  // Determine if this particle has joints via CSR
+  bool hasJoint = false;
+  int offLen2 = int(${getLength("incidentJointOffsets")});
+  if (offLen2 > 1) {
+    int idx1c = particleId + 1;
+    if (idx1c < offLen2) {
+      int s2 = int(${getUniform("incidentJointOffsets", "particleId")});
+      int e2 = int(${getUniform("incidentJointOffsets", "idx1c")});
+      hasJoint = (e2 > s2);
+    }
+  }
+
+  float momentum = ${getUniform("momentum")};
+  if (momentum <= 0.0 || !hasJoint) return;
+
+  // Get stored pre-physics position
+  float prevX = ${getState("prevX")};
+  float prevY = ${getState("prevY")};
+  vec2 prevPos = vec2(prevX, prevY);
+
+  // Calculate actual total movement (from pre-physics to post-constraint)
+  vec2 totalMovement = ${particleVar}.position - prevPos;
+  vec2 actualVelocity = totalMovement / ${dtVar};
+
+  // Blend current velocity with actual movement velocity
+  ${particleVar}.velocity = ${particleVar}.velocity * (1.0 - momentum) + actualVelocity * momentum;
+}`,
     };
   }
 }

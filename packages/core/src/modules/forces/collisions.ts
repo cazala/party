@@ -13,6 +13,7 @@
 import {
   Module,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   ModuleRole,
   CPUDescriptor,
   DataType,
@@ -328,6 +329,160 @@ export class Collisions extends Module<"collisions", CollisionsInputs> {
           particle.velocity.y = 0.0;
         }
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<CollisionsInputs> {
+    // WebGL2 collision detection uses neighbor iteration to find overlapping particles
+    // and applies position correction + impulse-based bounce
+    return {
+      constrain: ({ particleVar, maxSizeVar, getUniform }) => `
+  // Collision detection: find deepest overlap neighbor
+  float searchRadius = ${particleVar}.size + ${maxSizeVar} + 1.0;
+  int bestJ = -1;
+  vec2 bestN = vec2(0.0, 0.0);
+  float bestOverlap = 0.0;
+  int identicalPositionJ = -1;
+
+  // Neighbor iteration using grid
+  int neighbors[64];
+  int neighborCount = getNeighbors(${particleVar}.position, searchRadius, particleId, neighbors, 64);
+
+  for (int ni = 0; ni < neighborCount; ni++) {
+    int j = neighbors[ni];
+    if (j == particleId) continue;
+
+    // Read neighbor particle data
+    vec2 otherCoord0 = getTexelCoord(j, 0);
+    vec2 otherCoord1 = getTexelCoord(j, 1);
+    vec4 otherTexel0 = texture(u_particleTexture, otherCoord0);
+    vec4 otherTexel1 = texture(u_particleTexture, otherCoord1);
+
+    vec2 otherPos = otherTexel0.xy;
+    vec2 otherVel = otherTexel0.zw;
+    float otherSize = otherTexel1.z;
+    float otherMass = otherTexel1.w;
+
+    // Skip removed neighbors
+    if (otherMass == 0.0) continue;
+
+    float r = otherSize + ${particleVar}.size;
+    vec2 delta = ${particleVar}.position - otherPos;
+    float dist2 = dot(delta, delta);
+
+    // Special case: particles at identical positions
+    if (dist2 <= 0.000001) {
+      identicalPositionJ = j;
+    } else if (dist2 > 0.0001 && dist2 < r * r) {
+      float dist = sqrt(dist2);
+      float overlap = r - dist;
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        bestJ = j;
+        bestN = delta / dist;
+      }
+    }
+  }
+
+  // Handle particles at identical positions
+  if (identicalPositionJ != -1) {
+    // Generate pseudo-random separation direction based on particle indices
+    float seed = float(particleId * 73 + identicalPositionJ * 37);
+    float h = seed * 0.01234567;
+    float angle = fract(sin(h) * 43758.5453) * 6.283185307;
+
+    // Read other particle size
+    vec2 otherCoord1 = getTexelCoord(identicalPositionJ, 1);
+    vec4 otherTexel1 = texture(u_particleTexture, otherCoord1);
+    float otherSize = otherTexel1.z;
+
+    float sepDist = (otherSize + ${particleVar}.size) * 0.51;
+    float separationX = cos(angle) * sepDist;
+    float separationY = sin(angle) * sepDist;
+    ${particleVar}.position += vec2(separationX, separationY);
+  }
+
+  if (bestJ != -1) {
+    // Read best neighbor data for collision response
+    vec2 bestCoord0 = getTexelCoord(bestJ, 0);
+    vec2 bestCoord1 = getTexelCoord(bestJ, 1);
+    vec4 bestTexel0 = texture(u_particleTexture, bestCoord0);
+    vec4 bestTexel1 = texture(u_particleTexture, bestCoord1);
+
+    vec2 otherVel = bestTexel0.zw;
+    float otherMass = bestTexel1.w;
+
+    vec2 n = bestN;
+
+    // Pseudo-random helpers based on world position
+    float h1 = dot(${particleVar}.position, vec2(12.9898, 78.233));
+    float rand1 = fract(sin(h1) * 43758.5453);
+    float h2 = dot(${particleVar}.position, vec2(93.9898, 67.345));
+    float rand2 = fract(sin(h2) * 15731.7431);
+
+    // Symmetry breaking for axis-aligned normals
+    float ax = abs(n.x);
+    float ay = abs(n.y);
+    if (ax < 0.03 || ay < 0.03) {
+      float angle = (rand1 - 0.5) * 0.3;
+      float ca = cos(angle);
+      float sa = sin(angle);
+      float nx = n.x * ca - n.y * sa;
+      float ny = n.x * sa + n.y * ca;
+      n = normalize(vec2(nx, ny));
+    }
+
+    // Position correction
+    vec2 c1 = n * (bestOverlap * 0.55);
+    // Tangential jitter
+    vec2 t = vec2(-n.y, n.x);
+    float jitterAmp = (rand2 - 0.5) * min(bestOverlap * 0.1, 0.5);
+    vec2 jitter = t * jitterAmp;
+    c1 += jitter;
+    ${particleVar}.position += c1;
+
+    // Impulse-based bounce
+    vec2 v1 = ${particleVar}.velocity;
+    vec2 v2 = otherVel;
+    float m1 = ${particleVar}.mass;
+    float m2 = otherMass;
+    float e = ${getUniform("restitution")};
+    float relN = dot(v1 - v2, n);
+
+    if (relN < 0.0) {
+      // Treat pinned (mass < 0) as infinite mass
+      float invM1 = m1 > 0.0 ? 1.0 / max(m1, 1e-6) : 0.0;
+      float invM2 = m2 > 0.0 ? 1.0 / max(m2, 1e-6) : 0.0;
+      float invSum = max(invM1 + invM2, 1e-6);
+      float j = -(1.0 + e) * relN / invSum;
+      float dv = min(j * invM1, 1000.0);
+      ${particleVar}.velocity = v1 + n * dv;
+    }
+  }
+`,
+      correct: ({ particleVar, dtVar, prevPosVar, postPosVar }) => `
+  // Position-based velocity correction from integration state
+  vec2 disp = ${particleVar}.position - ${prevPosVar};
+  float disp2 = dot(disp, disp);
+  vec2 corr = ${particleVar}.position - ${postPosVar};
+  float corr2 = dot(corr, corr);
+
+  if (corr2 > 0.0 && ${dtVar} > 0.0) {
+    float corrLenInv = inversesqrt(corr2);
+    vec2 corrDir = corr * corrLenInv;
+    vec2 corrVel = corr / ${dtVar};
+    float corrVelAlong = dot(corrVel, corrDir);
+    float vNBefore = dot(${particleVar}.velocity, corrDir);
+    float vNAfterCandidate = vNBefore + corrVelAlong;
+    float vNAfter = abs(vNAfterCandidate) < abs(vNBefore) ? vNAfterCandidate : vNBefore;
+    ${particleVar}.velocity += corrDir * (vNAfter - vNBefore);
+  }
+
+  float v2_total = dot(${particleVar}.velocity, ${particleVar}.velocity);
+  if (disp2 < 1e-8 && v2_total < 0.5) {
+    ${particleVar}.velocity = vec2(0.0, 0.0);
+  }
+`,
     };
   }
 }

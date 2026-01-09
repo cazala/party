@@ -9,6 +9,7 @@
 import {
   Module,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   ModuleRole,
   CPUDescriptor,
   DataType,
@@ -451,6 +452,145 @@ export class Behavior extends Module<"behavior", BehaviorInputs> {
           particle.acceleration.y += jitterY * wWander;
         }
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<BehaviorInputs> {
+    // WebGL2 boids-style steering: separation, alignment, cohesion, chase/avoid, wander
+    return {
+      apply: ({ particleVar, getUniform }) => `
+  // Get behavior parameters
+  float viewR = ${getUniform("viewRadius")};
+  float sepRange = ${getUniform("separation")};
+  float wSep = ${getUniform("repulsion")};
+  float wAli = ${getUniform("alignment")};
+  float wCoh = ${getUniform("cohesion")};
+  float wChase = ${getUniform("chase")};
+  float wAvoid = ${getUniform("avoid")};
+  float wWander = ${getUniform("wander")};
+  float halfAngle = ${getUniform("viewAngle")} * 0.5;
+  float cosHalf = cos(halfAngle);
+
+  // Accumulators
+  vec2 sep = vec2(0.0, 0.0);
+  vec2 ali = vec2(0.0, 0.0);
+  vec2 cohPos = vec2(0.0, 0.0);
+  float cohCount = 0.0;
+  float aliCount = 0.0;
+
+  // Normalize particle velocity for FOV check
+  float vMag2 = dot(${particleVar}.velocity, ${particleVar}.velocity);
+  bool hasVel = vMag2 > 1e-6;
+  vec2 vNorm = hasVel ? normalize(${particleVar}.velocity) : vec2(1.0, 0.0);
+
+  // Neighbor iteration using grid
+  int neighbors[64];
+  int neighborCount = getNeighbors(${particleVar}.position, viewR, particleId, neighbors, 64);
+
+  for (int ni = 0; ni < neighborCount; ni++) {
+    int j = neighbors[ni];
+    if (j == particleId) continue;
+
+    // Read neighbor particle data
+    vec2 otherCoord0 = getTexelCoord(j, 0);
+    vec2 otherCoord1 = getTexelCoord(j, 1);
+    vec4 otherTexel0 = texture(u_particleTexture, otherCoord0);
+    vec4 otherTexel1 = texture(u_particleTexture, otherCoord1);
+
+    vec2 otherPos = otherTexel0.xy;
+    vec2 otherVel = otherTexel0.zw;
+    float otherMass = otherTexel1.w;
+
+    vec2 toOther = otherPos - ${particleVar}.position;
+    float dist2 = dot(toOther, toOther);
+    if (dist2 <= 0.0) continue;
+
+    float dist = sqrt(dist2);
+    if (dist >= viewR) continue;
+
+    // Field of view check
+    if (hasVel) {
+      vec2 dir = toOther / dist;
+      float d = dot(vNorm, dir);
+      if (d < cosHalf) continue;
+    }
+
+    // Separation (closer than sepRange)
+    if (dist < sepRange && wSep > 0.0) {
+      vec2 away = (${particleVar}.position - otherPos) / max(dist, 1e-3);
+      sep += away;
+    }
+
+    // Alignment
+    if (wAli > 0.0) {
+      ali += otherVel;
+      aliCount += 1.0;
+    }
+
+    // Cohesion
+    if (wCoh > 0.0) {
+      cohPos += otherPos;
+      cohCount += 1.0;
+    }
+
+    // Chase / Avoid based on mass relation
+    if (wChase > 0.0 && ${particleVar}.mass > otherMass) {
+      float massDelta = (${particleVar}.mass - otherMass) / max(${particleVar}.mass, 1e-6);
+      vec2 seek = (toOther / max(dist, 1e-3)) * (massDelta * ${particleVar}.mass);
+      cohPos += ${particleVar}.position + seek;
+      cohCount += 1.0;
+    }
+
+    if (wAvoid > 0.0 && ${particleVar}.mass < otherMass && dist < viewR * 0.5) {
+      float massDelta = (otherMass - ${particleVar}.mass) / max(otherMass, 1e-6);
+      vec2 rep = ${particleVar}.position - otherPos;
+      float repLen = length(rep);
+      if (repLen > 0.0) {
+        rep = normalize(rep) * 100000.0 * massDelta * (1.0 / max(repLen, 1.0));
+        sep += rep;
+      }
+    }
+  }
+
+  // Finalize alignment: steer toward avg neighbor velocity
+  if (aliCount > 0.0) {
+    vec2 avgV = ali / aliCount;
+    if (length(avgV) > 0.0) {
+      avgV = normalize(avgV) * 1000.0;
+      vec2 steerAli = avgV - ${particleVar}.velocity;
+      ${particleVar}.acceleration += steerAli * wAli;
+    }
+  }
+
+  // Finalize cohesion: seek centroid
+  if (cohCount > 0.0) {
+    vec2 center = cohPos / cohCount;
+    vec2 seek = center - ${particleVar}.position;
+    if (length(seek) > 0.0) {
+      seek = normalize(seek) * 1000.0 - ${particleVar}.velocity;
+      ${particleVar}.acceleration += seek * wCoh;
+    }
+  }
+
+  // Apply separation
+  if (length(sep) > 0.0) {
+    sep = normalize(sep) * 1000.0 - ${particleVar}.velocity;
+    ${particleVar}.acceleration += sep * wSep;
+  }
+
+  // Simple wander: small perturbation perpendicular to velocity
+  if (wWander > 0.0) {
+    vec2 vel = ${particleVar}.velocity;
+    float l = length(vel);
+    vec2 dir = l > 1e-6 ? vel / max(l, 1e-6) : vec2(1.0, 0.0);
+    vec2 perp = vec2(-dir.y, dir.x);
+    // pseudo-random based on position
+    float h = dot(${particleVar}.position, vec2(12.9898, 78.233));
+    float r = fract(sin(h) * 43758.5453) - 0.5;
+    vec2 jitter = perp * (r * 200.0);
+    ${particleVar}.acceleration += jitter * wWander;
+  }
+`,
     };
   }
 }

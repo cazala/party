@@ -9,6 +9,7 @@
 import {
   Module,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   ModuleRole,
   CPUDescriptor,
   DataType,
@@ -721,6 +722,229 @@ if (length(totalForce) > 0.0) {
           particle.velocity.y = dir.y * (sensorStrength / 5);
         }
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<SensorsInputs> {
+    // WebGL2 sensor module: samples scene texture for follow/flee steering
+    // Requires scene_texture binding in the shader
+    return {
+      global: () => `// Sensor helper functions for WebGL2
+// Assumes scene_texture uniform is bound
+
+vec2 webgl2_world_to_uv(vec2 pos) {
+  // Transform world position into UV using grid uniforms
+  float u = (pos.x - GRID_MINX()) / (GRID_MAXX() - GRID_MINX());
+  float v = (pos.y - GRID_MINY()) / (GRID_MAXY() - GRID_MINY());
+  return clamp(vec2(u, v), vec2(0.0), vec2(1.0));
+}
+
+ivec2 webgl2_uv_to_texel(vec2 uv, ivec2 dim) {
+  int x = int(clamp(floor(uv.x * float(dim.x)), 0.0, float(dim.x - 1)));
+  int y = int(clamp(floor(uv.y * float(dim.y)), 0.0, float(dim.y - 1)));
+  return ivec2(x, y);
+}
+
+float webgl2_sensor_sample_intensity(vec2 pos, float radius, int selfIndex, sampler2D sceneTex) {
+  vec2 uv = webgl2_world_to_uv(pos);
+  ivec2 dim = textureSize(sceneTex, 0);
+  float pxPerWorld = float(dim.x) / (GRID_MAXX() - GRID_MINX());
+  float pxRadius = clamp(radius * pxPerWorld, 1.0, 16.0);
+  ivec2 center = webgl2_uv_to_texel(uv, dim);
+  float sum = 0.0;
+  float count = 0.0;
+  int r = int(clamp(pxRadius, 1.0, 8.0));
+  for (int dy = -r; dy <= r; dy++) {
+    for (int dx = -r; dx <= r; dx++) {
+      ivec2 tc = ivec2(center.x + dx, center.y + dy);
+      if (tc.x < 0 || tc.y < 0 || tc.x >= dim.x || tc.y >= dim.y) continue;
+      vec4 c = texelFetch(sceneTex, tc, 0);
+      float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      sum += lum;
+      count += 1.0;
+    }
+  }
+  return count > 0.0 ? clamp(sum / count, 0.0, 1.0) : 0.0;
+}
+
+vec3 webgl2_sensor_sample_color(vec2 pos, float radius, int selfIndex, sampler2D sceneTex) {
+  vec2 uv = webgl2_world_to_uv(pos);
+  ivec2 dim = textureSize(sceneTex, 0);
+  float pxPerWorld = float(dim.x) / (GRID_MAXX() - GRID_MINX());
+  float pxRadius = clamp(radius * pxPerWorld, 1.0, 16.0);
+  ivec2 center = webgl2_uv_to_texel(uv, dim);
+  vec3 sum = vec3(0.0);
+  float count = 0.0;
+  int r = int(clamp(pxRadius, 1.0, 8.0));
+  for (int dy = -r; dy <= r; dy++) {
+    for (int dx = -r; dx <= r; dx++) {
+      ivec2 tc = ivec2(center.x + dx, center.y + dy);
+      if (tc.x < 0 || tc.y < 0 || tc.x >= dim.x || tc.y >= dim.y) continue;
+      vec4 c = texelFetch(sceneTex, tc, 0);
+      sum += c.rgb;
+      count += 1.0;
+    }
+  }
+  return count > 0.0 ? clamp(sum / count, vec3(0.0), vec3(1.0)) : vec3(0.0);
+}
+
+bool webgl2_sensor_is_activated(
+  float intensity,
+  vec3 sensorColor,
+  vec3 particleColor,
+  float behavior,
+  float threshold,
+  float colorThreshold
+) {
+  if (intensity <= threshold) return false;
+  if (behavior == 0.0) return true; // "any"
+  if (behavior == 1.0) { // "same"
+    vec3 colorDiff = sensorColor - particleColor;
+    float distance = sqrt(dot(colorDiff, colorDiff));
+    float maxDistance = sqrt(3.0);
+    float similarity = 1.0 - (distance / maxDistance);
+    return similarity > colorThreshold;
+  }
+  if (behavior == 2.0) { // "different"
+    vec3 colorDiff = sensorColor - particleColor;
+    float distance = sqrt(dot(colorDiff, colorDiff));
+    float maxDistance = sqrt(3.0);
+    float similarity = 1.0 - (distance / maxDistance);
+    return similarity <= colorThreshold;
+  }
+  return false; // "none"
+}
+`,
+      apply: ({ particleVar, getUniform }) => `
+// Early exit if particle is pinned
+if (${particleVar}.mass == 0.0) {
+  return;
+}
+
+// Get sensor configuration
+float sensorDist = ${getUniform("sensorDistance")};
+float sensorAngle = ${getUniform("sensorAngle")};
+float sensorRadius = ${getUniform("sensorRadius")};
+float sensorThreshold = ${getUniform("sensorThreshold")};
+float sensorStrength = ${getUniform("sensorStrength")};
+float colorThreshold = ${getUniform("colorSimilarityThreshold")};
+float followBehavior = ${getUniform("followBehavior")};
+float fleeBehavior = ${getUniform("fleeBehavior")};
+float fleeAngleOffset = ${getUniform("fleeAngle")};
+
+// Get particle color for color-based behaviors
+vec3 particleColor = ${particleVar}.color.rgb;
+
+// Calculate particle velocity direction (normalized)
+float velocityMag = length(${particleVar}.velocity);
+vec2 velocityDir = vec2(1.0, 0.0);
+if (velocityMag > 0.01) {
+  velocityDir = normalize(${particleVar}.velocity);
+} else {
+  // Use pseudo-random direction when particle has no velocity
+  float h = dot(${particleVar}.position, vec2(12.9898, 78.233));
+  float r = fract(sin(h) * 43758.5453) * 2.0 * 3.14159265;
+  velocityDir = vec2(cos(r), sin(r));
+}
+
+// Calculate sensor positions
+// Left sensor: rotate velocity direction by -sensorAngle
+float cosLeft = cos(-sensorAngle);
+float sinLeft = sin(-sensorAngle);
+vec2 leftDir = vec2(
+  velocityDir.x * cosLeft - velocityDir.y * sinLeft,
+  velocityDir.x * sinLeft + velocityDir.y * cosLeft
+);
+vec2 leftSensorPos = ${particleVar}.position + leftDir * sensorDist;
+
+// Right sensor: rotate velocity direction by +sensorAngle
+float cosRight = cos(sensorAngle);
+float sinRight = sin(sensorAngle);
+vec2 rightDir = vec2(
+  velocityDir.x * cosRight - velocityDir.y * sinRight,
+  velocityDir.x * sinRight + velocityDir.y * cosRight
+);
+vec2 rightSensorPos = ${particleVar}.position + rightDir * sensorDist;
+
+// Note: In WebGL2, we would need to bind scene_texture as u_sceneTexture
+// For now, use simplified version without actual scene sampling
+// This placeholder returns 0 intensity (will be fully wired when scene texture is bound)
+float leftIntensity = 0.0;
+float rightIntensity = 0.0;
+vec3 leftColor = vec3(0.0);
+vec3 rightColor = vec3(0.0);
+
+#ifdef HAS_SCENE_TEXTURE
+  leftIntensity = webgl2_sensor_sample_intensity(leftSensorPos, sensorRadius, particleId, u_sceneTexture);
+  rightIntensity = webgl2_sensor_sample_intensity(rightSensorPos, sensorRadius, particleId, u_sceneTexture);
+  leftColor = webgl2_sensor_sample_color(leftSensorPos, sensorRadius, particleId, u_sceneTexture);
+  rightColor = webgl2_sensor_sample_color(rightSensorPos, sensorRadius, particleId, u_sceneTexture);
+#endif
+
+// Evaluate sensor activation for follow behavior
+vec2 followForce = vec2(0.0, 0.0);
+if (followBehavior == 0.0) { // "any"
+  if (leftIntensity > rightIntensity && leftIntensity > sensorThreshold) {
+    followForce = leftDir;
+  } else if (rightIntensity > leftIntensity && rightIntensity > sensorThreshold) {
+    followForce = rightDir;
+  }
+} else if (followBehavior == 1.0 || followBehavior == 2.0) { // "same" or "different"
+  bool leftActive = webgl2_sensor_is_activated(leftIntensity, leftColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
+  bool rightActive = webgl2_sensor_is_activated(rightIntensity, rightColor, particleColor, followBehavior, sensorThreshold, colorThreshold);
+  if (leftActive && !rightActive) {
+    followForce = leftDir;
+  } else if (rightActive && !leftActive) {
+    followForce = rightDir;
+  }
+}
+
+// Evaluate sensor activation for flee behavior
+vec2 fleeForce = vec2(0.0, 0.0);
+if (fleeBehavior == 0.0) { // "any"
+  if (leftIntensity > rightIntensity && leftIntensity > sensorThreshold) {
+    float cosFleeLeft = cos(-fleeAngleOffset);
+    float sinFleeLeft = sin(-fleeAngleOffset);
+    fleeForce = vec2(
+      leftDir.x * cosFleeLeft - leftDir.y * sinFleeLeft,
+      leftDir.x * sinFleeLeft + leftDir.y * cosFleeLeft
+    );
+  } else if (rightIntensity > leftIntensity && rightIntensity > sensorThreshold) {
+    float cosFleeRight = cos(fleeAngleOffset);
+    float sinFleeRight = sin(fleeAngleOffset);
+    fleeForce = vec2(
+      rightDir.x * cosFleeRight - rightDir.y * sinFleeRight,
+      rightDir.x * sinFleeRight + rightDir.y * cosFleeRight
+    );
+  }
+} else if (fleeBehavior == 1.0 || fleeBehavior == 2.0) { // "same" or "different"
+  bool leftActive = webgl2_sensor_is_activated(leftIntensity, leftColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
+  bool rightActive = webgl2_sensor_is_activated(rightIntensity, rightColor, particleColor, fleeBehavior, sensorThreshold, colorThreshold);
+  if (leftActive && !rightActive) {
+    float cosFleeLeft = cos(-fleeAngleOffset);
+    float sinFleeLeft = sin(-fleeAngleOffset);
+    fleeForce = vec2(
+      leftDir.x * cosFleeLeft - leftDir.y * sinFleeLeft,
+      leftDir.x * sinFleeLeft + leftDir.y * cosFleeLeft
+    );
+  } else if (rightActive && !leftActive) {
+    float cosFleeRight = cos(fleeAngleOffset);
+    float sinFleeRight = sin(fleeAngleOffset);
+    fleeForce = vec2(
+      rightDir.x * cosFleeRight - rightDir.y * sinFleeRight,
+      rightDir.x * sinFleeRight + rightDir.y * cosFleeRight
+    );
+  }
+}
+
+// Combine and apply forces
+vec2 totalForce = followForce + fleeForce;
+if (length(totalForce) > 0.0) {
+  vec2 dir = normalize(totalForce);
+  // Match CPU: set velocity to direction scaled by sensorStrength/5
+  ${particleVar}.velocity = dir * (sensorStrength / 5.0);
+}
+`,
     };
   }
 }
