@@ -384,6 +384,22 @@ export class GL2Resources {
     return program;
   }
 
+  /**
+   * Delete a cached program so it can be re-created (useful for dynamic shaders).
+   */
+  deleteProgram(name: string): void {
+    const gl = this.gl;
+    if (!gl) return;
+    const program = this.programs.get(name);
+    if (!program) return;
+    try {
+      gl.deleteProgram(program);
+    } catch {
+      // ignore
+    }
+    this.programs.delete(name);
+  }
+
   private compileShader(type: number, source: string): WebGLShader {
     const gl = this.getGL();
     const shader = gl.createShader(type);

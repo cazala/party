@@ -25,6 +25,7 @@ import {
   copyVertexShader,
   copyFragmentShader,
   generateForceFragmentShader,
+  generateConstrainFragmentShader,
   gridAssignCellsFragmentShader,
   gridBuildRangesFragmentShader,
   linesVertexShader,
@@ -40,6 +41,8 @@ export class WebGL2Engine extends AbstractEngine {
   private bufferMaxParticles: number;
   private animationId: number | null = null;
   private shouldSyncNextTick: boolean = false;
+  private forceProgramSignature: string = "";
+  private constrainProgramSignature: string = "";
   private quadBuffer: WebGLBuffer | null = null;
   // Lines module state
   private lineQuadBuffer: WebGLBuffer | null = null;
@@ -161,6 +164,8 @@ export class WebGL2Engine extends AbstractEngine {
 
     // Build force application shader from enabled modules
     this.buildForceShader();
+    // Build constraint shader from enabled modules (e.g. collisions)
+    this.buildConstrainShader();
   }
 
   private buildForceShader(): void {
@@ -174,20 +179,41 @@ export class WebGL2Engine extends AbstractEngine {
       return;
     }
 
-    let forceCode = "";
+    let uniformDecl = "";
+    let fnDecls = "";
+    let fnCalls = "";
+    const signatureParts: string[] = [];
     for (const module of forceModules) {
       try {
         const descriptor = module.webgl2();
         if ("apply" in descriptor && descriptor.apply) {
-          const code = descriptor.apply({
+          // Declare uniforms for all numeric inputs used by this module.
+          // These match the names produced by getUniform() below and are set every frame.
+          const inputs = module.read() as Record<string, unknown>;
+          for (const [key, value] of Object.entries(inputs)) {
+            if (typeof value !== "number") continue;
+            uniformDecl += `uniform float u_${module.name}_${key};\n`;
+          }
+
+          const raw = descriptor.apply({
             particleVar: "p",
-            dtVar: "u_dt",
+            dtVar: "dt",
             maxSizeVar: "0.0", // Not used in these modules yet
             getUniform: (id: string) => `u_${module.name}_${String(id)}`,
             getLength: (_id: string) => `0`, // Arrays not supported yet
             getState: () => "0.0", // State not supported yet
           });
-          forceCode += `  // ${module.name}\n${code}\n`;
+
+          let body = this.convertWGSLtoGLSL(raw);
+          body = body.trim();
+          if (!body.startsWith("{")) {
+            body = `{\n${body}\n}`;
+          }
+
+          const fnName = `apply_${module.name}`;
+          fnDecls += `void ${fnName}(inout Particle p, int particleId, float dt) ${body}\n\n`;
+          fnCalls += `  ${fnName}(p, particleId, u_dt);\n`;
+          signatureParts.push(module.name);
         }
       } catch (e) {
         // Module doesn't support WebGL2, skip it
@@ -195,39 +221,178 @@ export class WebGL2Engine extends AbstractEngine {
       }
     }
 
-    if (forceCode) {
-      // Convert WGSL-style code to GLSL
-      forceCode = this.convertWGSLtoGLSL(forceCode);
-
-      const fragmentShader = generateForceFragmentShader(forceCode);
+    if (fnDecls) {
+      const fragmentShader = generateForceFragmentShader(
+        fnDecls,
+        fnCalls,
+        uniformDecl
+      );
+      // Force shader is dynamic (depends on enabled modules). Replace if it exists.
+      this.resources.deleteProgram("forces");
       this.resources.createProgram(
         "forces",
         fullscreenVertexShader,
         fragmentShader
       );
+      this.forceProgramSignature = signatureParts.sort().join("|");
     }
   }
 
-  private convertWGSLtoGLSL(wgslCode: string): string {
-    // Convert WGSL syntax to GLSL
-    let glsl = wgslCode;
-
-    // Replace 'let' with appropriate GLSL declaration
-    glsl = glsl.replace(/\blet\b/g, "float");
-
-    // Replace 'var' with appropriate GLSL declaration
-    glsl = glsl.replace(/\bvar\b/g, "vec2");
-
-    // Replace vec2<f32> with vec2
-    glsl = glsl.replace(/vec2<f32>/g, "vec2");
-
-    // Replace select(a, b, cond) with (cond ? b : a) - note reversed order
-    glsl = glsl.replace(
-      /select\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g,
-      "($3 ? $2 : $1)"
+  private buildConstrainShader(): void {
+    const enabledForceModules = this.modules.filter(
+      (m) => m.role === "force" && m.isEnabled()
     );
+    if (enabledForceModules.length === 0) return;
 
-    return glsl;
+    // Only include modules that provide a webgl2().constrain snippet.
+    const constrainModules = enabledForceModules.filter((m) => {
+      try {
+        const d = m.webgl2() as any;
+        return !!d?.constrain;
+      } catch {
+        return false;
+      }
+    });
+    if (constrainModules.length === 0) return;
+
+    let uniformDecl = "";
+    let fnDecls = "";
+    let fnCalls = "";
+    const signatureParts: string[] = [];
+
+    for (const module of constrainModules) {
+      try {
+        const descriptor = module.webgl2() as any;
+        if (!descriptor?.constrain) continue;
+
+        // Declare uniforms for numeric inputs
+        const inputs = module.read() as Record<string, unknown>;
+        for (const [key, value] of Object.entries(inputs)) {
+          if (typeof value !== "number") continue;
+          uniformDecl += `uniform float u_${module.name}_${key};\n`;
+        }
+
+        const raw = descriptor.constrain({
+          particleVar: "p",
+          dtVar: "dt",
+          maxSizeVar: "u_maxSize",
+          prevPosVar: "vec2(0.0)", // Not supported yet (correct pass not implemented)
+          postPosVar: "vec2(0.0)", // Not supported yet
+          getUniform: (id: string) => `u_${module.name}_${String(id)}`,
+          getLength: (_id: string) => `0`,
+          getState: () => "0.0",
+        });
+
+        let body = this.convertWGSLtoGLSL(raw);
+        body = body.trim();
+        if (!body.startsWith("{")) {
+          body = `{\n${body}\n}`;
+        }
+
+        const fnName = `constrain_${module.name}`;
+        fnDecls += `void ${fnName}(inout Particle p, int particleId, float dt) ${body}\n\n`;
+        fnCalls += `  ${fnName}(p, particleId, u_dt);\n`;
+        signatureParts.push(module.name);
+      } catch (e) {
+        console.warn(
+          `Module ${module.name} does not support WebGL2 constrain:`,
+          e
+        );
+      }
+    }
+
+    if (!fnDecls) return;
+
+    const fragmentShader = generateConstrainFragmentShader(
+      fnDecls,
+      fnCalls,
+      uniformDecl
+    );
+    this.resources.deleteProgram("constrain");
+    this.resources.createProgram(
+      "constrain",
+      fullscreenVertexShader,
+      fragmentShader
+    );
+    this.constrainProgramSignature = signatureParts.sort().join("|");
+  }
+
+  private convertWGSLtoGLSL(wgslCode: string): string {
+    // Convert WGSL-ish snippets emitted by modules into GLSL.
+    // Modules currently output code that is "WGSL flavored" (let/var, vec2<f32>, select()).
+    // We translate it line-by-line and keep a small symbol table so we can infer
+    // whether a declaration should be float/vec2/vec4/etc.
+    const lines = wgslCode.split("\n");
+    const out: string[] = [];
+    const symbols = new Map<string, "float" | "vec2" | "vec3" | "vec4" | "mat2" | "mat3" | "mat4">();
+
+    const inferType = (rhs: string): typeof symbols extends Map<string, infer T> ? T : never => {
+      // Strip outer parens/spaces
+      const r = rhs.trim();
+
+      // Explicit constructors
+      if (/^(vec2)\s*\(/.test(r)) return "vec2" as any;
+      if (/^(vec3)\s*\(/.test(r)) return "vec3" as any;
+      if (/^(vec4)\s*\(/.test(r)) return "vec4" as any;
+      if (/^(mat2)\s*\(/.test(r)) return "mat2" as any;
+      if (/^(mat3)\s*\(/.test(r)) return "mat3" as any;
+      if (/^(mat4)\s*\(/.test(r)) return "mat4" as any;
+
+      // Known particle fields
+      // IMPORTANT:
+      // - `p.position` is vec2, but `p.position.x` is scalar.
+      // - same for `p.color` vs `p.color.r`.
+      if (/\b\w+\.color\b(?!\s*\.)/.test(r)) return "vec4" as any;
+      if (/\b\w+\.(position|velocity|acceleration)\b(?!\s*\.)/.test(r))
+        return "vec2" as any;
+
+      // Functions that definitely return float
+      if (/^(length|dot|sqrt|abs|floor|ceil|fract)\s*\(/.test(r)) return "float" as any;
+
+      // Use symbol table: if rhs mentions a known non-float symbol, treat as that type.
+      for (const [name, t] of symbols.entries()) {
+        if (t === "float") continue;
+        // If it's used as `name.x` etc, that's scalar, so ignore for type inference.
+        const re = new RegExp(`\\b${name}\\b(?!\\s*\\.)`);
+        if (re.test(r)) return t as any;
+      }
+
+      return "float" as any;
+    };
+
+    for (const line of lines) {
+      let l = line;
+
+      // Replace vecN<f32> with vecN
+      l = l.replace(/vec([234])<f32>/g, "vec$1");
+
+      // Replace select(a,b,cond) with ternary (cond ? b : a) - note reversed order
+      l = l.replace(
+        /select\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g,
+        "($3 ? $2 : $1)"
+      );
+
+      // Convert `let name = expr;` / `var name = expr;` into typed GLSL declarations.
+      const m = l.match(/^(\s*)(let|var)\s+([A-Za-z_]\w*)\s*=\s*([^;]+);/);
+      if (m) {
+        const indent = m[1] ?? "";
+        const name = m[3];
+        const rhs = m[4].trim();
+        const type = inferType(rhs) as any;
+        symbols.set(name, type);
+
+        // Ensure integer literals in pure-float contexts don't trip GLSL ES.
+        // (e.g. `let eps = 1;` -> `float eps = 1.0;`)
+        const rhsFixed =
+          type === "float" && /^\d+$/.test(rhs) ? `${rhs}.0` : rhs;
+
+        l = `${indent}${type} ${name} = ${rhsFixed};`;
+      }
+
+      out.push(l);
+    }
+
+    return out.join("\n");
   }
 
   protected startAnimationLoop(): void {
@@ -510,6 +675,13 @@ export class WebGL2Engine extends AbstractEngine {
       // Run simulation pass: integrate velocity/position, reset acceleration
       this.runIntegrationPass(dt);
 
+      // Run post-integration constraints (e.g. collisions).
+      // Mirrors CPU/WebGPU pipelines where constraints run after integration.
+      const iterations = Math.max(1, this.constrainIterations);
+      for (let i = 0; i < iterations; i++) {
+        this.runConstrainPass(dt);
+      }
+
       if (this.shouldSyncNextTick) {
         // Sync to GPU on next tick
         this.waitForNextTick().then(() =>
@@ -537,8 +709,18 @@ export class WebGL2Engine extends AbstractEngine {
 
   private runForcePass(dt: number): void {
     const gl = this.resources.getGL();
+    // Force program depends on which force modules are enabled.
+    // Modules start disabled at engine init, so build lazily and rebuild on toggles.
+    const enabledForceNames = this.modules
+      .filter((m) => m.role === "force" && m.isEnabled())
+      .map((m) => m.name)
+      .sort()
+      .join("|");
+    if (enabledForceNames && enabledForceNames !== this.forceProgramSignature) {
+      this.buildForceShader();
+    }
     const program = this.resources.getProgram("forces");
-    if (!program) return; // No forces to apply
+    if (!program) return; // Still no forces to apply (none enabled / none supported)
 
     gl.useProgram(program);
 
@@ -609,6 +791,94 @@ export class WebGL2Engine extends AbstractEngine {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     // Swap particle textures (ping-pong)
+    this.resources.swapParticleTextures();
+  }
+
+  private runConstrainPass(dt: number): void {
+    const gl = this.resources.getGL();
+
+    const enabledConstrainNames = this.modules
+      .filter((m) => m.role === "force" && m.isEnabled())
+      .filter((m) => {
+        try {
+          const d = m.webgl2() as any;
+          return !!d?.constrain;
+        } catch {
+          return false;
+        }
+      })
+      .map((m) => m.name)
+      .sort()
+      .join("|");
+
+    if (
+      enabledConstrainNames &&
+      enabledConstrainNames !== this.constrainProgramSignature
+    ) {
+      this.buildConstrainShader();
+    }
+
+    const program = this.resources.getProgram("constrain");
+    if (!program) return; // No constraints to run
+
+    gl.useProgram(program);
+
+    const targetFbo = this.resources.getOtherParticleFramebuffer();
+    const sourceTex = this.resources.getCurrentParticleTexture();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, targetFbo);
+
+    const texelsNeeded = this.bufferMaxParticles * 3;
+    const texSize = Math.ceil(Math.sqrt(texelsNeeded));
+    gl.viewport(0, 0, texSize, texSize);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, sourceTex);
+
+    const particleTexLoc = gl.getUniformLocation(program, "u_particleTexture");
+    const texelSizeLoc = gl.getUniformLocation(program, "u_texelSize");
+    const dtLoc = gl.getUniformLocation(program, "u_dt");
+    const countLoc = gl.getUniformLocation(program, "u_particleCount");
+
+    gl.uniform1i(particleTexLoc, 0);
+    gl.uniform2f(texelSizeLoc, 1.0 / texSize, 1.0 / texSize);
+    gl.uniform1f(dtLoc, dt);
+    gl.uniform1i(countLoc, this.getCount());
+
+    // View uniforms for GRID_* helpers
+    const snapshot = this.view.getSnapshot();
+    const size = this.view.getSize();
+    const offsetLoc = gl.getUniformLocation(program, "u_viewOffset");
+    const zoomLoc = gl.getUniformLocation(program, "u_viewZoom");
+    const sizeLoc = gl.getUniformLocation(program, "u_viewSize");
+    gl.uniform2f(offsetLoc, snapshot.cx, snapshot.cy);
+    gl.uniform1f(zoomLoc, snapshot.zoom);
+    gl.uniform2f(sizeLoc, size.width, size.height);
+
+    // Global maxSize uniform
+    const maxSizeLoc = gl.getUniformLocation(program, "u_maxSize");
+    gl.uniform1f(maxSizeLoc, this.getMaxSize());
+
+    // Module-specific uniforms
+    const modules = this.modules.filter((m) => m.role === "force" && m.isEnabled());
+    for (const module of modules) {
+      const inputs = module.read();
+      for (const [key, value] of Object.entries(inputs)) {
+        const uniformName = `u_${module.name}_${key}`;
+        const loc = gl.getUniformLocation(program, uniformName);
+        if (loc !== null) {
+          gl.uniform1f(loc, value as number);
+        }
+      }
+    }
+
+    const positionLoc = gl.getAttribLocation(program, "a_position");
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.disableVertexAttribArray(positionLoc);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
     this.resources.swapParticleTextures();
   }
 
