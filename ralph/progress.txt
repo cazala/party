@@ -165,3 +165,23 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Sensors module requires scene texture binding (HAS_SCENE_TEXTURE define) for full functionality
   - Each module's WGSL-style code gets converted to GLSL by engine.convertWGSLtoGLSL()
 ---
+## 2026-01-09 - US-008
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented webgl2() methods for Lines and Trails render modules
+- Lines module uses instanced rendering with R32F textures for particle indices
+- Trails module implements decay and diffuse passes with scene texture ping-pong
+- WebGL2Engine now handles all render modules in order via renderScene()
+- Files changed:
+  - packages/core/src/modules/render/lines.ts: Added webgl2() with same descriptor API as WebGPU
+  - packages/core/src/modules/render/trails.ts: Added webgl2() with decay + diffuse passes
+  - packages/core/src/runtimes/webgl2/engine.ts: Added renderScene(), renderTrails(), renderLinesModule(), updateLineIndicesTextures()
+  - packages/core/src/runtimes/webgl2/shaders.ts: Added linesVertexShader, linesFragmentShader, trailsDecayFragmentShader, trailsDiffuseFragmentShader
+  - test-webgl2-lines-trails.html: Browser test for Lines + Trails modules
+- **Learnings for future iterations:**
+  - Lines rendering uses instanced TRIANGLE_STRIP (4 vertices per line quad)
+  - Line indices are uploaded to R32F textures (single float per texel) for shader access
+  - Trails handles background via decay pass, so it runs BEFORE other render modules
+  - Scene texture ping-pong: read from current, write to other, then swap
+  - WebGL2 render modules follow same descriptor pattern as WebGPU (WGSL-style code)
+  - Render ordering in WebGL2 is handled by iterating modules array in order
+---

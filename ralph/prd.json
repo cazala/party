@@ -123,8 +123,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed in commit 5a1a8a5. Lines module uses instanced rendering with R32F textures for indices. Trails module implements decay and diffuse passes with scene texture ping-pong. Render ordering handled via renderScene() processing modules in array order. Browser test at test-webgl2-lines-trails.html."
     },
     {
       "id": "US-009",
