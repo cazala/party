@@ -12,7 +12,14 @@ export function Canvas({
   style?: React.CSSProperties;
   isPlaying?: boolean;
 }) {
-  const { canvasRef, canvasDimensions, runtime, handleWheel, isInitialized } = useEngine();
+  const {
+    canvasRef,
+    canvasDimensions,
+    runtime,
+    requestedRuntime,
+    handleWheel,
+    isInitialized,
+  } = useEngine();
   const {
     isSpawnMode,
     isGrabMode,
@@ -69,7 +76,11 @@ export function Canvas({
 
   return (
     <canvas
-      key={runtime} // Force canvas recreation when engine type changes
+      // Canvas contexts are mutually exclusive (webgpu/webgl2/2d). When the user requests a
+      // different runtime, remount the canvas so the next engine can acquire its context.
+      // IMPORTANT: key must be based on requestedRuntime (user intent), NOT actualRuntime
+      // (which can change after engine init, causing the engine to render into a detached canvas).
+      key={requestedRuntime}
       ref={canvasRef}
       id="canvas"
       className={canvasClasses}

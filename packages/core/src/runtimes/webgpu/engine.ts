@@ -36,6 +36,7 @@ export class WebGPUEngine extends AbstractEngine {
   private shouldSyncNextTick: boolean = false;
   private animationId: number | null = null;
   private didSwapchainWarmup: boolean = false;
+  private destroyed: boolean = false;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -107,6 +108,8 @@ export class WebGPUEngine extends AbstractEngine {
 
   // Implement abstract methods for animation loop
   protected startAnimationLoop(): void {
+    // Allow restarting after pause, but never after destroy.
+    if (this.destroyed) return;
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
@@ -115,17 +118,17 @@ export class WebGPUEngine extends AbstractEngine {
   }
 
   protected stopAnimationLoop(): void {
-    // WebGPU doesn't need to cancel requestAnimationFrame explicitly
-    // since it's handled in the animate method
-  }
-
-  async destroy(): Promise<void> {
-    this.pause();
-    // Stop animation loop to prevent using destroyed resources
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
+  }
+
+  async destroy(): Promise<void> {
+    // Mark as destroyed first so an in-flight animate() can't schedule another frame.
+    this.destroyed = true;
+    this.pause();
+    this.stopAnimationLoop();
     await this.resources.dispose();
   }
 
@@ -202,6 +205,11 @@ export class WebGPUEngine extends AbstractEngine {
   }
 
   private animate = async (): Promise<void> => {
+    // If destroy() has started, bail out and do NOT schedule another frame.
+    if (this.destroyed) return;
+    // If resources aren't ready (or were disposed), also bail.
+    if (!this.resources.isInitialized()) return;
+
     const dt = this.getTimeDelta();
     this.updateFPS(dt);
 
@@ -217,6 +225,7 @@ export class WebGPUEngine extends AbstractEngine {
     );
 
     // Encode command buffer
+    // Note: resources.getDevice() will throw if dispose raced; guard above prevents that.
     const encoder = this.resources.getDevice().createCommandEncoder();
 
     // Only run simulation/oscillators when playing
@@ -275,7 +284,9 @@ export class WebGPUEngine extends AbstractEngine {
     this.resources.getDevice().queue.submit([encoder.finish()]);
 
     // Continue animation loop regardless of playing state
-    this.animationId = requestAnimationFrame(this.animate);
+    if (!this.destroyed) {
+      this.animationId = requestAnimationFrame(this.animate);
+    }
   };
 
   private waitForNextTick(): Promise<void> {
