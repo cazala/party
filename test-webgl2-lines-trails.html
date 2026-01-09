@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGL2 Lines + Trails Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #1a1a1a;
+      color: white;
+    }
+    canvas {
+      border: 1px solid #444;
+      display: block;
+      margin: 20px auto;
+      background: black;
+    }
+    .controls {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #2a2a2a;
+      border-radius: 8px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      background: #4a4a4a;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #5a5a5a;
+    }
+    .info {
+      margin: 10px 0;
+      padding: 10px;
+      background: #333;
+      border-radius: 4px;
+    }
+    label {
+      display: inline-block;
+      margin: 5px;
+      padding: 5px;
+    }
+    input[type="range"] {
+      vertical-align: middle;
+    }
+    input[type="color"] {
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <h1>WebGL2 Lines + Trails Test</h1>
+    <div class="info">
+      <strong>Runtime:</strong> <span id="runtime">Loading...</span><br>
+      <strong>Particle Count:</strong> <span id="count">0</span><br>
+      <strong>Line Count:</strong> <span id="lineCount">0</span><br>
+      <strong>FPS:</strong> <span id="fps">0</span>
+    </div>
+    <h3>Lines Controls</h3>
+    <div>
+      <button onclick="toggleLines()">Toggle Lines</button>
+      <button onclick="addLine()">Add Random Line</button>
+      <button onclick="removeAllLines()">Remove All Lines</button>
+      <label>
+        Line Width: <input type="range" id="lineWidth" min="1" max="10" value="2" onchange="updateLineWidth()">
+        <span id="lineWidthVal">2</span>
+      </label>
+      <label>
+        Line Color: <input type="color" id="lineColor" value="#ffffff" onchange="updateLineColor()">
+      </label>
+      <button onclick="useParticleColors()">Use Particle Colors</button>
+    </div>
+    <h3>Trails Controls</h3>
+    <div>
+      <button onclick="toggleTrails()">Toggle Trails</button>
+      <label>
+        Trail Decay: <input type="range" id="trailDecay" min="0" max="100" value="10" onchange="updateTrailDecay()">
+        <span id="trailDecayVal">10</span>
+      </label>
+      <label>
+        Trail Diffuse: <input type="range" id="trailDiffuse" min="0" max="10" step="0.5" value="0" onchange="updateTrailDiffuse()">
+        <span id="trailDiffuseVal">0</span>
+      </label>
+    </div>
+    <h3>Simulation</h3>
+    <div>
+      <button onclick="togglePlay()">Play/Pause</button>
+      <button onclick="resetParticles()">Reset Particles</button>
+    </div>
+  </div>
+  <canvas id="canvas" width="800" height="600"></canvas>
+
+  <script type="module">
+    import { Engine, Particles, Lines, Trails, Environment } from 'http://localhost:3000/node_modules/@cazala/party/dist/index.js';
+
+    const canvas = document.getElementById('canvas');
+
+    // Create modules
+    const particles = new Particles({ enabled: true });
+    const lines = new Lines({ enabled: true, lineWidth: 2 });
+    const trails = new Trails({ enabled: true, trailDecay: 10, trailDiffuse: 0 });
+    const environment = new Environment({ gravityStrength: 50 });
+
+    const engine = new Engine({
+      canvas,
+      runtime: 'webgl2',
+      clearColor: { r: 0, g: 0, b: 0, a: 1 },
+      forces: [environment],
+      render: [trails, particles, lines]
+    });
+
+    await engine.initialize();
+
+    // Update UI
+    document.getElementById('runtime').textContent = engine.getActualRuntime();
+
+    // Create initial particles in a grid
+    function createParticles() {
+      const testParticles = [];
+      const cols = 5;
+      const rows = 4;
+      const spacingX = 120;
+      const spacingY = 100;
+      const offsetX = (800 - (cols - 1) * spacingX) / 2;
+      const offsetY = (600 - (rows - 1) * spacingY) / 2;
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          testParticles.push({
+            x: offsetX + col * spacingX,
+            y: offsetY + row * spacingY,
+            vx: (Math.random() - 0.5) * 50,
+            vy: (Math.random() - 0.5) * 50,
+            mass: 1,
+            size: 15,
+            color: {
+              r: col / (cols - 1),
+              g: row / (rows - 1),
+              b: 0.5,
+              a: 1
+            }
+          });
+        }
+      }
+      return testParticles;
+    }
+
+    // Create lines connecting adjacent particles in grid
+    function createLines(cols, rows) {
+      const linesList = [];
+      // Horizontal lines
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols - 1; col++) {
+          const a = row * cols + col;
+          const b = row * cols + col + 1;
+          linesList.push({ aIndex: a, bIndex: b });
+        }
+      }
+      // Vertical lines
+      for (let row = 0; row < rows - 1; row++) {
+        for (let col = 0; col < cols; col++) {
+          const a = row * cols + col;
+          const b = (row + 1) * cols + col;
+          linesList.push({ aIndex: a, bIndex: b });
+        }
+      }
+      return linesList;
+    }
+
+    engine.setParticles(createParticles());
+    lines.setLines(createLines(5, 4));
+    engine.play();
+
+    // Update counters
+    setInterval(() => {
+      document.getElementById('count').textContent = engine.getCount();
+      document.getElementById('fps').textContent = Math.round(engine.getFPS());
+      document.getElementById('lineCount').textContent = lines.getLines().length;
+    }, 100);
+
+    // Control functions
+    window.toggleLines = () => {
+      lines.setEnabled(!lines.isEnabled());
+      console.log('Lines enabled:', lines.isEnabled());
+    };
+
+    window.toggleTrails = () => {
+      trails.setEnabled(!trails.isEnabled());
+      console.log('Trails enabled:', trails.isEnabled());
+    };
+
+    window.addLine = () => {
+      const count = engine.getCount();
+      if (count < 2) return;
+      const a = Math.floor(Math.random() * count);
+      let b = Math.floor(Math.random() * count);
+      while (b === a) b = Math.floor(Math.random() * count);
+      lines.add({ aIndex: a, bIndex: b });
+      console.log('Added line between', a, 'and', b);
+    };
+
+    window.removeAllLines = () => {
+      lines.removeAll();
+      console.log('Removed all lines');
+    };
+
+    window.updateLineWidth = () => {
+      const width = parseFloat(document.getElementById('lineWidth').value);
+      document.getElementById('lineWidthVal').textContent = width;
+      lines.setLineWidth(width);
+    };
+
+    window.updateLineColor = () => {
+      const hex = document.getElementById('lineColor').value;
+      const r = parseInt(hex.substr(1, 2), 16) / 255;
+      const g = parseInt(hex.substr(3, 2), 16) / 255;
+      const b = parseInt(hex.substr(5, 2), 16) / 255;
+      lines.setLineColor({ r, g, b, a: 1 });
+      console.log('Set line color to', hex);
+    };
+
+    window.useParticleColors = () => {
+      lines.setLineColor(null);
+      console.log('Using particle colors for lines');
+    };
+
+    window.updateTrailDecay = () => {
+      const decay = parseFloat(document.getElementById('trailDecay').value);
+      document.getElementById('trailDecayVal').textContent = decay;
+      trails.setTrailDecay(decay);
+    };
+
+    window.updateTrailDiffuse = () => {
+      const diffuse = parseFloat(document.getElementById('trailDiffuse').value);
+      document.getElementById('trailDiffuseVal').textContent = diffuse;
+      trails.setTrailDiffuse(diffuse);
+    };
+
+    window.togglePlay = () => {
+      if (engine.isPlaying()) {
+        engine.pause();
+        console.log('Paused');
+      } else {
+        engine.play();
+        console.log('Playing');
+      }
+    };
+
+    window.resetParticles = () => {
+      engine.setParticles(createParticles());
+      lines.setLines(createLines(5, 4));
+      console.log('Reset particles and lines');
+    };
+  </script>
+</body>
+</html>

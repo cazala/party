@@ -2,6 +2,7 @@ import {
   Module,
   ModuleRole,
   type WebGPUDescriptor,
+  type WebGL2Descriptor,
   CPUDescriptor,
   DataType,
   RenderPassKind,
@@ -283,6 +284,77 @@ export class Lines extends Module<"lines", LinesInputs> {
         }
         context.restore();
       },
+    };
+  }
+
+  webgl2(): WebGL2Descriptor<LinesInputs> {
+    // WebGL2 Lines module uses instanced rendering to draw line segments
+    // Each instance represents one line between two particles
+    return {
+      passes: [
+        {
+          kind: RenderPassKind.Fullscreen,
+          instanced: true,
+          instanceFrom: "aIndexes",
+          // Vertex shader positions a quad representing a line segment between two particles
+          vertex: ({ getUniform }) => `{
+  let ia = u32(${getUniform("aIndexes", "instance_index")});
+  let ib = u32(${getUniform("bIndexes", "instance_index")});
+  let pa = particles[ia];
+  let pb = particles[ib];
+  // Cull if either endpoint is removed (mass == 0)
+  if (pa.mass == 0.0 || pb.mass == 0.0) {
+    out.position = vec4<f32>(2.0, 2.0, 1.0, 1.0);
+  } else {
+    let a = (pa.position - render_uniforms.camera_position) * render_uniforms.zoom;
+    let b = (pb.position - render_uniforms.camera_position) * render_uniforms.zoom;
+    let lw = max(1.0, ${getUniform("lineWidth")});
+    let dir = normalize(b - a + vec2<f32>(1e-6, 0.0));
+    let n = vec2<f32>(-dir.y, dir.x);
+    let halfW = (lw * 0.5);
+    let ax = (a.x * 2.0) / render_uniforms.canvas_size.x;
+    let ay = (-a.y * 2.0) / render_uniforms.canvas_size.y;
+    let bx = (b.x * 2.0) / render_uniforms.canvas_size.x;
+    let by = (-b.y * 2.0) / render_uniforms.canvas_size.y;
+    let nx = (n.x * halfW * 2.0) / render_uniforms.canvas_size.x;
+    let ny = (-n.y * halfW * 2.0) / render_uniforms.canvas_size.y;
+    let quad = array<vec2<f32>,4>(
+      vec2<f32>(ax - nx, ay - ny),
+      vec2<f32>(bx - nx, by - ny),
+      vec2<f32>(ax + nx, ay + ny),
+      vec2<f32>(bx + nx, by + ny)
+    );
+    // Pass color from particle A
+    out.color = pa.color;
+    out.position = vec4<f32>(quad[li], 0.0, 1.0);
+  }
+}`,
+          fragment: ({ sampleScene, getUniform }) => `{
+  // Simple overwrite blend with alpha compositing
+  var dst = ${sampleScene("uv")};
+  let lc = vec3<f32>(
+    ${getUniform("lineColorR")},
+    ${getUniform("lineColorG")},
+    ${getUniform("lineColorB")}
+  );
+  let useOverride = ${getUniform("lineColorR")} >= 0.0;
+  var src: vec4<f32> = color;
+  if (useOverride) {
+    src = vec4<f32>(lc, 1.0);
+  }
+  let outc = dst + src * (1.0 - dst.a);
+  return vec4<f32>(outc.rgb, min(1.0, outc.a));
+}`,
+          bindings: [
+            "lineWidth",
+            "lineColorR",
+            "lineColorG",
+            "lineColorB",
+          ] as const,
+          readsScene: true,
+          writesScene: true,
+        },
+      ],
     };
   }
 }

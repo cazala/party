@@ -27,6 +27,10 @@ import {
   generateForceFragmentShader,
   gridAssignCellsFragmentShader,
   gridBuildRangesFragmentShader,
+  linesVertexShader,
+  linesFragmentShader,
+  trailsDecayFragmentShader,
+  trailsDiffuseFragmentShader,
 } from "./shaders";
 
 export class WebGL2Engine extends AbstractEngine {
@@ -37,6 +41,11 @@ export class WebGL2Engine extends AbstractEngine {
   private animationId: number | null = null;
   private shouldSyncNextTick: boolean = false;
   private quadBuffer: WebGLBuffer | null = null;
+  // Lines module state
+  private lineQuadBuffer: WebGLBuffer | null = null;
+  private lineIndicesTextureA: WebGLTexture | null = null;
+  private lineIndicesTextureB: WebGLTexture | null = null;
+  private lineIndicesTexSize: number = 0;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -124,6 +133,31 @@ export class WebGL2Engine extends AbstractEngine {
       fullscreenVertexShader,
       gridBuildRangesFragmentShader
     );
+
+    // Lines rendering shader
+    this.resources.createProgram("lines", linesVertexShader, linesFragmentShader);
+
+    // Trails shaders (decay and diffuse passes)
+    this.resources.createProgram(
+      "trails_decay",
+      fullscreenVertexShader,
+      trailsDecayFragmentShader
+    );
+    this.resources.createProgram(
+      "trails_diffuse",
+      fullscreenVertexShader,
+      trailsDiffuseFragmentShader
+    );
+
+    // Create quad buffer for Lines instanced rendering (4 corners per line)
+    const gl = this.resources.getGL();
+    const lineQuadVertices = new Float32Array([0, 1, 2, 3]); // Corner indices
+    this.lineQuadBuffer = gl.createBuffer();
+    if (this.lineQuadBuffer) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.lineQuadBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, lineQuadVertices, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
 
     // Build force application shader from enabled modules
     this.buildForceShader();
@@ -213,6 +247,20 @@ export class WebGL2Engine extends AbstractEngine {
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
+    }
+    // Clean up line indices textures
+    const gl = this.resources.getGL();
+    if (this.lineIndicesTextureA) {
+      gl.deleteTexture(this.lineIndicesTextureA);
+      this.lineIndicesTextureA = null;
+    }
+    if (this.lineIndicesTextureB) {
+      gl.deleteTexture(this.lineIndicesTextureB);
+      this.lineIndicesTextureB = null;
+    }
+    if (this.lineQuadBuffer) {
+      gl.deleteBuffer(this.lineQuadBuffer);
+      this.lineQuadBuffer = null;
     }
     await this.resources.dispose();
   }
@@ -477,8 +525,8 @@ export class WebGL2Engine extends AbstractEngine {
       }
     }
 
-    // Always render particles to keep displaying current state
-    this.renderParticles();
+    // Render all modules in order according to render[] array
+    this.renderScene();
 
     // Present scene to canvas
     this.presentToCanvas();
@@ -615,7 +663,54 @@ export class WebGL2Engine extends AbstractEngine {
     this.resources.swapParticleTextures();
   }
 
-  private renderParticles(): void {
+  /**
+   * Main scene rendering method that processes all render modules in order.
+   * Render modules are processed in the order defined by the render[] array.
+   * Special handling for Trails (handles background), Particles, and Lines modules.
+   */
+  private renderScene(): void {
+    const gl = this.resources.getGL();
+    const size = this.view.getSize();
+
+    // Get render modules in order
+    const renderModules = this.modules.filter((m) => m.role === "render");
+
+    // Check if trails module exists and is enabled (handles background)
+    const trailsModule = renderModules.find((m) => m.name === "trails");
+    const hasActiveTrails = trailsModule && trailsModule.isEnabled();
+
+    // If trails is active, run it first (it handles the background)
+    if (hasActiveTrails) {
+      this.renderTrails(trailsModule!);
+    } else {
+      // Clear scene to clearColor if no trails
+      const sceneFbo = this.resources.getCurrentSceneFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFbo);
+      gl.viewport(0, 0, size.width, size.height);
+      const c = this.clearColor;
+      gl.clearColor(c.r, c.g, c.b, c.a);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
+    // Process remaining render modules in order
+    for (const module of renderModules) {
+      if (!module.isEnabled()) continue;
+      if (module.name === "trails") continue; // Already handled
+
+      if (module.name === "particles") {
+        this.renderParticlesModule(module);
+      } else if (module.name === "lines") {
+        this.renderLinesModule(module);
+      }
+      // Other render modules can be added here
+    }
+  }
+
+  /**
+   * Render particles module
+   */
+  private renderParticlesModule(particlesModule: Module): void {
     const gl = this.resources.getGL();
     const program = this.resources.getProgram("particles");
     if (!program) return;
@@ -626,19 +721,6 @@ export class WebGL2Engine extends AbstractEngine {
 
     const size = this.view.getSize();
     gl.viewport(0, 0, size.width, size.height);
-
-    // Always clear scene
-    const c = this.clearColor;
-    gl.clearColor(c.r, c.g, c.b, c.a);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-
-    // Find Particles module and check if enabled
-    const particlesModule = this.modules.find((m) => m.name === "particles");
-    if (!particlesModule || !particlesModule.isEnabled()) {
-      // Skip rendering particles if module is not present or disabled, but keep cleared scene
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      return;
-    }
 
     gl.useProgram(program);
 
@@ -693,6 +775,331 @@ export class WebGL2Engine extends AbstractEngine {
 
     gl.disable(gl.BLEND);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  /**
+   * Render trails module (decay + diffuse passes)
+   * Trails handles its own background by decaying toward clear color.
+   */
+  private renderTrails(trailsModule: Module): void {
+    const gl = this.resources.getGL();
+    const size = this.view.getSize();
+
+    // Read trails settings
+    const trailDecay = trailsModule.readValue("trailDecay");
+    const trailDiffuse = trailsModule.readValue("trailDiffuse");
+
+    // Pass 1: Decay - fade scene toward background color
+    const decayProgram = this.resources.getProgram("trails_decay");
+    if (decayProgram) {
+      gl.useProgram(decayProgram);
+
+      // Render to "other" scene texture
+      const targetFbo = this.resources.getOtherSceneFramebuffer();
+      const sourceTex = this.resources.getCurrentSceneTexture();
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, targetFbo);
+      gl.viewport(0, 0, size.width, size.height);
+
+      // Bind source scene texture
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, sourceTex);
+
+      // Set uniforms
+      const sceneTexLoc = gl.getUniformLocation(decayProgram, "u_sceneTexture");
+      const decayLoc = gl.getUniformLocation(decayProgram, "u_trailDecay");
+      const clearColorLoc = gl.getUniformLocation(decayProgram, "u_clearColor");
+
+      gl.uniform1i(sceneTexLoc, 0);
+      gl.uniform1f(decayLoc, trailDecay);
+      gl.uniform3f(
+        clearColorLoc,
+        this.clearColor.r,
+        this.clearColor.g,
+        this.clearColor.b
+      );
+
+      // Draw fullscreen quad
+      const positionLoc = gl.getAttribLocation(decayProgram, "a_position");
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+      gl.enableVertexAttribArray(positionLoc);
+      gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.disableVertexAttribArray(positionLoc);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+      // Swap scene textures
+      this.resources.swapSceneTextures();
+    }
+
+    // Pass 2: Diffuse (blur) - only if trailDiffuse > 0
+    if (trailDiffuse > 0) {
+      const diffuseProgram = this.resources.getProgram("trails_diffuse");
+      if (diffuseProgram) {
+        gl.useProgram(diffuseProgram);
+
+        // Render to "other" scene texture
+        const targetFbo = this.resources.getOtherSceneFramebuffer();
+        const sourceTex = this.resources.getCurrentSceneTexture();
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, targetFbo);
+        gl.viewport(0, 0, size.width, size.height);
+
+        // Bind source scene texture
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, sourceTex);
+
+        // Set uniforms
+        const sceneTexLoc = gl.getUniformLocation(
+          diffuseProgram,
+          "u_sceneTexture"
+        );
+        const diffuseLoc = gl.getUniformLocation(
+          diffuseProgram,
+          "u_trailDiffuse"
+        );
+        const sceneSizeLoc = gl.getUniformLocation(
+          diffuseProgram,
+          "u_sceneSize"
+        );
+
+        gl.uniform1i(sceneTexLoc, 0);
+        gl.uniform1f(diffuseLoc, trailDiffuse);
+        gl.uniform2f(sceneSizeLoc, size.width, size.height);
+
+        // Draw fullscreen quad
+        const positionLoc = gl.getAttribLocation(diffuseProgram, "a_position");
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+        gl.enableVertexAttribArray(positionLoc);
+        gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.disableVertexAttribArray(positionLoc);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        // Swap scene textures
+        this.resources.swapSceneTextures();
+      }
+    }
+  }
+
+  /**
+   * Render lines module using instanced rendering.
+   * Each line is a quad between two particle positions.
+   */
+  private renderLinesModule(linesModule: Module): void {
+    const gl = this.resources.getGL();
+    const program = this.resources.getProgram("lines");
+    if (!program || !this.lineQuadBuffer) return;
+
+    // Get line indices arrays
+    const aIndexes = linesModule.readArray("aIndexes") as number[];
+    const bIndexes = linesModule.readArray("bIndexes") as number[];
+
+    const lineCount = Math.min(aIndexes.length, bIndexes.length);
+    if (lineCount === 0) return;
+
+    // Update line indices textures
+    this.updateLineIndicesTextures(aIndexes, bIndexes, lineCount);
+    if (!this.lineIndicesTextureA || !this.lineIndicesTextureB) return;
+
+    const size = this.view.getSize();
+    const snapshot = this.view.getSnapshot();
+
+    // Render to current scene framebuffer
+    const sceneFbo = this.resources.getCurrentSceneFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFbo);
+    gl.viewport(0, 0, size.width, size.height);
+
+    gl.useProgram(program);
+
+    // Calculate particle texture size
+    const texelsNeeded = this.bufferMaxParticles * 3;
+    const texSize = Math.ceil(Math.sqrt(texelsNeeded));
+
+    // Bind particle texture (texture unit 0)
+    const particleTex = this.resources.getCurrentParticleTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, particleTex);
+
+    // Bind line indices textures (texture units 1 and 2)
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.lineIndicesTextureA);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, this.lineIndicesTextureB);
+
+    // Set uniforms
+    const particleTexLoc = gl.getUniformLocation(program, "u_particleTexture");
+    const texelSizeLoc = gl.getUniformLocation(program, "u_texelSize");
+    const countLoc = gl.getUniformLocation(program, "u_particleCount");
+    const viewOffsetLoc = gl.getUniformLocation(program, "u_viewOffset");
+    const viewZoomLoc = gl.getUniformLocation(program, "u_viewZoom");
+    const viewSizeLoc = gl.getUniformLocation(program, "u_viewSize");
+
+    gl.uniform1i(particleTexLoc, 0);
+    gl.uniform2f(texelSizeLoc, 1.0 / texSize, 1.0 / texSize);
+    gl.uniform1i(countLoc, this.getCount());
+    gl.uniform2f(viewOffsetLoc, snapshot.cx, snapshot.cy);
+    gl.uniform1f(viewZoomLoc, snapshot.zoom);
+    gl.uniform2f(viewSizeLoc, size.width, size.height);
+
+    // Line indices textures
+    const lineIndicesALoc = gl.getUniformLocation(program, "u_lineIndicesA");
+    const lineIndicesBLoc = gl.getUniformLocation(program, "u_lineIndicesB");
+    const lineCountLoc = gl.getUniformLocation(program, "u_lineCount");
+    const lineIndicesTexelSizeLoc = gl.getUniformLocation(
+      program,
+      "u_lineIndicesTexelSize"
+    );
+
+    gl.uniform1i(lineIndicesALoc, 1);
+    gl.uniform1i(lineIndicesBLoc, 2);
+    gl.uniform1i(lineCountLoc, lineCount);
+    gl.uniform2f(
+      lineIndicesTexelSizeLoc,
+      1.0 / this.lineIndicesTexSize,
+      1.0 / this.lineIndicesTexSize
+    );
+
+    // Lines module uniforms
+    const lineWidth = linesModule.readValue("lineWidth");
+    const lineColorR = linesModule.readValue("lineColorR");
+    const lineColorG = linesModule.readValue("lineColorG");
+    const lineColorB = linesModule.readValue("lineColorB");
+
+    const lineWidthLoc = gl.getUniformLocation(program, "u_lineWidth");
+    const lineColorRLoc = gl.getUniformLocation(program, "u_lineColorR");
+    const lineColorGLoc = gl.getUniformLocation(program, "u_lineColorG");
+    const lineColorBLoc = gl.getUniformLocation(program, "u_lineColorB");
+
+    gl.uniform1f(lineWidthLoc, lineWidth);
+    gl.uniform1f(lineColorRLoc, lineColorR);
+    gl.uniform1f(lineColorGLoc, lineColorG);
+    gl.uniform1f(lineColorBLoc, lineColorB);
+
+    // Set up vertex attributes for quad corners
+    const quadCornerLoc = gl.getAttribLocation(program, "a_quadCorner");
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.lineQuadBuffer);
+    gl.enableVertexAttribArray(quadCornerLoc);
+    gl.vertexAttribPointer(quadCornerLoc, 1, gl.FLOAT, false, 0, 0);
+
+    // Enable alpha blending
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // Draw instanced line quads (4 vertices per quad, using triangle strip)
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, lineCount);
+
+    gl.disable(gl.BLEND);
+    gl.disableVertexAttribArray(quadCornerLoc);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  /**
+   * Update line indices textures for instanced rendering.
+   * Stores aIndexes and bIndexes in separate R32F textures.
+   */
+  private updateLineIndicesTextures(
+    aIndexes: number[],
+    bIndexes: number[],
+    lineCount: number
+  ): void {
+    const gl = this.resources.getGL();
+
+    // Calculate texture size (square texture)
+    const neededSize = Math.ceil(Math.sqrt(lineCount));
+    const texSize = Math.max(1, neededSize);
+
+    // Recreate textures if size changed
+    if (texSize !== this.lineIndicesTexSize) {
+      // Delete old textures
+      if (this.lineIndicesTextureA) gl.deleteTexture(this.lineIndicesTextureA);
+      if (this.lineIndicesTextureB) gl.deleteTexture(this.lineIndicesTextureB);
+
+      // Create new textures (R32F for single float per texel)
+      this.lineIndicesTextureA = gl.createTexture();
+      this.lineIndicesTextureB = gl.createTexture();
+      this.lineIndicesTexSize = texSize;
+
+      if (this.lineIndicesTextureA) {
+        gl.bindTexture(gl.TEXTURE_2D, this.lineIndicesTextureA);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.R32F,
+          texSize,
+          texSize,
+          0,
+          gl.RED,
+          gl.FLOAT,
+          null
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      }
+
+      if (this.lineIndicesTextureB) {
+        gl.bindTexture(gl.TEXTURE_2D, this.lineIndicesTextureB);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.R32F,
+          texSize,
+          texSize,
+          0,
+          gl.RED,
+          gl.FLOAT,
+          null
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      }
+    }
+
+    // Upload line indices data
+    const totalPixels = texSize * texSize;
+    const dataA = new Float32Array(totalPixels);
+    const dataB = new Float32Array(totalPixels);
+
+    for (let i = 0; i < lineCount; i++) {
+      dataA[i] = aIndexes[i];
+      dataB[i] = bIndexes[i];
+    }
+
+    if (this.lineIndicesTextureA) {
+      gl.bindTexture(gl.TEXTURE_2D, this.lineIndicesTextureA);
+      gl.texSubImage2D(
+        gl.TEXTURE_2D,
+        0,
+        0,
+        0,
+        texSize,
+        texSize,
+        gl.RED,
+        gl.FLOAT,
+        dataA
+      );
+    }
+
+    if (this.lineIndicesTextureB) {
+      gl.bindTexture(gl.TEXTURE_2D, this.lineIndicesTextureB);
+      gl.texSubImage2D(
+        gl.TEXTURE_2D,
+        0,
+        0,
+        0,
+        texSize,
+        texSize,
+        gl.RED,
+        gl.FLOAT,
+        dataB
+      );
+    }
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
   private presentToCanvas(): void {

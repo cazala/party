@@ -587,6 +587,259 @@ void main() {
 }
 
 /**
+ * Lines vertex shader
+ * Renders line segments as quads between two particle positions
+ * Uses instanced rendering where each instance is one line
+ */
+export const linesVertexShader = `#version 300 es
+precision highp float;
+
+// Per-vertex: quad corner (0-3 = corners of line segment quad)
+in float a_quadCorner;
+
+// Uniforms for particle data lookup
+uniform sampler2D u_particleTexture;
+uniform vec2 u_texelSize;
+uniform int u_particleCount;
+
+// View uniforms
+uniform vec2 u_viewOffset;
+uniform float u_viewZoom;
+uniform vec2 u_viewSize;
+
+// Lines module uniforms
+uniform float u_lineWidth;
+uniform float u_lineColorR;
+uniform float u_lineColorG;
+uniform float u_lineColorB;
+
+// Line indices arrays (uploaded as textures or uniforms)
+uniform sampler2D u_lineIndicesA;
+uniform sampler2D u_lineIndicesB;
+uniform int u_lineCount;
+uniform vec2 u_lineIndicesTexelSize;
+
+// Outputs to fragment shader
+out vec4 v_color;
+
+// Helper to get particle data texel coord from particle ID
+vec2 getTexelCoord(int particleId, int texelOffset) {
+  int texelIndex = particleId * 3 + texelOffset;
+  int x = texelIndex % int(1.0 / u_texelSize.x);
+  int y = texelIndex / int(1.0 / u_texelSize.x);
+  return vec2(float(x), float(y)) * u_texelSize + u_texelSize * 0.5;
+}
+
+void main() {
+  // Instance index is which line we're drawing
+  int lineIndex = gl_InstanceID;
+
+  if (lineIndex >= u_lineCount) {
+    // Hide line by placing outside clip space
+    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+    v_color = vec4(0.0);
+    return;
+  }
+
+  // Read particle indices for this line from texture
+  int lineTexWidth = int(1.0 / u_lineIndicesTexelSize.x);
+  int lx = lineIndex % lineTexWidth;
+  int ly = lineIndex / lineTexWidth;
+  vec2 lineCoord = (vec2(float(lx), float(ly)) + 0.5) * u_lineIndicesTexelSize;
+
+  int ia = int(texture(u_lineIndicesA, lineCoord).r);
+  int ib = int(texture(u_lineIndicesB, lineCoord).r);
+
+  // Validate indices
+  if (ia < 0 || ia >= u_particleCount || ib < 0 || ib >= u_particleCount) {
+    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+    v_color = vec4(0.0);
+    return;
+  }
+
+  // Read particle data
+  vec2 coord0A = getTexelCoord(ia, 0);
+  vec2 coord1A = getTexelCoord(ia, 1);
+  vec2 coord2A = getTexelCoord(ia, 2);
+  vec2 coord0B = getTexelCoord(ib, 0);
+  vec2 coord1B = getTexelCoord(ib, 1);
+
+  vec4 texel0A = texture(u_particleTexture, coord0A);
+  vec4 texel1A = texture(u_particleTexture, coord1A);
+  vec4 texel2A = texture(u_particleTexture, coord2A);
+  vec4 texel0B = texture(u_particleTexture, coord0B);
+  vec4 texel1B = texture(u_particleTexture, coord1B);
+
+  vec2 posA = texel0A.xy;
+  vec2 posB = texel0B.xy;
+  float massA = texel1A.w;
+  float massB = texel1B.w;
+
+  // Cull if either endpoint is removed (mass == 0)
+  if (massA == 0.0 || massB == 0.0) {
+    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+    v_color = vec4(0.0);
+    return;
+  }
+
+  // Transform to view space
+  vec2 a = (posA - u_viewOffset) * u_viewZoom;
+  vec2 b = (posB - u_viewOffset) * u_viewZoom;
+
+  // Calculate line direction and perpendicular
+  vec2 delta = b - a;
+  float len = length(delta);
+  vec2 dir = len > 0.0001 ? delta / len : vec2(1.0, 0.0);
+  vec2 perp = vec2(-dir.y, dir.x);
+
+  float halfW = max(1.0, u_lineWidth) * 0.5;
+
+  // Calculate quad corners based on a_quadCorner (0-3)
+  // Quad layout: 0=A-perp, 1=B-perp, 2=A+perp, 3=B+perp (for triangle strip)
+  int corner = int(a_quadCorner);
+  vec2 pos;
+  if (corner == 0) {
+    pos = a - perp * halfW;
+  } else if (corner == 1) {
+    pos = b - perp * halfW;
+  } else if (corner == 2) {
+    pos = a + perp * halfW;
+  } else {
+    pos = b + perp * halfW;
+  }
+
+  // Convert to clip space (-1 to 1)
+  vec2 clipPos = (pos / u_viewSize) * 2.0;
+  clipPos.y = -clipPos.y; // Y is inverted in screen space
+
+  gl_Position = vec4(clipPos, 0.0, 1.0);
+
+  // Pass color - use particle A's color or override color
+  if (u_lineColorR >= 0.0) {
+    v_color = vec4(u_lineColorR, u_lineColorG, u_lineColorB, 1.0);
+  } else {
+    v_color = texel2A;
+  }
+}
+`;
+
+/**
+ * Lines fragment shader
+ * Simple flat color output with alpha blending
+ */
+export const linesFragmentShader = `#version 300 es
+precision highp float;
+
+in vec4 v_color;
+out vec4 fragColor;
+
+void main() {
+  fragColor = v_color;
+}
+`;
+
+/**
+ * Trails decay fragment shader
+ * Fades scene content toward background color over time
+ */
+export const trailsDecayFragmentShader = `#version 300 es
+precision highp float;
+
+in vec2 v_texCoord;
+out vec4 fragColor;
+
+uniform sampler2D u_sceneTexture;
+uniform float u_trailDecay;
+uniform vec3 u_clearColor;
+
+void main() {
+  vec4 current = texture(u_sceneTexture, v_texCoord);
+
+  float d = clamp(u_trailDecay * 0.005, 0.0, 1.0);
+
+  // Early exit if no decay
+  if (d <= 0.00001) {
+    fragColor = current;
+    return;
+  }
+
+  vec3 bg = u_clearColor;
+
+  // Mix toward background color
+  vec3 out_rgb = mix(current.rgb, bg, d);
+  float out_a = current.a * (1.0 - d);
+
+  // Snap to background if close enough
+  float eps = 1.0 / 255.0;
+  if (abs(out_rgb.r - bg.r) < eps &&
+      abs(out_rgb.g - bg.g) < eps &&
+      abs(out_rgb.b - bg.b) < eps &&
+      out_a < eps) {
+    fragColor = vec4(bg, 0.0);
+  } else {
+    fragColor = vec4(out_rgb, out_a);
+  }
+}
+`;
+
+/**
+ * Trails diffuse fragment shader
+ * Applies gaussian-like blur to scene texture
+ */
+export const trailsDiffuseFragmentShader = `#version 300 es
+precision highp float;
+
+in vec2 v_texCoord;
+out vec4 fragColor;
+
+uniform sampler2D u_sceneTexture;
+uniform vec2 u_sceneSize;
+uniform float u_trailDiffuse;
+
+void main() {
+  vec4 current = texture(u_sceneTexture, v_texCoord);
+
+  int radius_i = clamp(int(round(u_trailDiffuse)), 0, 12);
+
+  // Early exit if no blur
+  if (radius_i <= 0) {
+    fragColor = current;
+    return;
+  }
+
+  float sigma = max(0.5, float(radius_i) * 0.5);
+  float twoSigma2 = 2.0 * sigma * sigma;
+
+  vec4 sum = vec4(0.0);
+  float wsum = 0.0;
+
+  vec2 pixelSize = 1.0 / u_sceneSize;
+
+  for (int dy = -radius_i; dy <= radius_i; dy++) {
+    for (int dx = -radius_i; dx <= radius_i; dx++) {
+      float d2 = float(dx*dx + dy*dy);
+      float w = exp(-d2 / twoSigma2);
+
+      if (w < 1e-5) continue;
+
+      vec2 sampleCoord = v_texCoord + vec2(float(dx), float(dy)) * pixelSize;
+      sampleCoord = clamp(sampleCoord, vec2(0.0), vec2(1.0));
+
+      vec4 c = texture(u_sceneTexture, sampleCoord);
+      sum += c * w;
+      wsum += w;
+    }
+  }
+
+  if (wsum > 0.0) {
+    fragColor = sum / wsum;
+  } else {
+    fragColor = current;
+  }
+}
+`;
+
+/**
  * GLSL helper functions for neighbor iteration
  * These are included in shaders that need neighbor queries
  */
