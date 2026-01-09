@@ -1,0 +1,33 @@
+# Ralph Progress Log
+Started: Thu Jan  8 19:49:26 -03 2026
+
+## Codebase Patterns
+- Engine API is defined in `packages/core/src/engine.ts` with EngineOptions type and Engine class
+- Runtime types are defined as union types (e.g., "cpu" | "webgpu" | "webgl2" | "auto")
+- Module class is in `packages/core/src/module.ts` - all modules must extend this abstract class
+- Modules must implement runtime-specific descriptors: webgpu(), cpu(), and optionally webgl2()
+- The Module.webgl2() method should throw an error if not implemented (default behavior)
+- Runtime engines are in `packages/core/src/runtimes/{runtime}/engine.ts` (e.g., webgpu/engine.ts, cpu/engine.ts)
+- The Engine class acts as a factory that selects the appropriate runtime engine
+- Auto-fallback logic is in Engine.initialize() method - handles WebGPU → CPU fallback
+- Type definitions use template literals for runtime types to ensure consistency
+- Always run `npm run type-check` (not `npm run typecheck`) to verify TypeScript compilation
+
+---
+
+## Thu Jan 8 19:54:44 -03 2026 - US-001
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Added WebGL2 runtime option to Engine API
+- Files changed:
+  - packages/core/src/engine.ts (added "webgl2" to runtime types, updated getActualRuntime(), added error handling)
+  - packages/core/src/module.ts (added webgl2() method with default implementation, added WebGL2 descriptor types)
+- **Learnings for future iterations:**
+  - The Engine class uses a factory pattern to instantiate concrete runtime engines (WebGPUEngine or CPUEngine)
+  - For US-001, we only added type support and error handling; actual WebGL2Engine implementation will come later
+  - The Module class has abstract methods for webgpu() and cpu(), but webgl2() is optional (throws error by default)
+  - Error handling for unimplemented runtimes happens in the Engine constructor, not in initialize()
+  - The isSupported() method in Engine checks if a module supports the current runtime by calling the runtime-specific method
+  - TypeScript type checking requires both the core package and playground to pass
+  - WebGL2 descriptor types are initially aliases to WebGPU descriptors (will diverge as implementation progresses)
+
+---
