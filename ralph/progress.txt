@@ -205,3 +205,21 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Engine slice maintains isWebGPU for backward compatibility but actualRuntime is the source of truth
   - Dropdown component accepts options array with {value, label} objects
 ---
+## 2026-01-09 - US-010
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Updated all documentation files for WebGL2 runtime support
+- docs/user-guide.md: Added "webgl2" to runtime options, updated fallback chain description, added WebGL2 to runtime selection section with browser compatibility
+- docs/module-author-guide.md: Added WebGL2Descriptor import, added comprehensive WebGL2 runtime guidance section covering descriptor API, architecture differences, neighbor queries, module uniforms, scene texture usage, and known limitations
+- docs/maintainer-guide.md: Added WebGL2 runtime section documenting key components (GL2Resources, ParticleStore, SpacialGrid, shaders), texture-based particle storage, execution order, and performance considerations
+- packages/core/README.md: Updated features for multi-runtime architecture, added "webgl2" to runtime options, expanded browser support section, added webgl2() example in custom module documentation
+- Files changed:
+  - docs/user-guide.md
+  - docs/module-author-guide.md
+  - docs/maintainer-guide.md
+  - packages/core/README.md
+- **Learnings for future iterations:**
+  - Documentation should always cover all three runtimes when describing runtime-specific behavior
+  - Module author documentation should include both the API and the constraints/limitations of each runtime
+  - Custom module examples should show all three descriptor methods (webgpu, webgl2, cpu) for completeness
+  - WebGL2 uses WGSL-style code that gets converted to GLSL, so examples can often be shared with WebGPU
+---
