@@ -11,7 +11,6 @@ import {
   setPicflipPressureIterations,
   setPicflipOverrelaxation,
   setPicflipDensity,
-  setPicflipMaxVelocity,
   resetPicflip,
 } from "../../slices/modules/picflip";
 
@@ -30,7 +29,6 @@ export function usePicflip() {
     pressureIterations,
     overrelaxation,
     density,
-    maxVelocity,
   } = state;
   const isEnabled = state.enabled;
 
@@ -42,7 +40,6 @@ export function usePicflip() {
       picflip.setPressureIterations(state.pressureIterations);
       picflip.setOverrelaxation(state.overrelaxation);
       picflip.setDensity(state.density);
-      picflip.setMaxVelocity(state.maxVelocity);
     }
   }, [picflip, state]);
 
@@ -94,14 +91,6 @@ export function usePicflip() {
     [dispatch, picflip]
   );
 
-  const setMaxVelocity = useCallback(
-    (value: number) => {
-      dispatch(setPicflipMaxVelocity(value));
-      picflip?.setMaxVelocity(value);
-    },
-    [dispatch, picflip]
-  );
-
   const reset = useCallback(() => {
     dispatch(resetPicflip());
   }, [dispatch]);
@@ -113,7 +102,6 @@ export function usePicflip() {
     pressureIterations,
     overrelaxation,
     density,
-    maxVelocity,
     isEnabled,
     // Actions
     setEnabled,
@@ -122,7 +110,6 @@ export function usePicflip() {
     setPressureIterations,
     setOverrelaxation,
     setDensity,
-    setMaxVelocity,
     reset,
   };
 }

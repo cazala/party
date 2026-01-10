@@ -116,8 +116,7 @@
       "flipRatio": 0.95,
       "pressureIterations": 20,
       "overrelaxation": 1.9,
-      "density": 1,
-      "maxVelocity": 200
+      "density": 1
     }
   },
   "init": {

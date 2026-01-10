@@ -30,7 +30,6 @@ export const DEFAULT_PICFLIP_FLIP_RATIO = 0.95;
 export const DEFAULT_PICFLIP_PRESSURE_ITERATIONS = 20;
 export const DEFAULT_PICFLIP_OVERRELAXATION = 1.9;
 export const DEFAULT_PICFLIP_DENSITY = 1.0;
-export const DEFAULT_PICFLIP_MAX_VELOCITY = 200;
 
 // State keys for per-particle state storage
 type PicflipStateKeys = "prevVelX" | "prevVelY";
@@ -41,7 +40,6 @@ type PicflipInputs = {
   pressureIterations: number;
   overrelaxation: number;
   density: number;
-  maxVelocity: number;
 };
 
 export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> {
@@ -53,7 +51,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
     pressureIterations: DataType.NUMBER,
     overrelaxation: DataType.NUMBER,
     density: DataType.NUMBER,
-    maxVelocity: DataType.NUMBER,
   } as const;
 
   constructor(opts?: {
@@ -63,7 +60,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
     pressureIterations?: number;
     overrelaxation?: number;
     density?: number;
-    maxVelocity?: number;
   }) {
     super();
     this.write({
@@ -73,7 +69,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
         opts?.pressureIterations ?? DEFAULT_PICFLIP_PRESSURE_ITERATIONS,
       overrelaxation: opts?.overrelaxation ?? DEFAULT_PICFLIP_OVERRELAXATION,
       density: opts?.density ?? DEFAULT_PICFLIP_DENSITY,
-      maxVelocity: opts?.maxVelocity ?? DEFAULT_PICFLIP_MAX_VELOCITY,
     });
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
@@ -96,9 +91,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   setDensity(v: number): void {
     this.write({ density: v });
   }
-  setMaxVelocity(v: number): void {
-    this.write({ maxVelocity: v });
-  }
 
   // Getters
   getGridResolution(): number {
@@ -116,9 +108,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   getDensity(): number {
     return this.readValue("density");
   }
-  getMaxVelocity(): number {
-    return this.readValue("maxVelocity");
-  }
 
   webgpu(): WebGPUDescriptor<PicflipInputs, PicflipStateKeys> {
     return {
@@ -131,10 +120,9 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   ${setState("prevVelY", `${particleVar}.velocity.y`)};
 }`,
 
-      // Apply pass: PIC/FLIP velocity update with clamping
+      // Apply pass: PIC/FLIP velocity update
       apply: ({ particleVar, dtVar, getUniform, getState }) => `{
   let flipRatio = ${getUniform("flipRatio")};
-  let maxVel = ${getUniform("maxVelocity")};
 
   // Get stored previous velocity
   let prevVelX = ${getState("prevVelX")};
@@ -227,14 +215,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
     newVelY = newVelY + gradY * ${dtVar};
   }
 
-  // Clamp velocity to avoid instabilities
-  let vel2 = newVelX * newVelX + newVelY * newVelY;
-  if (vel2 > maxVel * maxVel) {
-    let velMag = sqrt(vel2);
-    newVelX = newVelX * maxVel / velMag;
-    newVelY = newVelY * maxVel / velMag;
-  }
-
   ${particleVar}.velocity.x = newVelX;
   ${particleVar}.velocity.y = newVelY;
 }`,
@@ -251,10 +231,9 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
         setState("prevVelY", particle.velocity.y);
       },
 
-      // Apply pass: PIC/FLIP velocity update with clamping
+      // Apply pass: PIC/FLIP velocity update
       apply: ({ particle, getNeighbors, dt, getState }) => {
         const flipRatio = this.readValue("flipRatio");
-        const maxVel = this.readValue("maxVelocity");
         const targetDensity = this.readValue("density");
 
         // Get stored previous velocity
@@ -336,14 +315,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
 
           newVelX += gradX * dt;
           newVelY += gradY * dt;
-        }
-
-        // Clamp velocity to avoid instabilities
-        const vel2 = newVelX * newVelX + newVelY * newVelY;
-        if (vel2 > maxVel * maxVel) {
-          const velMag = Math.sqrt(vel2);
-          newVelX = (newVelX * maxVel) / velMag;
-          newVelY = (newVelY * maxVel) / velMag;
         }
 
         particle.velocity.x = newVelX;

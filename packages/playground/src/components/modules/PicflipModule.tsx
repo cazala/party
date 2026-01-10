@@ -2,14 +2,7 @@ import { Slider } from "../ui/Slider";
 import { usePicflip } from "../../hooks/modules/usePicflip";
 
 export function PicflipModule({ enabled = true }: { enabled?: boolean }) {
-  const {
-    flipRatio,
-    density,
-    maxVelocity,
-    setFlipRatio,
-    setDensity,
-    setMaxVelocity,
-  } = usePicflip();
+  const { flipRatio, density, setFlipRatio, setDensity } = usePicflip();
 
   return (
     <>
@@ -33,16 +26,6 @@ export function PicflipModule({ enabled = true }: { enabled?: boolean }) {
         step={0.1}
         formatValue={(v) => v.toFixed(1)}
         onChange={setDensity}
-        disabled={!enabled}
-      />
-      <Slider
-        sliderId="picflip.maxVelocity"
-        label="Max Velocity"
-        value={maxVelocity}
-        min={10}
-        max={5000}
-        step={10}
-        onChange={setMaxVelocity}
         disabled={!enabled}
       />
     </>
