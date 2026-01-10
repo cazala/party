@@ -19,6 +19,7 @@ import {
   Joints,
   Lines,
   Grab,
+  Picflip,
 } from "@cazala/party";
 import { useEngineInternal } from "../hooks/useEngineInternal";
 import { useWindowSize } from "../hooks/useWindowSize";
@@ -102,6 +103,7 @@ export interface EngineContextType {
   joints: Joints | null;
   lines: Lines | null;
   grab: Grab | null;
+  picflip: Picflip | null;
 }
 
 export const EngineContext = createContext<EngineContextType | null>(null);

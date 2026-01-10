@@ -13,6 +13,7 @@ import {
   Joints,
   Lines,
   Grab,
+  Picflip,
 } from "@cazala/party";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
@@ -72,6 +73,7 @@ import {
   importParticlesSettings,
   importLinesSettings,
   importJointsSettings,
+  importPicflipSettings,
 } from "../slices/modules";
 
 export interface UseEngineProps {
@@ -113,6 +115,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const jointsRef = useRef<Joints | null>(null);
   const linesRef = useRef<Lines | null>(null);
   const grabRef = useRef<Grab | null>(null);
+  const picflipRef = useRef<Picflip | null>(null);
 
   // Local state for engine initialization
   const [isAutoMode, setIsAutoMode] = useState(true);
@@ -172,6 +175,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           particlesRef.current = null;
           jointsRef.current = null;
           linesRef.current = null;
+          picflipRef.current = null;
           registerEngine(null);
         } catch (err) {
           console.warn("Error cleaning up previous engine:", err);
@@ -276,6 +280,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const joints = new Joints({ enabled: false });
         const lines = new Lines({ enabled: false });
         const grab = new Grab({ enabled: false });
+        const picflip = new Picflip({ enabled: false });
 
         // Create particles renderer
         const particles = new Particles();
@@ -290,6 +295,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           interaction,
           joints,
           grab,
+          picflip,
         ];
         const render = [trails, lines, particles];
 
@@ -323,6 +329,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         particlesRef.current = particles;
         jointsRef.current = joints;
         linesRef.current = lines;
+        picflipRef.current = picflip;
         grabRef.current = grab;
         // Register engine for thunks
         registerEngine(engine);
@@ -381,6 +388,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
             dispatch(importJointsSettings(modules.joints));
             dispatch(importLinesSettings(modules.lines));
             dispatch(importParticlesSettings(modules.particles));
+            dispatch(importPicflipSettings(modules.picflip));
           }
         }
 
@@ -423,6 +431,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           particlesRef.current = null;
           jointsRef.current = null;
           linesRef.current = null;
+          picflipRef.current = null;
           registerEngine(null);
         };
       } catch (err) {
@@ -503,6 +512,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     const particles = particlesRef.current;
     const joints = jointsRef.current;
     const lines = linesRef.current;
+    const picflip = picflipRef.current;
     try {
       // Apply module enabled/disabled states from Redux to module instances
       if (environment && environment.setEnabled) {
@@ -548,6 +558,10 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       if (lines && lines.setEnabled) {
         lines.setEnabled(modulesState.lines.enabled);
       }
+
+      if (picflip && picflip.setEnabled) {
+        picflip.setEnabled(modulesState.picflip.enabled);
+      }
     } catch (err) {
       console.warn("Error applying module states:", err);
     }
@@ -566,6 +580,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     modulesState.particles.enabled,
     modulesState.joints.enabled,
     modulesState.lines.enabled,
+    modulesState.picflip.enabled,
   ]);
 
   // Action functions (wrapped thunks)
@@ -766,5 +781,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     joints: jointsRef.current,
     lines: linesRef.current,
     grab: grabRef.current,
+    picflip: picflipRef.current,
   };
 }

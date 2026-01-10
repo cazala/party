@@ -11,6 +11,7 @@ import { particlesReducer, ParticlesModuleState } from "./particles";
 import { jointsReducer, JointsModuleState } from "./joints";
 import { linesReducer, LinesModuleState } from "./lines";
 import { grabReducer, GrabModuleState } from "./grab";
+import { picflipReducer, PicflipModuleState } from "./picflip";
 
 // Re-export all module types
 export type {
@@ -26,6 +27,7 @@ export type {
   JointsModuleState,
   LinesModuleState,
   GrabModuleState,
+  PicflipModuleState,
 };
 
 // Re-export all module actions and reducers
@@ -41,6 +43,7 @@ export * from "./particles";
 export * from "./joints";
 export * from "./lines";
 export * from "./grab";
+export * from "./picflip";
 
 // Re-export combinedReducer for easier imports
 export interface ModulesState {
@@ -56,6 +59,7 @@ export interface ModulesState {
   joints: JointsModuleState;
   lines: LinesModuleState;
   grab: GrabModuleState;
+  picflip: PicflipModuleState;
 }
 
 export const modulesReducer = combineReducers({
@@ -71,6 +75,7 @@ export const modulesReducer = combineReducers({
   joints: jointsReducer,
   lines: linesReducer,
   grab: grabReducer,
+  picflip: picflipReducer,
 });
 
 // Global selectors
