@@ -26,8 +26,11 @@ export interface SceneTextures {
 export interface GridTextures {
   cellIds: WebGLTexture;
   cellIdsFbo: WebGLFramebuffer;
-  sortedIndices: WebGLTexture;
-  sortedIndicesFbo: WebGLFramebuffer;
+  // Ping-pong textures for GPU sorting passes
+  sortedIndicesA: WebGLTexture;
+  sortedIndicesB: WebGLTexture;
+  sortedIndicesFboA: WebGLFramebuffer;
+  sortedIndicesFboB: WebGLFramebuffer;
   cellRanges: WebGLTexture;
   cellRangesFbo: WebGLFramebuffer;
 }
@@ -41,6 +44,7 @@ export class GL2Resources {
   private gridTextures: GridTextures | null = null;
   private currentParticleTexture: "A" | "B" = "A";
   private currentSceneTexture: "A" | "B" = "A";
+  private currentSortedIndices: "A" | "B" = "A";
   private particleTextureSize: { width: number; height: number } | null = null;
   private gridTextureSize: { width: number; height: number } | null = null;
   private programs: Map<string, WebGLProgram> = new Map();
@@ -492,8 +496,10 @@ export class GL2Resources {
     if (this.gridTextures) {
       gl.deleteTexture(this.gridTextures.cellIds);
       gl.deleteFramebuffer(this.gridTextures.cellIdsFbo);
-      gl.deleteTexture(this.gridTextures.sortedIndices);
-      gl.deleteFramebuffer(this.gridTextures.sortedIndicesFbo);
+      gl.deleteTexture(this.gridTextures.sortedIndicesA);
+      gl.deleteTexture(this.gridTextures.sortedIndicesB);
+      gl.deleteFramebuffer(this.gridTextures.sortedIndicesFboA);
+      gl.deleteFramebuffer(this.gridTextures.sortedIndicesFboB);
       gl.deleteTexture(this.gridTextures.cellRanges);
       gl.deleteFramebuffer(this.gridTextures.cellRangesFbo);
     }
@@ -505,21 +511,28 @@ export class GL2Resources {
       ? (this.particleTextureSize.width * this.particleTextureSize.height) / 3
       : 100000;
 
-    const particleTexSize = Math.ceil(Math.sqrt(maxParticles));
+    // For bitonic sort, it is highly beneficial (and simplest) if the array length is a power of 2.
+    // We choose a power-of-two square texture size so (width*height) is power-of-two.
+    const nextPow2 = (n: number) => {
+      let p = 1;
+      while (p < n) p <<= 1;
+      return p;
+    };
+    const particleTexSize = nextPow2(Math.ceil(Math.sqrt(maxParticles)));
     const cellTexSize = Math.ceil(Math.sqrt(cellCount));
 
     this.gridTextureSize = { width: particleTexSize, height: particleTexSize };
+    this.currentSortedIndices = "A";
 
     // CellIds texture: stores cellId for each particle (R32F would work but using RGBA32F for consistency)
     const cellIds = this.createFloatTexture(particleTexSize, particleTexSize);
     const cellIdsFbo = this.createFramebuffer(cellIds);
 
-    // SortedIndices texture: stores (cellId, particleId) pairs after sorting
-    const sortedIndices = this.createFloatTexture(
-      particleTexSize,
-      particleTexSize
-    );
-    const sortedIndicesFbo = this.createFramebuffer(sortedIndices);
+    // SortedIndices textures (ping-pong): store (cellId, particleId) pairs for sorting
+    const sortedIndicesA = this.createFloatTexture(particleTexSize, particleTexSize);
+    const sortedIndicesB = this.createFloatTexture(particleTexSize, particleTexSize);
+    const sortedIndicesFboA = this.createFramebuffer(sortedIndicesA);
+    const sortedIndicesFboB = this.createFramebuffer(sortedIndicesB);
 
     // CellRanges texture: stores (start, count) for each cell
     const cellRanges = this.createFloatTexture(cellTexSize, cellTexSize);
@@ -528,8 +541,10 @@ export class GL2Resources {
     this.gridTextures = {
       cellIds,
       cellIdsFbo,
-      sortedIndices,
-      sortedIndicesFbo,
+      sortedIndicesA,
+      sortedIndicesB,
+      sortedIndicesFboA,
+      sortedIndicesFboB,
       cellRanges,
       cellRangesFbo,
     };
@@ -541,6 +556,42 @@ export class GL2Resources {
 
   getGridTextureSize(): { width: number; height: number } | null {
     return this.gridTextureSize;
+  }
+
+  resetSortedIndicesPingPong(): void {
+    this.currentSortedIndices = "A";
+  }
+
+  getCurrentSortedIndicesTexture(): WebGLTexture {
+    if (!this.gridTextures) throw new Error("Grid textures not created");
+    return this.currentSortedIndices === "A"
+      ? this.gridTextures.sortedIndicesA
+      : this.gridTextures.sortedIndicesB;
+  }
+
+  getOtherSortedIndicesTexture(): WebGLTexture {
+    if (!this.gridTextures) throw new Error("Grid textures not created");
+    return this.currentSortedIndices === "A"
+      ? this.gridTextures.sortedIndicesB
+      : this.gridTextures.sortedIndicesA;
+  }
+
+  getCurrentSortedIndicesFramebuffer(): WebGLFramebuffer {
+    if (!this.gridTextures) throw new Error("Grid textures not created");
+    return this.currentSortedIndices === "A"
+      ? this.gridTextures.sortedIndicesFboA
+      : this.gridTextures.sortedIndicesFboB;
+  }
+
+  getOtherSortedIndicesFramebuffer(): WebGLFramebuffer {
+    if (!this.gridTextures) throw new Error("Grid textures not created");
+    return this.currentSortedIndices === "A"
+      ? this.gridTextures.sortedIndicesFboB
+      : this.gridTextures.sortedIndicesFboA;
+  }
+
+  swapSortedIndicesTextures(): void {
+    this.currentSortedIndices = this.currentSortedIndices === "A" ? "B" : "A";
   }
 
   async dispose(): Promise<void> {
@@ -569,8 +620,10 @@ export class GL2Resources {
     if (this.gridTextures) {
       gl.deleteTexture(this.gridTextures.cellIds);
       gl.deleteFramebuffer(this.gridTextures.cellIdsFbo);
-      gl.deleteTexture(this.gridTextures.sortedIndices);
-      gl.deleteFramebuffer(this.gridTextures.sortedIndicesFbo);
+      gl.deleteTexture(this.gridTextures.sortedIndicesA);
+      gl.deleteTexture(this.gridTextures.sortedIndicesB);
+      gl.deleteFramebuffer(this.gridTextures.sortedIndicesFboA);
+      gl.deleteFramebuffer(this.gridTextures.sortedIndicesFboB);
       gl.deleteTexture(this.gridTextures.cellRanges);
       gl.deleteFramebuffer(this.gridTextures.cellRangesFbo);
       this.gridTextures = null;

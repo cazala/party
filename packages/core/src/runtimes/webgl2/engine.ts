@@ -28,6 +28,7 @@ import {
   generateConstrainFragmentShader,
   gridAssignCellsFragmentShader,
   gridBuildRangesFragmentShader,
+  generateBitonicSortFragmentShader,
   linesVertexShader,
   linesFragmentShader,
   trailsDecayFragmentShader,
@@ -560,7 +561,14 @@ export class WebGL2Engine extends AbstractEngine {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     // Copy cellIds to sortedIndices for sorting
-    this.copyTexture(gridTextures.cellIds, gridTextures.sortedIndicesFbo, texWidth, texHeight);
+    // Reset sortedIndices ping-pong to a known state and seed A with cellIds.
+    this.resources.resetSortedIndicesPingPong();
+    this.copyTexture(
+      gridTextures.cellIds,
+      this.resources.getCurrentSortedIndicesFramebuffer(),
+      texWidth,
+      texHeight
+    );
   }
 
   private copyTexture(
@@ -593,20 +601,68 @@ export class WebGL2Engine extends AbstractEngine {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
-  private runBitonicSortPasses(_particleCount: number, _texWidth: number): void {
-    // Bitonic sort requires power-of-2 size
-    // const sortSize = Math.pow(2, Math.ceil(Math.log2(particleCount)));
-    // const numStages = Math.ceil(Math.log2(sortSize));
+  private runBitonicSortPasses(_particleCount: number, texWidth: number): void {
+    const gl = this.resources.getGL();
 
-    // Note: Full bitonic sort requires many passes and dynamic shader compilation
-    // For US-006, we'll document this as implemented but acknowledge performance limitations
-    // A production implementation would pre-compile common sizes or use a different sorting approach
+    // We sort the entire sortedIndices texture (texWidth^2 entries). This is safe because:
+    // - gridAssignCells writes INVALID_CELL for out-of-range / inactive particles
+    // - those sentinels will sort to the end (large key)
+    // Grid texture size is allocated as a power-of-two square.
+    const sortCount = texWidth * texWidth;
+    const logN = Math.round(Math.log2(sortCount));
+    if (logN <= 0 || (1 << logN) !== sortCount) {
+      // Should not happen: GL2Resources allocates power-of-two grid textures.
+      return;
+    }
 
-    // For now, we skip the actual sorting and use unsorted data
-    // This means neighbor queries will be slower but still functional
-    console.warn(
-      "WebGL2 bitonic sort not fully implemented - using unsorted grid indices (neighbor queries will be slower)"
-    );
+    const texelSize = 1.0 / texWidth;
+
+    const ensureProgram = (stage: number, step: number) => {
+      const name = `bitonic_${stage}_${step}`;
+      if (this.resources.getProgram(name)) return name;
+      const frag = generateBitonicSortFragmentShader(stage, step);
+      this.resources.createProgram(name, fullscreenVertexShader, frag);
+      return name;
+    };
+
+    // Bitonic sort: for k=2..N (doubling), for j=k/2..1 (halving)
+    for (let stage = 0; stage < logN; stage++) {
+      for (let step = stage; step >= 0; step--) {
+        const programName = ensureProgram(stage, step);
+        const program = this.resources.getProgram(programName);
+        if (!program) continue;
+
+        gl.useProgram(program);
+
+        // ping-pong between sortedIndices textures
+        const targetFbo = this.resources.getOtherSortedIndicesFramebuffer();
+        const sourceTex = this.resources.getCurrentSortedIndicesTexture();
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, targetFbo);
+        gl.viewport(0, 0, texWidth, texWidth);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, sourceTex);
+
+        const sortedLoc = gl.getUniformLocation(program, "u_sortedIndices");
+        const texelSizeLoc = gl.getUniformLocation(program, "u_texelSize");
+        const countLoc = gl.getUniformLocation(program, "u_particleCount");
+
+        gl.uniform1i(sortedLoc, 0);
+        gl.uniform2f(texelSizeLoc, texelSize, texelSize);
+        gl.uniform1i(countLoc, sortCount);
+
+        const positionLoc = gl.getAttribLocation(program, "a_position");
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+        gl.enableVertexAttribArray(positionLoc);
+        gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.disableVertexAttribArray(positionLoc);
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        this.resources.swapSortedIndicesTextures();
+      }
+    }
   }
 
   private runGridBuildRangesPass(): void {
@@ -627,7 +683,7 @@ export class WebGL2Engine extends AbstractEngine {
 
     // Bind sorted indices texture
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, gridTextures.sortedIndices);
+    gl.bindTexture(gl.TEXTURE_2D, this.resources.getCurrentSortedIndicesTexture());
 
     // Set uniforms
     const sortedIndicesLoc = gl.getUniformLocation(program, "u_sortedIndices");

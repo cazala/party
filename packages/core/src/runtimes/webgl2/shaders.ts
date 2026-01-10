@@ -568,6 +568,9 @@ uniform vec2 u_gridMax;      // maxX, maxY
 uniform vec2 u_gridDims;     // cols, rows
 uniform float u_gridCellSize;
 
+// Large cellId sentinel so inactive/padded particles sort to the end
+const float INVALID_CELL = 1.0e9;
+
 // Helper to get particle data
 vec2 getTexelCoord(int particleId, int texelOffset) {
   int texelIndex = particleId * 3 + texelOffset;
@@ -582,8 +585,8 @@ void main() {
   int particleId = pixelCoord.y * int(1.0 / u_texelSize.x) + pixelCoord.x;
 
   if (particleId >= u_particleCount) {
-    // Out of range, store invalid cell ID
-    fragColor = vec4(-1.0, float(particleId), 0.0, 0.0);
+    // Out of range: store sentinel key so it sorts last
+    fragColor = vec4(INVALID_CELL, float(particleId), 0.0, 0.0);
     return;
   }
 
@@ -599,7 +602,7 @@ void main() {
 
   // Inactive particles (mass == 0) get invalid cell ID
   if (mass == 0.0) {
-    fragColor = vec4(-1.0, float(particleId), 0.0, 0.0);
+    fragColor = vec4(INVALID_CELL, float(particleId), 0.0, 0.0);
     return;
   }
 
