@@ -26,10 +26,10 @@ import {
 
 // Default values for PIC/FLIP parameters
 export const DEFAULT_PICFLIP_GRID_RESOLUTION = 64;
-export const DEFAULT_PICFLIP_FLIP_RATIO = 0.95;
+export const DEFAULT_PICFLIP_FLIP_RATIO = 0.9;
 export const DEFAULT_PICFLIP_PRESSURE_ITERATIONS = 20;
 export const DEFAULT_PICFLIP_OVERRELAXATION = 1.9;
-export const DEFAULT_PICFLIP_DENSITY = 1.0;
+export const DEFAULT_PICFLIP_DENSITY = 5.0;
 
 // State keys for per-particle state storage
 type PicflipStateKeys = "prevVelX" | "prevVelY";

@@ -8,7 +8,7 @@ export function PicflipModule({ enabled = true }: { enabled?: boolean }) {
     <>
       <Slider
         sliderId="picflip.flipRatio"
-        label="FLIP Ratio"
+        label="PIC/FLIP Ratio"
         value={flipRatio}
         min={0}
         max={1}
@@ -22,7 +22,7 @@ export function PicflipModule({ enabled = true }: { enabled?: boolean }) {
         label="Target Density"
         value={density}
         min={0}
-        max={100}
+        max={10}
         step={0.1}
         formatValue={(v) => v.toFixed(1)}
         onChange={setDensity}

@@ -113,10 +113,10 @@
     "picflip": {
       "enabled": false,
       "gridResolution": 64,
-      "flipRatio": 0.95,
+      "flipRatio": 0.9,
       "pressureIterations": 20,
       "overrelaxation": 1.9,
-      "density": 1
+      "density": 5
     }
   },
   "init": {
