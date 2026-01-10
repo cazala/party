@@ -50,6 +50,8 @@ import {
   importParticlesSettings,
   importLinesSettings,
   importGrabSettings,
+  resetPicflip,
+  importPicflipSettings,
 } from "./modules";
 import {
   clearAllOscillators,
@@ -121,6 +123,12 @@ const loadModuleSettings = (
 
   if (RESTART_AFFECTED_MODULES.includes("grab")) {
     dispatch(importGrabSettings(sessionData.modules.grab));
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("picflip")) {
+    dispatch(resetPicflip());
+    // Backward compatible with older sessions that may not have picflip saved
+    dispatch(importPicflipSettings(sessionData.modules.picflip ?? {}));
   }
 };
 
@@ -348,6 +356,9 @@ const applyFullSessionLoad = async (
   dispatch(importParticlesSettings(sessionData.modules.particles));
   dispatch(importLinesSettings(sessionData.modules.lines));
   dispatch(importGrabSettings(sessionData.modules.grab));
+  dispatch(resetPicflip());
+  // Backward compatible with older sessions that may not have picflip saved
+  dispatch(importPicflipSettings(sessionData.modules.picflip ?? {}));
 
   // Load render settings (full load only)
   if (sessionData.render) {
