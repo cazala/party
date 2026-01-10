@@ -27,8 +27,6 @@ import {
 // Default values for PIC/FLIP parameters
 export const DEFAULT_PICFLIP_GRID_RESOLUTION = 64;
 export const DEFAULT_PICFLIP_FLIP_RATIO = 0.95;
-export const DEFAULT_PICFLIP_GRAVITY_X = 0;
-export const DEFAULT_PICFLIP_GRAVITY_Y = 100;
 export const DEFAULT_PICFLIP_PRESSURE_ITERATIONS = 20;
 export const DEFAULT_PICFLIP_OVERRELAXATION = 1.9;
 export const DEFAULT_PICFLIP_DENSITY = 1.0;
@@ -40,8 +38,6 @@ type PicflipStateKeys = "prevVelX" | "prevVelY";
 type PicflipInputs = {
   gridResolution: number;
   flipRatio: number;
-  gravityX: number;
-  gravityY: number;
   pressureIterations: number;
   overrelaxation: number;
   density: number;
@@ -54,8 +50,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   readonly inputs = {
     gridResolution: DataType.NUMBER,
     flipRatio: DataType.NUMBER,
-    gravityX: DataType.NUMBER,
-    gravityY: DataType.NUMBER,
     pressureIterations: DataType.NUMBER,
     overrelaxation: DataType.NUMBER,
     density: DataType.NUMBER,
@@ -66,8 +60,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
     enabled?: boolean;
     gridResolution?: number;
     flipRatio?: number;
-    gravityX?: number;
-    gravityY?: number;
     pressureIterations?: number;
     overrelaxation?: number;
     density?: number;
@@ -77,8 +69,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
     this.write({
       gridResolution: opts?.gridResolution ?? DEFAULT_PICFLIP_GRID_RESOLUTION,
       flipRatio: opts?.flipRatio ?? DEFAULT_PICFLIP_FLIP_RATIO,
-      gravityX: opts?.gravityX ?? DEFAULT_PICFLIP_GRAVITY_X,
-      gravityY: opts?.gravityY ?? DEFAULT_PICFLIP_GRAVITY_Y,
       pressureIterations:
         opts?.pressureIterations ?? DEFAULT_PICFLIP_PRESSURE_ITERATIONS,
       overrelaxation: opts?.overrelaxation ?? DEFAULT_PICFLIP_OVERRELAXATION,
@@ -96,12 +86,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   }
   setFlipRatio(v: number): void {
     this.write({ flipRatio: v });
-  }
-  setGravityX(v: number): void {
-    this.write({ gravityX: v });
-  }
-  setGravityY(v: number): void {
-    this.write({ gravityY: v });
   }
   setPressureIterations(v: number): void {
     this.write({ pressureIterations: v });
@@ -122,12 +106,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   }
   getFlipRatio(): number {
     return this.readValue("flipRatio");
-  }
-  getGravityX(): number {
-    return this.readValue("gravityX");
-  }
-  getGravityY(): number {
-    return this.readValue("gravityY");
   }
   getPressureIterations(): number {
     return this.readValue("pressureIterations");
@@ -153,20 +131,19 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   ${setState("prevVelY", `${particleVar}.velocity.y`)};
 }`,
 
-      // Apply pass: PIC/FLIP velocity update with gravity and clamping
+      // Apply pass: PIC/FLIP velocity update with clamping
       apply: ({ particleVar, dtVar, getUniform, getState }) => `{
   let flipRatio = ${getUniform("flipRatio")};
-  let gravityX = ${getUniform("gravityX")};
-  let gravityY = ${getUniform("gravityY")};
   let maxVel = ${getUniform("maxVelocity")};
 
   // Get stored previous velocity
   let prevVelX = ${getState("prevVelX")};
   let prevVelY = ${getState("prevVelY")};
 
-  // Apply gravity
-  var newVelX = ${particleVar}.velocity.x + gravityX * ${dtVar};
-  var newVelY = ${particleVar}.velocity.y + gravityY * ${dtVar};
+  // Gravity is handled by the Environment module; keep Picflip focused on the
+  // PIC/FLIP blend and density-pressure response.
+  var newVelX = ${particleVar}.velocity.x;
+  var newVelY = ${particleVar}.velocity.y;
 
   // For full PIC/FLIP we would:
   // 1. Transfer to grid (P2G)
@@ -274,11 +251,9 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
         setState("prevVelY", particle.velocity.y);
       },
 
-      // Apply pass: PIC/FLIP velocity update with gravity and clamping
+      // Apply pass: PIC/FLIP velocity update with clamping
       apply: ({ particle, getNeighbors, dt, getState }) => {
         const flipRatio = this.readValue("flipRatio");
-        const gravityX = this.readValue("gravityX");
-        const gravityY = this.readValue("gravityY");
         const maxVel = this.readValue("maxVelocity");
         const targetDensity = this.readValue("density");
 
@@ -286,9 +261,10 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
         const prevVelX = getState("prevVelX");
         const prevVelY = getState("prevVelY");
 
-        // Apply gravity
-        let newVelX = particle.velocity.x + gravityX * dt;
-        let newVelY = particle.velocity.y + gravityY * dt;
+        // Gravity is handled by the Environment module; keep Picflip focused on the
+        // PIC/FLIP blend and density-pressure response.
+        let newVelX = particle.velocity.x;
+        let newVelY = particle.velocity.y;
 
         // Local pressure approximation using neighbor density
         const rad = 50.0;

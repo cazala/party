@@ -8,8 +8,6 @@ import {
   setPicflipEnabled,
   setPicflipGridResolution,
   setPicflipFlipRatio,
-  setPicflipGravityX,
-  setPicflipGravityY,
   setPicflipPressureIterations,
   setPicflipOverrelaxation,
   setPicflipDensity,
@@ -29,8 +27,6 @@ export function usePicflip() {
   const {
     gridResolution,
     flipRatio,
-    gravityX,
-    gravityY,
     pressureIterations,
     overrelaxation,
     density,
@@ -43,8 +39,6 @@ export function usePicflip() {
     if (picflip) {
       picflip.setGridResolution(state.gridResolution);
       picflip.setFlipRatio(state.flipRatio);
-      picflip.setGravityX(state.gravityX);
-      picflip.setGravityY(state.gravityY);
       picflip.setPressureIterations(state.pressureIterations);
       picflip.setOverrelaxation(state.overrelaxation);
       picflip.setDensity(state.density);
@@ -72,22 +66,6 @@ export function usePicflip() {
     (value: number) => {
       dispatch(setPicflipFlipRatio(value));
       picflip?.setFlipRatio(value);
-    },
-    [dispatch, picflip]
-  );
-
-  const setGravityX = useCallback(
-    (value: number) => {
-      dispatch(setPicflipGravityX(value));
-      picflip?.setGravityX(value);
-    },
-    [dispatch, picflip]
-  );
-
-  const setGravityY = useCallback(
-    (value: number) => {
-      dispatch(setPicflipGravityY(value));
-      picflip?.setGravityY(value);
     },
     [dispatch, picflip]
   );
@@ -132,8 +110,6 @@ export function usePicflip() {
     // Individual state properties
     gridResolution,
     flipRatio,
-    gravityX,
-    gravityY,
     pressureIterations,
     overrelaxation,
     density,
@@ -143,8 +119,6 @@ export function usePicflip() {
     setEnabled,
     setGridResolution,
     setFlipRatio,
-    setGravityX,
-    setGravityY,
     setPressureIterations,
     setOverrelaxation,
     setDensity,

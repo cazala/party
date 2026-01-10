@@ -4,13 +4,9 @@ import { usePicflip } from "../../hooks/modules/usePicflip";
 export function PicflipModule({ enabled = true }: { enabled?: boolean }) {
   const {
     flipRatio,
-    gravityX,
-    gravityY,
     density,
     maxVelocity,
     setFlipRatio,
-    setGravityX,
-    setGravityY,
     setDensity,
     setMaxVelocity,
   } = usePicflip();
@@ -26,26 +22,6 @@ export function PicflipModule({ enabled = true }: { enabled?: boolean }) {
         step={0.01}
         formatValue={(v) => v.toFixed(2)}
         onChange={setFlipRatio}
-        disabled={!enabled}
-      />
-      <Slider
-        sliderId="picflip.gravityX"
-        label="Gravity X"
-        value={gravityX}
-        min={0}
-        max={2000}
-        step={1}
-        onChange={setGravityX}
-        disabled={!enabled}
-      />
-      <Slider
-        sliderId="picflip.gravityY"
-        label="Gravity Y"
-        value={gravityY}
-        min={0}
-        max={2000}
-        step={1}
-        onChange={setGravityY}
         disabled={!enabled}
       />
       <Slider

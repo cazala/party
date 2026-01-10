@@ -114,8 +114,6 @@
       "enabled": false,
       "gridResolution": 64,
       "flipRatio": 0.95,
-      "gravityX": 0,
-      "gravityY": 100,
       "pressureIterations": 20,
       "overrelaxation": 1.9,
       "density": 1,

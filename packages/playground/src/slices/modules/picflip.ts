@@ -2,8 +2,6 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
   DEFAULT_PICFLIP_GRID_RESOLUTION,
   DEFAULT_PICFLIP_FLIP_RATIO,
-  DEFAULT_PICFLIP_GRAVITY_X,
-  DEFAULT_PICFLIP_GRAVITY_Y,
   DEFAULT_PICFLIP_PRESSURE_ITERATIONS,
   DEFAULT_PICFLIP_OVERRELAXATION,
   DEFAULT_PICFLIP_DENSITY,
@@ -14,8 +12,6 @@ export interface PicflipModuleState {
   enabled: boolean;
   gridResolution: number;
   flipRatio: number;
-  gravityX: number;
-  gravityY: number;
   pressureIterations: number;
   overrelaxation: number;
   density: number;
@@ -26,8 +22,6 @@ const initialState: PicflipModuleState = {
   enabled: false,
   gridResolution: DEFAULT_PICFLIP_GRID_RESOLUTION,
   flipRatio: DEFAULT_PICFLIP_FLIP_RATIO,
-  gravityX: DEFAULT_PICFLIP_GRAVITY_X,
-  gravityY: DEFAULT_PICFLIP_GRAVITY_Y,
   pressureIterations: DEFAULT_PICFLIP_PRESSURE_ITERATIONS,
   overrelaxation: DEFAULT_PICFLIP_OVERRELAXATION,
   density: DEFAULT_PICFLIP_DENSITY,
@@ -46,12 +40,6 @@ export const picflipSlice = createSlice({
     },
     setPicflipFlipRatio: (state, action: PayloadAction<number>) => {
       state.flipRatio = action.payload;
-    },
-    setPicflipGravityX: (state, action: PayloadAction<number>) => {
-      state.gravityX = action.payload;
-    },
-    setPicflipGravityY: (state, action: PayloadAction<number>) => {
-      state.gravityY = action.payload;
     },
     setPicflipPressureIterations: (state, action: PayloadAction<number>) => {
       state.pressureIterations = action.payload;
@@ -79,8 +67,6 @@ export const {
   setPicflipEnabled,
   setPicflipGridResolution,
   setPicflipFlipRatio,
-  setPicflipGravityX,
-  setPicflipGravityY,
   setPicflipPressureIterations,
   setPicflipOverrelaxation,
   setPicflipDensity,
