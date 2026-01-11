@@ -186,7 +186,15 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
     // Simple pressure force based on local density
     let targetDensity = ${getUniform("density")};
     let pressureScale = 500.0;
-    let pressureFactor = (density - targetDensity) * pressureScale;
+    // NOTE: This simplified pressure term can be "stiff" and become frame-rate sensitive.
+    // We clamp its strength and the resulting acceleration so behavior remains stable across
+    // 60Hz/120Hz displays (and under occasional dt spikes).
+    let maxPressureFactor = 5000.0;
+    let pressureFactor = clamp(
+      (density - targetDensity) * pressureScale,
+      -maxPressureFactor,
+      maxPressureFactor
+    );
 
     // Apply pressure gradient (push away from high density regions)
     var gradX: f32 = 0.0;
@@ -211,8 +219,16 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
       gradY = gradY + dir.y * weight * pressureFactor;
     }
 
-    newVelX = newVelX + gradX * ${dtVar};
-    newVelY = newVelY + gradY * ${dtVar};
+    // Clamp acceleration magnitude (units: velocity / second)
+    let maxAccel = 20000.0;
+    var grad = vec2<f32>(gradX, gradY);
+    let gl = length(grad);
+    if (gl > maxAccel) {
+      grad = grad * (maxAccel / max(gl, 1e-6));
+    }
+
+    newVelX = newVelX + grad.x * ${dtVar};
+    newVelY = newVelY + grad.y * ${dtVar};
   }
 
   ${particleVar}.velocity.x = newVelX;
@@ -288,7 +304,14 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
 
           // Simple pressure force based on local density
           const pressureScale = 500.0;
-          const pressureFactor = (density - targetDensity) * pressureScale;
+          // NOTE: This simplified pressure term can be stiff; clamp to avoid dt-dependent
+          // instability (notably visible at lower FPS / larger dt).
+          const maxPressureFactor = 5000.0;
+          const rawPressureFactor = (density - targetDensity) * pressureScale;
+          const pressureFactor = Math.max(
+            -maxPressureFactor,
+            Math.min(maxPressureFactor, rawPressureFactor)
+          );
 
           // Apply pressure gradient
           let gradX = 0.0;
@@ -311,6 +334,15 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
 
             gradX += dirX * weight * pressureFactor;
             gradY += dirY * weight * pressureFactor;
+          }
+
+          // Clamp acceleration magnitude (units: velocity / second)
+          const maxAccel = 20000.0;
+          const gradLen = Math.hypot(gradX, gradY);
+          if (gradLen > maxAccel && gradLen > 1e-6) {
+            const s = maxAccel / gradLen;
+            gradX *= s;
+            gradY *= s;
           }
 
           newVelX += gradX * dt;
