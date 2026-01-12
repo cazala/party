@@ -7,7 +7,6 @@ export const RESTART_AFFECTED_MODULES = [
   "behavior",
   "sensors",
   "interaction",
-  "picflip",
 ];
 
 export type RestartAffectedModule = (typeof RESTART_AFFECTED_MODULES)[number];

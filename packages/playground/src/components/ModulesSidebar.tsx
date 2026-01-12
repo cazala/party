@@ -6,7 +6,6 @@ import { FluidsModule } from "./modules/FluidsModule";
 import { BehaviorModule } from "./modules/BehaviorModule";
 import { SensorsModule } from "./modules/SensorsModule";
 import { JointsModule } from "./modules/JointsModule";
-import { PicflipModule } from "./modules/PicflipModule";
 import { ModuleWrapper } from "./ModuleWrapper";
 import { useEngine } from "../hooks/useEngine";
 import { useOscillators } from "../hooks/useOscillators";
@@ -19,7 +18,6 @@ import {
   useBehavior,
   useSensors,
   useJoints,
-  usePicflip,
 } from "../hooks/modules";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import "./ModulesSidebar.css";
@@ -33,7 +31,6 @@ export function ModulesSidebar() {
     behavior,
     sensors,
     joints,
-    picflip,
     isSupported,
   } = useEngine();
 
@@ -75,11 +72,6 @@ export function ModulesSidebar() {
     setEnabled: setJointsEnabled,
     reset: resetJoints,
   } = useJoints();
-  const {
-    isEnabled: isPicflipEnabled,
-    setEnabled: setPicflipEnabled,
-    reset: resetPicflip,
-  } = usePicflip();
 
   return (
     <div className="controls-panel">
@@ -104,7 +96,6 @@ export function ModulesSidebar() {
             resetBehavior();
             resetSensors();
             resetJoints();
-            resetPicflip();
             
             // Clear reset flag after a brief delay
             setTimeout(() => setIsResetting(false), 10);
@@ -183,16 +174,6 @@ export function ModulesSidebar() {
         setEnabled={setJointsEnabled}
       >
         <JointsModule />
-      </ModuleWrapper>
-
-      <ModuleWrapper
-        title="PIC/FLIP"
-        module={picflip}
-        isSupported={isSupported(picflip)}
-        enabled={isPicflipEnabled}
-        setEnabled={setPicflipEnabled}
-      >
-        <PicflipModule />
       </ModuleWrapper>
 
       {/* Interaction controls moved into the Interact tool; module UI removed */}

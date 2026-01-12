@@ -8,14 +8,19 @@ import {
   DEFAULT_FLUIDS_NEAR_THRESHOLD,
   DEFAULT_FLUIDS_ENABLE_NEAR_PRESSURE,
   DEFAULT_FLUIDS_MAX_ACCELERATION,
+  DEFAULT_PICFLIP_FLIP_RATIO,
+  FluidsMethod,
 } from "@cazala/party";
 
 export interface FluidsModuleState {
   enabled: boolean;
+  method: FluidsMethod;
   influenceRadius: number;
   targetDensity: number;
   pressureMultiplier: number;
   viscosity: number;
+  // PIC/FLIP-only (used when method === "picflip")
+  flipRatio: number;
   nearPressureMultiplier: number;
   nearThreshold: number;
   enableNearPressure: boolean;
@@ -24,10 +29,12 @@ export interface FluidsModuleState {
 
 const initialState: FluidsModuleState = {
   enabled: false,
+  method: FluidsMethod.Sph,
   influenceRadius: DEFAULT_FLUIDS_INFLUENCE_RADIUS,
   targetDensity: DEFAULT_FLUIDS_TARGET_DENSITY,
   pressureMultiplier: DEFAULT_FLUIDS_PRESSURE_MULTIPLIER,
   viscosity: DEFAULT_FLUIDS_VISCOSITY,
+  flipRatio: DEFAULT_PICFLIP_FLIP_RATIO,
   nearPressureMultiplier: DEFAULT_FLUIDS_NEAR_PRESSURE_MULTIPLIER,
   nearThreshold: DEFAULT_FLUIDS_NEAR_THRESHOLD,
   enableNearPressure: DEFAULT_FLUIDS_ENABLE_NEAR_PRESSURE,
@@ -41,6 +48,9 @@ export const fluidsSlice = createSlice({
     setFluidsEnabled: (state, action: PayloadAction<boolean>) => {
       state.enabled = action.payload;
     },
+    setFluidsMethod: (state, action: PayloadAction<FluidsMethod>) => {
+      state.method = action.payload;
+    },
     setFluidsInfluenceRadius: (state, action: PayloadAction<number>) => {
       state.influenceRadius = action.payload;
     },
@@ -52,6 +62,9 @@ export const fluidsSlice = createSlice({
     },
     setFluidsViscosity: (state, action: PayloadAction<number>) => {
       state.viscosity = action.payload;
+    },
+    setFluidsFlipRatio: (state, action: PayloadAction<number>) => {
+      state.flipRatio = action.payload;
     },
     setFluidsNearPressureMultiplier: (state, action: PayloadAction<number>) => {
       state.nearPressureMultiplier = action.payload;
@@ -77,10 +90,12 @@ export const fluidsSlice = createSlice({
 
 export const {
   setFluidsEnabled,
+  setFluidsMethod,
   setFluidsInfluenceRadius,
   setFluidsTargetDensity,
   setFluidsPressureMultiplier,
   setFluidsViscosity,
+  setFluidsFlipRatio,
   setFluidsNearPressureMultiplier,
   setFluidsNearThreshold,
   setFluidsEnableNearPressure,

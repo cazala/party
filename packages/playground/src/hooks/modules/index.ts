@@ -11,4 +11,3 @@ export { useParticles } from "./useParticles";
 export { useJoints } from "./useJoints";
 export { useLines } from "./useLines";
 export { useGrab } from "./useGrab";
-export { usePicflip } from "./usePicflip";

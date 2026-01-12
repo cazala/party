@@ -30,7 +30,12 @@ export interface SessionData {
   name: string;
   metadata: SessionMetadata;
   // Core simulation state
-  modules: ModulesState;
+  // Saved sessions are forward/backward compatible: each module's payload can be partial
+  // so older sessions can omit newly-added fields.
+  modules: { [K in keyof ModulesState]: Partial<ModulesState[K]> } & {
+    // Legacy: before Fluids absorbed PIC/FLIP, sessions stored a separate picflip module.
+    picflip?: any;
+  };
   init: InitState;
   engine: Pick<
     EngineState,
