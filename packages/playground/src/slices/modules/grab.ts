@@ -59,7 +59,7 @@ export const grabSlice = createSlice({
       state.positionX = DEFAULT_GRAB_POSITION_X;
       state.positionY = DEFAULT_GRAB_POSITION_Y;
     },
-    importSettings: (state, action: PayloadAction<GrabModuleState>) => {
+    importSettings: (state, action: PayloadAction<Partial<GrabModuleState>>) => {
       return { ...state, ...action.payload };
     },
   },

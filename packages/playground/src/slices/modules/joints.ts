@@ -66,7 +66,7 @@ export const jointsSlice = createSlice({
       state.friction = Math.max(0, Math.min(1, action.payload));
     },
     resetJoints: () => initialState,
-    importSettings: (state, action: PayloadAction<JointsModuleState>) => {
+    importSettings: (state, action: PayloadAction<Partial<JointsModuleState>>) => {
       return { ...state, ...action.payload };
     },
   },

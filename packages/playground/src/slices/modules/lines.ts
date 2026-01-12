@@ -40,7 +40,7 @@ export const linesSlice = createSlice({
       state.list = action.payload;
     },
     reset: () => initialState,
-    importSettings: (state, action: PayloadAction<LinesModuleState>) => {
+    importSettings: (state, action: PayloadAction<Partial<LinesModuleState>>) => {
       return { ...state, ...action.payload };
     },
   },

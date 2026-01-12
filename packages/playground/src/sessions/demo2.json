@@ -32,6 +32,7 @@
     },
     "fluids": {
       "enabled": true,
+      "method": "sph",
       "influenceRadius": 27,
       "targetDensity": 5,
       "pressureMultiplier": 20,

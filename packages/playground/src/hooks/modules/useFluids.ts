@@ -6,16 +6,19 @@ import { selectModules } from "../../slices/modules";
 import {
   selectFluids,
   setFluidsEnabled,
+  setFluidsMethod,
   setFluidsInfluenceRadius,
   setFluidsTargetDensity,
   setFluidsPressureMultiplier,
   setFluidsViscosity,
+  setFluidsFlipRatio,
   setFluidsNearPressureMultiplier,
   setFluidsNearThreshold,
   setFluidsEnableNearPressure,
   setFluidsMaxAcceleration,
   resetFluids,
 } from "../../slices/modules/fluids";
+import { FluidsMethod } from "@cazala/party";
 
 export function useFluids() {
   const dispatch = useAppDispatch();
@@ -27,10 +30,12 @@ export function useFluids() {
 
   // Destructure individual properties
   const {
+    method,
     influenceRadius,
     targetDensity,
     pressureMultiplier,
     viscosity,
+    flipRatio,
     nearPressureMultiplier,
     nearThreshold,
     enableNearPressure,
@@ -41,10 +46,12 @@ export function useFluids() {
   // Sync Redux state to engine module when they change
   useEffect(() => {
     if (fluids) {
+      fluids.setMethod(method);
       fluids.setInfluenceRadius(state.influenceRadius);
       fluids.setTargetDensity(state.targetDensity);
       fluids.setPressureMultiplier(state.pressureMultiplier);
       fluids.setViscosity(state.viscosity);
+      fluids.setFlipRatio(state.flipRatio);
       fluids.setNearPressureMultiplier(state.nearPressureMultiplier);
       fluids.setNearThreshold(state.nearThreshold);
       fluids.setEnableNearPressure(state.enableNearPressure);
@@ -58,6 +65,14 @@ export function useFluids() {
       dispatch(setFluidsEnabled(enabled));
     },
     [dispatch]
+  );
+
+  const setMethod = useCallback(
+    (value: FluidsMethod) => {
+      dispatch(setFluidsMethod(value));
+      fluids?.setMethod(value);
+    },
+    [dispatch, fluids]
   );
 
   const setInfluenceRadius = useCallback(
@@ -88,6 +103,14 @@ export function useFluids() {
     (value: number) => {
       dispatch(setFluidsViscosity(value));
       fluids?.setViscosity(value);
+    },
+    [dispatch, fluids]
+  );
+
+  const setFlipRatio = useCallback(
+    (value: number) => {
+      dispatch(setFluidsFlipRatio(value));
+      fluids?.setFlipRatio(value);
     },
     [dispatch, fluids]
   );
@@ -130,10 +153,12 @@ export function useFluids() {
 
   return {
     // Individual state properties
+    method,
     influenceRadius,
     targetDensity,
     pressureMultiplier,
     viscosity,
+    flipRatio,
     nearPressureMultiplier,
     nearThreshold,
     enableNearPressure,
@@ -141,10 +166,12 @@ export function useFluids() {
     isEnabled,
     // Actions
     setEnabled,
+    setMethod,
     setInfluenceRadius,
     setTargetDensity,
     setPressureMultiplier,
     setViscosity,
+    setFlipRatio,
     setNearPressureMultiplier,
     setNearThreshold,
     setEnableNearPressure,

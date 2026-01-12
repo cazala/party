@@ -76,7 +76,15 @@ export class WebGPUEngine extends AbstractEngine {
     this.registry.initialize(this.resources);
     const program = this.registry.getProgram();
     if (program.extraBindings.simState) {
-      this.resources.createSimStateBuffer(this.bufferMaxParticles, 4);
+      // SIM_STATE is a per-particle float array used by integration and force-module state.
+      // Its stride is program-dependent (base 4 + per-module state slots), so we must
+      // allocate using the generated program's stride. Allocating a fixed 4-float stride
+      // causes out-of-bounds reads/writes for particles beyond a threshold (e.g. ~40k),
+      // resulting in "exploding" velocities/positions.
+      this.resources.createSimStateBuffer(
+        this.bufferMaxParticles,
+        program.simStateStride
+      );
     }
 
     // Build compute pipelines
