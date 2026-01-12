@@ -25,22 +25,20 @@ import {
 } from "../../module";
 
 // Default values for PIC/FLIP parameters
-export const DEFAULT_PICFLIP_GRID_RESOLUTION = 64;
 export const DEFAULT_PICFLIP_FLIP_RATIO = 0.9;
-export const DEFAULT_PICFLIP_PRESSURE_ITERATIONS = 20;
-export const DEFAULT_PICFLIP_OVERRELAXATION = 1.9;
 export const DEFAULT_PICFLIP_DENSITY = 5.0;
 export const DEFAULT_PICFLIP_RADIUS = 50.0;
 export const DEFAULT_PICFLIP_PRESSURE = 500.0;
+
+// NOTE: This module implements a simplified local-pressure PIC/FLIP approximation.
+// The classic PIC/FLIP controls like grid resolution / pressure iterations /
+// overrelaxation are not used here, so they are intentionally not exposed.
 
 // State keys for per-particle state storage
 type PicflipStateKeys = "prevVelX" | "prevVelY";
 
 type PicflipInputs = {
-  gridResolution: number;
   flipRatio: number;
-  pressureIterations: number;
-  overrelaxation: number;
   density: number;
   radius: number;
   pressure: number;
@@ -50,10 +48,7 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   readonly name = "picflip" as const;
   readonly role = ModuleRole.Force;
   readonly inputs = {
-    gridResolution: DataType.NUMBER,
     flipRatio: DataType.NUMBER,
-    pressureIterations: DataType.NUMBER,
-    overrelaxation: DataType.NUMBER,
     density: DataType.NUMBER,
     radius: DataType.NUMBER,
     pressure: DataType.NUMBER,
@@ -61,21 +56,14 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
 
   constructor(opts?: {
     enabled?: boolean;
-    gridResolution?: number;
     flipRatio?: number;
-    pressureIterations?: number;
-    overrelaxation?: number;
     density?: number;
     radius?: number;
     pressure?: number;
   }) {
     super();
     this.write({
-      gridResolution: opts?.gridResolution ?? DEFAULT_PICFLIP_GRID_RESOLUTION,
       flipRatio: opts?.flipRatio ?? DEFAULT_PICFLIP_FLIP_RATIO,
-      pressureIterations:
-        opts?.pressureIterations ?? DEFAULT_PICFLIP_PRESSURE_ITERATIONS,
-      overrelaxation: opts?.overrelaxation ?? DEFAULT_PICFLIP_OVERRELAXATION,
       density: opts?.density ?? DEFAULT_PICFLIP_DENSITY,
       radius: opts?.radius ?? DEFAULT_PICFLIP_RADIUS,
       pressure: opts?.pressure ?? DEFAULT_PICFLIP_PRESSURE,
@@ -86,17 +74,8 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   }
 
   // Setters
-  setGridResolution(v: number): void {
-    this.write({ gridResolution: v });
-  }
   setFlipRatio(v: number): void {
     this.write({ flipRatio: v });
-  }
-  setPressureIterations(v: number): void {
-    this.write({ pressureIterations: v });
-  }
-  setOverrelaxation(v: number): void {
-    this.write({ overrelaxation: v });
   }
   setDensity(v: number): void {
     this.write({ density: v });
@@ -109,17 +88,8 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   }
 
   // Getters
-  getGridResolution(): number {
-    return this.readValue("gridResolution");
-  }
   getFlipRatio(): number {
     return this.readValue("flipRatio");
-  }
-  getPressureIterations(): number {
-    return this.readValue("pressureIterations");
-  }
-  getOverrelaxation(): number {
-    return this.readValue("overrelaxation");
   }
   getDensity(): number {
     return this.readValue("density");
