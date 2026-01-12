@@ -32,6 +32,7 @@
     },
     "fluids": {
       "enabled": false,
+      "method": "sph",
       "influenceRadius": 100,
       "targetDensity": 1,
       "pressureMultiplier": 30,
@@ -109,13 +110,6 @@
       "grabbedIndex": -1,
       "positionX": 0,
       "positionY": 0
-    },
-    "picflip": {
-      "enabled": false,
-      "flipRatio": 0.9,
-      "density": 5,
-      "radius": 50,
-      "pressure": 500
     }
   },
   "init": {

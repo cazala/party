@@ -12,6 +12,7 @@ import demo3SessionData from "../sessions/demo3.json";
 import demo4SessionData from "../sessions/demo4.json";
 import demo5SessionData from "../sessions/demo5.json";
 import demo6SessionData from "../sessions/demo6.json";
+import demo7SessionData from "../sessions/demo7.json";
 import { useInteraction, useTrails, useBoundary, useCollisions, useFluids, useBehavior, useSensors, useJoints } from "./modules";
 import { useRender } from "./useRender";
 import { useOscillators } from "./useOscillators";
@@ -539,11 +540,18 @@ export function useDemo() {
         transitionDuration: 0,
       },
       {
+        sessionData: demo7SessionData as SessionData,
+        duration: 20000,
+        maxParticles: lowPerformanceMaxParticles,
+        transitionDuration: 0,
+      },
+      {
         sessionData: demo2SessionData as SessionData,
         duration: 20000,
         maxParticles: isMobileDevice() ? veryLowPerformanceMaxParticles : mediumPerformanceMaxParticles,
         transitionDuration: 2500,
       },
+      
     ];
 
     let currentIndex = 0;
