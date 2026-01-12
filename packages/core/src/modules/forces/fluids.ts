@@ -466,9 +466,17 @@ export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
         gradY = gradY + dir.y * weight * pressureFactor;
       }
 
-      // NOTE: no max-acceleration clamp for PIC/FLIP (it tends to need the max anyway)
-      newVelX = newVelX + gradX * ${dtVar};
-      newVelY = newVelY + gradY * ${dtVar};
+      // Clamp acceleration magnitude (units: velocity / second) to avoid dt-dependent instability
+      // (notably visible at lower FPS / larger dt near boundaries).
+      let maxAccel = 30000.0;
+      var grad = vec2<f32>(gradX, gradY);
+      let gl = length(grad);
+      if (gl > maxAccel) {
+        grad = grad * (maxAccel / max(gl, 1e-6));
+      }
+
+      newVelX = newVelX + grad.x * ${dtVar};
+      newVelY = newVelY + grad.y * ${dtVar};
     }
 
     ${particleVar}.velocity.x = newVelX;
@@ -758,7 +766,16 @@ export class Fluids extends Module<"fluids", FluidsInputs, FluidStateKeys> {
               gradY += dirY * weight * pressureFactor;
             }
 
-            // NOTE: no max-acceleration clamp for PIC/FLIP (it tends to need the max anyway)
+            // Clamp acceleration magnitude (units: velocity / second) to avoid dt-dependent instability
+            // (notably visible at lower FPS / larger dt near boundaries).
+            const maxAccel = 20000.0;
+            const gradLen = Math.hypot(gradX, gradY);
+            if (gradLen > maxAccel && gradLen > 1e-6) {
+              const s = maxAccel / gradLen;
+              gradX *= s;
+              gradY *= s;
+            }
+
             newVelX += gradX * dt;
             newVelY += gradY * dt;
           }
