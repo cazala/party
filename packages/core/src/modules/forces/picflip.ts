@@ -30,6 +30,8 @@ export const DEFAULT_PICFLIP_FLIP_RATIO = 0.9;
 export const DEFAULT_PICFLIP_PRESSURE_ITERATIONS = 20;
 export const DEFAULT_PICFLIP_OVERRELAXATION = 1.9;
 export const DEFAULT_PICFLIP_DENSITY = 5.0;
+export const DEFAULT_PICFLIP_RADIUS = 50.0;
+export const DEFAULT_PICFLIP_PRESSURE = 500.0;
 
 // State keys for per-particle state storage
 type PicflipStateKeys = "prevVelX" | "prevVelY";
@@ -40,6 +42,8 @@ type PicflipInputs = {
   pressureIterations: number;
   overrelaxation: number;
   density: number;
+  radius: number;
+  pressure: number;
 };
 
 export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> {
@@ -51,6 +55,8 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
     pressureIterations: DataType.NUMBER,
     overrelaxation: DataType.NUMBER,
     density: DataType.NUMBER,
+    radius: DataType.NUMBER,
+    pressure: DataType.NUMBER,
   } as const;
 
   constructor(opts?: {
@@ -60,6 +66,8 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
     pressureIterations?: number;
     overrelaxation?: number;
     density?: number;
+    radius?: number;
+    pressure?: number;
   }) {
     super();
     this.write({
@@ -69,6 +77,8 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
         opts?.pressureIterations ?? DEFAULT_PICFLIP_PRESSURE_ITERATIONS,
       overrelaxation: opts?.overrelaxation ?? DEFAULT_PICFLIP_OVERRELAXATION,
       density: opts?.density ?? DEFAULT_PICFLIP_DENSITY,
+      radius: opts?.radius ?? DEFAULT_PICFLIP_RADIUS,
+      pressure: opts?.pressure ?? DEFAULT_PICFLIP_PRESSURE,
     });
     if (opts?.enabled !== undefined) {
       this.setEnabled(!!opts.enabled);
@@ -91,6 +101,12 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   setDensity(v: number): void {
     this.write({ density: v });
   }
+  setRadius(v: number): void {
+    this.write({ radius: v });
+  }
+  setPressure(v: number): void {
+    this.write({ pressure: v });
+  }
 
   // Getters
   getGridResolution(): number {
@@ -108,6 +124,12 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   getDensity(): number {
     return this.readValue("density");
   }
+  getRadius(): number {
+    return this.readValue("radius");
+  }
+  getPressure(): number {
+    return this.readValue("pressure");
+  }
 
   webgpu(): WebGPUDescriptor<PicflipInputs, PicflipStateKeys> {
     return {
@@ -123,6 +145,8 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
       // Apply pass: PIC/FLIP velocity update
       apply: ({ particleVar, dtVar, getUniform, getState }) => `{
   let flipRatio = ${getUniform("flipRatio")};
+  let rad = ${getUniform("radius")};
+  let pressureScale = ${getUniform("pressure")};
 
   // Get stored previous velocity
   let prevVelX = ${getState("prevVelX")};
@@ -142,7 +166,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
   // This simplified version applies a local pressure approximation
   // using neighbor density to simulate incompressibility
 
-  let rad = 50.0;
   var density: f32 = 0.0;
   var avgVelX: f32 = 0.0;
   var avgVelY: f32 = 0.0;
@@ -185,11 +208,10 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
 
     // Simple pressure force based on local density
     let targetDensity = ${getUniform("density")};
-    let pressureScale = 500.0;
     // NOTE: This simplified pressure term can be "stiff" and become frame-rate sensitive.
     // We clamp its strength and the resulting acceleration so behavior remains stable across
     // 60Hz/120Hz displays (and under occasional dt spikes).
-    let maxPressureFactor = 5000.0;
+    let maxPressureFactor = abs(pressureScale) * 10.0;
     let pressureFactor = clamp(
       (density - targetDensity) * pressureScale,
       -maxPressureFactor,
@@ -251,6 +273,8 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
       apply: ({ particle, getNeighbors, dt, getState }) => {
         const flipRatio = this.readValue("flipRatio");
         const targetDensity = this.readValue("density");
+        const rad = this.readValue("radius");
+        const pressureScale = this.readValue("pressure");
 
         // Get stored previous velocity
         const prevVelX = getState("prevVelX");
@@ -262,7 +286,6 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
         let newVelY = particle.velocity.y;
 
         // Local pressure approximation using neighbor density
-        const rad = 50.0;
         let density = 0.0;
         let avgVelX = 0.0;
         let avgVelY = 0.0;
@@ -303,10 +326,9 @@ export class Picflip extends Module<"picflip", PicflipInputs, PicflipStateKeys> 
           newVelY = picVelY * (1 - flipRatio) + flipVelY * flipRatio;
 
           // Simple pressure force based on local density
-          const pressureScale = 500.0;
           // NOTE: This simplified pressure term can be stiff; clamp to avoid dt-dependent
           // instability (notably visible at lower FPS / larger dt).
-          const maxPressureFactor = 5000.0;
+          const maxPressureFactor = Math.abs(pressureScale) * 10.0;
           const rawPressureFactor = (density - targetDensity) * pressureScale;
           const pressureFactor = Math.max(
             -maxPressureFactor,

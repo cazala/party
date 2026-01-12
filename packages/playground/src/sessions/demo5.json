@@ -116,7 +116,9 @@
       "flipRatio": 0.9,
       "pressureIterations": 20,
       "overrelaxation": 1.9,
-      "density": 5
+      "density": 5,
+      "radius": 50,
+      "pressure": 500
     }
   },
   "init": {

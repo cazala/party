@@ -11,6 +11,8 @@ import {
   setPicflipPressureIterations,
   setPicflipOverrelaxation,
   setPicflipDensity,
+  setPicflipRadius,
+  setPicflipPressure,
   resetPicflip,
 } from "../../slices/modules/picflip";
 
@@ -29,6 +31,8 @@ export function usePicflip() {
     pressureIterations,
     overrelaxation,
     density,
+    radius,
+    pressure,
   } = state;
   const isEnabled = state.enabled;
 
@@ -40,6 +44,8 @@ export function usePicflip() {
       picflip.setPressureIterations(state.pressureIterations);
       picflip.setOverrelaxation(state.overrelaxation);
       picflip.setDensity(state.density);
+      picflip.setRadius(state.radius);
+      picflip.setPressure(state.pressure);
     }
   }, [picflip, state]);
 
@@ -91,6 +97,22 @@ export function usePicflip() {
     [dispatch, picflip]
   );
 
+  const setRadius = useCallback(
+    (value: number) => {
+      dispatch(setPicflipRadius(value));
+      picflip?.setRadius(value);
+    },
+    [dispatch, picflip]
+  );
+
+  const setPressure = useCallback(
+    (value: number) => {
+      dispatch(setPicflipPressure(value));
+      picflip?.setPressure(value);
+    },
+    [dispatch, picflip]
+  );
+
   const reset = useCallback(() => {
     dispatch(resetPicflip());
   }, [dispatch]);
@@ -102,6 +124,8 @@ export function usePicflip() {
     pressureIterations,
     overrelaxation,
     density,
+    radius,
+    pressure,
     isEnabled,
     // Actions
     setEnabled,
@@ -110,6 +134,8 @@ export function usePicflip() {
     setPressureIterations,
     setOverrelaxation,
     setDensity,
+    setRadius,
+    setPressure,
     reset,
   };
 }

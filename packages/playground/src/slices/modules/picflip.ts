@@ -5,6 +5,8 @@ import {
   DEFAULT_PICFLIP_PRESSURE_ITERATIONS,
   DEFAULT_PICFLIP_OVERRELAXATION,
   DEFAULT_PICFLIP_DENSITY,
+  DEFAULT_PICFLIP_RADIUS,
+  DEFAULT_PICFLIP_PRESSURE,
 } from "@cazala/party";
 
 export interface PicflipModuleState {
@@ -14,6 +16,8 @@ export interface PicflipModuleState {
   pressureIterations: number;
   overrelaxation: number;
   density: number;
+  radius: number;
+  pressure: number;
 }
 
 const initialState: PicflipModuleState = {
@@ -23,6 +27,8 @@ const initialState: PicflipModuleState = {
   pressureIterations: DEFAULT_PICFLIP_PRESSURE_ITERATIONS,
   overrelaxation: DEFAULT_PICFLIP_OVERRELAXATION,
   density: DEFAULT_PICFLIP_DENSITY,
+  radius: DEFAULT_PICFLIP_RADIUS,
+  pressure: DEFAULT_PICFLIP_PRESSURE,
 };
 
 export const picflipSlice = createSlice({
@@ -47,6 +53,12 @@ export const picflipSlice = createSlice({
     setPicflipDensity: (state, action: PayloadAction<number>) => {
       state.density = action.payload;
     },
+    setPicflipRadius: (state, action: PayloadAction<number>) => {
+      state.radius = action.payload;
+    },
+    setPicflipPressure: (state, action: PayloadAction<number>) => {
+      state.pressure = action.payload;
+    },
     resetPicflip: () => initialState,
     importPicflipSettings: (
       state,
@@ -64,6 +76,8 @@ export const {
   setPicflipPressureIterations,
   setPicflipOverrelaxation,
   setPicflipDensity,
+  setPicflipRadius,
+  setPicflipPressure,
   resetPicflip,
   importPicflipSettings,
 } = picflipSlice.actions;
