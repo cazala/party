@@ -116,6 +116,18 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
   // Local state for engine initialization
   const [isAutoMode, setIsAutoMode] = useState(true);
+  const initInProgressRef = useRef(false);
+
+  // IMPORTANT:
+  // - In auto mode, we must NOT re-run initialization just because Redux `isWebGPU`
+  //   changes to reflect the detected runtime. Otherwise we can overlap WebGPU adapter
+  //   requests across init attempts and potentially hit Chromium adapter exhaustion bugs.
+  // - Use a single derived key as the initialization trigger.
+  const requestedRuntime: "cpu" | "webgpu" | "auto" = isAutoMode
+    ? "auto"
+    : isWebGPU
+    ? "webgpu"
+    : "cpu";
 
   // Engine type string for canvas key
   const runtime: "cpu" | "webgpu" = isWebGPU ? "webgpu" : "cpu";
@@ -123,15 +135,16 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   // Initialize engine
   useEffect(() => {
     let cleanup: (() => void) | null = null;
-    let isInitializing = false; // Guard to prevent multiple simultaneous initializations
+    let initGuard = false; // Local guard for this effect instance
 
     const initEngine = async () => {
       // Prevent multiple simultaneous initializations
-      if (isInitializing) {
+      if (initGuard || initInProgressRef.current) {
         return;
       }
       
-      isInitializing = true;
+      initGuard = true;
+      initInProgressRef.current = true;
       // Preserve state from existing engine before cleanup
       let preservedState: any = null;
       if (engineRef.current) {
@@ -186,7 +199,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         console.log("[Engine] Cleanup delay complete");
       }
       if (!canvasRef.current) {
-        isInitializing = false; // Reset guard
+        initGuard = false;
+        initInProgressRef.current = false;
         return;
       }
 
@@ -197,7 +211,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         // Canvas not properly mounted yet, wait a bit
         await new Promise((resolve) => setTimeout(resolve, 100));
         if (!canvasRef.current || !canvasRef.current.isConnected) {
-          isInitializing = false; // Reset guard
+          initGuard = false;
+          initInProgressRef.current = false;
           return; // Canvas still not ready
         }
       }
@@ -237,23 +252,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       dispatch(setInitializing(true));
       dispatch(setError(null));
 
-      // Determine engine type (declare outside try block for catch block access)
-      let shouldUseWebGPU = isAutoMode ? false : isWebGPU;
-
       try {
-
-        if (isAutoMode) {
-          // Auto-detect WebGPU support - just check if navigator.gpu exists
-          // Don't request adapter here to avoid adapter exhaustion
-          // The actual adapter will be requested in gpu-resources.ts when needed
-          if (navigator.gpu) {
-            await new Promise(resolve => requestAnimationFrame(resolve));
-            shouldUseWebGPU = true;
-          }
-        }
-
-        dispatch(setWebGPU(shouldUseWebGPU));
-
         // Use default maxParticles for playground (100k)
         const maxParticles = 100000;
         
@@ -298,7 +297,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           canvas,
           forces,
           render,
-          runtime: isAutoMode ? "auto" : shouldUseWebGPU ? "webgpu" : "cpu",
+          runtime: requestedRuntime,
           maxParticles,
         });
         
@@ -309,6 +308,15 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         );
         
         await Promise.race([initPromise, timeoutPromise]);
+
+        // Sync detected runtime to Redux WITHOUT retriggering init in auto mode.
+        // (requestedRuntime remains "auto" while isAutoMode is true.)
+        try {
+          const actual = engine.getActualRuntime?.() === "webgpu";
+          dispatch(setWebGPU(actual));
+        } catch {
+          // ignore
+        }
 
         // Set references
         engineRef.current = engine;
@@ -344,7 +352,6 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         dispatch(setGridCellSizeAction(actualCellSize));
         dispatch(setCameraAction({ x: actualCamera.x, y: actualCamera.y }));
         dispatch(setZoomAction(actualZoom));
-        dispatch(setWebGPU(shouldUseWebGPU));
         if (!preservedState) {
           dispatch(setClearColorAction(actualClearColor));
         }
@@ -387,7 +394,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         // Mark as initialized
         dispatch(setInitialized(true));
         dispatch(setInitializing(false));
-        isInitializing = false; // Reset guard
+        initGuard = false;
+        initInProgressRef.current = false;
 
         // Start the engine after ensuring everything is ready
         // Use requestAnimationFrame to ensure the engine is fully initialized
@@ -426,7 +434,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           registerEngine(null);
         };
       } catch (err) {
-        isInitializing = false; // Reset guard on error
+        initGuard = false;
+        initInProgressRef.current = false;
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
         console.error("[Engine] Initialization error:", err);
         dispatch(setError(errorMessage));
@@ -439,7 +448,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     initEngine();
 
     return cleanup || undefined;
-  }, [canvasRef, isWebGPU, dispatch]);
+  }, [canvasRef, requestedRuntime, dispatch, isAutoMode]);
 
   // One-time page unload cleanup (must NOT depend on isWebGPU / dispatch or it will break runtime toggle).
   // This is important because in dev (React strict mode / hot reload) and on rapid reloads,

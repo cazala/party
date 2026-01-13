@@ -29,7 +29,11 @@ interface DemoSequenceItem {
   transitionDuration: number; // Interpolation duration in ms
 }
 
-export function useDemo() {
+export function useDemo({
+  canAutostart = true,
+}: {
+  canAutostart?: boolean;
+} = {}) {
   const { setBarsVisibility } = useUI();
   const {
     isInitialized,
@@ -307,6 +311,7 @@ export function useDemo() {
     if (startupStateRef.current !== "idle") return;
 
     const shouldAutostart =
+      canAutostart &&
       !hasStarted &&
       !isPlaying &&
       isInitialized &&
@@ -364,6 +369,7 @@ export function useDemo() {
     });
   }, [
     abortStartup,
+    canAutostart,
     demoParticleCount,
     hasStarted,
     isInitialized,

@@ -17,6 +17,7 @@ import { useHistory } from "../hooks/useHistory";
 import { useUI } from "../hooks/useUI";
 import { useTrails } from "../hooks/modules/useTrails";
 import { isMobileDevice } from "../utils/deviceCapabilities";
+import { useShareableSessionUrl } from "../contexts/ShareableSessionUrlContext";
 import { HelpModal } from "./HelpModal";
 import { SaveSessionModal } from "./modals/SaveSessionModal";
 import { LoadSessionModal } from "./modals/LoadSessionModal";
@@ -31,6 +32,7 @@ export function TopBar({
   stopDemo: () => void;
   playDemo: () => void;
 }) {
+  const { exitToHomepage } = useShareableSessionUrl();
   const [helpOpen, setHelpOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [loadModalOpen, setLoadModalOpen] = useState(false);
@@ -144,7 +146,21 @@ export function TopBar({
     <div className="top-bar">
       <div className="top-bar-content">
         <div className="title">
-          <h1>Party 🎉</h1>
+          <h1
+            role="button"
+            tabIndex={0}
+            style={{ cursor: "pointer" }}
+            onClick={exitToHomepage}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                exitToHomepage();
+              }
+            }}
+            title="Back to homepage"
+          >
+            Party 🎉
+          </h1>
         </div>
         <div className="system-controls">
           <div className="button-group">

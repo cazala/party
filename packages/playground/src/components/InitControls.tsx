@@ -10,10 +10,17 @@ import { useJoints } from "../hooks/modules/useJoints";
 import { useLines } from "../hooks/modules/useLines";
 import { useUI } from "../hooks/useUI";
 import { InitVelocityConfig as InitVelocityConfigType } from "../slices/init";
+import { useSession } from "../hooks/useSession";
+import { useAppDispatch } from "../hooks/useAppDispatch";
+import { lockSpawnTemporarily } from "../slices/init";
+import { buildPlayPath } from "../utils/playUrl";
+import { consumeSharedSessionFromUrlOnce } from "../utils/urlSharedSession";
 import "./InitControls.css";
 
 export function InitControls() {
   const { spawnParticles, isInitialized } = useEngine();
+  const { loadSessionData } = useSession();
+  const dispatch = useAppDispatch();
   const {
     removeAllJoints,
     setJoints,
@@ -64,6 +71,25 @@ export function InitControls() {
   useEffect(() => {
     if (isInitialized && !hasInitialSpawned) {
       markInitialSpawned();
+      const consumed = consumeSharedSessionFromUrlOnce();
+
+      if (consumed.kind === "error") {
+        console.error("Failed to decode shareable session URL:", consumed.error);
+        window.location.replace(buildPlayPath());
+        return;
+      }
+
+      if (consumed.kind === "data") {
+        // Prevent init UI auto-spawn effects from fighting the session load.
+        dispatch(lockSpawnTemporarily(500));
+
+        // Skip a frame to let engine/module wiring settle before applying a big session patch.
+        requestAnimationFrame(() => {
+          void loadSessionData(consumed.data);
+        });
+        return;
+      }
+
       spawnParticles(initState);
     }
   }, [
@@ -72,6 +98,8 @@ export function InitControls() {
     initState,
     markInitialSpawned,
     spawnParticles,
+    loadSessionData,
+    dispatch,
   ]);
 
   // Auto-spawn particles when any setting changes (but not on initial mount or bars toggle)

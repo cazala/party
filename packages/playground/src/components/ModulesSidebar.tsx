@@ -10,6 +10,7 @@ import { ModuleWrapper } from "./ModuleWrapper";
 import { useEngine } from "../hooks/useEngine";
 import { useOscillators } from "../hooks/useOscillators";
 import { useReset } from "../contexts/ResetContext";
+import { useShareableSessionUrl } from "../contexts/ShareableSessionUrlContext";
 import {
   useEnvironment,
   useBoundary,
@@ -23,6 +24,7 @@ import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import "./ModulesSidebar.css";
 
 export function ModulesSidebar() {
+  const { resetUrlToPlay } = useShareableSessionUrl();
   const {
     environment,
     boundary,
@@ -80,6 +82,9 @@ export function ModulesSidebar() {
         <button
           className="reset-button"
           onClick={() => {
+            // Replace URL back to /play and keep it there until the next change.
+            resetUrlToPlay();
+
             // Set reset flag to prevent oscillators from preserving current values
             setIsResetting(true);
             

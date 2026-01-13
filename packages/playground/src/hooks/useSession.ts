@@ -111,8 +111,8 @@ export function useSession() {
           await dispatch(
             setParticlesThunk({
               particles: sessionData.particles,
-              jointsToRestore: sessionData.modules.joints,
-              linesToRestore: sessionData.modules.lines,
+              jointsToRestore: sessionData.modules?.joints ?? {},
+              linesToRestore: sessionData.modules?.lines ?? {},
             })
           ).unwrap();
         } else {
@@ -155,8 +155,8 @@ export function useSession() {
           await dispatch(
             setParticlesThunk({
               particles: sessionData.particles,
-              jointsToRestore: sessionData.modules.joints,
-              linesToRestore: sessionData.modules.lines,
+              jointsToRestore: sessionData.modules?.joints ?? {},
+              linesToRestore: sessionData.modules?.lines ?? {},
             })
           ).unwrap();
         } else {

@@ -33,23 +33,35 @@ import {
 import {
   resetEnvironment,
   importEnvironmentSettings,
+  setEnvironmentEnabled,
   resetBoundary,
   importBoundarySettings,
+  setBoundaryEnabled,
   resetCollisions,
   importCollisionsSettings,
+  setCollisionsEnabled,
   resetFluids,
   importFluidsSettings,
+  setFluidsEnabled,
   resetBehavior,
   importBehaviorSettings,
+  setBehaviorEnabled,
   resetSensors,
   importSensorsSettings,
+  setSensorsEnabled,
   resetJoints,
   importJointsSettings,
+  setJointsEnabled,
   importTrailsSettings,
+  setTrailsEnabled,
   importInteractionSettings,
+  setInteractionEnabled,
   importParticlesSettings,
+  setParticlesEnabled,
   importLinesSettings,
+  setLinesEnabled,
   importGrabSettings,
+  setGrabEnabled,
 } from "./modules";
 import { FluidsMethod } from "@cazala/party";
 
@@ -103,64 +115,114 @@ const loadModuleSettings = (
   // Reset and import settings for all restart-affected modules
   if (RESTART_AFFECTED_MODULES.includes("environment")) {
     dispatch(resetEnvironment());
-    dispatch(importEnvironmentSettings(sessionData.modules.environment));
+    if (sessionData.modules?.environment) {
+      dispatch(importEnvironmentSettings(sessionData.modules.environment));
+    } else {
+      dispatch(setEnvironmentEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("boundary")) {
     dispatch(resetBoundary());
-    dispatch(importBoundarySettings(sessionData.modules.boundary));
+    if (sessionData.modules?.boundary) {
+      dispatch(importBoundarySettings(sessionData.modules.boundary));
+    } else {
+      dispatch(setBoundaryEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("collisions")) {
     dispatch(resetCollisions());
-    dispatch(importCollisionsSettings(sessionData.modules.collisions));
+    if (sessionData.modules?.collisions) {
+      dispatch(importCollisionsSettings(sessionData.modules.collisions));
+    } else {
+      dispatch(setCollisionsEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("fluids")) {
     dispatch(resetFluids());
-    const fluidsSettings = {
-      ...(sessionData.modules.fluids ?? {}),
-      ...migrateLegacyPicflipIntoFluids(sessionData),
-    };
-    dispatch(importFluidsSettings(fluidsSettings));
+    const migrated = migrateLegacyPicflipIntoFluids(sessionData);
+    const hasPayload = !!sessionData.modules?.fluids || (migrated as any)?.enabled;
+    if (hasPayload) {
+      const fluidsSettings = {
+        ...(sessionData.modules?.fluids ?? {}),
+        ...migrated,
+      };
+      dispatch(importFluidsSettings(fluidsSettings));
+    } else {
+      dispatch(setFluidsEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("behavior")) {
     dispatch(resetBehavior());
-    dispatch(importBehaviorSettings(sessionData.modules.behavior));
+    if (sessionData.modules?.behavior) {
+      dispatch(importBehaviorSettings(sessionData.modules.behavior));
+    } else {
+      dispatch(setBehaviorEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("sensors")) {
     dispatch(resetSensors());
-    dispatch(importSensorsSettings(sessionData.modules.sensors));
+    if (sessionData.modules?.sensors) {
+      dispatch(importSensorsSettings(sessionData.modules.sensors));
+    } else {
+      dispatch(setSensorsEnabled(false));
+    }
   }
 
   // Handle joints separately since quickload doesn't restore joints connections
   if (includeJoints) {
     dispatch(resetJoints());
-    dispatch(importJointsSettings(sessionData.modules.joints));
+    if (sessionData.modules?.joints) {
+      dispatch(importJointsSettings(sessionData.modules.joints));
+    } else {
+      dispatch(setJointsEnabled(false));
+    }
   } else {
     dispatch(resetJoints());
   }
 
   if (RESTART_AFFECTED_MODULES.includes("trails")) {
-    dispatch(importTrailsSettings(sessionData.modules.trails));
+    if (sessionData.modules?.trails) {
+      dispatch(importTrailsSettings(sessionData.modules.trails));
+    } else {
+      dispatch(setTrailsEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("interaction")) {
-    dispatch(importInteractionSettings(sessionData.modules.interaction));
+    if (sessionData.modules?.interaction) {
+      dispatch(importInteractionSettings(sessionData.modules.interaction));
+    } else {
+      dispatch(setInteractionEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("particles")) {
-    dispatch(importParticlesSettings(sessionData.modules.particles));
+    if (sessionData.modules?.particles) {
+      dispatch(importParticlesSettings(sessionData.modules.particles));
+    } else {
+      dispatch(setParticlesEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("lines")) {
-    dispatch(importLinesSettings(sessionData.modules.lines));
+    if (sessionData.modules?.lines) {
+      dispatch(importLinesSettings(sessionData.modules.lines));
+    } else {
+      dispatch(setLinesEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("grab")) {
-    dispatch(importGrabSettings(sessionData.modules.grab));
+    if (sessionData.modules?.grab) {
+      dispatch(importGrabSettings(sessionData.modules.grab));
+    } else {
+      dispatch(setGrabEnabled(false));
+    }
   }
 
 };
@@ -364,37 +426,87 @@ const applyFullSessionLoad = async (
 
   // Load module states
   dispatch(resetEnvironment());
-  dispatch(importEnvironmentSettings(sessionData.modules.environment));
+  if (sessionData.modules?.environment) {
+    dispatch(importEnvironmentSettings(sessionData.modules.environment));
+  } else {
+    dispatch(setEnvironmentEnabled(false));
+  }
 
   dispatch(resetBoundary());
-  dispatch(importBoundarySettings(sessionData.modules.boundary));
+  if (sessionData.modules?.boundary) {
+    dispatch(importBoundarySettings(sessionData.modules.boundary));
+  } else {
+    dispatch(setBoundaryEnabled(false));
+  }
 
   dispatch(resetCollisions());
-  dispatch(importCollisionsSettings(sessionData.modules.collisions));
+  if (sessionData.modules?.collisions) {
+    dispatch(importCollisionsSettings(sessionData.modules.collisions));
+  } else {
+    dispatch(setCollisionsEnabled(false));
+  }
 
   dispatch(resetFluids());
   {
-    const fluidsSettings = {
-      ...(sessionData.modules.fluids ?? {}),
-      ...migrateLegacyPicflipIntoFluids(sessionData),
-    };
-    dispatch(importFluidsSettings(fluidsSettings));
+    const migrated = migrateLegacyPicflipIntoFluids(sessionData);
+    const hasPayload = !!sessionData.modules?.fluids || (migrated as any)?.enabled;
+    if (hasPayload) {
+      const fluidsSettings = {
+        ...(sessionData.modules?.fluids ?? {}),
+        ...migrated,
+      };
+      dispatch(importFluidsSettings(fluidsSettings));
+    } else {
+      dispatch(setFluidsEnabled(false));
+    }
   }
 
   dispatch(resetBehavior());
-  dispatch(importBehaviorSettings(sessionData.modules.behavior));
+  if (sessionData.modules?.behavior) {
+    dispatch(importBehaviorSettings(sessionData.modules.behavior));
+  } else {
+    dispatch(setBehaviorEnabled(false));
+  }
 
   dispatch(resetSensors());
-  dispatch(importSensorsSettings(sessionData.modules.sensors));
+  if (sessionData.modules?.sensors) {
+    dispatch(importSensorsSettings(sessionData.modules.sensors));
+  } else {
+    dispatch(setSensorsEnabled(false));
+  }
 
   dispatch(resetJoints());
-  dispatch(importJointsSettings(sessionData.modules.joints));
+  if (sessionData.modules?.joints) {
+    dispatch(importJointsSettings(sessionData.modules.joints));
+  } else {
+    dispatch(setJointsEnabled(false));
+  }
 
-  dispatch(importTrailsSettings(sessionData.modules.trails));
-  dispatch(importInteractionSettings(sessionData.modules.interaction));
-  dispatch(importParticlesSettings(sessionData.modules.particles));
-  dispatch(importLinesSettings(sessionData.modules.lines));
-  dispatch(importGrabSettings(sessionData.modules.grab));
+  if (sessionData.modules?.trails) {
+    dispatch(importTrailsSettings(sessionData.modules.trails));
+  } else {
+    dispatch(setTrailsEnabled(false));
+  }
+  if (sessionData.modules?.interaction) {
+    dispatch(importInteractionSettings(sessionData.modules.interaction));
+  } else {
+    dispatch(setInteractionEnabled(false));
+  }
+  if (sessionData.modules?.particles) {
+    dispatch(importParticlesSettings(sessionData.modules.particles));
+  } else {
+    dispatch(setParticlesEnabled(false));
+  }
+  if (sessionData.modules?.lines) {
+    dispatch(importLinesSettings(sessionData.modules.lines));
+  } else {
+    dispatch(setLinesEnabled(false));
+  }
+  if (sessionData.modules?.grab) {
+    dispatch(importGrabSettings(sessionData.modules.grab));
+  } else {
+    dispatch(setGrabEnabled(false));
+  }
   // No standalone picflip module anymore; legacy picflip sessions are migrated into fluids above.
 
   // Load render settings (full load only)

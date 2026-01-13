@@ -12,7 +12,8 @@ export function Canvas({
   style?: React.CSSProperties;
   isPlaying?: boolean;
 }) {
-  const { canvasRef, canvasDimensions, runtime, handleWheel, isInitialized } = useEngine();
+  const { canvasRef, canvasDimensions, runtime, handleWheel, isInitialized } =
+    useEngine();
   const {
     isSpawnMode,
     isGrabMode,
@@ -69,7 +70,6 @@ export function Canvas({
 
   return (
     <canvas
-      key={runtime} // Force canvas recreation when engine type changes
       ref={canvasRef}
       id="canvas"
       className={canvasClasses}
