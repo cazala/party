@@ -120,15 +120,11 @@ export class Boundary extends Module<"boundary", BoundaryInputs> {
   webgpu(): WebGPUDescriptor<BoundaryInputs> {
     return {
       apply: ({ particleVar, getUniform }) => `{
-  // Bounce using global grid extents
   let halfSize = ${particleVar}.size;
   let minX = GRID_MINX();
   let maxX = GRID_MAXX();
   let minY = GRID_MINY();
   let maxY = GRID_MAXY();
-  let bounce = ${getUniform("restitution")};
-  let friction = ${getUniform("friction")};
-  let mode = ${getUniform("mode")};
   let repelDist = ${getUniform("repelDistance")};
   let repelStrength = ${getUniform("repelStrength")};
 
@@ -173,34 +169,54 @@ export class Boundary extends Module<"boundary", BoundaryInputs> {
     }
     ${particleVar}.acceleration += vec2<f32>(fx, fy);
   }
+}`,
+      correct: ({ particleVar, prevPosVar, postPosVar, getUniform }) => `{
+  // Resolve boundaries post-integration to reduce dt-dependent jitter.
+  // We use prev/post integration positions (SIM_STATE) to detect crossings.
+  let halfSize = ${particleVar}.size;
+  let minX = GRID_MINX();
+  let maxX = GRID_MAXX();
+  let minY = GRID_MINY();
+  let maxY = GRID_MAXY();
+  let bounce = ${getUniform("restitution")};
+  let friction = ${getUniform("friction")};
+  let mode = ${getUniform("mode")};
+
+  let prevPos = ${prevPosVar};
+  let postPos = ${postPosVar};
+  var vel = ${particleVar}.velocity;
 
   if (mode == 0.0) {
-    // bounce
-    // X axis
-    if (${particleVar}.position.x - halfSize < minX) {
+    // bounce (CCD-ish using prev/post)
+    // Left wall
+    if (postPos.x - halfSize < minX) {
       ${particleVar}.position.x = minX + halfSize;
-      ${particleVar}.velocity.x = -${particleVar}.velocity.x * bounce;
-      ${particleVar}.velocity.y *= max(0.0, 1.0 - friction);
-    } else if (${particleVar}.position.x + halfSize > maxX) {
+      if (vel.x < 0.0) { vel.x = -vel.x * bounce; }
+      vel.y = vel.y * max(0.0, 1.0 - friction);
+    }
+    // Right wall
+    else if (postPos.x + halfSize > maxX) {
       ${particleVar}.position.x = maxX - halfSize;
-      ${particleVar}.velocity.x = -${particleVar}.velocity.x * bounce;
-      ${particleVar}.velocity.y *= max(0.0, 1.0 - friction);
+      if (vel.x > 0.0) { vel.x = -vel.x * bounce; }
+      vel.y = vel.y * max(0.0, 1.0 - friction);
     }
 
-    // Y axis
-    if (${particleVar}.position.y - halfSize < minY) {
+    // Top
+    if (postPos.y - halfSize < minY) {
       ${particleVar}.position.y = minY + halfSize;
-      ${particleVar}.velocity.y = -${particleVar}.velocity.y * bounce;
-      ${particleVar}.velocity.x *= max(0.0, 1.0 - friction);
-    } else if (${particleVar}.position.y + halfSize > maxY) {
-      ${particleVar}.position.y = maxY - halfSize;
-      ${particleVar}.velocity.y = -${particleVar}.velocity.y * bounce;
-      ${particleVar}.velocity.x *= max(0.0, 1.0 - friction);
+      if (vel.y < 0.0) { vel.y = -vel.y * bounce; }
+      vel.x = vel.x * max(0.0, 1.0 - friction);
     }
+    // Bottom (floor)
+    else if (postPos.y + halfSize > maxY) {
+      ${particleVar}.position.y = maxY - halfSize;
+      if (vel.y > 0.0) { vel.y = -vel.y * bounce; }
+      vel.x = vel.x * max(0.0, 1.0 - friction);
+    }
+    ${particleVar}.velocity = vel;
   } else if (mode == 1.0) {
-    // warp
-    // Only warp once the particle is fully outside the bounds
-    let eps = 1.0; // spawn just outside the opposite edge so it slides in
+    // warp (post-integration)
+    let eps = 1.0;
     if (${particleVar}.position.x + halfSize < minX) {
       ${particleVar}.position.x = maxX + halfSize + eps;
     } else if (${particleVar}.position.x - halfSize > maxX) {
@@ -212,24 +228,15 @@ export class Boundary extends Module<"boundary", BoundaryInputs> {
       ${particleVar}.position.y = minY - halfSize - eps;
     }
   } else if (mode == 2.0) {
-    // kill
-    // Only kill once the particle is fully outside the bounds
-    if (${particleVar}.position.x - halfSize < minX) {
-      ${particleVar}.position.x = minX - halfSize * 4;
-      ${particleVar}.mass = 0.0;
-    } else if (${particleVar}.position.x + halfSize > maxX) {
-      ${particleVar}.position.x = maxX + halfSize * 4;
+    // kill (post-integration)
+    if (${particleVar}.position.x + halfSize < minX ||
+        ${particleVar}.position.x - halfSize > maxX ||
+        ${particleVar}.position.y + halfSize < minY ||
+        ${particleVar}.position.y - halfSize > maxY) {
       ${particleVar}.mass = 0.0;
     }
-    if (${particleVar}.position.y - halfSize < minY) {
-      ${particleVar}.position.y = minY - halfSize * 4;
-      ${particleVar}.mass = 0.0;
-    } else if (${particleVar}.position.y + halfSize > maxY) {
-      ${particleVar}.position.y = maxY + halfSize * 4;
-      ${particleVar}.mass = 0.0;
-    } 
   } else if (mode == 3.0) {
-    // none: no boundary constraints; repel force above still applies
+    // none
   }
 }`,
     };
@@ -249,9 +256,6 @@ export class Boundary extends Module<"boundary", BoundaryInputs> {
         const minY = camera.y - halfH;
         const maxY = camera.y + halfH;
         const halfSize = particle.size;
-        const bounce = input.restitution;
-        const friction = input.friction;
-        const mode = input.mode;
         const repelDist = input.repelDistance;
         const repelStrength = input.repelStrength;
 
@@ -298,34 +302,48 @@ export class Boundary extends Module<"boundary", BoundaryInputs> {
 
           particle.acceleration.add(new Vector(fx, fy));
         }
+      },
+      correct: ({ particle, input, view }) => {
+        // Resolve boundaries post-integration to reduce dt-dependent jitter.
+        const camera = view.getCamera();
+        const zoom = Math.max(view.getZoom(), 0.0001);
+        const size = view.getSize();
+        const halfW = size.width / (2 * zoom);
+        const halfH = size.height / (2 * zoom);
+        const minX = camera.x - halfW;
+        const maxX = camera.x + halfW;
+        const minY = camera.y - halfH;
+        const maxY = camera.y + halfH;
+
+        const halfSize = particle.size;
+        const bounce = input.restitution;
+        const friction = input.friction;
+        const mode = input.mode;
 
         if (mode === 0) {
           // bounce
-          // X axis
           if (particle.position.x - halfSize < minX) {
             particle.position.x = minX + halfSize;
-            particle.velocity.x = -particle.velocity.x * bounce;
+            if (particle.velocity.x < 0) particle.velocity.x = -particle.velocity.x * bounce;
             particle.velocity.y *= Math.max(0, 1 - friction);
           } else if (particle.position.x + halfSize > maxX) {
             particle.position.x = maxX - halfSize;
-            particle.velocity.x = -particle.velocity.x * bounce;
+            if (particle.velocity.x > 0) particle.velocity.x = -particle.velocity.x * bounce;
             particle.velocity.y *= Math.max(0, 1 - friction);
           }
 
-          // Y axis
           if (particle.position.y - halfSize < minY) {
             particle.position.y = minY + halfSize;
-            particle.velocity.y = -particle.velocity.y * bounce;
+            if (particle.velocity.y < 0) particle.velocity.y = -particle.velocity.y * bounce;
             particle.velocity.x *= Math.max(0, 1 - friction);
           } else if (particle.position.y + halfSize > maxY) {
             particle.position.y = maxY - halfSize;
-            particle.velocity.y = -particle.velocity.y * bounce;
+            if (particle.velocity.y > 0) particle.velocity.y = -particle.velocity.y * bounce;
             particle.velocity.x *= Math.max(0, 1 - friction);
           }
         } else if (mode === 1) {
           // warp
-          // Only warp once the particle is fully outside the bounds
-          const eps = 1; // spawn just outside the opposite edge so it slides in
+          const eps = 1;
           if (particle.position.x + halfSize < minX) {
             particle.position.x = maxX + halfSize + eps;
           } else if (particle.position.x - halfSize > maxX) {
@@ -338,7 +356,6 @@ export class Boundary extends Module<"boundary", BoundaryInputs> {
           }
         } else if (mode === 2) {
           // kill
-          // Only kill once the particle is fully outside the bounds
           if (
             particle.position.x + halfSize < minX ||
             particle.position.x - halfSize > maxX ||
@@ -347,8 +364,6 @@ export class Boundary extends Module<"boundary", BoundaryInputs> {
           ) {
             particle.mass = 0;
           }
-        } else if (mode === 3) {
-          // none: no boundary constraints; repel force above still applies
         }
       },
     };
