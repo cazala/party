@@ -17,6 +17,12 @@ export function useMouseHandler({
   const { canvasRef } = useEngine();
   const handlerId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
+  const toMouseLikeEvent = useCallback((e: PointerEvent): MouseEvent => {
+    // PointerEvent is a superset for our usage (clientX/clientY/buttons/modifiers).
+    // For touch, browsers report button=0/buttons=1 on active contact.
+    return e as unknown as MouseEvent;
+  }, []);
+
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
       if (!isInitialized || !canvasRef.current) return;
@@ -89,11 +95,52 @@ export function useMouseHandler({
       handleContextMenu(e);
     };
 
+    const onPointerDown = (e: PointerEvent) => {
+      // Let tools use the same logic across mouse+touch+pen.
+      // Prevent native gestures (handled by CSS touch-action too).
+      e.preventDefault();
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        // ignore (some browsers may throw)
+      }
+      handleMouseDown(toMouseLikeEvent(e));
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      e.preventDefault();
+      handleMouseMove(toMouseLikeEvent(e));
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      e.preventDefault();
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+      handleMouseUp(toMouseLikeEvent(e));
+    };
+
+    const onPointerCancel = (e: PointerEvent) => {
+      e.preventDefault();
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+      handleMouseUp(toMouseLikeEvent(e));
+    };
+
     canvas.addEventListener("mousemove", onMouseMove);
     canvas.addEventListener("mousedown", onMouseDown);
     canvas.addEventListener("mouseup", onMouseUp);
     canvas.addEventListener("mouseleave", onMouseUp);
     canvas.addEventListener("contextmenu", onContextMenu);
+    canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
+    canvas.addEventListener("pointermove", onPointerMove, { passive: false });
+    canvas.addEventListener("pointerup", onPointerUp, { passive: false });
+    canvas.addEventListener("pointercancel", onPointerCancel, { passive: false });
 
     return () => {
       // Only the owner should remove listeners
@@ -103,6 +150,10 @@ export function useMouseHandler({
         canvas.removeEventListener("mouseup", onMouseUp);
         canvas.removeEventListener("mouseleave", onMouseUp);
         canvas.removeEventListener("contextmenu", onContextMenu);
+        canvas.removeEventListener("pointerdown", onPointerDown);
+        canvas.removeEventListener("pointermove", onPointerMove);
+        canvas.removeEventListener("pointerup", onPointerUp);
+        canvas.removeEventListener("pointercancel", onPointerCancel);
         delete canvas.dataset[ownerKey];
       }
     };
@@ -113,6 +164,7 @@ export function useMouseHandler({
     handleMouseMove,
     handleMouseUp,
     handleContextMenu,
+    toMouseLikeEvent,
   ]);
 
   return {
