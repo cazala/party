@@ -12,6 +12,25 @@ type Parsed =
 let parsedOnce: Parsed | null = null;
 let consumed = false;
 
+function ensureModulesHaveEnabledFlag(data: SessionData): SessionData {
+  const modules: any = (data as any).modules;
+  if (!modules || typeof modules !== "object") return data;
+
+  const nextModules: Record<string, any> = { ...modules };
+  for (const [key, value] of Object.entries(nextModules)) {
+    if (value && typeof value === "object") {
+      if (!("enabled" in value)) {
+        nextModules[key] = { ...value, enabled: true };
+      }
+    } else {
+      // If the key exists at all, treat it as enabled.
+      nextModules[key] = { enabled: true };
+    }
+  }
+
+  return { ...(data as any), modules: nextModules } as SessionData;
+}
+
 function parseOnce(): Parsed {
   if (parsedOnce) return parsedOnce;
 
@@ -24,7 +43,7 @@ function parseOnce(): Parsed {
 
     const json = decodePlaySessionParam(route.sessionParam);
     const data = JSON.parse(json) as SessionData;
-    parsedOnce = { kind: "data", data };
+    parsedOnce = { kind: "data", data: ensureModulesHaveEnabledFlag(data) };
     return parsedOnce;
   } catch (error) {
     parsedOnce = { kind: "error", error };

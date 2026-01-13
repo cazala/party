@@ -65,6 +65,11 @@ function buildEnabledModulesDiff(modules: RootState["modules"]): Record<string, 
     if (!enabled) continue;
     const defaults = (DEFAULT_MODULES as any)[name];
     const diff = diffToDefaults(moduleState, defaults);
+    // Presence of the module key in the share URL implies "enabled".
+    // Drop `enabled: true` to keep payload smaller.
+    if (diff && typeof diff === "object" && "enabled" in diff) {
+      delete (diff as any).enabled;
+    }
     // IMPORTANT: keep the module entry even if it matches defaults (signals "enabled" for
     // modules whose default enabled=true). Loader treats missing module entries as disabled.
     out[name] = diff ?? {};
