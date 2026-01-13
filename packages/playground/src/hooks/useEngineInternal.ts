@@ -723,6 +723,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
 
   return {
     // State values (from Redux selectors)
+    isAutoMode,
     isWebGPU,
     isPlaying,
     isInitialized,

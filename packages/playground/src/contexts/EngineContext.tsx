@@ -38,6 +38,7 @@ export interface EngineContextType {
   canvasRef: React.RefObject<HTMLCanvasElement>;
 
   // All the engine state and actions
+  isAutoMode: boolean;
   isWebGPU: boolean;
   isPlaying: boolean;
   isInitialized: boolean;
