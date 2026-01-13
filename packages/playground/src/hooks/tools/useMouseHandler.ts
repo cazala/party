@@ -222,7 +222,7 @@ export function useMouseHandler({
 
       const rawScale = d / Math.max(1e-6, pinchStartDistance);
       // Increase sensitivity so a single pinch can traverse zoom range more easily.
-      const PINCH_GAIN = 2.5;
+      const PINCH_GAIN = 5;
       const scale =
         rawScale >= 1
           ? 1 + (rawScale - 1) * PINCH_GAIN
