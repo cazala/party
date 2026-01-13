@@ -21,7 +21,7 @@ import {
   generateSessionId,
 } from "../utils/sessionManager";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
-import { setState as setInitState } from "./init";
+import { resetToDefaults as resetInitToDefaults, setState as setInitState } from "./init";
 import {
   setConstrainIterations,
   setGridCellSize,
@@ -64,6 +64,8 @@ import {
   setGrabEnabled,
 } from "./modules";
 import { FluidsMethod } from "@cazala/party";
+import { initReducer, selectInitState } from "./init";
+import { engineReducer } from "./engine";
 
 const migrateLegacyPicflipIntoFluids = (sessionData: SessionData) => {
   const legacy = (sessionData.modules as any)?.picflip;
@@ -99,6 +101,25 @@ const migrateLegacyPicflipIntoFluids = (sessionData: SessionData) => {
     ...(legacyFlipRatio !== undefined ? { flipRatio: legacyFlipRatio } : {}),
   };
 };
+
+const DEFAULT_INIT_SLICE = initReducer(undefined, { type: "@@INIT" } as any);
+const DEFAULT_INIT = selectInitState({ init: DEFAULT_INIT_SLICE } as any);
+const DEFAULT_ENGINE_SLICE = engineReducer(undefined, { type: "@@INIT" } as any);
+const DEFAULT_ENGINE = {
+  constrainIterations: DEFAULT_ENGINE_SLICE.constrainIterations,
+  gridCellSize: DEFAULT_ENGINE_SLICE.gridCellSize,
+  maxNeighbors: DEFAULT_ENGINE_SLICE.maxNeighbors,
+  camera: DEFAULT_ENGINE_SLICE.camera,
+  zoom: DEFAULT_ENGINE_SLICE.zoom,
+};
+
+function normalizeInit(init: any): any {
+  return { ...DEFAULT_INIT, ...(init ?? {}) };
+}
+
+function normalizeEngine(engine: any): any {
+  return { ...DEFAULT_ENGINE, ...(engine ?? {}) };
+}
 import {
   clearAllOscillators,
   clearModuleOscillators,
@@ -399,6 +420,9 @@ const applyFullSessionLoad = async (
   dispatch: any,
   sessionData: SessionData
 ) => {
+  const normalizedInit = normalizeInit((sessionData as any).init);
+  const normalizedEngine = normalizeEngine((sessionData as any).engine);
+
   // Set flag to prevent useOscillators interference during load
   dispatch(sessionSlice.actions.setIsLoadingOscillators(true));
 
@@ -413,16 +437,17 @@ const applyFullSessionLoad = async (
   await new Promise((resolve) => setTimeout(resolve, 10));
 
   // Load init state
-  dispatch(setInitState(sessionData.init));
+  dispatch(resetInitToDefaults());
+  dispatch(setInitState(normalizedInit));
 
   // Load engine settings
-  dispatch(setConstrainIterations(sessionData.engine.constrainIterations));
-  dispatch(setGridCellSize(sessionData.engine.gridCellSize));
-  dispatch(setMaxNeighbors(sessionData.engine.maxNeighbors));
+  dispatch(setConstrainIterations(normalizedEngine.constrainIterations));
+  dispatch(setGridCellSize(normalizedEngine.gridCellSize));
+  dispatch(setMaxNeighbors(normalizedEngine.maxNeighbors));
 
   // Load camera and zoom
-  dispatch(setCameraThunk(sessionData.engine.camera));
-  dispatch(setZoomThunk(sessionData.engine.zoom));
+  dispatch(setCameraThunk(normalizedEngine.camera));
+  dispatch(setZoomThunk(normalizedEngine.zoom));
 
   // Load module states
   dispatch(resetEnvironment());
@@ -586,7 +611,13 @@ const applyFullSessionLoad = async (
   // Clear the flag after loading is complete
   dispatch(sessionSlice.actions.setIsLoadingOscillators(false));
 
-  return sessionData;
+  // Return normalized data so callers (e.g. spawnParticlesThunk(sessionData.init)) always have
+  // a complete config even if the incoming payload was minimized for URL size.
+  return {
+    ...(sessionData as any),
+    init: normalizedInit,
+    engine: normalizedEngine,
+  } as SessionData;
 };
 
 // Internal helper to apply a quick session load (no particles/joints changes)
@@ -595,6 +626,8 @@ const applyQuickSessionLoad = async (
   getState: any,
   sessionData: SessionData
 ) => {
+  const normalizedEngine = normalizeEngine((sessionData as any).engine);
+
   // Set flag to prevent useOscillators interference during load
   dispatch(sessionSlice.actions.setIsLoadingOscillators(true));
 
@@ -632,9 +665,9 @@ const applyQuickSessionLoad = async (
   await engine?.getParticles();
 
   // Load engine settings
-  dispatch(setConstrainIterations(sessionData.engine.constrainIterations));
-  dispatch(setGridCellSize(sessionData.engine.gridCellSize));
-  dispatch(setMaxNeighbors(sessionData.engine.maxNeighbors));
+  dispatch(setConstrainIterations(normalizedEngine.constrainIterations));
+  dispatch(setGridCellSize(normalizedEngine.gridCellSize));
+  dispatch(setMaxNeighbors(normalizedEngine.maxNeighbors));
 
   // Load module states (without joints connections for quickload)
   loadModuleSettings(dispatch, sessionData, false);
@@ -727,7 +760,10 @@ const applyQuickSessionLoad = async (
   // Clear the flag after loading is complete
   dispatch(sessionSlice.actions.setIsLoadingOscillators(false));
 
-  return sessionData;
+  return {
+    ...(sessionData as any),
+    engine: normalizedEngine,
+  } as SessionData;
 };
 
 // Async thunk to load session by ID (from storage)
