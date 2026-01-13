@@ -63,44 +63,8 @@ import {
   importGrabSettings,
   setGrabEnabled,
 } from "./modules";
-import { FluidsMethod } from "@cazala/party";
 import { initReducer, selectInitState } from "./init";
 import { engineReducer } from "./engine";
-
-const migrateLegacyPicflipIntoFluids = (sessionData: SessionData) => {
-  const legacy = (sessionData.modules as any)?.picflip;
-  if (!legacy || typeof legacy !== "object") return {};
-
-  // Only migrate if the legacy module was enabled.
-  if (!legacy.enabled) return {};
-
-  const legacyRadius = typeof legacy.radius === "number" ? legacy.radius : undefined;
-  const legacyDensity = typeof legacy.density === "number" ? legacy.density : undefined;
-  const legacyPressure = typeof legacy.pressure === "number" ? legacy.pressure : undefined;
-  const legacyFlipRatio = typeof legacy.flipRatio === "number" ? legacy.flipRatio : undefined;
-
-  // Fluids (PIC/FLIP) internal mapping currently uses:
-  // radInternal = influenceRadius / 2
-  // densityInternal = targetDensity * 3
-  // pressureInternal = pressureMultiplier * 30
-  //
-  // To preserve legacy behavior, invert that mapping:
-  const influenceRadius =
-    legacyRadius !== undefined ? legacyRadius * 2 : undefined;
-  const targetDensity =
-    legacyDensity !== undefined ? legacyDensity / 3 : undefined;
-  const pressureMultiplier =
-    legacyPressure !== undefined ? legacyPressure / 30 : undefined;
-
-  return {
-    enabled: true,
-    method: FluidsMethod.Picflip,
-    ...(influenceRadius !== undefined ? { influenceRadius } : {}),
-    ...(targetDensity !== undefined ? { targetDensity } : {}),
-    ...(pressureMultiplier !== undefined ? { pressureMultiplier } : {}),
-    ...(legacyFlipRatio !== undefined ? { flipRatio: legacyFlipRatio } : {}),
-  };
-};
 
 const DEFAULT_INIT_SLICE = initReducer(undefined, { type: "@@INIT" } as any);
 const DEFAULT_INIT = selectInitState({ init: DEFAULT_INIT_SLICE } as any);
@@ -163,14 +127,8 @@ const loadModuleSettings = (
 
   if (RESTART_AFFECTED_MODULES.includes("fluids")) {
     dispatch(resetFluids());
-    const migrated = migrateLegacyPicflipIntoFluids(sessionData);
-    const hasPayload = !!sessionData.modules?.fluids || (migrated as any)?.enabled;
-    if (hasPayload) {
-      const fluidsSettings = {
-        ...(sessionData.modules?.fluids ?? {}),
-        ...migrated,
-      };
-      dispatch(importFluidsSettings(fluidsSettings));
+    if (sessionData.modules?.fluids) {
+      dispatch(importFluidsSettings(sessionData.modules.fluids));
     } else {
       dispatch(setFluidsEnabled(false));
     }
@@ -472,18 +430,10 @@ const applyFullSessionLoad = async (
   }
 
   dispatch(resetFluids());
-  {
-    const migrated = migrateLegacyPicflipIntoFluids(sessionData);
-    const hasPayload = !!sessionData.modules?.fluids || (migrated as any)?.enabled;
-    if (hasPayload) {
-      const fluidsSettings = {
-        ...(sessionData.modules?.fluids ?? {}),
-        ...migrated,
-      };
-      dispatch(importFluidsSettings(fluidsSettings));
-    } else {
-      dispatch(setFluidsEnabled(false));
-    }
+  if (sessionData.modules?.fluids) {
+    dispatch(importFluidsSettings(sessionData.modules.fluids));
+  } else {
+    dispatch(setFluidsEnabled(false));
   }
 
   dispatch(resetBehavior());
@@ -532,8 +482,6 @@ const applyFullSessionLoad = async (
   } else {
     dispatch(setGrabEnabled(false));
   }
-  // No standalone picflip module anymore; legacy picflip sessions are migrated into fluids above.
-
   // Load render settings (full load only)
   if (sessionData.render) {
     try {
