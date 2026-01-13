@@ -1,5 +1,3 @@
-const PLAY_SEGMENT = "play";
-
 function base64EncodeUtf8(input: string): string {
   // btoa expects binary string; encode UTF-8 first.
   return btoa(unescape(encodeURIComponent(input)));
@@ -52,21 +50,22 @@ export type PlayRoute =
 export function parseCurrentPlayRoute(): PlayRoute {
   const relPath = stripBase(window.location.pathname);
 
-  if (relPath === `/${PLAY_SEGMENT}` || relPath === `/${PLAY_SEGMENT}/`) {
+  // Homepage
+  if (relPath === "/" || relPath === "") {
     return { kind: "play", hasSession: false };
   }
 
-  const prefix = `/${PLAY_SEGMENT}/`;
-  if (relPath.startsWith(prefix) && relPath.length > prefix.length) {
-    const sessionParam = relPath.slice(prefix.length);
-    return { kind: "play", hasSession: true, sessionParam };
+  // Session URL is a single path segment: "/:session"
+  // Base64url encoding guarantees no "/" characters inside the segment.
+  if (relPath.startsWith("/") && relPath.length > 1 && !relPath.slice(1).includes("/")) {
+    return { kind: "play", hasSession: true, sessionParam: relPath.slice(1) };
   }
 
   return { kind: "other" };
 }
 
 export function buildPlayPath(): string {
-  return withBase(`/${PLAY_SEGMENT}`);
+  return withBase(`/`);
 }
 
 export function encodePlaySessionParam(sessionJson: string): string {
@@ -79,6 +78,6 @@ export function decodePlaySessionParam(param: string): string {
 
 export function buildPlaySessionPath(sessionJson: string): string {
   const encoded = encodePlaySessionParam(sessionJson);
-  return withBase(`/${PLAY_SEGMENT}/${encoded}`);
+  return withBase(`/${encoded}`);
 }
 
