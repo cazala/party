@@ -1,4 +1,5 @@
 import { SessionData, SessionListItem } from "../types/session";
+import { migrateSessionDataToLatest } from "../sessions/migrateSessionData";
 
 const SESSION_STORAGE_PREFIX = "party-session-";
 const SESSION_INDEX_KEY = "party-sessions-index";
@@ -100,7 +101,7 @@ export function loadSession(sessionId: string): SessionData | null {
       return null;
     }
     
-    return JSON.parse(sessionData);
+    return migrateSessionDataToLatest(JSON.parse(sessionData));
   } catch (error) {
     console.error("Failed to load session:", error);
     return null;

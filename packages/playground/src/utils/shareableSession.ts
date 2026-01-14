@@ -1,5 +1,6 @@
 import type { RootState } from "../slices/store";
 import type { SessionData } from "../types/session";
+import { SESSION_DATA_VERSION } from "../types/session";
 import { modulesReducer } from "../slices/modules";
 import { initReducer, selectInitState } from "../slices/init";
 import { engineReducer } from "../slices/engine";
@@ -111,6 +112,7 @@ export function buildShareableSessionData({
   );
 
   return {
+    version: SESSION_DATA_VERSION,
     id: "share",
     name: "Shared session",
     metadata: {

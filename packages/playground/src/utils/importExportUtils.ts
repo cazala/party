@@ -1,4 +1,5 @@
 import { SessionData } from "../types/session";
+import { migrateSessionDataToLatest } from "../sessions/migrateSessionData";
 
 /**
  * Convert a string to snake_case for filenames
@@ -16,6 +17,13 @@ export function toSnakeCase(str: string): string {
  */
 export function isValidSessionData(data: any): data is SessionData {
   if (!data || typeof data !== 'object') {
+    return false;
+  }
+
+  // Accept versionless sessions as v1; reject unknown/unsupported versions.
+  try {
+    migrateSessionDataToLatest(data);
+  } catch {
     return false;
   }
 

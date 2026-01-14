@@ -1,4 +1,5 @@
 import type { SessionData } from "../types/session";
+import { migrateSessionDataToLatest } from "../sessions/migrateSessionData";
 import {
   decodePlaySessionParam,
   parseCurrentPlayRoute,
@@ -42,7 +43,7 @@ function parseOnce(): Parsed {
     }
 
     const json = decodePlaySessionParam(route.sessionParam);
-    const data = JSON.parse(json) as SessionData;
+    const data = migrateSessionDataToLatest(JSON.parse(json));
     parsedOnce = { kind: "data", data: ensureModulesHaveEnabledFlag(data) };
     return parsedOnce;
   } catch (error) {

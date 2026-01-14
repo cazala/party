@@ -9,6 +9,7 @@ import {
   SessionSaveRequest,
   SessionListItem,
 } from "../types/session";
+import { SESSION_DATA_VERSION } from "../types/session";
 import { RootState } from "./store";
 import {
   saveSession as saveSessionToStorage,
@@ -318,6 +319,7 @@ export const saveCurrentSessionThunk = createAsyncThunk(
         : generateSessionId(request.name);
 
       const sessionData: SessionData = {
+        version: SESSION_DATA_VERSION,
         id: sessionId,
         name: request.name,
         metadata: {

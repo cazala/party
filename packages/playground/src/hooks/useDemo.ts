@@ -5,6 +5,7 @@ import { useInit } from "./useInit";
 import { useEnvironment } from "./modules/useEnvironment";
 import { useSession } from "./useSession";
 import { SessionData } from "../types/session";
+import { migrateSessionDataToLatest } from "../sessions/migrateSessionData";
 import { SpawnParticlesConfig } from "../slices/engine";
 import demo1SessionData from "../sessions/demo1.json";
 import demo2SessionData from "../sessions/demo2.json";
@@ -516,43 +517,43 @@ export function useDemo({
 
     const sequence: DemoSequenceItem[] = [
       {
-        sessionData: demo3SessionData as SessionData,
+        sessionData: migrateSessionDataToLatest(demo3SessionData),
         duration: isMobileDevice() ? 12000 : 15000,
         maxParticles: highPerformanceMaxParticles,
         transitionDuration: 5000, // 5s for increasing particles
       },
       {
-        sessionData: demo1SessionData as SessionData,
+        sessionData: migrateSessionDataToLatest(demo1SessionData),
         duration: isMobileDevice() ? 12000 : 15000,
         maxParticles: lowPerformanceMaxParticles,
         transitionDuration: 0, // 300ms for decreasing particles
       },
       {
-        sessionData: demo4SessionData as SessionData,
+        sessionData: migrateSessionDataToLatest(demo4SessionData),
         duration: 15000,
         maxParticles: highPerformanceMaxParticles,
         transitionDuration: 5000,
       },
       {
-        sessionData: demo5SessionData as SessionData,
+        sessionData: migrateSessionDataToLatest(demo5SessionData),
         duration: 15000,
         maxParticles: lowPerformanceMaxParticles,
         transitionDuration: 0,
       },
       {
-        sessionData: demo6SessionData as SessionData,
+        sessionData: migrateSessionDataToLatest(demo6SessionData),
         duration: 15000,
         maxParticles: veryLowPerformanceMaxParticles,
         transitionDuration: 0,
       },
       {
-        sessionData: demo7SessionData as SessionData,
+        sessionData: migrateSessionDataToLatest(demo7SessionData),
         duration: 20000,
         maxParticles: lowPerformanceMaxParticles,
         transitionDuration: 0,
       },
       {
-        sessionData: demo2SessionData as SessionData,
+        sessionData: migrateSessionDataToLatest(demo2SessionData),
         duration: 20000,
         maxParticles: isMobileDevice() ? veryLowPerformanceMaxParticles : mediumPerformanceMaxParticles,
         transitionDuration: 2500,
