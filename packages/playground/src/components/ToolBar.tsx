@@ -6,6 +6,7 @@ import {
   Link,
   Hand,
   Pen,
+  Paintbrush,
   Hexagon,
 } from "lucide-react";
 import { useTools } from "../hooks/useTools";
@@ -21,6 +22,7 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
     isJointMode,
     isGrabMode,
     isDrawMode,
+    isBrushMode,
     isShapeMode,
     setToolMode,
   } = useTools();
@@ -102,8 +104,19 @@ export function Toolbar({ style }: { style?: React.CSSProperties }) {
           </button>
 
           <button
-            onClick={() => setToolMode("shape")}
+            onClick={() => setToolMode("brush")}
             className={`tool-mode-button tool-mode-eighth ${
+              isBrushMode ? "tool-mode-active" : ""
+            }`}
+            title="Brush"
+          >
+            <Paintbrush width="16" height="16" />
+            <span>Brush</span>
+          </button>
+
+          <button
+            onClick={() => setToolMode("shape")}
+            className={`tool-mode-button tool-mode-ninth ${
               isShapeMode ? "tool-mode-active" : ""
             }`}
             title="Shape"

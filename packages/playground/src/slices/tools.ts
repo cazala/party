@@ -8,6 +8,7 @@ export type ToolMode =
   | "grab"
   | "pin"
   | "draw"
+  | "brush"
   | "shape";
 
 export interface ToolsState {
@@ -44,6 +45,9 @@ export const toolsSlice = createSlice({
           state.active = "draw";
           break;
         case "draw":
+          state.active = "brush";
+          break;
+        case "brush":
           state.active = "shape";
           break;
         case "shape":
@@ -80,6 +84,8 @@ export const selectIsPinMode = (state: { tools: ToolsState }) =>
   state.tools.active === "pin";
 export const selectIsDrawMode = (state: { tools: ToolsState }) =>
   state.tools.active === "draw";
+export const selectIsBrushMode = (state: { tools: ToolsState }) =>
+  state.tools.active === "brush";
 export const selectIsShapeMode = (state: { tools: ToolsState }) =>
   state.tools.active === "shape";
 export const selectIsInteractionMode = (state: { tools: ToolsState }) =>

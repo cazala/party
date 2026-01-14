@@ -165,6 +165,10 @@
   cursor: none; /* Hide cursor when remove tool is active, overlay will show preview */
 }
 
+#canvas.brush-tool {
+  cursor: none; /* Hide cursor when brush tool is active, overlay will show preview */
+}
+
 #canvas.draw-tool {
   cursor: crosshair; /* Show crosshair cursor for precise drawing */
 }

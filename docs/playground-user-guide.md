@@ -26,104 +26,119 @@ The playground consists of four main areas:
 ### Basic Controls
 
 - **Play/Pause**: Spacebar or top bar button
-- **Camera**: Mouse wheel to zoom, middle-click drag to pan
-- **Clear**: Remove all particles and joints
-- **Restart**: Reset simulation using current INIT panel settings
+- **Camera**: Mouse wheel (or trackpad) to zoom
+- **Clear**: Top bar **Clear** button (clears particles/joints)
+- **Restart**: Top bar **Restart** button (re-spawns from current INIT settings)
 
 ### Tools
 
 Access tools via the toolbar or hotkeys. Active tool is highlighted and shows cursor overlay.
 
-#### Spawn Tool (S)
+#### Spawn Tool (Cmd/Ctrl + S)
 
 - **Purpose**: Add particles to the simulation
-- **Usage**: Click or drag to spawn particles
+- **Usage**:
+  - Click: Spawn particle (persisted size)
+  - Drag: Set initial velocity (arrow)
 - **Modifiers**:
-  - Hold Shift: Spawn larger particles
-  - Hold Alt: Spawn with different properties
+  - Ctrl/Cmd + Drag: Adjust size (persists, does not spawn)
+  - Shift: Stream while dragging
 
-#### Grab Tool (G)
+#### Grab Tool (Cmd/Ctrl + G)
 
 - **Purpose**: Move particles with mouse
 - **Usage**: Click and drag particles around the canvas
 - **Features**: Physics-based dragging with smooth interpolation
 
-#### Joint Tool (J)
+#### Joint Tool (Cmd/Ctrl + H)
 
 - **Purpose**: Create distance constraints between particles
-- **Usage**: Click first particle, then click second particle to create joint
+- **Usage**: Click to create joints between selected particles
 - **Visualization**: Joints appear as lines connecting particles
 
-#### Pin Tool (P)
+#### Pin Tool (Cmd/Ctrl + F)
 
 - **Purpose**: Pin/unpin particles (make them immovable)
-- **Usage**: Click particles to toggle pinned state
+- **Usage**: Click/drag to pin inside the dashed circle
 - **Visualization**: Pinned particles appear as rings instead of filled circles
+- **Modifiers**:
+  - Shift + Click/Drag: Unpin inside circle
+  - Ctrl/Cmd + Drag: Adjust pin radius
 
-#### Remove Tool (R)
+#### Remove Tool (Cmd/Ctrl + D)
 
 - **Purpose**: Delete particles and joints
-- **Usage**: Click particles or joints to remove them
-- **Features**: Visual feedback when hovering over removable objects
+- **Usage**: Click/drag to remove inside the dashed circle
+- **Modifiers**:
+  - Ctrl/Cmd + Drag: Adjust removal radius
 
-#### Draw Tool (D)
+#### Draw Tool (Cmd/Ctrl + J)
 
 - **Purpose**: Draw particle trails by dragging
-- **Usage**: Click and drag to create connected particle chains
+- **Usage**: Click & drag to draw particles and auto-connect joints
 - **Features**: Automatic joint creation between drawn particles
+- **Modifiers**:
+  - Shift: Pin while drawing
+  - Ctrl/Cmd + Drag: Adjust particle size
 
-#### Emit Tool (E)
+#### Brush Tool (Cmd/Ctrl + K)
 
-- **Purpose**: Place particle emitters
-- **Usage**: Click to place emitter at location
-- **Features**: Emitters continuously spawn particles over time
+- **Purpose**: Paint multiple particles at once in a circular area
+- **Usage**: Click/drag to fill the dashed circle with non-overlapping particles (uses current INIT particle size)
+- **Modifiers**:
+  - Hold Shift: Spawn pinned particles
+  - Hold Cmd/Ctrl while dragging: Resize brush radius
 
-#### Interact Tool (I)
+#### Interact Tool (Cmd/Ctrl + A)
 
 - **Purpose**: Create attraction/repulsion fields
 - **Usage**:
   - Left-click and hold: Attract particles to cursor
   - Right-click and hold: Repel particles from cursor
 - **Features**: Visual force field indicator
+- **Modifiers**:
+  - Ctrl/Cmd + Drag: Adjust interaction radius
+  - Shift + Drag: Adjust strength
+
+#### Shape Tool (Cmd/Ctrl + L)
+
+- **Purpose**: Spawn a full-mesh polygon (particles + joints)
+- **Usage**:
+  - Click: Spawn full-mesh polygon
+- **Modifiers**:
+  - Ctrl/Cmd + Drag: Adjust radius
+  - Shift + Drag: Adjust sides (3-6)
 
 ## Hotkeys and Shortcuts
 
 ### Playback Control
 
 - **Spacebar**: Play/pause simulation
-- **C**: Clear all particles and joints
-- **Cmd/Ctrl + R**: Restart with current settings
 
 ### Tools
 
-- **S**: Spawn tool
-- **G**: Grab tool
-- **J**: Joint tool
-- **P**: Pin tool
-- **R**: Remove tool
-- **D**: Draw tool
-- **E**: Emit tool
-- **I**: Interact tool
+- **Cmd/Ctrl + A**: Interact tool
+- **Cmd/Ctrl + S**: Spawn tool
+- **Cmd/Ctrl + D**: Remove tool
+- **Cmd/Ctrl + F**: Pin tool
+- **Cmd/Ctrl + G**: Grab tool
+- **Cmd/Ctrl + H**: Joint tool
+- **Cmd/Ctrl + J**: Draw tool
+- **Cmd/Ctrl + K**: Brush tool
+- **Cmd/Ctrl + L**: Shape tool
 
 ### View Control
 
-- **Mouse Wheel**: Zoom in/out
-- **Middle Mouse**: Pan camera
-- **Cmd/Ctrl + 0**: Reset zoom and center camera
+- **Mouse Wheel / Trackpad**: Zoom in/out
 
 ### Interface
 
 - **Cmd/Ctrl + B**: Toggle sidebar visibility
-- **F**: Enter/exit fullscreen mode
-- **H**: Show/hide help modal
 
-### Session Management
+### Undo / Redo
 
-- **Cmd/Ctrl + S**: Save session
-- **Cmd/Ctrl + O**: Load session
 - **Cmd/Ctrl + Z**: Undo
-- **Cmd/Ctrl + Shift + Z**: Redo
-- **Cmd/Ctrl + Y**: Redo (alternative)
+- **Cmd/Ctrl + Shift + Z** or **Cmd/Ctrl + Y**: Redo
 
 ### Numerical Hotkeys (1-9)
 
@@ -139,19 +154,31 @@ The INIT panel controls how particles are spawned when using the Restart button 
 - **Random**: Particles spawned randomly across canvas
 - **Grid**: Particles arranged in a regular grid pattern
 - **Circle**: Particles arranged in a circular formation
-- **Square**: Particles arranged in a square perimeter
+- **Donut**: Particles arranged in a ring (inner + outer radius)
+- **Square**: Particles arranged in a square
 
 ### Particle Properties
 
-- **Count**: Number of particles to spawn (1-10,000)
-- **Size**: Particle radius range
-- **Mass**: Particle mass range
-- **Velocity**: Initial velocity range and direction
+- **Number of Particles**: 100–100,000
+- **Particle Size**: 1–50 (this is the physics radius)
+- **Particle Mass**: 0.1–10 (can be auto-derived from size)
+- **Colors**: Optional palette (defaults to white if empty)
+- **Velocity Speed**: 0–500
+- **Velocity Direction**:
+  - Random
+  - In (towards center)
+  - Out (from center)
+  - Clockwise / Counter-Clockwise
+  - Custom (with an angle slider)
 
 ### Advanced Options
 
-- **Grid Joints**: Automatically create joints between adjacent grid particles
-- **Velocity Distribution**: Control initial particle movement patterns
+- **Grid spacing**: Only for Grid shape (minimum is \(2 \times\) particle size)
+- **Join Rows and Columns**: Only for Grid shape (creates joints + lines after spawn)
+- **Circle/Donut radius**: Radius / Outer Radius sliders (Circle/Donut)
+- **Donut inner radius**: Inner Radius slider (Donut)
+- **Square size**: Square Size slider (Square)
+- **Square corner radius**: Corner Radius slider (Square)
 
 ## Physics Modules
 
@@ -161,70 +188,88 @@ Each module controls a different aspect of particle physics. Modules can be enab
 
 Global physics affecting all particles:
 
-- **Gravity**: Strength and direction of gravitational force
-- **Inertia**: Momentum preservation from previous movement
-- **Friction**: Velocity damping over time
-- **Damping**: Direct velocity reduction each frame
+- **Gravity Strength**: Scales the gravity acceleration applied each frame.
+- **Gravity Direction**: Direction of gravity (Down / Up / Left / Right / Inwards / Outwards / Custom).
+- **Gravity Angle**: Sets the gravity direction when using Custom (in degrees).
+- **Inertia**: Adds acceleration in the direction of current velocity (a “keep moving” boost).
+- **Friction**: Linear drag; accelerates against velocity to slow particles down.
+- **Damping**: Directly scales velocity each frame (extra velocity decay).
 
 ### Boundary
 
 Controls how particles interact with canvas edges:
 
-- **Mode**: Bounce, wrap, kill, or no boundary
-- **Restitution**: Energy retention on bounce (0 = sticky, 1 = perfect bounce)
-- **Friction**: Tangential friction when hitting boundaries
-- **Repel**: Push particles away from edges
+- **Mode**: Boundary handling (Bounce = reflect, Warp = wrap around, Kill = remove when outside, None = no boundary constraint).
+- **Restitution**: Bounciness when using Bounce (higher = more elastic).
+- **Friction**: Tangential velocity damping when using Bounce (higher = more sliding loss).
+- **Repel Distance**: How far from an edge the repel force starts pushing particles inward.
+- **Repel Strength**: Strength of the repel force near/outside the bounds (applies in all modes).
 
 ### Collisions
 
 Particle-to-particle collision detection:
 
-- **Restitution**: Collision elasticity (0 = sticky, 1 = perfect bounce)
-- **Enable**: Toggle collision detection on/off
+- **Restitution**: Elasticity of particle–particle collisions (higher = bouncier).
 
 ### Behavior (Flocking)
 
 Emergent group behaviors based on local interactions:
 
-- **Cohesion**: Attraction to nearby particles
-- **Alignment**: Matching velocity of neighbors
-- **Separation**: Avoidance of crowding
-- **View Radius**: Detection distance for neighbors
-- **Wander**: Random exploration behavior
+- **Wander**: Adds small random steering (perpendicular jitter) to break symmetry.
+- **Cohesion**: Steers particles toward the local neighborhood’s center of mass.
+- **Alignment**: Steers particles toward the average velocity of nearby neighbors.
+- **Repulsion**: Strength of the “move away” steering when neighbors are too close.
+- **Separation**: Distance threshold under which repulsion kicks in.
+- **Chase**: Makes heavier particles steer toward lighter ones (predator-like behavior).
+- **Avoid**: Makes lighter particles steer away from heavier ones (prey-like behavior).
+- **View Radius**: How far each particle searches for neighbors.
+- **View Angle**: Field-of-view cone for neighbor influence (in degrees).
 
 ### Fluids
 
-Smoothed Particle Hydrodynamics (SPH) for fluid-like behavior:
+Fluid-like behavior, with selectable solver method:
 
-- **Influence Radius**: Distance for particle interactions
-- **Pressure**: Force strength based on density
-- **Viscosity**: Internal friction between particles
-- **Target Density**: Desired fluid density
+- **Method**: SPH (density/pressure fluid) or PIC/FLIP (velocity-grid-inspired blend).
+- **Influence Radius**: Neighbor search radius used by the fluid solver kernels.
+- **Density**: Target density for the fluid (higher = “more crowded” before pressure pushes back).
+- **Pressure**: Scales how strongly density deviations push particles apart/together.
+- **PIC/FLIP Ratio**: Only when Method = PIC/FLIP; 0 = pure PIC (smoother), 1 = pure FLIP (more energetic).
+- **SPH-only controls**:
+  - **Max Acceleration**: Caps the maximum fluid impulse to reduce instability.
+  - **Viscosity**: Velocity smoothing between neighbors (higher = thicker fluid).
+  - **Enable Near Pressure**: Enables an additional “near-density” pressure term for sharper clumping/structure.
+  - **Near Pressure**: Strength multiplier for the near-pressure term.
+  - **Near Threshold**: Distance threshold where near-pressure dominates over regular pressure.
 
 ### Sensors
 
-Trail-following and color-based steering:
+Sensor-based steering using the trails buffer:
 
-- **Sensor Distance**: How far ahead particles "look"
-- **Sensor Strength**: Steering force magnitude
-- **Follow/Flee**: Behavior toward detected trails
-- **Trail Decay**: How quickly trails fade
+- **Distance**: How far ahead the left/right sensors sample.
+- **Angle**: How far left/right the sensors are rotated from the movement direction.
+- **Radius**: Sampling radius (in screen texture space via zoom) around each sensor point.
+- **Threshold**: Minimum trail intensity required to trigger a follow/flee decision.
+- **Strength**: Sets the resulting steering velocity magnitude when a sensor “wins”.
+- **Follow Behavior**: What to follow (None / Any intensity / Same color / Different color).
+- **Flee Behavior**: What to avoid (None / Any intensity / Same color / Different color).
+- **Color Similarity Threshold**: Only when Follow/Flee uses Same/Different; how strict color matching is.
+- **Flee Angle**: Only when Flee Behavior is not None; how sharply to turn away when fleeing.
 
 ### Interaction
 
-Manual attraction/repulsion control:
-
-- **Strength**: Force magnitude
-- **Radius**: Interaction distance
-- **Mode**: Attract or repel
+There is no Interaction module panel in the sidebar: interaction is controlled by the **Interact Tool** (see Tools section).
 
 ### Joints
 
 Distance constraints between particles:
 
-- **Momentum**: How much constraint-solving affects velocity
-- **Stiffness**: Joint rigidity (global control)
-- **Tolerance**: Stress threshold before joints break
+- **Momentum**: Blends velocity toward the actual post-constraint motion (helps reduce jitter in joint chains).
+- **Particle Collisions**: Enables particle-vs-joint segment collision handling.
+- **Joint Collisions**: Enables joint-vs-joint crossing resolution (nudges intersecting segments apart).
+- **Steps**: Substeps for collision checking (higher = more robust CCD, slower).
+- **Friction**: Tangential damping when particles collide with joint segments.
+- **Restitution**: Bounciness when particles collide with joint segments.
+- **Separation**: Push-apart amount used when resolving joint-vs-joint intersections.
 
 ## Oscillators
 
@@ -233,26 +278,21 @@ Oscillators animate module parameters over time, creating dynamic effects.
 ### Using Oscillators
 
 1. **Enable**: Cmd/Ctrl + click any slider to enable oscillation
-2. **Speed Control**: Click the speed indicator to cycle through rates:
-   - Very Slow (0.1 Hz)
-   - Slow (0.25 Hz)
-   - Medium (0.5 Hz)
-   - Fast (1 Hz)
-   - Very Fast (2 Hz)
-3. **Range**: Oscillation occurs between current slider min/max bounds
-4. **Disable**: Cmd/Ctrl + click again to disable
+2. **Speed Control**: Cmd/Ctrl + click repeatedly to cycle: Slow → Normal → Fast
+3. **Range**: Oscillation starts with the slider’s min/max bounds; you can adjust the oscillator min/max handles
+4. **Disable**: Click the slider (without Cmd/Ctrl) to stop the oscillator
 
 ### Visual Indicators
 
 - **Speed Badge**: Shows current oscillation frequency
 - **Animated Slider**: Handle moves automatically when oscillating
-- **Color Coding**: Oscillating sliders have distinctive styling
+- **Color Coding**: Speed badge color reflects slow/normal/fast
 
 ## Session Management
 
 ### Saving Sessions
 
-1. Click "Save" button or use Cmd/Ctrl + S
+1. Click the **Save** button in the top bar
 2. Enter session name in modal
 3. Session includes:
    - All module settings
@@ -263,13 +303,12 @@ Oscillators animate module parameters over time, creating dynamic effects.
 
 ### Loading Sessions
 
-1. Click "Load" button or use Cmd/Ctrl + O
+1. Click the **Load** button in the top bar
 2. Browse available sessions with metadata:
    - Creation and modification dates
    - Particle count
    - Whether particle data is included
-3. **Quick Load**: Click session name for fast loading (excludes particles/joints)
-4. **Full Load**: Click "Load" button for complete restoration
+3. Click a session row to load it (full restore when particle data exists; otherwise respawns from config)
 
 ### Session Management Features
 
@@ -282,43 +321,49 @@ Oscillators animate module parameters over time, creating dynamic effects.
 
 ### Quick Session Loading
 
-- **Number Keys 1-9**: Instantly load sessions with visual feedback
-- **Cmd/Ctrl + Number**: Alternative quick load method
+- **Cmd/Ctrl + 1–9**: Quick load a session (settings only)
 
 ## Rendering and Visual Effects
 
 ### Particle Visualization
 
-- **Color Modes**: Default, custom color, or hue-based coloring
-- **Size Scaling**: Visual particle size can differ from physics size
+- **Show Particles**: Toggle particle rendering
+- **Particle Color Type**: Default / Custom / Hue
 - **Pinned Particles**: Render as rings to indicate immovable state
 
 ### Trails
 
-- **Decay**: Control how quickly trails fade
-- **Diffusion**: Blur amount for smooth trail effects
-- **Performance**: Automatically optimized for frame rate
+- **Show Trails**: Toggle trails rendering
+- **Trail Decay**
+- **Trail Diffuse**
 
 ### Lines
 
-- **Joint Visualization**: Distance constraints shown as lines
-- **Custom Styling**: Configurable line width and colors
+- **Show Lines**: Toggle line rendering
+- **Line Color**
+- **Line Width**
+
+### Global Render Options
+
+- **Invert Colors**
+- **Clear Color**
 
 ## Undo/Redo System
 
 ### Supported Actions
 
-- Particle spawning and removal
-- Joint creation and deletion
-- Pin/unpin operations
-- Module setting changes
+- Spawn tool gestures
+- Remove tool gestures
+- Pin/unpin tool gestures
+- Joint tool operations
 - Draw tool strokes
+- Shape tool spawns
+- Brush tool strokes
 
 ### Usage
 
 - **Undo**: Cmd/Ctrl + Z
 - **Redo**: Cmd/Ctrl + Shift + Z or Cmd/Ctrl + Y
-- **Visual Feedback**: Actions show brief status messages
 - **Grouping**: Related actions (like draw strokes) are grouped together
 
 ### Optimization Tips
@@ -333,6 +378,17 @@ Oscillators animate module parameters over time, creating dynamic effects.
 - **WebGPU**: Better performance with many particles
 - **CPU Fallback**: Universal compatibility
 - **Auto-Selection**: Engine chooses best available runtime
+
+## Performance Panel
+
+The PERFORMANCE panel includes runtime and tuning options:
+
+- **Use WebGPU**: Toggle runtime (when supported)
+- **Constrain Iterations**
+- **Max Neighbors**
+- **Grid Cell Size**
+- **Show Grid**
+- **Particles / FPS** counters
 
 ## Tips and Tricks
 
@@ -360,6 +416,6 @@ Oscillators animate module parameters over time, creating dynamic effects.
 
 1. **Learn Number Keys**: Quick session switching saves time
 2. **Tool Switching**: Memorize tool hotkeys for fluid workflow
-3. **Modifier Keys**: Use Shift/Alt with tools for variations
+3. **Modifier Keys**: Use Shift/Cmd/Ctrl with tools for variations
 
 This playground provides a powerful, flexible environment for exploring particle physics and creating dynamic visual effects. Experiment with different combinations of modules, tools, and parameters to discover unique behaviors and stunning visual results.

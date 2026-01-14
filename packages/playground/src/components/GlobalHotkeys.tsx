@@ -52,6 +52,7 @@ export function GlobalHotkeys() {
           key === "h" ||
           key === "j" ||
           key === "k" ||
+          key === "l" ||
           key === "b"
         ));
 
@@ -148,6 +149,10 @@ export function GlobalHotkeys() {
           updateOverlayMouseToCurrent();
           break;
         case "k":
+          setToolMode("brush");
+          updateOverlayMouseToCurrent();
+          break;
+        case "l":
           setToolMode("shape");
           updateOverlayMouseToCurrent();
           break;
