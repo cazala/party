@@ -10,7 +10,9 @@ The Party Playground is an interactive web application for creating, experimenti
 npm run dev
 ```
 
-Visit `http://localhost:5173` to access the playground interface.
+Visit `http://localhost:3000` to access the playground interface.
+
+> Note: the dev server port is configured in `packages/playground/vite.config.js`.
 
 ### Interface Overview
 
@@ -140,10 +142,9 @@ Access tools via the toolbar or hotkeys. Active tool is highlighted and shows cu
 - **Cmd/Ctrl + Z**: Undo
 - **Cmd/Ctrl + Shift + Z** or **Cmd/Ctrl + Y**: Redo
 
-### Numerical Hotkeys (1-9)
+### Numerical Hotkeys (1–9)
 
-- Quickload sessions 1-9 when available
-- **Cmd/Ctrl + [1-9]**: Load specific session
+- **Cmd/Ctrl + 1–9**: Quick load sessions 1–9 (when available)
 
 ## Initialization (INIT) Panel
 
