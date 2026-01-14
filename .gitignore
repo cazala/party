@@ -9,3 +9,4 @@ packages/playground/node_modules
 **/.DS_Store
 packages/playground/.DS_Store
 .claude/ralph-loop.local.md
+tasks/

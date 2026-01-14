@@ -12,6 +12,7 @@ A high-performance TypeScript particle physics engine with dual runtime support 
 - **Advanced Rendering**: Trails, particle instancing, line rendering with multiple color modes
 - **Export/Import Presets**: Export/import module settings (inputs + enabled state)
 - **Cross-platform**: Works in all modern browsers with automatic feature detection
+- **Spawner Utility**: Generate particle shapes, including text
 
 ## Installation
 
@@ -188,6 +189,36 @@ engine.pinParticles([0, 1, 2]);
 engine.unpinParticles([0, 1, 2]);
 engine.unpinAll();
 ```
+
+### Spawner
+
+Generate particle arrays from common shapes (including text) using `Spawner`:
+
+```typescript
+import { Spawner } from "@cazala/party";
+
+const spawner = new Spawner();
+const particles = spawner.initParticles({
+  count: 5000,
+  shape: "text",
+  center: { x: 0, y: 0 },
+  position: { x: 0, y: 0 },
+  align: { horizontal: "center", vertical: "center" },
+  text: "Party",
+  font: "sans-serif",
+  textSize: 80,
+  size: 3,
+  mass: 1,
+  colors: ["#ffffff"],
+});
+
+engine.setParticles(particles);
+```
+
+Notes:
+
+- `size` controls particle radius; `textSize` is the font size used to rasterize text.
+- Playground font options: `sans-serif`, `serif`, `monospace`.
 
 ### Modules
 

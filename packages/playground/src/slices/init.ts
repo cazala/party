@@ -32,6 +32,9 @@ const DEFAULT_CORNER_RADIUS = 0;
 const DEFAULT_VELOCITY_SPEED = 0;
 const DEFAULT_VELOCITY_DIRECTION = "random" as const;
 const DEFAULT_VELOCITY_ANGLE = 0;
+const DEFAULT_TEXT = "Party";
+const DEFAULT_TEXT_FONT = "sans-serif";
+const DEFAULT_TEXT_SIZE = 400;
 
 export interface InitSliceState extends InitState {
   hasInitialSpawned: boolean;
@@ -55,6 +58,11 @@ const initialState: InitSliceState = {
     angle: DEFAULT_VELOCITY_ANGLE,
   },
   gridJoints: false,
+  text: DEFAULT_TEXT,
+  textFont: DEFAULT_TEXT_FONT,
+  textSize: DEFAULT_TEXT_SIZE,
+  textPosition: { x: 0, y: 0 },
+  textAlign: { horizontal: "center", vertical: "center" },
   hasInitialSpawned: false,
   isSpawnLocked: false,
 };
@@ -108,6 +116,15 @@ export const initSlice = createSlice({
     setGridJoints: (state, action: PayloadAction<boolean>) => {
       state.gridJoints = action.payload;
     },
+    setText: (state, action: PayloadAction<string>) => {
+      state.text = action.payload;
+    },
+    setTextFont: (state, action: PayloadAction<string>) => {
+      state.textFont = action.payload;
+    },
+    setTextSize: (state, action: PayloadAction<number>) => {
+      state.textSize = action.payload;
+    },
     setState: (state, action: PayloadAction<Partial<InitState>>) => {
       Object.assign(state, action.payload);
     },
@@ -135,6 +152,9 @@ export const {
   setVelocityConfig,
   updateVelocityConfig,
   setGridJoints,
+  setText,
+  setTextFont,
+  setTextSize,
   setState,
   setHasInitialSpawned,
   setSpawnLocked,
@@ -172,6 +192,11 @@ export const selectInitState = createSelector(
     colors: init.colors,
     velocityConfig: init.velocityConfig,
     gridJoints: init.gridJoints,
+    text: init.text,
+    textFont: init.textFont,
+    textSize: init.textSize,
+    textPosition: init.textPosition,
+    textAlign: init.textAlign,
   })
 );
 

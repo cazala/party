@@ -157,6 +157,7 @@ The INIT panel controls how particles are spawned when using the Restart button 
 - **Circle**: Particles arranged in a circular formation
 - **Donut**: Particles arranged in a ring (inner + outer radius)
 - **Square**: Particles arranged in a square
+- **Text**: Particles spawn to form the typed text
 
 ### Particle Properties
 
@@ -180,6 +181,7 @@ The INIT panel controls how particles are spawned when using the Restart button 
 - **Donut inner radius**: Inner Radius slider (Donut)
 - **Square size**: Square Size slider (Square)
 - **Square corner radius**: Corner Radius slider (Square)
+- **Text fields**: Text, Text Size, and Font (Sans Serif / Serif / Monospace)
 
 ## Physics Modules
 

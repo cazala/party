@@ -14,6 +14,9 @@ import {
   setColors,
   updateVelocityConfig,
   setGridJoints,
+  setText,
+  setTextFont,
+  setTextSize,
   selectInitState,
   selectHasInitialSpawned,
   selectIsSpawnLocked,
@@ -42,6 +45,11 @@ export function useInit() {
     colors,
     velocityConfig,
     gridJoints,
+    text,
+    textFont,
+    textSize,
+    textPosition,
+    textAlign,
   } = initState;
 
   // Setters - wrapped dispatch functions
@@ -129,6 +137,27 @@ export function useInit() {
     [dispatch]
   );
 
+  const setTextValue = useCallback(
+    (value: string) => {
+      dispatch(setText(value));
+    },
+    [dispatch]
+  );
+
+  const setTextFontValue = useCallback(
+    (value: string) => {
+      dispatch(setTextFont(value));
+    },
+    [dispatch]
+  );
+
+  const setTextSizeValue = useCallback(
+    (value: number) => {
+      dispatch(setTextSize(value));
+    },
+    [dispatch]
+  );
+
   const markInitialSpawned = useCallback(() => {
     dispatch(setHasInitialSpawned(true));
   }, [dispatch]);
@@ -147,6 +176,11 @@ export function useInit() {
     colors,
     velocityConfig,
     gridJoints,
+    text,
+    textFont,
+    textSize,
+    textPosition,
+    textAlign,
 
     // Spawn state
     hasInitialSpawned,
@@ -168,6 +202,9 @@ export function useInit() {
     setColors: setColorsValue,
     updateVelocityConfig: updateVelocityConfigValue,
     setGridJoints: setGridJointsValue,
+    setText: setTextValue,
+    setTextFont: setTextFontValue,
+    setTextSize: setTextSizeValue,
     markInitialSpawned,
   };
 }
