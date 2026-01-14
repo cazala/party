@@ -15,6 +15,22 @@ export interface IParticle {
   };
 }
 
+export type ParticleQuery = {
+  index: number;
+  position: { x: number; y: number };
+  size: number;
+  mass: number;
+};
+
+export type GetParticlesInRadiusOptions = {
+  maxResults?: number;
+};
+
+export type GetParticlesInRadiusResult = {
+  particles: ParticleQuery[];
+  truncated: boolean;
+};
+
 export interface IEngine {
   initialize(): Promise<void>;
   play(): void;
@@ -29,10 +45,32 @@ export interface IEngine {
   getCamera(): { x: number; y: number };
   setZoom(z: number): void;
   getZoom(): number;
-  addParticle(p: IParticle): void;
+  addParticle(p: IParticle): number;
+  /**
+   * Set a particle at an existing index without reallocating the whole list.
+   * Intended for tool/undo operations; avoids full-scene readbacks on WebGPU.
+   */
+  setParticle(index: number, p: IParticle): void;
+  /**
+   * Fast path to "remove" (mass=0) or pin/unpin (mass<0 / mass>0) without
+   * fetching all particles.
+   */
+  setParticleMass(index: number, mass: number): void;
   setParticles(p: IParticle[]): void;
   getParticles(): Promise<IParticle[]>;
   getParticle(index: number): Promise<IParticle>;
+  /**
+   * Fetch particles near a region for local occupancy queries (Brush/Pin/Remove tools).
+   * Implementations should avoid full-scene GPU->CPU readbacks when possible.
+   *
+   * Semantics: returns particles whose discs intersect the query circle, i.e.
+   * `distance(center, p.position) <= radius + p.size`.
+   */
+  getParticlesInRadius(
+    center: { x: number; y: number },
+    radius: number,
+    opts?: GetParticlesInRadiusOptions
+  ): Promise<GetParticlesInRadiusResult>;
   clear(): void;
   getCount(): number;
   getFPS(): number;
@@ -162,10 +200,17 @@ export abstract class AbstractEngine implements IEngine {
   abstract initialize(): Promise<void>;
   abstract destroy(): Promise<void>;
   abstract setSize(width: number, height: number): void;
-  abstract addParticle(p: IParticle): void;
+  abstract addParticle(p: IParticle): number;
+  abstract setParticle(index: number, p: IParticle): void;
+  abstract setParticleMass(index: number, mass: number): void;
   abstract setParticles(p: IParticle[]): void;
   abstract getParticles(): Promise<IParticle[]>;
   abstract getParticle(index: number): Promise<IParticle>;
+  abstract getParticlesInRadius(
+    center: { x: number; y: number },
+    radius: number,
+    opts?: GetParticlesInRadiusOptions
+  ): Promise<GetParticlesInRadiusResult>;
   abstract clear(): void;
   abstract getCount(): number;
 

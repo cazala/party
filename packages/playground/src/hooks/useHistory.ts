@@ -55,6 +55,18 @@ export function useHistory() {
     [dispatch, ctx]
   );
 
+  /**
+   * Record a command for undo/redo without executing it.
+   * Useful for tools that already applied side effects live during the gesture,
+   * and only need a history entry when the gesture ends.
+   */
+  const recordCommand = useCallback(
+    (command: Command) => {
+      dispatch(push(command));
+    },
+    [dispatch]
+  );
+
   const undo = useCallback(async () => {
     if (isUndoing || isRedoing) return;
     if (!lastPast) return;
@@ -147,6 +159,7 @@ export function useHistory() {
     commitTransaction: commit,
     cancelTransaction: cancel,
     executeCommand,
+    recordCommand,
     resetHistory,
   };
 }

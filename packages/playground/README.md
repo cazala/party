@@ -6,7 +6,7 @@ Interactive web application for experimenting with particle physics simulations.
 
 ### Core Capabilities
 - **Dual Runtime Support**: Automatic WebGPU/CPU selection with seamless fallback
-- **Interactive Tools**: Spawn, grab, joint, pin, remove, draw, emit, and interact tools
+- **Interactive Tools**: Spawn, grab, joint, pin, remove, draw, brush, shape, and interact tools
 - **Real-time Physics**: Live parameter adjustment during simulation playback
 - **Advanced Session Management**: Save, load, rename, duplicate, reorder, export/import sessions
 - **Sophisticated Undo/Redo**: Command pattern with transaction support and action grouping
@@ -21,13 +21,13 @@ Interactive web application for experimenting with particle physics simulations.
 - **Fluids**: Smoothed Particle Hydrodynamics (SPH) with near-pressure optimization
 - **Sensors**: Trail-following and color-based steering with configurable behaviors
 - **Interaction**: User-controlled attraction/repulsion with visual force fields
-- **Joints**: Distance constraints with momentum preservation and stress-based breaking
+- **Joints**: Distance constraints with momentum preservation
 
 ### Visual Effects
 - **Particle Rendering**: Multiple color modes, size scaling, pinned particle visualization
 - **Trails**: Decay and diffusion effects with performance optimization
 - **Lines**: Joint visualization with configurable styling
-- **Debug Overlays**: Spatial grid, density fields, velocity vectors
+- **Overlays**: Optional spatial grid overlay
 
 ## Quick Start
 
@@ -93,14 +93,15 @@ The playground features a **four-panel layout** with comprehensive controls:
 
 Access via toolbar or hotkeys. Active tool shows visual cursor overlay and handles mouse interactions.
 
-- **Spawn Tool (S)**: Add particles with click/drag, size/velocity control
-- **Grab Tool (G)**: Physics-based particle dragging with momentum
-- **Joint Tool (J)**: Create distance constraints between particles
-- **Pin Tool (P)**: Toggle particle pinned state (immovable)
-- **Remove Tool (R)**: Delete particles and joints with area selection
-- **Draw Tool (D)**: Create connected particle chains with automatic joints
-- **Emit Tool (E)**: Place particle emitters with lifetime effects
-- **Interact Tool (I)**: Manual attraction/repulsion with visual feedback
+- **Interact Tool (Cmd/Ctrl + A)**: Manual attraction/repulsion with visual feedback
+- **Spawn Tool (Cmd/Ctrl + S)**: Add particles with click/drag, size/velocity control
+- **Remove Tool (Cmd/Ctrl + D)**: Delete particles and joints with area selection
+- **Pin Tool (Cmd/Ctrl + F)**: Toggle particle pinned state (immovable)
+- **Grab Tool (Cmd/Ctrl + G)**: Physics-based particle dragging with momentum
+- **Joint Tool (Cmd/Ctrl + H)**: Create distance constraints between particles
+- **Draw Tool (Cmd/Ctrl + J)**: Create connected particle chains with automatic joints
+- **Brush Tool (Cmd/Ctrl + K)**: Paint many particles in a circle
+- **Shape Tool (Cmd/Ctrl + L)**: Spawn a polygon mesh (particles + joints)
 
 ### Tool Features
 - **Visual Feedback**: Cursor overlays and hover effects
@@ -112,21 +113,15 @@ Access via toolbar or hotkeys. Active tool shows visual cursor overlay and handl
 
 ### Essential Hotkeys
 - **Spacebar**: Play/pause simulation
-- **S, G, J, P, R, D, E, I**: Switch tools
-- **Cmd/Ctrl + S**: Save session
-- **Cmd/Ctrl + O**: Load session
-- **Cmd/Ctrl + Z/Y**: Undo/redo
+- **Cmd/Ctrl + A/S/D/F/G/H/J/K/L**: Switch tools
+- **Cmd/Ctrl + Z**: Undo
+- **Cmd/Ctrl + Shift + Z** or **Cmd/Ctrl + Y**: Redo
 - **Cmd/Ctrl + B**: Toggle sidebars
-- **1-9**: Quick load sessions
-- **C**: Clear particles
-- **F**: Fullscreen mode
+- **Cmd/Ctrl + 1-9**: Quick load sessions
 
 ### Advanced Shortcuts
 - **Mouse Wheel**: Zoom in/out
 - **Middle Mouse**: Pan camera
-- **Cmd/Ctrl + 0**: Reset camera
-- **Cmd/Ctrl + R**: Restart simulation
-- **H**: Help modal
 
 For complete hotkey reference, see [User Guide](../../docs/playground-user-guide.md).
 

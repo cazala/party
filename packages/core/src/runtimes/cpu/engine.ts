@@ -1,4 +1,10 @@
-import { AbstractEngine, IParticle } from "../../interfaces";
+import {
+  AbstractEngine,
+  GetParticlesInRadiusOptions,
+  GetParticlesInRadiusResult,
+  IParticle,
+  ParticleQuery,
+} from "../../interfaces";
 import {
   Module,
   ModuleRole,
@@ -15,6 +21,7 @@ export class CPUEngine extends AbstractEngine {
   private canvas: HTMLCanvasElement;
   private grid: SpatialGrid;
   private animationId: number | null = null;
+  private particleIdToIndex: Map<number, number> = new Map();
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -89,6 +96,7 @@ export class CPUEngine extends AbstractEngine {
     this.fpsEstimate = 60;
     // Reset maxSize tracking
     this.resetMaxSize();
+    this.particleIdToIndex.clear();
   }
 
   getCount(): number {
@@ -116,12 +124,31 @@ export class CPUEngine extends AbstractEngine {
     for (const p of particle) {
       this.updateMaxSize(p.size);
     }
+    this.particleIdToIndex.clear();
   }
 
-  addParticle(particle: IParticle): void {
+  addParticle(particle: IParticle): number {
+    const index = this.particles.length;
     this.particles.push(new Particle(particle));
     // Update maxSize tracking
     this.updateMaxSize(particle.size);
+    const created = this.particles[index];
+    if (created) this.particleIdToIndex.set(created.id, index);
+    return index;
+  }
+
+  setParticle(index: number, p: IParticle): void {
+    if (index < 0) return;
+    if (index >= this.particles.length) return;
+    this.particles[index] = new Particle(p);
+    // Best-effort maxSize tracking (monotonic)
+    this.updateMaxSize(p.size);
+  }
+
+  setParticleMass(index: number, mass: number): void {
+    if (index < 0) return;
+    if (index >= this.particles.length) return;
+    this.particles[index].mass = mass;
   }
 
   getParticles(): Promise<IParticle[]> {
@@ -132,10 +159,56 @@ export class CPUEngine extends AbstractEngine {
     return Promise.resolve(this.particles[index]);
   }
 
+  async getParticlesInRadius(
+    center: { x: number; y: number },
+    radius: number,
+    opts?: GetParticlesInRadiusOptions
+  ): Promise<GetParticlesInRadiusResult> {
+    const maxResults = Math.max(1, Math.floor(opts?.maxResults ?? 20000));
+
+    // Expand search radius to ensure we can find large particles whose discs
+    // intersect the query circle: dist <= radius + p.size.
+    const searchRadius = Math.max(0, radius) + this.getMaxSize();
+
+    // Use the existing spatial grid (built during the last simulation tick).
+    // Snapshot semantics: this is "as of last grid build" which is good enough
+    // for tool usage and avoids global scans.
+    const neighbors = this.grid.getParticles(
+      new Vector(center.x, center.y),
+      searchRadius,
+      // Ask for up to maxResults+1 so we can mark truncated more reliably.
+      maxResults + 1
+    );
+
+    const out: ParticleQuery[] = [];
+    const r = Math.max(0, radius);
+    for (const p of neighbors) {
+      if (p.mass === 0) continue;
+      const index = this.particleIdToIndex.get(p.id);
+      if (index === undefined) continue;
+      const dx = p.position.x - center.x;
+      const dy = p.position.y - center.y;
+      const rr = r + p.size;
+      if (dx * dx + dy * dy <= rr * rr) {
+        out.push({
+          index,
+          position: { x: p.position.x, y: p.position.y },
+          size: p.size,
+          mass: p.mass,
+        });
+        if (out.length >= maxResults + 1) break;
+      }
+    }
+
+    const truncated = out.length > maxResults;
+    return { particles: truncated ? out.slice(0, maxResults) : out, truncated };
+  }
+
   destroy(): Promise<void> {
     this.pause();
     this.particles = [];
     this.grid.clear();
+    this.particleIdToIndex.clear();
     return Promise.resolve();
   }
 
@@ -232,8 +305,10 @@ export class CPUEngine extends AbstractEngine {
       this.view.getZoom()
     );
     this.grid.clear();
+    this.particleIdToIndex.clear();
     for (let i = 0; i < effectiveCount; i++) {
       this.grid.insert(this.particles[i]);
+      this.particleIdToIndex.set(this.particles[i].id, i);
     }
 
     // Global state for modules that need it

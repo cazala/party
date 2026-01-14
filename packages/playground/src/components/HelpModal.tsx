@@ -80,7 +80,10 @@ export function HelpModal({
             <b>Cmd/Ctrl + J</b>: Draw
           </li>
           <li>
-            <b>Cmd/Ctrl + K</b>: Shape
+            <b>Cmd/Ctrl + K</b>: Brush
+          </li>
+          <li>
+            <b>Cmd/Ctrl + L</b>: Shape
           </li>
         </ul>
       </section>
@@ -177,6 +180,21 @@ export function HelpModal({
           </li>
           <li>
             <b>Ctrl/Cmd + Drag</b>: Adjust particle size
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Brush</h3>
+        <ul>
+          <li>
+            <b>Click/Drag</b>: Fill circle with particles (no overlap)
+          </li>
+          <li>
+            <b>Shift + Click/Drag</b>: Spawn pinned particles
+          </li>
+          <li>
+            <b>Ctrl/Cmd + Drag</b>: Adjust brush radius
           </li>
         </ul>
       </section>

@@ -10,7 +10,7 @@ A high-performance TypeScript particle physics engine with dual runtime support 
 - **Spatial Grid Optimization**: Efficient O(1) neighbor queries for collision detection
 - **Real-time Oscillators**: Animate any module parameter with configurable frequency and bounds
 - **Advanced Rendering**: Trails, particle instancing, line rendering with multiple color modes
-- **Session Management**: Export/import complete simulation configurations
+- **Export/Import Presets**: Export/import module settings (inputs + enabled state)
 - **Cross-platform**: Works in all modern browsers with automatic feature detection
 
 ## Installation
@@ -82,12 +82,11 @@ await engine.initialize();
 // Add particles
 for (let i = 0; i < 100; i++) {
   engine.addParticle({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    vx: (Math.random() - 0.5) * 4,
-    vy: (Math.random() - 0.5) * 4,
+    position: { x: Math.random() * canvas.width, y: Math.random() * canvas.height },
+    velocity: { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 },
     mass: 1 + Math.random() * 2,
     size: 3 + Math.random() * 7,
+    color: { r: 1, g: 1, b: 1, a: 1 },
   });
 }
 
@@ -111,8 +110,8 @@ const engine = new Engine({
   constrainIterations: 50,    // Constraint solver iterations
   cellSize: 32,              // Spatial grid cell size
   maxNeighbors: 128,         // Max neighbors per particle
-  maxParticles: 10000,       // Particle capacity
-  clearColor: "#000000",     // Background color
+  maxParticles: 10000,       // WebGPU buffer allocation + effective sim/render cap
+  clearColor: { r: 0, g: 0, b: 0, a: 1 }, // Background color
 });
 
 // Lifecycle
@@ -120,7 +119,7 @@ await engine.initialize();
 engine.play();
 engine.pause();
 engine.stop();
-engine.destroy();
+await engine.destroy();
 
 // State
 const isPlaying = engine.isPlaying();
@@ -128,7 +127,13 @@ const fps = engine.getFPS();
 const count = engine.getCount();
 
 // Particles
-engine.addParticle({ x, y, vx, vy, mass, size });
+engine.addParticle({
+  position: { x, y },
+  velocity: { x: vx, y: vy },
+  mass,
+  size,
+  color: { r: 1, g: 1, b: 1, a: 1 },
+});
 engine.setParticles([...particles]);
 const particles = await engine.getParticles();
 engine.clear();
@@ -163,11 +168,11 @@ Particles are simple data structures with physics properties:
 
 ```typescript
 const particle = {
-  x: 100, y: 100,           // Position
-  vx: 1, vy: -2,            // Velocity
+  position: { x: 100, y: 100 },   // Position
+  velocity: { x: 1, y: -2 },      // Velocity
   mass: 2.5,                // Mass (negative = pinned)
   size: 8,                  // Visual size
-  color: 0xff6b35,          // Color (24-bit RGB)
+  color: { r: 1, g: 0.42, b: 0.21, a: 1 }, // Color (0..1 floats)
 };
 
 // Bulk operations (preferred for performance)
@@ -590,7 +595,13 @@ Full TypeScript support with comprehensive type definitions:
 import type { IEngine, IParticle, Module } from "@cazala/party";
 
 const engine: IEngine = new Engine({ /* ... */ });
-const particle: IParticle = { x: 0, y: 0, vx: 1, vy: 1, mass: 1, size: 5 };
+const particle: IParticle = {
+  position: { x: 0, y: 0 },
+  velocity: { x: 1, y: 1 },
+  mass: 1,
+  size: 5,
+  color: { r: 1, g: 1, b: 1, a: 1 },
+};
 ```
 
 ## License

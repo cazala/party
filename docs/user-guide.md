@@ -142,7 +142,7 @@ engine.play();
 - **Lifecycle**: `initialize()`, `play()`, `pause()`, `stop()`, `toggle()`, `destroy()`
 - **State**: `isPlaying()`, `getFPS()`
 - **View**: `getSize()`, `setSize(w,h)`, `setCamera(x,y)`, `getCamera()`, `setZoom(z)`, `getZoom()`
-- **Particles**: `addParticle(p)`, `setParticles(p[])`, `getParticles()`, `getParticle(i)`, `clear()`, `getCount()`
+- **Particles**: `addParticle(p)`, `setParticles(p[])`, `setParticle(i, p)`, `setParticleMass(i, mass)`, `getParticles()`, `getParticlesInRadius(center, radius, opts?)`, `getParticle(i)`, `clear()`, `getCount()`
 - **Config**: `getClearColor()/setClearColor()`, `getCellSize()/setCellSize()`, `getMaxNeighbors()/setMaxNeighbors()`, `getMaxParticles()/setMaxParticles()`, `getConstrainIterations()/setConstrainIterations()`
 - **Modules**: `getModule(name)` returns the module instance by name
 - **Serialization**: `export()` returns `{ [moduleName]: settings }`; `import(settings)` applies them
@@ -152,6 +152,9 @@ Notes
 
 - When `runtime: "auto"`, the engine tries WebGPU first, then falls back to CPU if unavailable.
 - Pinned particles are represented by a negative `mass`. The top-level `Engine` also includes helpers `pinParticles([...])`, `unpinParticles([...])`, `unpinAll()` (CPU + WebGPU friendly).
+- `addParticle(p)` returns the **index** of the created particle (or `-1` if capacity is reached).
+- `getParticles()` can be expensive on WebGPU because it requires a GPU → CPU readback of the particle buffer; prefer `getParticlesInRadius(...)` for tool-like / local queries.
+- `getParticlesInRadius(center, radius, { maxResults })` returns `{ particles, truncated }` with only the fields needed for local occupancy (`position`, `size`, `mass`).
 
 #### Engine methods and lifecycles
 
@@ -167,8 +170,10 @@ Notes
   - Updates view and internal textures/buffers on resize. Call on window/canvas size changes.
 - `setCamera(x, y)` / `getCamera()` and `setZoom(z)` / `getZoom()`
   - Adjusts the world-to-screen transform. Affects bounds, neighbor grid extents, and rendering.
-- `addParticle(p)` / `setParticles(p[])` / `getParticles()` / `getParticle(i)` / `clear()`
+- `addParticle(p)` / `setParticles(p[])` / `setParticle(i, p)` / `setParticleMass(i, mass)` / `getParticles()` / `getParticlesInRadius(center, radius, opts?)` / `getParticle(i)` / `clear()`
   - Manage particle data. For bulk changes prefer `setParticles()` to minimize sync overhead.
+  - Use `setParticleMass(i, 0)` to remove a particle (matches engine semantics where `mass === 0` is “removed”).
+  - Prefer `getParticlesInRadius(...)` for local queries (e.g. brush/pin/remove tools) to avoid full-scene readback on WebGPU.
 - `getCount()` / `getFPS()`
   - Inspect particle count and smoothed FPS estimate. `getCount()` returns the effective count (actual count limited by `maxParticles` if set).
 - `export()` / `import(settings)`

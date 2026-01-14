@@ -32,10 +32,23 @@ export class ParticleStore {
     this.count = n;
   }
 
-  addParticle(p: IParticle): void {
-    if (this.count >= this.maxParticles) return;
-    this.writeAtIndex(this.count, p);
+  addParticle(p: IParticle): number {
+    if (this.count >= this.maxParticles) return -1;
+    const index = this.count;
+    this.writeAtIndex(index, p);
     this.count++;
+    return index;
+  }
+
+  setParticle(index: number, p: IParticle): void {
+    if (index < 0 || index >= this.count) return;
+    this.writeAtIndex(index, p);
+  }
+
+  setParticleMass(index: number, mass: number): void {
+    if (index < 0 || index >= this.count) return;
+    const base = index * this.floatsPerParticle;
+    this.data[base + 7] = mass;
   }
 
   clear(): void {
@@ -68,6 +81,32 @@ export class ParticleStore {
         a: this.data[base + 11],
       },
     };
+  }
+
+  getFloatsPerParticle(): number {
+    return this.floatsPerParticle;
+  }
+
+  /**
+   * Write a full particle record at index into GPU storage.
+   */
+  syncParticleToGPU(resources: GPUResources, index: number): void {
+    if (index < 0 || index >= this.count) return;
+    const base = index * this.floatsPerParticle;
+    const slice = this.data.subarray(base, base + this.floatsPerParticle);
+    resources.writeParticleSlice(base, slice);
+  }
+
+  /**
+   * Write a single mass value at index into GPU storage.
+   */
+  syncParticleMassToGPU(
+    resources: GPUResources,
+    index: number
+  ): void {
+    if (index < 0 || index >= this.count) return;
+    const offset = index * this.floatsPerParticle + 7;
+    resources.writeParticleSlice(offset, new Float32Array([this.data[offset]]));
   }
 
   /**

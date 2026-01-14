@@ -42,7 +42,6 @@ import {
   setMaxParticlesThunk,
   setClearColorThunk,
   toggleRuntime as toggleRuntimeAction,
-  addParticleThunk,
   spawnParticlesThunk,
   handleWheelThunk,
   registerEngine,
@@ -653,9 +652,12 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       mass: number;
       color: { r: number; g: number; b: number; a: number };
     }) => {
-      dispatch(addParticleThunk(particle));
+      const engine = engineRef.current;
+      if (!engine) return null;
+      // Direct engine call to get the created index (avoids extra readbacks).
+      return engine.addParticle(particle);
     },
-    [dispatch]
+    []
   );
 
   const spawnParticles = useCallback(

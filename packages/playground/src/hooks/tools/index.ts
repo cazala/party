@@ -4,6 +4,7 @@ import { useToolManager } from "./useToolManager";
 import { useOverlay } from "./useOverlay";
 import { useMouseHandler } from "./useMouseHandler";
 import { UseToolsReturn, ToolHandlers } from "./types";
+import type { ToolMode } from "../../slices/tools";
 
 // Individual tool hooks
 import { useSpawnTool } from "./individual-tools/useSpawnTool";
@@ -13,6 +14,7 @@ import { useJointTool } from "./individual-tools/useJointTool";
 import { usePinTool } from "./individual-tools/usePinTool";
 import { useGrabTool } from "./individual-tools/useGrabTool";
 import { useDrawTool } from "./individual-tools/useDrawTool";
+import { useBrushTool } from "./individual-tools/useBrushTool";
 import { useShapeTool } from "./individual-tools/useShapeTool";
 
 export function useTools(isHomepage: boolean = false): UseToolsReturn {
@@ -28,10 +30,11 @@ export function useTools(isHomepage: boolean = false): UseToolsReturn {
   const pinTool = usePinTool(toolManager.isPinMode);
   const grabTool = useGrabTool(toolManager.isGrabMode);
   const drawTool = useDrawTool(toolManager.isDrawMode);
+  const brushTool = useBrushTool(toolManager.isBrushMode);
   const shapeTool = useShapeTool(toolManager.isShapeMode);
 
   // Create tool handlers map
-  const toolHandlers: Record<string, ToolHandlers> = {
+  const toolHandlers: Record<ToolMode, ToolHandlers> = {
     interaction: interactionTool.handlers,
     spawn: spawnTool.handlers,
     remove: removeTool.handlers,
@@ -39,6 +42,7 @@ export function useTools(isHomepage: boolean = false): UseToolsReturn {
     pin: pinTool.handlers,
     grab: grabTool.handlers,
     draw: drawTool.handlers,
+    brush: brushTool.handlers,
     shape: shapeTool.handlers,
   };
 
@@ -86,6 +90,9 @@ export function useTools(isHomepage: boolean = false): UseToolsReturn {
           case "draw":
             drawTool.renderOverlay(ctx, canvasSize, mouse);
             break;
+          case "brush":
+            brushTool.renderOverlay(ctx, canvasSize, mouse);
+            break;
           case "shape":
             shapeTool.renderOverlay(ctx, canvasSize, mouse);
             break;
@@ -105,6 +112,7 @@ export function useTools(isHomepage: boolean = false): UseToolsReturn {
       pinTool.renderOverlay,
       grabTool.renderOverlay,
       drawTool.renderOverlay,
+      brushTool.renderOverlay,
       shapeTool.renderOverlay,
     ]
   );

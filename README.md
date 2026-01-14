@@ -8,7 +8,7 @@ A high-performance particle physics simulation system with interactive playgroun
 - **High Performance**: Spatial grid optimization, configurable workgroup sizes, and efficient neighbor queries
 - **Modular Force System**: Environment, boundary, collisions, behavior (flocking), fluid dynamics (SPH), sensors, joints, interaction, and grab modules
 - **Advanced Rendering**: Trails with decay/diffusion, particle instancing, line rendering, and multiple color modes
-- **Session Management**: Save/load complete simulation states with oscillator support
+- **Playground Sessions**: Save/load/share sessions (module settings, oscillators, and optional particles/joints)
 - **Real-time Oscillators**: Animate any module parameter with configurable frequency and bounds
 - **Interactive Playground**: React-based interface with undo/redo, hotkeys, and live parameter adjustment
 
@@ -28,7 +28,7 @@ Comprehensive documentation is available in the [`docs/`](./docs) directory:
 
 ## Packages
 
-This is a monorepo containing two main packages:
+This is a monorepo containing:
 
 ### [@cazala/party](./packages/core) - Core Engine
 
@@ -51,6 +51,10 @@ A React-based web application providing:
 - **Oscillator UI**: Visual sliders with speed cycling and parameter automation
 - **Hotkeys**: Comprehensive keyboard shortcuts for efficient workflow
 - **Undo/Redo**: Full history system for non-destructive editing
+
+### [`worker`](./packages/worker) - Cloudflare Worker
+
+A route-scoped reverse proxy that serves the playground at `caza.la/party` while proxying to `party.caza.la`.
 
 ## Quick Start
 
@@ -142,12 +146,11 @@ await engine.initialize();
 // Add some particles
 for (let i = 0; i < 100; i++) {
   engine.addParticle({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    vx: (Math.random() - 0.5) * 4,
-    vy: (Math.random() - 0.5) * 4,
+    position: { x: Math.random() * canvas.width, y: Math.random() * canvas.height },
+    velocity: { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 },
     mass: 1 + Math.random() * 2,
     size: 3 + Math.random() * 7,
+    color: { r: 1, g: 1, b: 1, a: 1 },
   });
 }
 

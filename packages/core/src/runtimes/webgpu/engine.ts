@@ -17,11 +17,17 @@
 import type { Module } from "../../module";
 import { GPUResources } from "./gpu-resources";
 import { ParticleStore } from "./particle-store";
-import { AbstractEngine, IParticle } from "../../interfaces";
+import {
+  AbstractEngine,
+  GetParticlesInRadiusOptions,
+  GetParticlesInRadiusResult,
+  IParticle,
+} from "../../interfaces";
 import { ModuleRegistry } from "./module-registry";
 import { SpacialGrid } from "./spacial-grid";
 import { SimulationPipeline } from "./simulation-pipeline";
 import { RenderPipeline } from "./render-pipeline";
+import { LocalQuery } from "./local-query";
 
 export class WebGPUEngine extends AbstractEngine {
   private resources: GPUResources;
@@ -36,6 +42,8 @@ export class WebGPUEngine extends AbstractEngine {
   private shouldSyncNextTick: boolean = false;
   private animationId: number | null = null;
   private didSwapchainWarmup: boolean = false;
+
+  private localQuery: LocalQuery;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -63,6 +71,7 @@ export class WebGPUEngine extends AbstractEngine {
     this.sim = new SimulationPipeline();
     this.render = new RenderPipeline();
     this.grid = new SpacialGrid(this.cellSize);
+    this.localQuery = new LocalQuery();
   }
 
   async initialize(): Promise<void> {
@@ -134,6 +143,7 @@ export class WebGPUEngine extends AbstractEngine {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
+    this.localQuery.dispose();
     await this.resources.dispose();
   }
 
@@ -169,12 +179,25 @@ export class WebGPUEngine extends AbstractEngine {
     }
   }
 
-  async addParticle(p: IParticle): Promise<void> {
-    await this.particles.syncFromGPU(this.resources);
-    this.particles.addParticle(p);
-    this.particles.syncToGPU(this.resources);
+  addParticle(p: IParticle): number {
+    const index = this.particles.addParticle(p);
+    if (index < 0) return -1;
+    // Push only the new particle record to GPU (no full-scene readback).
+    this.particles.syncParticleToGPU(this.resources, index);
     // Update maxSize tracking
     this.updateMaxSize(p.size);
+    return index;
+  }
+
+  setParticle(index: number, p: IParticle): void {
+    this.particles.setParticle(index, p);
+    this.particles.syncParticleToGPU(this.resources, index);
+    this.updateMaxSize(p.size);
+  }
+
+  setParticleMass(index: number, mass: number): void {
+    this.particles.setParticleMass(index, mass);
+    this.particles.syncParticleMassToGPU(this.resources, index);
   }
 
   /**
@@ -189,6 +212,20 @@ export class WebGPUEngine extends AbstractEngine {
   async getParticle(index: number): Promise<IParticle> {
     await this.particles.syncFromGPU(this.resources);
     return this.particles.getParticle(index);
+  }
+
+  async getParticlesInRadius(
+    center: { x: number; y: number },
+    radius: number,
+    opts?: GetParticlesInRadiusOptions
+  ): Promise<GetParticlesInRadiusResult> {
+    return await this.localQuery.getParticlesInRadius(
+      this.resources,
+      center,
+      radius,
+      this.getCount(),
+      opts
+    );
   }
 
   getCount(): number {
@@ -386,4 +423,5 @@ export class WebGPUEngine extends AbstractEngine {
   protected onMaxParticlesChanged(): void {
     // Max particles affects effective count; no immediate rebuild needed
   }
+
 }

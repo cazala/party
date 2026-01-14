@@ -78,7 +78,7 @@ export interface EngineContextType {
     size: number;
     mass: number;
     color: { r: number; g: number; b: number; a: number };
-  }) => void;
+  }) => number | null;
   spawnParticles: (config: SpawnParticlesConfig) => void;
   toggleRuntime: () => Promise<void>;
 
