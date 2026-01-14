@@ -1,51 +1,15 @@
-import { ModulesState } from "../slices/modules";
-import { InitState } from "../slices/init";
-import { EngineState } from "../slices/engine";
-import { OscillatorsState } from "../slices/oscillators";
-import { RenderState } from "../slices/render";
+export {
+  SESSION_DATA_VERSION,
+} from "../sessions/versions";
+export type {
+  SessionDataVersion,
+  SavedParticle,
+  SessionMetadata,
+  SessionDataV1,
+  SessionData,
+} from "../sessions/versions";
 
-// Particle data interface matching engine's IParticle
-export interface SavedParticle {
-  position: { x: number; y: number };
-  velocity: { x: number; y: number };
-  size: number;
-  mass: number;
-  color: {
-    r: number;
-    g: number;
-    b: number;
-    a: number;
-  };
-}
-
-export interface SessionMetadata {
-  particleCount: number;
-  createdAt: string;
-  lastModified: string;
-  hasParticleData?: boolean;
-}
-
-export interface SessionData {
-  id: string;
-  name: string;
-  metadata: SessionMetadata;
-  // Core simulation state
-  // Saved sessions are forward/backward compatible: each module's payload can be partial
-  // so older sessions can omit newly-added fields.
-  modules: { [K in keyof ModulesState]: Partial<ModulesState[K]> } & {
-    // Legacy: before Fluids absorbed PIC/FLIP, sessions stored a separate picflip module.
-    picflip?: any;
-  };
-  init: InitState;
-  engine: Pick<
-    EngineState,
-    "constrainIterations" | "gridCellSize" | "maxNeighbors" | "camera" | "zoom"
-  >;
-  render?: RenderState;
-  oscillators: OscillatorsState;
-  oscillatorsElapsedSeconds?: number;
-  particles?: SavedParticle[];
-}
+import type { SessionMetadata } from "../sessions/versions";
 
 export interface SessionSaveRequest {
   name: string;

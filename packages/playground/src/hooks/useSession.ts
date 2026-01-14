@@ -31,6 +31,7 @@ import {
   getEngine,
 } from "../slices/engine";
 import { SessionSaveRequest, SessionData } from "../types/session";
+import { migrateSessionDataToLatest } from "../sessions/migrateSessionData";
 import {
   loadSession as loadSessionFromStorage,
   saveSession as saveSessionToStorage,
@@ -111,8 +112,8 @@ export function useSession() {
           await dispatch(
             setParticlesThunk({
               particles: sessionData.particles,
-              jointsToRestore: sessionData.modules.joints,
-              linesToRestore: sessionData.modules.lines,
+              jointsToRestore: sessionData.modules?.joints ?? {},
+              linesToRestore: sessionData.modules?.lines ?? {},
             })
           ).unwrap();
         } else {
@@ -155,8 +156,8 @@ export function useSession() {
           await dispatch(
             setParticlesThunk({
               particles: sessionData.particles,
-              jointsToRestore: sessionData.modules.joints,
-              linesToRestore: sessionData.modules.lines,
+              jointsToRestore: sessionData.modules?.joints ?? {},
+              linesToRestore: sessionData.modules?.lines ?? {},
             })
           ).unwrap();
         } else {
@@ -345,16 +346,18 @@ export function useSession() {
           };
         }
 
+        const migrated = migrateSessionDataToLatest(data);
+
         // Generate a new unique ID for the imported session
-        const newSessionId = generateSessionId(data.name);
+        const newSessionId = generateSessionId(migrated.name);
         const now = new Date().toISOString();
 
         // Create new session data with updated metadata
         const importedSessionData: SessionData = {
-          ...data,
+          ...migrated,
           id: newSessionId,
           metadata: {
-            ...data.metadata,
+            ...migrated.metadata,
             createdAt: now,
             lastModified: now,
           },

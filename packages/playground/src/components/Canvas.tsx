@@ -12,7 +12,14 @@ export function Canvas({
   style?: React.CSSProperties;
   isPlaying?: boolean;
 }) {
-  const { canvasRef, canvasDimensions, runtime, handleWheel, isInitialized } = useEngine();
+  const {
+    canvasRef,
+    canvasDimensions,
+    runtime,
+    handleWheel,
+    isInitialized,
+    isAutoMode,
+  } = useEngine();
   const {
     isSpawnMode,
     isGrabMode,
@@ -69,7 +76,13 @@ export function Canvas({
 
   return (
     <canvas
-      key={runtime} // Force canvas recreation when engine type changes
+      // IMPORTANT:
+      // - A canvas can only have one context type. If we previously created a WebGPU context,
+      //   switching to CPU (2D) on the same element will yield getContext("2d") === null.
+      // - In auto mode we keep the canvas stable so detection doesn't blank the view.
+      // - When user explicitly toggles runtime (auto mode off), remount the canvas so the new
+      //   runtime can acquire its context.
+      key={isAutoMode ? "auto" : runtime}
       ref={canvasRef}
       id="canvas"
       className={canvasClasses}

@@ -9,6 +9,7 @@ import {
   SessionSaveRequest,
   SessionListItem,
 } from "../types/session";
+import { SESSION_DATA_VERSION } from "../types/session";
 import { RootState } from "./store";
 import {
   saveSession as saveSessionToStorage,
@@ -21,7 +22,7 @@ import {
   generateSessionId,
 } from "../utils/sessionManager";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
-import { setState as setInitState } from "./init";
+import { resetToDefaults as resetInitToDefaults, setState as setInitState } from "./init";
 import {
   setConstrainIterations,
   setGridCellSize,
@@ -33,60 +34,57 @@ import {
 import {
   resetEnvironment,
   importEnvironmentSettings,
+  setEnvironmentEnabled,
   resetBoundary,
   importBoundarySettings,
+  setBoundaryEnabled,
   resetCollisions,
   importCollisionsSettings,
+  setCollisionsEnabled,
   resetFluids,
   importFluidsSettings,
+  setFluidsEnabled,
   resetBehavior,
   importBehaviorSettings,
+  setBehaviorEnabled,
   resetSensors,
   importSensorsSettings,
+  setSensorsEnabled,
   resetJoints,
   importJointsSettings,
+  setJointsEnabled,
   importTrailsSettings,
+  setTrailsEnabled,
   importInteractionSettings,
+  setInteractionEnabled,
   importParticlesSettings,
+  setParticlesEnabled,
   importLinesSettings,
+  setLinesEnabled,
   importGrabSettings,
+  setGrabEnabled,
 } from "./modules";
-import { FluidsMethod } from "@cazala/party";
+import { initReducer, selectInitState } from "./init";
+import { engineReducer } from "./engine";
 
-const migrateLegacyPicflipIntoFluids = (sessionData: SessionData) => {
-  const legacy = (sessionData.modules as any)?.picflip;
-  if (!legacy || typeof legacy !== "object") return {};
-
-  // Only migrate if the legacy module was enabled.
-  if (!legacy.enabled) return {};
-
-  const legacyRadius = typeof legacy.radius === "number" ? legacy.radius : undefined;
-  const legacyDensity = typeof legacy.density === "number" ? legacy.density : undefined;
-  const legacyPressure = typeof legacy.pressure === "number" ? legacy.pressure : undefined;
-  const legacyFlipRatio = typeof legacy.flipRatio === "number" ? legacy.flipRatio : undefined;
-
-  // Fluids (PIC/FLIP) internal mapping currently uses:
-  // radInternal = influenceRadius / 2
-  // densityInternal = targetDensity * 3
-  // pressureInternal = pressureMultiplier * 30
-  //
-  // To preserve legacy behavior, invert that mapping:
-  const influenceRadius =
-    legacyRadius !== undefined ? legacyRadius * 2 : undefined;
-  const targetDensity =
-    legacyDensity !== undefined ? legacyDensity / 3 : undefined;
-  const pressureMultiplier =
-    legacyPressure !== undefined ? legacyPressure / 30 : undefined;
-
-  return {
-    enabled: true,
-    method: FluidsMethod.Picflip,
-    ...(influenceRadius !== undefined ? { influenceRadius } : {}),
-    ...(targetDensity !== undefined ? { targetDensity } : {}),
-    ...(pressureMultiplier !== undefined ? { pressureMultiplier } : {}),
-    ...(legacyFlipRatio !== undefined ? { flipRatio: legacyFlipRatio } : {}),
-  };
+const DEFAULT_INIT_SLICE = initReducer(undefined, { type: "@@INIT" } as any);
+const DEFAULT_INIT = selectInitState({ init: DEFAULT_INIT_SLICE } as any);
+const DEFAULT_ENGINE_SLICE = engineReducer(undefined, { type: "@@INIT" } as any);
+const DEFAULT_ENGINE = {
+  constrainIterations: DEFAULT_ENGINE_SLICE.constrainIterations,
+  gridCellSize: DEFAULT_ENGINE_SLICE.gridCellSize,
+  maxNeighbors: DEFAULT_ENGINE_SLICE.maxNeighbors,
+  camera: DEFAULT_ENGINE_SLICE.camera,
+  zoom: DEFAULT_ENGINE_SLICE.zoom,
 };
+
+function normalizeInit(init: any): any {
+  return { ...DEFAULT_INIT, ...(init ?? {}) };
+}
+
+function normalizeEngine(engine: any): any {
+  return { ...DEFAULT_ENGINE, ...(engine ?? {}) };
+}
 import {
   clearAllOscillators,
   clearModuleOscillators,
@@ -103,64 +101,108 @@ const loadModuleSettings = (
   // Reset and import settings for all restart-affected modules
   if (RESTART_AFFECTED_MODULES.includes("environment")) {
     dispatch(resetEnvironment());
-    dispatch(importEnvironmentSettings(sessionData.modules.environment));
+    if (sessionData.modules?.environment) {
+      dispatch(importEnvironmentSettings(sessionData.modules.environment));
+    } else {
+      dispatch(setEnvironmentEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("boundary")) {
     dispatch(resetBoundary());
-    dispatch(importBoundarySettings(sessionData.modules.boundary));
+    if (sessionData.modules?.boundary) {
+      dispatch(importBoundarySettings(sessionData.modules.boundary));
+    } else {
+      dispatch(setBoundaryEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("collisions")) {
     dispatch(resetCollisions());
-    dispatch(importCollisionsSettings(sessionData.modules.collisions));
+    if (sessionData.modules?.collisions) {
+      dispatch(importCollisionsSettings(sessionData.modules.collisions));
+    } else {
+      dispatch(setCollisionsEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("fluids")) {
     dispatch(resetFluids());
-    const fluidsSettings = {
-      ...(sessionData.modules.fluids ?? {}),
-      ...migrateLegacyPicflipIntoFluids(sessionData),
-    };
-    dispatch(importFluidsSettings(fluidsSettings));
+    if (sessionData.modules?.fluids) {
+      dispatch(importFluidsSettings(sessionData.modules.fluids));
+    } else {
+      dispatch(setFluidsEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("behavior")) {
     dispatch(resetBehavior());
-    dispatch(importBehaviorSettings(sessionData.modules.behavior));
+    if (sessionData.modules?.behavior) {
+      dispatch(importBehaviorSettings(sessionData.modules.behavior));
+    } else {
+      dispatch(setBehaviorEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("sensors")) {
     dispatch(resetSensors());
-    dispatch(importSensorsSettings(sessionData.modules.sensors));
+    if (sessionData.modules?.sensors) {
+      dispatch(importSensorsSettings(sessionData.modules.sensors));
+    } else {
+      dispatch(setSensorsEnabled(false));
+    }
   }
 
   // Handle joints separately since quickload doesn't restore joints connections
   if (includeJoints) {
     dispatch(resetJoints());
-    dispatch(importJointsSettings(sessionData.modules.joints));
+    if (sessionData.modules?.joints) {
+      dispatch(importJointsSettings(sessionData.modules.joints));
+    } else {
+      dispatch(setJointsEnabled(false));
+    }
   } else {
     dispatch(resetJoints());
   }
 
   if (RESTART_AFFECTED_MODULES.includes("trails")) {
-    dispatch(importTrailsSettings(sessionData.modules.trails));
+    if (sessionData.modules?.trails) {
+      dispatch(importTrailsSettings(sessionData.modules.trails));
+    } else {
+      dispatch(setTrailsEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("interaction")) {
-    dispatch(importInteractionSettings(sessionData.modules.interaction));
+    if (sessionData.modules?.interaction) {
+      dispatch(importInteractionSettings(sessionData.modules.interaction));
+    } else {
+      dispatch(setInteractionEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("particles")) {
-    dispatch(importParticlesSettings(sessionData.modules.particles));
+    if (sessionData.modules?.particles) {
+      dispatch(importParticlesSettings(sessionData.modules.particles));
+    } else {
+      dispatch(setParticlesEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("lines")) {
-    dispatch(importLinesSettings(sessionData.modules.lines));
+    if (sessionData.modules?.lines) {
+      dispatch(importLinesSettings(sessionData.modules.lines));
+    } else {
+      dispatch(setLinesEnabled(false));
+    }
   }
 
   if (RESTART_AFFECTED_MODULES.includes("grab")) {
-    dispatch(importGrabSettings(sessionData.modules.grab));
+    if (sessionData.modules?.grab) {
+      dispatch(importGrabSettings(sessionData.modules.grab));
+    } else {
+      dispatch(setGrabEnabled(false));
+    }
   }
 
 };
@@ -277,6 +319,7 @@ export const saveCurrentSessionThunk = createAsyncThunk(
         : generateSessionId(request.name);
 
       const sessionData: SessionData = {
+        version: SESSION_DATA_VERSION,
         id: sessionId,
         name: request.name,
         metadata: {
@@ -337,6 +380,9 @@ const applyFullSessionLoad = async (
   dispatch: any,
   sessionData: SessionData
 ) => {
+  const normalizedInit = normalizeInit((sessionData as any).init);
+  const normalizedEngine = normalizeEngine((sessionData as any).engine);
+
   // Set flag to prevent useOscillators interference during load
   dispatch(sessionSlice.actions.setIsLoadingOscillators(true));
 
@@ -351,52 +397,93 @@ const applyFullSessionLoad = async (
   await new Promise((resolve) => setTimeout(resolve, 10));
 
   // Load init state
-  dispatch(setInitState(sessionData.init));
+  dispatch(resetInitToDefaults());
+  dispatch(setInitState(normalizedInit));
 
   // Load engine settings
-  dispatch(setConstrainIterations(sessionData.engine.constrainIterations));
-  dispatch(setGridCellSize(sessionData.engine.gridCellSize));
-  dispatch(setMaxNeighbors(sessionData.engine.maxNeighbors));
+  dispatch(setConstrainIterations(normalizedEngine.constrainIterations));
+  dispatch(setGridCellSize(normalizedEngine.gridCellSize));
+  dispatch(setMaxNeighbors(normalizedEngine.maxNeighbors));
 
   // Load camera and zoom
-  dispatch(setCameraThunk(sessionData.engine.camera));
-  dispatch(setZoomThunk(sessionData.engine.zoom));
+  dispatch(setCameraThunk(normalizedEngine.camera));
+  dispatch(setZoomThunk(normalizedEngine.zoom));
 
   // Load module states
   dispatch(resetEnvironment());
-  dispatch(importEnvironmentSettings(sessionData.modules.environment));
+  if (sessionData.modules?.environment) {
+    dispatch(importEnvironmentSettings(sessionData.modules.environment));
+  } else {
+    dispatch(setEnvironmentEnabled(false));
+  }
 
   dispatch(resetBoundary());
-  dispatch(importBoundarySettings(sessionData.modules.boundary));
+  if (sessionData.modules?.boundary) {
+    dispatch(importBoundarySettings(sessionData.modules.boundary));
+  } else {
+    dispatch(setBoundaryEnabled(false));
+  }
 
   dispatch(resetCollisions());
-  dispatch(importCollisionsSettings(sessionData.modules.collisions));
+  if (sessionData.modules?.collisions) {
+    dispatch(importCollisionsSettings(sessionData.modules.collisions));
+  } else {
+    dispatch(setCollisionsEnabled(false));
+  }
 
   dispatch(resetFluids());
-  {
-    const fluidsSettings = {
-      ...(sessionData.modules.fluids ?? {}),
-      ...migrateLegacyPicflipIntoFluids(sessionData),
-    };
-    dispatch(importFluidsSettings(fluidsSettings));
+  if (sessionData.modules?.fluids) {
+    dispatch(importFluidsSettings(sessionData.modules.fluids));
+  } else {
+    dispatch(setFluidsEnabled(false));
   }
 
   dispatch(resetBehavior());
-  dispatch(importBehaviorSettings(sessionData.modules.behavior));
+  if (sessionData.modules?.behavior) {
+    dispatch(importBehaviorSettings(sessionData.modules.behavior));
+  } else {
+    dispatch(setBehaviorEnabled(false));
+  }
 
   dispatch(resetSensors());
-  dispatch(importSensorsSettings(sessionData.modules.sensors));
+  if (sessionData.modules?.sensors) {
+    dispatch(importSensorsSettings(sessionData.modules.sensors));
+  } else {
+    dispatch(setSensorsEnabled(false));
+  }
 
   dispatch(resetJoints());
-  dispatch(importJointsSettings(sessionData.modules.joints));
+  if (sessionData.modules?.joints) {
+    dispatch(importJointsSettings(sessionData.modules.joints));
+  } else {
+    dispatch(setJointsEnabled(false));
+  }
 
-  dispatch(importTrailsSettings(sessionData.modules.trails));
-  dispatch(importInteractionSettings(sessionData.modules.interaction));
-  dispatch(importParticlesSettings(sessionData.modules.particles));
-  dispatch(importLinesSettings(sessionData.modules.lines));
-  dispatch(importGrabSettings(sessionData.modules.grab));
-  // No standalone picflip module anymore; legacy picflip sessions are migrated into fluids above.
-
+  if (sessionData.modules?.trails) {
+    dispatch(importTrailsSettings(sessionData.modules.trails));
+  } else {
+    dispatch(setTrailsEnabled(false));
+  }
+  if (sessionData.modules?.interaction) {
+    dispatch(importInteractionSettings(sessionData.modules.interaction));
+  } else {
+    dispatch(setInteractionEnabled(false));
+  }
+  if (sessionData.modules?.particles) {
+    dispatch(importParticlesSettings(sessionData.modules.particles));
+  } else {
+    dispatch(setParticlesEnabled(false));
+  }
+  if (sessionData.modules?.lines) {
+    dispatch(importLinesSettings(sessionData.modules.lines));
+  } else {
+    dispatch(setLinesEnabled(false));
+  }
+  if (sessionData.modules?.grab) {
+    dispatch(importGrabSettings(sessionData.modules.grab));
+  } else {
+    dispatch(setGrabEnabled(false));
+  }
   // Load render settings (full load only)
   if (sessionData.render) {
     try {
@@ -474,7 +561,13 @@ const applyFullSessionLoad = async (
   // Clear the flag after loading is complete
   dispatch(sessionSlice.actions.setIsLoadingOscillators(false));
 
-  return sessionData;
+  // Return normalized data so callers (e.g. spawnParticlesThunk(sessionData.init)) always have
+  // a complete config even if the incoming payload was minimized for URL size.
+  return {
+    ...(sessionData as any),
+    init: normalizedInit,
+    engine: normalizedEngine,
+  } as SessionData;
 };
 
 // Internal helper to apply a quick session load (no particles/joints changes)
@@ -483,6 +576,8 @@ const applyQuickSessionLoad = async (
   getState: any,
   sessionData: SessionData
 ) => {
+  const normalizedEngine = normalizeEngine((sessionData as any).engine);
+
   // Set flag to prevent useOscillators interference during load
   dispatch(sessionSlice.actions.setIsLoadingOscillators(true));
 
@@ -520,9 +615,9 @@ const applyQuickSessionLoad = async (
   await engine?.getParticles();
 
   // Load engine settings
-  dispatch(setConstrainIterations(sessionData.engine.constrainIterations));
-  dispatch(setGridCellSize(sessionData.engine.gridCellSize));
-  dispatch(setMaxNeighbors(sessionData.engine.maxNeighbors));
+  dispatch(setConstrainIterations(normalizedEngine.constrainIterations));
+  dispatch(setGridCellSize(normalizedEngine.gridCellSize));
+  dispatch(setMaxNeighbors(normalizedEngine.maxNeighbors));
 
   // Load module states (without joints connections for quickload)
   loadModuleSettings(dispatch, sessionData, false);
@@ -615,7 +710,10 @@ const applyQuickSessionLoad = async (
   // Clear the flag after loading is complete
   dispatch(sessionSlice.actions.setIsLoadingOscillators(false));
 
-  return sessionData;
+  return {
+    ...(sessionData as any),
+    engine: normalizedEngine,
+  } as SessionData;
 };
 
 // Async thunk to load session by ID (from storage)

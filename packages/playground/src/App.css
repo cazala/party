@@ -124,6 +124,14 @@
 
 #canvas {
   display: block;
+  /* Mobile UX: prevent text/image selection & callouts on tap/hold */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Ensure touch gestures don't get interpreted as scroll/zoom */
+  touch-action: none;
+  outline: none;
 }
 
 /* Fullscreen canvas styling - no margins/offsets when in fullscreen mode */
