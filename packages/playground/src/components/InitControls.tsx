@@ -4,6 +4,7 @@ import { calculateMassFromSize } from "../utils/particle";
 import { Slider } from "./ui/Slider";
 import { Dropdown } from "./ui/Dropdown";
 import { Checkbox } from "./ui/Checkbox";
+import { Field } from "./ui/Field";
 import { useEngine } from "../hooks/useEngine";
 import { useInit } from "../hooks/useInit";
 import { useJoints } from "../hooks/modules/useJoints";
@@ -41,6 +42,9 @@ export function InitControls() {
     colors,
     velocityConfig,
     gridJoints,
+    text,
+    textFont,
+    textSize,
     hasInitialSpawned,
     isSpawnLocked,
     setNumParticles,
@@ -55,6 +59,9 @@ export function InitControls() {
     setColors,
     updateVelocityConfig,
     setGridJoints,
+    setText,
+    setTextFont,
+    setTextSize,
     markInitialSpawned,
     initState,
   } = useInit();
@@ -141,6 +148,9 @@ export function InitControls() {
       cornerRadius,
       particleMass,
       gridJoints,
+      text,
+      textFont,
+      textSize,
     });
   }, [
     // NOTE: spawnParticles is intentionally NOT in this dependency array
@@ -160,6 +170,9 @@ export function InitControls() {
     colors,
     velocityConfig,
     gridJoints,
+    text,
+    textFont,
+    textSize,
     barsVisible, // Include to detect when component remounts due to UI changes
   ]);
 
@@ -182,6 +195,9 @@ export function InitControls() {
     colors,
     velocityConfig,
     gridJoints,
+    text,
+    textFont,
+    textSize,
   ]);
 
   // Create grid joints after particles are spawned
@@ -246,7 +262,7 @@ export function InitControls() {
   const handleSpawnChange = (
     options: {
       newNumParticles?: number;
-      newShape?: "grid" | "random" | "circle" | "donut" | "square";
+      newShape?: "grid" | "random" | "circle" | "donut" | "square" | "text";
       newSpacing?: number;
       newParticleSize?: number;
       newRadius?: number;
@@ -282,6 +298,12 @@ export function InitControls() {
 
     // The useEffect will automatically trigger particle spawning when Redux state changes
   };
+
+  const textFontOptions = [
+    { value: "sans-serif", label: "Sans Serif" },
+    { value: "serif", label: "Serif" },
+    { value: "monospace", label: "Monospace" },
+  ];
 
   return (
     <div>
@@ -321,7 +343,8 @@ export function InitControls() {
               | "random"
               | "circle"
               | "donut"
-              | "square",
+              | "square"
+              | "text",
           })
         }
         options={[
@@ -330,6 +353,7 @@ export function InitControls() {
           { value: "donut", label: "Donut" },
           { value: "square", label: "Square" },
           { value: "random", label: "Random" },
+          { value: "text", label: "Text" },
         ]}
       />
       {shape === "grid" && (
@@ -400,6 +424,36 @@ export function InitControls() {
                 newCornerRadius: value,
               })
             }
+          />
+        </>
+      )}
+      {shape === "text" && (
+        <>
+          <Field className="init-text-field">
+            <label>
+              Text
+              <input
+                className="init-text-input"
+                type="text"
+                value={text}
+                placeholder="Type text to spawn"
+                onChange={(event) => setText(event.target.value)}
+              />
+            </label>
+          </Field>
+          <Slider
+            label="Text Size"
+            value={textSize}
+            min={8}
+            max={2048}
+            step={1}
+            onChange={(value) => setTextSize(value)}
+          />
+          <Dropdown
+            label="Font"
+            value={textFont}
+            onChange={(value) => setTextFont(value)}
+            options={textFontOptions}
           />
         </>
       )}

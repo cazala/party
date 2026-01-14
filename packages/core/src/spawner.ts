@@ -2,7 +2,7 @@
  * Spawner
  *
  * Utility for generating initial `IParticle[]` configurations for common
- * shapes (grid, random, circle, donut, square) with optional initial velocity
+ * shapes (grid, random, circle, donut, square, text) with optional initial velocity
  * presets (random/in/out/clockwise/counter-clockwise/custom). Also includes
  * lightweight color parsing helpers.
  */
@@ -22,9 +22,23 @@ export interface VelocityConfig {
   angle?: number; // radians for custom
 }
 
+export type SpawnShape =
+  | "grid"
+  | "random"
+  | "circle"
+  | "donut"
+  | "square"
+  | "text";
+
+export type TextHorizontalAlign = "left" | "center" | "right";
+export type TextVerticalAlign = "top" | "center" | "bottom";
+
+export const TEXT_SPAWNER_FONTS = ["sans-serif", "serif", "monospace"] as const;
+export type TextSpawnerFont = (typeof TEXT_SPAWNER_FONTS)[number];
+
 export interface SpawnOptions {
   count: number;
-  shape: "grid" | "random" | "circle" | "donut" | "square";
+  shape: SpawnShape;
   center: { x: number; y: number };
   colors?: string[];
   spacing?: number; // grid
@@ -36,6 +50,12 @@ export interface SpawnOptions {
   mass?: number; // particle mass
   bounds?: { width: number; height: number }; // random
   velocity?: VelocityConfig;
+  // text
+  text?: string;
+  font?: TextSpawnerFont | string;
+  textSize?: number;
+  position?: { x: number; y: number };
+  align?: { horizontal: TextHorizontalAlign; vertical: TextVerticalAlign };
 }
 
 function calculateVelocity(
@@ -100,6 +120,11 @@ export class Spawner {
       bounds,
       velocity,
       colors,
+      text = "Party",
+      font = "sans-serif",
+      textSize = 64,
+      position,
+      align,
     } = options;
 
     const particles: IParticle[] = [];
@@ -130,6 +155,108 @@ export class Spawner {
       if (!colors || colors.length === 0) return { r: 1, g: 1, b: 1, a: 1 };
       return toColor(colors[Math.floor(Math.random() * colors.length)]);
     };
+
+    if (shape === "text") {
+      const textValue = text.trim();
+      if (!textValue) return particles;
+
+      const createCanvas = () => {
+        if (typeof OffscreenCanvas !== "undefined") {
+          return new OffscreenCanvas(1, 1);
+        }
+        if (typeof document !== "undefined") {
+          return document.createElement("canvas");
+        }
+        return null;
+      };
+
+      const canvas = createCanvas();
+      if (!canvas) return particles;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return particles;
+
+      const fontSize = Math.max(1, Math.floor(textSize));
+      const fontSpec = `${fontSize}px ${font}`;
+      ctx.font = fontSpec;
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign = "left";
+
+      const metrics = ctx.measureText(textValue);
+      const ascent = metrics.actualBoundingBoxAscent || fontSize;
+      const descent = metrics.actualBoundingBoxDescent || fontSize * 0.25;
+      const left = metrics.actualBoundingBoxLeft || 0;
+      const right = metrics.actualBoundingBoxRight || metrics.width;
+      const textWidth = Math.max(1, Math.ceil(left + right));
+      const textHeight = Math.max(1, Math.ceil(ascent + descent));
+      const padding = Math.ceil(fontSize * 0.25);
+
+      canvas.width = textWidth + padding * 2;
+      canvas.height = textHeight + padding * 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = fontSpec;
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(textValue, padding + left, padding + ascent);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const sampleStep = Math.max(1, Math.round(size));
+      const points: { x: number; y: number }[] = [];
+
+      for (let y = 0; y < canvas.height; y += sampleStep) {
+        for (let x = 0; x < canvas.width; x += sampleStep) {
+          const idx = (y * canvas.width + x) * 4 + 3;
+          if (data[idx] > 0) {
+            points.push({ x, y });
+          }
+        }
+      }
+
+      const maxCount = Math.min(count, points.length);
+      if (maxCount <= 0) return particles;
+
+      const textPosition = position ?? center;
+      const horizontal = align?.horizontal ?? "center";
+      const vertical = align?.vertical ?? "center";
+      const originX =
+        horizontal === "left"
+          ? textPosition.x
+          : horizontal === "right"
+          ? textPosition.x - textWidth
+          : textPosition.x - textWidth / 2;
+      const originY =
+        vertical === "top"
+          ? textPosition.y
+          : vertical === "bottom"
+          ? textPosition.y - textHeight
+          : textPosition.y - textHeight / 2;
+
+      const stride = points.length / maxCount;
+      for (let i = 0; i < maxCount; i++) {
+        const idx = Math.floor(i * stride);
+        const point = points[idx];
+        if (!point) continue;
+        const x = originX + (point.x - padding);
+        const y = originY + (point.y - padding);
+        const { vx, vy } = calculateVelocity(
+          { x, y },
+          textPosition,
+          velocity
+        );
+        particles.push({
+          position: { x, y },
+          velocity: { x: vx, y: vy },
+          size,
+          mass,
+          color: getColor(),
+        });
+      }
+
+      return particles;
+    }
 
     if (shape === "grid") {
       const cols = Math.ceil(Math.sqrt(count));

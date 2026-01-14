@@ -156,6 +156,37 @@ Notes
 - `getParticles()` can be expensive on WebGPU because it requires a GPU → CPU readback of the particle buffer; prefer `getParticlesInRadius(...)` for tool-like / local queries.
 - `getParticlesInRadius(center, radius, { maxResults })` returns `{ particles, truncated }` with only the fields needed for local occupancy (`position`, `size`, `mass`).
 
+### Spawner utility
+
+The `Spawner` helper generates `IParticle[]` for common shapes, including text.
+
+```ts
+import { Spawner } from "@cazala/party";
+
+const spawner = new Spawner();
+const particles = spawner.initParticles({
+  count: 5000,
+  shape: "text",
+  center: { x: 0, y: 0 },
+  position: { x: 0, y: 0 },
+  align: { horizontal: "center", vertical: "center" },
+  text: "Party",
+  font: "sans-serif",
+  textSize: 80,
+  size: 3,
+  mass: 1,
+  colors: ["#ffffff"],
+});
+
+engine.setParticles(particles);
+```
+
+Notes:
+
+- `size` controls particle radius; `textSize` is the font size used to rasterize text.
+- `position` + `align` define the anchor point for the text bounds.
+- Supported fonts in the playground UI: `sans-serif`, `serif`, `monospace`.
+
 #### Engine methods and lifecycles
 
 - `initialize()`
