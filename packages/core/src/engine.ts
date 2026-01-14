@@ -1,4 +1,9 @@
-import { IEngine, IParticle } from "./interfaces";
+import {
+  IEngine,
+  IParticle,
+  GetParticlesInRadiusOptions,
+  GetParticlesInRadiusResult,
+} from "./interfaces";
 import { Module } from "./module";
 import { WebGPUEngine } from "./runtimes/webgpu/engine";
 import { CPUEngine } from "./runtimes/cpu/engine";
@@ -209,14 +214,27 @@ export class Engine implements IEngine {
   setParticles(p: IParticle[]): void {
     this.engine.setParticles(p);
   }
-  addParticle(p: IParticle): void {
-    this.engine.addParticle(p);
+  addParticle(p: IParticle): number {
+    return this.engine.addParticle(p);
+  }
+  setParticle(index: number, p: IParticle): void {
+    this.engine.setParticle(index, p);
+  }
+  setParticleMass(index: number, mass: number): void {
+    this.engine.setParticleMass(index, mass);
   }
   getParticles(): Promise<IParticle[]> {
     return this.engine.getParticles();
   }
   getParticle(index: number): Promise<IParticle> {
     return this.engine.getParticle(index);
+  }
+  getParticlesInRadius(
+    center: { x: number; y: number },
+    radius: number,
+    opts?: GetParticlesInRadiusOptions
+  ): Promise<GetParticlesInRadiusResult> {
+    return this.engine.getParticlesInRadius(center, radius, opts);
   }
   // Helpers for pinning/unpinning
   async pinParticles(indexes: number[]): Promise<void> {

@@ -314,6 +314,34 @@ export class GPUResources {
     }
   }
 
+  /**
+   * Read an arbitrary GPUBuffer (storage/uniform) into an ArrayBuffer.
+   * Caller is responsible for interpreting the bytes.
+   */
+  async readBuffer(buffer: GPUBuffer, sizeBytes: number): Promise<ArrayBuffer> {
+    const bytes = Math.max(0, Math.floor(sizeBytes));
+    if (bytes === 0) return new ArrayBuffer(0);
+
+    const stagingBuffer = this.getDevice().createBuffer({
+      size: bytes,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+
+    try {
+      const encoder = this.getDevice().createCommandEncoder();
+      encoder.copyBufferToBuffer(buffer, 0, stagingBuffer, 0, bytes);
+      this.getDevice().queue.submit([encoder.finish()]);
+      await this.getDevice().queue.onSubmittedWorkDone();
+      await stagingBuffer.mapAsync(GPUMapMode.READ);
+      const mapped = stagingBuffer.getMappedRange();
+      const out = mapped.slice(0);
+      stagingBuffer.unmap();
+      return out;
+    } finally {
+      stagingBuffer.destroy();
+    }
+  }
+
   createModuleUniformBuffers(layouts: ModuleUniformLayout[]): void {
     // Destroy old
     this.moduleUniformBuffers.forEach(({ buffer }) => buffer.destroy());
