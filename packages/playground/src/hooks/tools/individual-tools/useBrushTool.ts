@@ -24,7 +24,7 @@ const brushToolState: BrushToolState = {
   isAdjustingSize: false,
   adjustStartX: 0,
   adjustStartY: 0,
-  currentScreenRadius: 40,
+  currentScreenRadius: 20,
 };
 
 type SpatialHash = Map<string, Array<{ x: number; y: number; r: number }>>;
