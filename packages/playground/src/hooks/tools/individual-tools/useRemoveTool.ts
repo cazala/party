@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import type { IParticle as Particle } from "@cazala/party";
+import type { ParticleQuery } from "@cazala/party";
 import { drawDashedCircle, drawDashedLine, drawDot } from "../shared";
 import { useEngine } from "../../useEngine";
 import { useHistory } from "../../useHistory";
@@ -26,7 +26,7 @@ const removeToolState: RemoveToolState = {
 
 export function useRemoveTool(isActive: boolean) {
   const { engine, screenToWorld, zoom } = useEngine();
-  const { executeCommand } = useHistory();
+  const { recordCommand } = useHistory();
 
   // Drag state
   const isDragging = useRef(false);
@@ -88,9 +88,10 @@ export function useRemoveTool(isActive: boolean) {
 
   // Gesture batching
   const gestureActiveRef = useRef(false);
-  const removedSnapshotsRef = useRef<
-    Array<{ index: number; particle: Particle }>
-  >([]);
+  const removedSnapshotsRef = useRef<Array<{ index: number; prevMass: number }>>(
+    []
+  );
+  const removedIndexSetRef = useRef<Set<number>>(new Set());
   const commitInProgressRef = useRef(false);
 
   // Remove particles at current mouse position (live), capturing snapshots for undo
@@ -104,25 +105,24 @@ export function useRemoveTool(isActive: boolean) {
       // Calculate world radius based on current zoom
       const worldRadius = removeToolState.currentScreenRadius / zoom;
 
-      const particles = await engine.getParticles();
-      let didChange = false;
-      const updated = particles.map((p: Particle, index: number) => {
+      const { particles } = await engine.getParticlesInRadius(
+        worldCenter,
+        worldRadius,
+        { maxResults: 20000 }
+      );
+
+      for (const p of particles as ParticleQuery[]) {
+        if (p.mass === 0) continue;
+        // Keep the same semantics as before: center must be inside the circle.
         const dx = p.position.x - worldCenter.x;
         const dy = p.position.y - worldCenter.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance <= worldRadius && p.mass !== 0) {
-          // Capture snapshot only once per index
-          if (!removedSnapshotsRef.current.some((s) => s.index === index)) {
-            removedSnapshotsRef.current.push({ index, particle: p });
-          }
-          didChange = true;
-          return { ...p, mass: 0 };
-        }
-        return p;
-      });
+        if (dx * dx + dy * dy > worldRadius * worldRadius) continue;
 
-      if (didChange) {
-        engine.setParticles(updated);
+        if (!removedIndexSetRef.current.has(p.index)) {
+          removedIndexSetRef.current.add(p.index);
+          removedSnapshotsRef.current.push({ index: p.index, prevMass: p.mass });
+        }
+        engine.setParticleMass(p.index, 0);
       }
     },
     [isActive, screenToWorld, zoom, engine]
@@ -153,6 +153,7 @@ export function useRemoveTool(isActive: boolean) {
         gestureActiveRef.current = true;
         commitInProgressRef.current = false;
         removedSnapshotsRef.current = [];
+        removedIndexSetRef.current = new Set();
         removeParticlesAtPosition(sx, sy);
       }
     },
@@ -211,6 +212,7 @@ export function useRemoveTool(isActive: boolean) {
     const snapshots = removedSnapshotsRef.current.slice();
     if (snapshots.length === 0) {
       removedSnapshotsRef.current = [];
+      removedIndexSetRef.current = new Set();
       return;
     }
 
@@ -221,32 +223,22 @@ export function useRemoveTool(isActive: boolean) {
       id: crypto.randomUUID(),
       label: `Remove ${snapshots.length} particles`,
       timestamp: Date.now(),
-      do: async (ctx) => {
+      do: (ctx) => {
         if (!ctx.engine) return;
-        const particles = await ctx.engine.getParticles();
-        const updated = particles.map((p: Particle, idx: number) => {
-          const s = snapshots.find((x) => x.index === idx);
-          if (s) return { ...p, mass: 0 };
-          return p;
-        });
-        ctx.engine.setParticles(updated);
+        for (const s of snapshots) ctx.engine.setParticleMass(s.index, 0);
       },
-      undo: async (ctx) => {
+      undo: (ctx) => {
         if (!ctx.engine) return;
-        const particles = await ctx.engine.getParticles();
-        const updated = particles.map((p: Particle, idx: number) => {
-          const s = snapshots.find((x) => x.index === idx);
-          if (s) return s.particle;
-          return p;
-        });
-        ctx.engine.setParticles(updated);
+        for (const s of snapshots) ctx.engine.setParticleMass(s.index, s.prevMass);
       },
     };
 
-    await executeCommand(cmd);
+    // Side effects were already applied live during the gesture.
+    recordCommand(cmd);
     commitInProgressRef.current = false;
     removedSnapshotsRef.current = [];
-  }, [executeCommand]);
+    removedIndexSetRef.current = new Set();
+  }, [recordCommand]);
 
   // Tool handlers
   const handlers: ToolHandlers = {

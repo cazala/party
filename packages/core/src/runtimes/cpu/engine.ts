@@ -21,6 +21,7 @@ export class CPUEngine extends AbstractEngine {
   private canvas: HTMLCanvasElement;
   private grid: SpatialGrid;
   private animationId: number | null = null;
+  private particleIdToIndex: Map<number, number> = new Map();
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -95,6 +96,7 @@ export class CPUEngine extends AbstractEngine {
     this.fpsEstimate = 60;
     // Reset maxSize tracking
     this.resetMaxSize();
+    this.particleIdToIndex.clear();
   }
 
   getCount(): number {
@@ -122,6 +124,7 @@ export class CPUEngine extends AbstractEngine {
     for (const p of particle) {
       this.updateMaxSize(p.size);
     }
+    this.particleIdToIndex.clear();
   }
 
   addParticle(particle: IParticle): number {
@@ -129,6 +132,8 @@ export class CPUEngine extends AbstractEngine {
     this.particles.push(new Particle(particle));
     // Update maxSize tracking
     this.updateMaxSize(particle.size);
+    const created = this.particles[index];
+    if (created) this.particleIdToIndex.set(created.id, index);
     return index;
   }
 
@@ -179,11 +184,18 @@ export class CPUEngine extends AbstractEngine {
     const r = Math.max(0, radius);
     for (const p of neighbors) {
       if (p.mass === 0) continue;
+      const index = this.particleIdToIndex.get(p.id);
+      if (index === undefined) continue;
       const dx = p.position.x - center.x;
       const dy = p.position.y - center.y;
       const rr = r + p.size;
       if (dx * dx + dy * dy <= rr * rr) {
-        out.push({ position: { x: p.position.x, y: p.position.y }, size: p.size, mass: p.mass });
+        out.push({
+          index,
+          position: { x: p.position.x, y: p.position.y },
+          size: p.size,
+          mass: p.mass,
+        });
         if (out.length >= maxResults + 1) break;
       }
     }
@@ -196,6 +208,7 @@ export class CPUEngine extends AbstractEngine {
     this.pause();
     this.particles = [];
     this.grid.clear();
+    this.particleIdToIndex.clear();
     return Promise.resolve();
   }
 
@@ -292,8 +305,10 @@ export class CPUEngine extends AbstractEngine {
       this.view.getZoom()
     );
     this.grid.clear();
+    this.particleIdToIndex.clear();
     for (let i = 0; i < effectiveCount; i++) {
       this.grid.insert(this.particles[i]);
+      this.particleIdToIndex.set(this.particles[i].id, i);
     }
 
     // Global state for modules that need it

@@ -22,12 +22,12 @@ import {
   GetParticlesInRadiusOptions,
   GetParticlesInRadiusResult,
   IParticle,
-  ParticleQuery,
 } from "../../interfaces";
 import { ModuleRegistry } from "./module-registry";
 import { SpacialGrid } from "./spacial-grid";
 import { SimulationPipeline } from "./simulation-pipeline";
 import { RenderPipeline } from "./render-pipeline";
+import { LocalQuery } from "./local-query";
 
 export class WebGPUEngine extends AbstractEngine {
   private resources: GPUResources;
@@ -43,12 +43,7 @@ export class WebGPUEngine extends AbstractEngine {
   private animationId: number | null = null;
   private didSwapchainWarmup: boolean = false;
 
-  // Brush/local query pipeline (compact readback)
-  private brushQueryPipeline: GPUComputePipeline | null = null;
-  private brushQueryUniform: GPUBuffer | null = null;
-  private brushQueryCount: GPUBuffer | null = null;
-  private brushQueryOut: GPUBuffer | null = null;
-  private brushQueryCapacity: number = 0;
+  private localQuery: LocalQuery;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -76,6 +71,7 @@ export class WebGPUEngine extends AbstractEngine {
     this.sim = new SimulationPipeline();
     this.render = new RenderPipeline();
     this.grid = new SpacialGrid(this.cellSize);
+    this.localQuery = new LocalQuery();
   }
 
   async initialize(): Promise<void> {
@@ -147,6 +143,7 @@ export class WebGPUEngine extends AbstractEngine {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
+    this.localQuery.dispose();
     await this.resources.dispose();
   }
 
@@ -222,70 +219,13 @@ export class WebGPUEngine extends AbstractEngine {
     radius: number,
     opts?: GetParticlesInRadiusOptions
   ): Promise<GetParticlesInRadiusResult> {
-    const maxResults = Math.max(1, Math.floor(opts?.maxResults ?? 20000));
-    this.ensureBrushQueryPipeline(maxResults);
-
-    const device = this.resources.getDevice();
-
-    // Reset atomic counter
-    device.queue.writeBuffer(this.brushQueryCount!, 0, new Uint32Array([0]));
-
-    // Uniform: v0 = [cx, cy, radius, maxResults], v1 = [particleCount, 0, 0, 0]
-    const u = new Float32Array(8);
-    u[0] = center.x;
-    u[1] = center.y;
-    u[2] = radius;
-    u[3] = maxResults;
-    u[4] = this.getCount(); // effective count is fine
-    device.queue.writeBuffer(this.brushQueryUniform!, 0, u);
-
-    const particleBuffer = this.resources.getParticleBuffer();
-    if (!particleBuffer) return { particles: [], truncated: false };
-
-    const bindGroup = device.createBindGroup({
-      layout: this.brushQueryPipeline!.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: particleBuffer } },
-        { binding: 1, resource: { buffer: this.brushQueryUniform! } },
-        { binding: 2, resource: { buffer: this.brushQueryCount! } },
-        { binding: 3, resource: { buffer: this.brushQueryOut! } },
-      ],
-    });
-
-    const encoder = device.createCommandEncoder();
-    const pass = encoder.beginComputePass();
-    pass.setPipeline(this.brushQueryPipeline!);
-    pass.setBindGroup(0, bindGroup);
-    const wg = 256;
-    const n = Math.max(0, Math.floor(this.getCount()));
-    pass.dispatchWorkgroups(Math.ceil(n / wg));
-    pass.end();
-    device.queue.submit([encoder.finish()]);
-
-    // Read back count + packed vec4 list
-    const countBuf = await this.resources.readBuffer(this.brushQueryCount!, 4);
-    const found = new Uint32Array(countBuf)[0] ?? 0;
-    const truncated = found > maxResults;
-    const readCount = Math.min(found, maxResults);
-    if (readCount === 0) return { particles: [], truncated };
-
-    const outBuf = await this.resources.readBuffer(
-      this.brushQueryOut!,
-      readCount * 16 // vec4<f32>
+    return await this.localQuery.getParticlesInRadius(
+      this.resources,
+      center,
+      radius,
+      this.getCount(),
+      opts
     );
-    const outFloats = new Float32Array(outBuf);
-
-    const particles: ParticleQuery[] = [];
-    for (let i = 0; i < readCount; i++) {
-      const base = i * 4;
-      particles.push({
-        position: { x: outFloats[base + 0], y: outFloats[base + 1] },
-        size: outFloats[base + 2],
-        mass: outFloats[base + 3],
-      });
-    }
-
-    return { particles, truncated };
   }
 
   getCount(): number {
@@ -484,80 +424,4 @@ export class WebGPUEngine extends AbstractEngine {
     // Max particles affects effective count; no immediate rebuild needed
   }
 
-  private ensureBrushQueryPipeline(maxResults: number): void {
-    const device = this.resources.getDevice();
-
-    // (Re)allocate buffers if capacity changed
-    if (this.brushQueryCapacity !== maxResults) {
-      this.brushQueryCapacity = maxResults;
-      this.brushQueryUniform?.destroy();
-      this.brushQueryCount?.destroy();
-      this.brushQueryOut?.destroy();
-      this.brushQueryUniform = device.createBuffer({
-        size: 8 * 4,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      });
-      this.brushQueryCount = device.createBuffer({
-        size: 4,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-      });
-      this.brushQueryOut = device.createBuffer({
-        size: maxResults * 16,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-      });
-    }
-
-    if (this.brushQueryPipeline) return;
-
-    const code = `
-struct Particle {
-  position: vec2<f32>,
-  velocity: vec2<f32>,
-  acceleration: vec2<f32>,
-  size: f32,
-  mass: f32,
-  color: vec4<f32>,
-};
-
-struct QueryUniforms {
-  v0: vec4<f32>, // center.x, center.y, radius, maxResults (as f32)
-  v1: vec4<f32>, // particleCount, 0,0,0
-};
-
-@group(0) @binding(0) var<storage, read> particles: array<Particle>;
-@group(0) @binding(1) var<uniform> query: QueryUniforms;
-@group(0) @binding(2) var<storage, read_write> outCount: atomic<u32>;
-@group(0) @binding(3) var<storage, read_write> outData: array<vec4<f32>>;
-
-@compute @workgroup_size(256)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-  let i = gid.x;
-  let count = u32(query.v1.x);
-  if (i >= count) { return; }
-
-  let p = particles[i];
-  if (p.mass == 0.0) { return; }
-
-  let cx = query.v0.x;
-  let cy = query.v0.y;
-  let radius = query.v0.z;
-  let maxResults = u32(query.v0.w);
-
-  // Disc-intersection semantics: dist <= radius + p.size
-  let dx = p.position.x - cx;
-  let dy = p.position.y - cy;
-  let rr = radius + p.size;
-  if (dx * dx + dy * dy > rr * rr) { return; }
-
-  let outIdx = atomicAdd(&outCount, 1u);
-  if (outIdx >= maxResults) { return; }
-  outData[outIdx] = vec4<f32>(p.position.x, p.position.y, p.size, p.mass);
-}
-`;
-
-    this.brushQueryPipeline = device.createComputePipeline({
-      layout: "auto",
-      compute: { module: device.createShaderModule({ code }), entryPoint: "main" },
-    });
-  }
 }

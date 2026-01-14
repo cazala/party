@@ -23,6 +23,7 @@ Note on particle readbacks
 
 - On WebGPU, `getParticles()` requires a GPU → CPU readback of the full particle buffer and can be expensive for large scenes.
 - Prefer local queries like `getParticlesInRadius(center, radius, { maxResults })` for tool-like occupancy checks.
+- `getParticlesInRadius(...)` is implemented in WebGPU via a small compute compaction pass (see `runtimes/webgpu/local-query.ts`) that only reads back a bounded result buffer.
 
 ### AbstractEngine responsibilities
 
@@ -44,6 +45,7 @@ Key components (see [`runtimes/webgpu/`](../packages/core/src/runtimes/webgpu/))
 - [`RenderPipeline`](../packages/core/src/runtimes/webgpu/render-pipeline.ts): executes module render passes (Fullscreen/Compute/Instanced) in sequence, ping-ponging the scene texture as needed
 - [`SpacialGrid`](../packages/core/src/runtimes/webgpu/spacial-grid.ts): grid uniforms/buffers and neighbor iterators used by simulation WGSL
 - [`ParticleStore`](../packages/core/src/runtimes/webgpu/particle-store.ts): GPU storage for particle arrays (positions, velocities, size, mass, color, etc.) with known stride
+- [`LocalQuery`](../packages/core/src/runtimes/webgpu/local-query.ts): compact local particle queries (`getParticlesInRadius`) without full-scene readback
 
 Execution order (per frame):
 

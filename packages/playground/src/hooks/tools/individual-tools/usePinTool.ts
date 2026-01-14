@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import type { IParticle as Particle } from "@cazala/party";
+import type { ParticleQuery } from "@cazala/party";
 import { drawDashedCircle, drawDashedLine, drawDot } from "../shared";
 import { useEngine } from "../../useEngine";
 import { useHistory } from "../../useHistory";
@@ -26,7 +26,7 @@ const pinToolState: PinToolState = {
 
 export function usePinTool(isActive: boolean) {
   const { engine, screenToWorld, zoom } = useEngine();
-  const { executeCommand } = useHistory();
+  const { recordCommand } = useHistory();
 
   // Drag state
   const isDragging = useRef(false);
@@ -39,7 +39,8 @@ export function usePinTool(isActive: boolean) {
   const gestureActiveRef = useRef(false);
   const unpinModeRef = useRef(false);
   const affectedIndicesRef = useRef<Set<number>>(new Set());
-  const previousPinnedRef = useRef<Map<number, boolean>>(new Map());
+  const previousMassRef = useRef<Map<number, number>>(new Map());
+  const sizeRef = useRef<Map<number, number>>(new Map());
   const commitInProgressRef = useRef(false);
 
   // Render dashed circle overlay
@@ -103,35 +104,38 @@ export function usePinTool(isActive: boolean) {
       const worldRadius = pinToolState.currentScreenRadius / zoom;
 
       if (!engine) return;
-      const particles = (await engine.getParticles()) as Particle[];
-      const indexes: number[] = [];
-      particles.forEach((p, idx) => {
-        // Skip removed particles (mass == 0)
-        if (p.mass === 0) return;
+      const { particles } = await engine.getParticlesInRadius(
+        worldCenter,
+        worldRadius,
+        { maxResults: 20000 }
+      );
+
+      for (const p of particles as ParticleQuery[]) {
+        if (p.mass === 0) continue;
+        // Keep the same semantics as before: center must be inside the circle.
         const dx = p.position.x - worldCenter.x;
         const dy = p.position.y - worldCenter.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > worldRadius) return;
-        // If unpinning, only select pinned; if pinning, only select non-removed
+        if (dx * dx + dy * dy > worldRadius * worldRadius) continue;
+
         if (unpin) {
-          if (p.mass < 0) indexes.push(idx);
+          if (p.mass >= 0) continue;
         } else {
-          if (p.mass > 0) indexes.push(idx);
+          if (p.mass <= 0) continue;
         }
-      });
-      if (indexes.length === 0) return;
 
-      // Record previous pin state lazily for undo
-      for (const idx of indexes) {
-        if (!previousPinnedRef.current.has(idx)) {
-          previousPinnedRef.current.set(idx, particles[idx].mass < 0);
+        if (!previousMassRef.current.has(p.index)) {
+          previousMassRef.current.set(p.index, p.mass);
+          sizeRef.current.set(p.index, p.size);
         }
-        affectedIndicesRef.current.add(idx);
+        affectedIndicesRef.current.add(p.index);
+
+        if (unpin) {
+          // Match Engine.unpinParticles mapping (simple deterministic mapping).
+          engine.setParticleMass(p.index, Math.max(0.1, p.size));
+        } else {
+          engine.setParticleMass(p.index, -1);
+        }
       }
-
-      // Apply live effect
-      if (unpin) await engine.unpinParticles(indexes);
-      else await engine.pinParticles(indexes);
     },
     [isActive, screenToWorld, zoom, engine, SCREEN_RADIUS]
   );
@@ -163,6 +167,9 @@ export function usePinTool(isActive: boolean) {
         gestureActiveRef.current = true;
         commitInProgressRef.current = false;
         unpinModeRef.current = unpin;
+        affectedIndicesRef.current = new Set();
+        previousMassRef.current = new Map();
+        sizeRef.current = new Map();
         pinOrUnpinAtPosition(unpin, sx, sy);
       }
     },
@@ -221,12 +228,14 @@ export function usePinTool(isActive: boolean) {
     if (indices.length === 0) {
       // Reset tracking
       affectedIndicesRef.current.clear();
-      previousPinnedRef.current.clear();
+      previousMassRef.current.clear();
+      sizeRef.current.clear();
       return;
     }
 
     const unpin = unpinModeRef.current;
-    const prevPinned = new Map(previousPinnedRef.current);
+    const prevMass = new Map(previousMassRef.current);
+    const sizes = new Map(sizeRef.current);
 
     if (commitInProgressRef.current) return;
     commitInProgressRef.current = true;
@@ -237,30 +246,33 @@ export function usePinTool(isActive: boolean) {
         ? `Unpin ${indices.length} particles`
         : `Pin ${indices.length} particles`,
       timestamp: Date.now(),
-      do: async (ctx) => {
+      do: (ctx) => {
         if (!ctx.engine) return;
-        if (unpin) await ctx.engine.unpinParticles(indices);
-        else await ctx.engine.pinParticles(indices);
-      },
-      undo: async (ctx) => {
-        if (!ctx.engine) return;
-        const toPin: number[] = [];
-        const toUnpin: number[] = [];
-        for (const idx of indices) {
-          const wasPinned = prevPinned.get(idx) === true;
-          if (wasPinned) toPin.push(idx);
-          else toUnpin.push(idx);
+        if (unpin) {
+          for (const idx of indices) {
+            const size = sizes.get(idx) ?? 1;
+            ctx.engine.setParticleMass(idx, Math.max(0.1, size));
+          }
+        } else {
+          for (const idx of indices) ctx.engine.setParticleMass(idx, -1);
         }
-        if (toPin.length) await ctx.engine.pinParticles(toPin);
-        if (toUnpin.length) await ctx.engine.unpinParticles(toUnpin);
+      },
+      undo: (ctx) => {
+        if (!ctx.engine) return;
+        for (const idx of indices) {
+          const m = prevMass.get(idx);
+          if (m !== undefined) ctx.engine.setParticleMass(idx, m);
+        }
       },
     };
 
-    await executeCommand(cmd);
+    // Side effects were already applied live during the gesture.
+    recordCommand(cmd);
 
     // Reset tracking
     affectedIndicesRef.current.clear();
-    previousPinnedRef.current.clear();
+    previousMassRef.current.clear();
+    sizeRef.current.clear();
     commitInProgressRef.current = false;
   }, []);
 

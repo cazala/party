@@ -16,6 +16,7 @@ export interface IParticle {
 }
 
 export type ParticleQuery = {
+  index: number;
   position: { x: number; y: number };
   size: number;
   mass: number;
