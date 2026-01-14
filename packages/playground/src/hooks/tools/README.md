@@ -1,170 +1,89 @@
-# Tools Architecture
+# Tools (Playground)
 
-This directory contains the refactored tools system that replaces the monolithic `useTools.ts` hook with a modular, scalable architecture.
+This folder contains the Playground tool system: a small orchestrator (`useTools`) plus one hook per tool.
 
-## Architecture Overview
+The intent is:
 
-The tools system is now split into focused, single-responsibility modules:
+- Tools are **self-contained** and implement only their own gesture/overlay logic
+- A single mouse/pointer “router” delegates events to the active tool
+- Tool mode is stored in Redux (`slices/tools.ts`)
 
-### Core Files
+## Core files
 
-- **`index.ts`** - Main orchestrating hook that combines all tool functionality
-- **`types.ts`** - Shared TypeScript interfaces and types
-- **`utils.ts`** - Common utilities (color parsing, random selection, etc.)
-- **`useToolManager.ts`** - Redux tool mode management and state selectors
-- **`useOverlay.ts`** - Grid rendering and overlay coordination
-- **`useMouseHandler.ts`** - Global mouse event handling and delegation to tools
+- **`index.ts`**: `useTools()` orchestrator (wires tool hooks + overlay + mouse handler)
+- **`types.ts`**: shared tool types (`ToolHandlers`, `ToolRenderFunction`, `UseToolsReturn`)
+- **`useToolManager.ts`**: Redux integration for tool mode (`toolMode`, `setToolMode`, selectors)
+- **`useMouseHandler.ts`**: attaches pointer/mouse/touch listeners to the canvas and delegates to the active tool
+- **`useOverlay.ts`**: draws the background grid + coordinates overlay rendering order
+- **`shared.ts`**: shared overlay drawing helpers (dashed circles/lines, mouse parsing, etc.)
+- **`utils.ts`**: shared tool utilities (color parsing, random color selection, etc.)
 
-### Individual Tools (`individual-tools/`)
+## Tool hook contract
 
-Each tool has its own dedicated hook with consistent interface:
-
-- **`useSpawnTool.ts`** - Particle spawning with streaming, drag modes, etc. (~300 lines)
-- **`useInteractTool.ts`** - Interact tool with engine interaction module
-- **`useRemoveTool.ts`** - Particle removal tool with brush-style continuous deletion (~95 lines)
-- **`useJointTool.ts`** - Joint creation tool (placeholder)
-- **`usePinTool.ts`** - Particle pinning tool (placeholder)
-- **`useGrabTool.ts`** - Particle grabbing/selection tool (placeholder)
-- **`useEmitterTool.ts`** - Particle emitter tool (placeholder)
-
-## Benefits
-
-### ✅ **Maintainability**
-
-- Each tool is self-contained in ~100-300 lines max
-- Clear separation of concerns
-- Easy to find and modify specific tool logic
-
-### ✅ **Scalability**
-
-- Adding new tools requires only creating a new hook file
-- No modification to existing tool logic
-- Consistent patterns across all tools
-
-### ✅ **Testability**
-
-- Each hook can be unit tested independently
-- Clear interfaces for mocking dependencies
-- Isolated tool state and behavior
-
-### ✅ **Developer Experience**
-
-- Better code organization and navigation
-- Reduced cognitive load when working on individual tools
-- TypeScript support with shared interfaces
-
-## Tool Structure
-
-Each tool hook follows this consistent pattern:
+Each tool hook in `individual-tools/` follows the same pattern:
 
 ```typescript
-export function useToolName(isActive: boolean) {
-  // Tool-specific state and logic
-
-  const renderOverlay: ToolRenderFunction = useCallback(() => {
-    // Tool-specific overlay rendering
-  }, [dependencies]);
-
-  const handlers: ToolHandlers = {
-    onMouseDown: () => {
-      /* tool-specific mouse handling */
-    },
-    onMouseMove: () => {
-      /* tool-specific mouse handling */
-    },
-    onMouseUp: () => {
-      /* tool-specific mouse handling */
-    },
-  };
-
-  return {
-    renderOverlay,
-    handlers,
-    // Tool-specific functions (for spawn tool compatibility)
-  };
-}
-```
-
-## Usage
-
-The main `useTools()` hook maintains the same interface as before:
-
-```typescript
-import { useTools } from "./hooks/useTools";
-
-function MyComponent() {
-  const {
-    toolMode,
-    isSpawnMode,
-    renderOverlay,
-    updateMousePosition,
-    startDrag,
-    updateDrag,
-    endDrag,
-    // ... all other functions
-  } = useTools();
-
-  // Same usage as before - no breaking changes!
-}
-```
-
-## Migration Summary
-
-- **Before**: 1000+ lines in single file
-- **After**: ~700 lines split across 11 focused files
-- **Compatibility**: 100% backward compatible - no API changes
-- **New Features**: Grid rendering system, ready for future tools
-
-## File Size Breakdown
-
-| File                 | Lines    | Purpose                                          |
-| -------------------- | -------- | ------------------------------------------------ |
-| `index.ts`           | ~90      | Main orchestrator                                |
-| `useToolManager.ts`  | ~50      | Redux integration                                |
-| `useOverlay.ts`      | ~60      | Grid rendering                                   |
-| `useMouseHandler.ts` | ~60      | Mouse events                                     |
-| `useInteractTool.ts` | ~120     | Interact tool (click attract/repel, drag adjust) |
-| `useSpawnTool.ts`    | ~300     | Spawn tool logic                                 |
-| `useRemoveTool.ts`   | ~95      | Remove tool logic                                |
-| `types.ts`           | ~70      | Shared interfaces                                |
-| `utils.ts`           | ~30      | Shared utilities                                 |
-| Other tools          | ~20 each | Future implementations                           |
-
-**Total: Same functionality, much better organized!**
-
-## Future Tool Implementation
-
-To add a new tool:
-
-1. Create `useMyTool.ts` in `individual-tools/`
-2. Implement the standard tool interface
-3. Add tool to the main `index.ts` orchestrator
-4. No changes needed to existing tools!
-
-Example:
-
-```typescript
-// individual-tools/useMyTool.ts
 export function useMyTool(isActive: boolean) {
-  const renderOverlay = useCallback(() => {
+  const renderOverlay: ToolRenderFunction = useCallback((ctx, size, mouse) => {
     if (!isActive) return;
-    // My tool's overlay rendering
+    // draw tool-specific overlay
   }, [isActive]);
 
-  const handlers = {
-    onMouseDown: () => {
-      /* my tool logic */
-    },
-    onMouseMove: () => {
-      /* my tool logic */
-    },
-    onMouseUp: () => {
-      /* my tool logic */
-    },
+  const handlers: ToolHandlers = {
+    onMouseDown: (e) => { /* ... */ },
+    onMouseMove: (e) => { /* ... */ },
+    onMouseUp: (e) => { /* ... */ },
   };
 
   return { renderOverlay, handlers };
 }
 ```
 
-The architecture is now ready to scale to dozens of tools without becoming unmanageable!
+Notes:
+
+- Many tools use **module-level state** (file-scope objects) to keep overlays and event handlers in sync without React re-render timing issues.
+- For **undo/redo**, tools either:
+  - use transactions (`beginTransaction` / `appendToTransaction` / `commitTransaction`) when commands are applied as discrete steps, or
+  - record a command without re-executing side effects at gesture end (`recordCommand`) when the tool already applied changes live during the gesture.
+
+## Current tools (wired in `index.ts`)
+
+These tool hooks are currently registered and used by the playground:
+
+- **`useInteractTool.ts`**: drives the `Interaction` module
+  - **Left click** attract, **right click** repel
+  - **Ctrl/Cmd + drag** adjusts radius, **Shift + drag** adjusts strength
+- **`useSpawnTool.ts`**: spawns single particles
+  - click/drag to set initial velocity
+  - **Ctrl/Cmd + drag** adjusts spawn size (persists)
+  - **Shift** streams particles while dragging (spawn burst)
+- **`useRemoveTool.ts`**: removes particles inside a circle
+  - **Ctrl/Cmd + drag** adjusts radius
+  - performance: uses `engine.getParticlesInRadius(...)` + `engine.setParticleMass(i, 0)` (no full `getParticles()` scan on drag)
+- **`usePinTool.ts`**: pins/unpins particles inside a circle
+  - **Shift** switches to unpin
+  - **Ctrl/Cmd + drag** adjusts radius
+  - performance: uses `engine.getParticlesInRadius(...)` + `engine.setParticleMass(...)` (no full `getParticles()` scan on drag)
+- **`useGrabTool.ts`**: grabs a single particle and drags it using the `Grab` module
+  - note: selection currently scans particles to find the closest hit (may be optimized later)
+- **`useJointTool.ts`**: creates joints between two particles
+  - click particle A, then click particle B to create a joint
+  - **Ctrl/Cmd** chains joints from the last endpoint, **Esc** cancels selection
+- **`useDrawTool.ts`**: draws particles + auto-connects joints while dragging
+  - **Shift** pins while drawing
+  - **Ctrl/Cmd + drag** adjusts draw particle size
+- **`useBrushTool.ts`**: paints many particles in a circle
+  - globally anchored hex lattice to avoid striping
+  - **Shift** spawns pinned, **Ctrl/Cmd + drag** resizes radius
+  - supports “hold to paint”
+- **`useShapeTool.ts`**: spawns a polygon mesh (particles + joints)
+  - **Ctrl/Cmd + drag** adjusts radius
+  - **Shift + drag** adjusts sides
+
+## Performance guidance for tool authors
+
+- Avoid calling `engine.getParticles()` in hot paths (mouse move / drag) on WebGPU: it forces a full GPU→CPU readback.
+- Prefer:
+  - `engine.getParticlesInRadius(center, radius, { maxResults })`
+  - `engine.setParticleMass(i, mass)` / `engine.setParticle(i, particle)`
+  - batching into a single undoable command at gesture end (record, don’t re-run side effects).
