@@ -34,7 +34,7 @@ const DEFAULT_VELOCITY_DIRECTION = "random" as const;
 const DEFAULT_VELOCITY_ANGLE = 0;
 const DEFAULT_TEXT = "Party";
 const DEFAULT_TEXT_FONT = "sans-serif";
-const DEFAULT_TEXT_SIZE = 64;
+const DEFAULT_TEXT_SIZE = 400;
 
 export interface InitSliceState extends InitState {
   hasInitialSpawned: boolean;

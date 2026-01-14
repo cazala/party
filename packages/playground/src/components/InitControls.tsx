@@ -352,8 +352,8 @@ export function InitControls() {
           { value: "circle", label: "Circle" },
           { value: "donut", label: "Donut" },
           { value: "square", label: "Square" },
-          { value: "random", label: "Random" },
           { value: "text", label: "Text" },
+          { value: "random", label: "Random" },
         ]}
       />
       {shape === "grid" && (
