@@ -19,6 +19,11 @@ This document explains the internal architecture of the core library for contrib
 - When `runtime === "auto"`, initialization attempts WebGPU first and falls back to CPU if device/adapter creation fails (cleanup is handled, and the CPU engine is re-initialized with the same options).
 - The selected concrete engine provides all `IEngine` methods; the facade also exposes helpers like pin/unpin and `isSupported(module)`.
 
+Note on particle readbacks
+
+- On WebGPU, `getParticles()` requires a GPU → CPU readback of the full particle buffer and can be expensive for large scenes.
+- Prefer local queries like `getParticlesInRadius(center, radius, { maxResults })` for tool-like occupancy checks.
+
 ### AbstractEngine responsibilities
 
 Shared functionality across both runtimes:
