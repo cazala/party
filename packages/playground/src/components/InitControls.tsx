@@ -69,13 +69,11 @@ export function InitControls() {
   const prevBarsVisibleRef = useRef(barsVisible);
   const isFirstRenderRef = useRef(true);
   const lastAppliedZoomRef = useRef<number | null>(null);
-  const userAdjustedZoomRef = useRef(false);
 
   const [sharedSessionAspectRatio, setSharedSessionAspectRatio] = useState<number | null>(
     null
   );
   const [sharedSessionBaseZoom, setSharedSessionBaseZoom] = useState<number | null>(null);
-  const [preserveSharedAspectRatio, setPreserveSharedAspectRatio] = useState(false);
 
   const computeContainedZoom = useCallback(
     (
@@ -113,37 +111,6 @@ export function InitControls() {
     [computeContainedZoom, setZoom, size]
   );
 
-  const handlePreserveSharedAspectRatioChange = useCallback(
-    (checked: boolean) => {
-      setPreserveSharedAspectRatio(checked);
-      userAdjustedZoomRef.current = false;
-
-      if (!sharedSessionAspectRatio) return;
-      const fallbackZoom =
-        sharedSessionBaseZoom ??
-        (engine ? engine.getZoom() : zoom);
-      if (!Number.isFinite(fallbackZoom) || fallbackZoom <= 0) return;
-
-      if (!checked) {
-        setSharedSessionBaseZoom(fallbackZoom);
-        setZoom(fallbackZoom);
-        lastAppliedZoomRef.current = null;
-        return;
-      }
-
-      setSharedSessionBaseZoom(fallbackZoom);
-      applySharedSessionZoom(fallbackZoom, sharedSessionAspectRatio);
-    },
-    [
-      applySharedSessionZoom,
-      engine,
-      sharedSessionAspectRatio,
-      sharedSessionBaseZoom,
-      setZoom,
-      zoom,
-    ]
-  );
-
   // Color management handler
   const handleColorsChange = (newColors: string[]) => {
     setColors(newColors);
@@ -177,11 +144,9 @@ export function InitControls() {
 
         if (parsedAspectRatio !== null) {
           setSharedSessionAspectRatio(parsedAspectRatio);
-          setPreserveSharedAspectRatio(true);
           if (baseZoomFromPayload !== null) {
             setSharedSessionBaseZoom(baseZoomFromPayload);
           }
-          userAdjustedZoomRef.current = false;
           lastAppliedZoomRef.current = null;
         }
 
@@ -251,22 +216,11 @@ export function InitControls() {
   ]);
 
   useEffect(() => {
-    if (!preserveSharedAspectRatio) return;
-    if (!sharedSessionAspectRatio) return;
-    if (lastAppliedZoomRef.current === null) return;
-    if (Math.abs(zoom - lastAppliedZoomRef.current) < 0.00001) return;
-    userAdjustedZoomRef.current = true;
-  }, [preserveSharedAspectRatio, sharedSessionAspectRatio, zoom]);
-
-  useEffect(() => {
-    if (!preserveSharedAspectRatio) return;
     if (!sharedSessionAspectRatio) return;
     if (sharedSessionBaseZoom === null) return;
-    if (userAdjustedZoomRef.current) return;
     applySharedSessionZoom(sharedSessionBaseZoom, sharedSessionAspectRatio);
   }, [
     applySharedSessionZoom,
-    preserveSharedAspectRatio,
     sharedSessionAspectRatio,
     sharedSessionBaseZoom,
     size.height,
@@ -471,13 +425,6 @@ export function InitControls() {
 
   return (
     <div>
-      {sharedSessionAspectRatio !== null && (
-        <Checkbox
-          label="Preserve shared aspect ratio"
-          checked={preserveSharedAspectRatio}
-          onChange={handlePreserveSharedAspectRatioChange}
-        />
-      )}
       <Slider
         label="Number of Particles"
         value={numParticles}
