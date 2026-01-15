@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MultiColorPicker } from "./ui/MultiColorPicker";
 import { calculateMassFromSize } from "../utils/particle";
 import { Slider } from "./ui/Slider";
@@ -19,7 +19,7 @@ import { consumeSharedSessionFromUrlOnce } from "../utils/urlSharedSession";
 import "./InitControls.css";
 
 export function InitControls() {
-  const { spawnParticles, isInitialized } = useEngine();
+  const { spawnParticles, isInitialized, size, zoom, setZoom, engine } = useEngine();
   const { loadSessionData } = useSession();
   const dispatch = useAppDispatch();
   const {
@@ -68,6 +68,48 @@ export function InitControls() {
 
   const prevBarsVisibleRef = useRef(barsVisible);
   const isFirstRenderRef = useRef(true);
+  const lastAppliedZoomRef = useRef<number | null>(null);
+
+  const [sharedSessionAspectRatio, setSharedSessionAspectRatio] = useState<number | null>(
+    null
+  );
+  const [sharedSessionBaseZoom, setSharedSessionBaseZoom] = useState<number | null>(null);
+
+  const computeContainedZoom = useCallback(
+    (
+      baseZoom: number,
+      sourceAspectRatio: number,
+      targetSize: { width: number; height: number }
+    ) => {
+      if (!Number.isFinite(baseZoom) || baseZoom <= 0) return null;
+      if (!Number.isFinite(sourceAspectRatio) || sourceAspectRatio <= 0) return null;
+      const width = Number(targetSize.width);
+      const height = Number(targetSize.height);
+      if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+      if (width <= 0 || height <= 0) return null;
+
+      const targetAspectRatio = width / height;
+      if (!Number.isFinite(targetAspectRatio) || targetAspectRatio <= 0) return null;
+
+      const scale =
+        targetAspectRatio < sourceAspectRatio
+          ? targetAspectRatio / sourceAspectRatio
+          : 1;
+
+      return baseZoom * scale;
+    },
+    []
+  );
+
+  const applySharedSessionZoom = useCallback(
+    (baseZoom: number, sourceAspectRatio: number) => {
+      const nextZoom = computeContainedZoom(baseZoom, sourceAspectRatio, size);
+      if (nextZoom === null) return;
+      setZoom(nextZoom);
+      lastAppliedZoomRef.current = nextZoom;
+    },
+    [computeContainedZoom, setZoom, size]
+  );
 
   // Color management handler
   const handleColorsChange = (newColors: string[]) => {
@@ -87,12 +129,70 @@ export function InitControls() {
       }
 
       if (consumed.kind === "data") {
+        const rawAspectRatio = (consumed.data as any).sceneAspectRatio;
+        const parsedAspectRatio =
+          typeof rawAspectRatio === "number" &&
+          Number.isFinite(rawAspectRatio) &&
+          rawAspectRatio > 0
+            ? rawAspectRatio
+            : null;
+        const shouldPreserve = parsedAspectRatio !== null;
+        const baseZoomFromPayload =
+          typeof (consumed.data as any).engine?.zoom === "number"
+            ? (consumed.data as any).engine.zoom
+            : null;
+
+        if (parsedAspectRatio !== null) {
+          setSharedSessionAspectRatio(parsedAspectRatio);
+          if (baseZoomFromPayload !== null) {
+            setSharedSessionBaseZoom(baseZoomFromPayload);
+          }
+          lastAppliedZoomRef.current = null;
+        }
+
         // Prevent init UI auto-spawn effects from fighting the session load.
         dispatch(lockSpawnTemporarily(500));
 
         // Skip a frame to let engine/module wiring settle before applying a big session patch.
         requestAnimationFrame(() => {
-          void loadSessionData(consumed.data);
+          const resolvedBaseZoom =
+            baseZoomFromPayload ?? (engine ? engine.getZoom() : zoom);
+          const preAdjustedZoom =
+            shouldPreserve && parsedAspectRatio !== null
+              ? computeContainedZoom(resolvedBaseZoom, parsedAspectRatio, size)
+              : null;
+
+          const sessionDataToLoad =
+            preAdjustedZoom && Number.isFinite(preAdjustedZoom)
+              ? {
+                  ...(consumed.data as any),
+                  engine: {
+                    ...(consumed.data as any).engine,
+                    zoom: preAdjustedZoom,
+                  },
+                }
+              : consumed.data;
+
+          if (preAdjustedZoom && Number.isFinite(preAdjustedZoom)) {
+            lastAppliedZoomRef.current = preAdjustedZoom;
+            if (shouldPreserve && parsedAspectRatio !== null) {
+              const baseZoomForResize =
+                Number.isFinite(resolvedBaseZoom) && resolvedBaseZoom > 0
+                  ? resolvedBaseZoom
+                  : preAdjustedZoom;
+              setSharedSessionBaseZoom(baseZoomForResize);
+            }
+          }
+
+          void loadSessionData(sessionDataToLoad).then(() => {
+            if (!shouldPreserve || parsedAspectRatio === null) return;
+            if (preAdjustedZoom && Number.isFinite(preAdjustedZoom)) return;
+            const resolvedZoom =
+              resolvedBaseZoom ?? (engine ? engine.getZoom() : zoom);
+            if (!Number.isFinite(resolvedZoom) || resolvedZoom <= 0) return;
+            setSharedSessionBaseZoom(resolvedZoom);
+            applySharedSessionZoom(resolvedZoom, parsedAspectRatio);
+          });
         });
         return;
       }
@@ -100,6 +200,9 @@ export function InitControls() {
       spawnParticles(initState);
     }
   }, [
+    applySharedSessionZoom,
+    computeContainedZoom,
+    engine,
     isInitialized,
     hasInitialSpawned,
     initState,
@@ -107,6 +210,21 @@ export function InitControls() {
     spawnParticles,
     loadSessionData,
     dispatch,
+    size.height,
+    size.width,
+    zoom,
+  ]);
+
+  useEffect(() => {
+    if (!sharedSessionAspectRatio) return;
+    if (sharedSessionBaseZoom === null) return;
+    applySharedSessionZoom(sharedSessionBaseZoom, sharedSessionAspectRatio);
+  }, [
+    applySharedSessionZoom,
+    sharedSessionAspectRatio,
+    sharedSessionBaseZoom,
+    size.height,
+    size.width,
   ]);
 
   // Auto-spawn particles when any setting changes (but not on initial mount or bars toggle)
