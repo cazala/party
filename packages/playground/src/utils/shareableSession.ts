@@ -105,6 +105,16 @@ export function buildShareableSessionData({
   };
   const engineDiff = diffToDefaults(currentEngine, DEFAULT_ENGINE) ?? {};
 
+  const sceneAspectRatio = (() => {
+    const size = (state as any)?.engine?.size;
+    const width = Number(size?.width);
+    const height = Number(size?.height);
+    if (!Number.isFinite(width) || !Number.isFinite(height)) return undefined;
+    if (width <= 0 || height <= 0) return undefined;
+    const ratio = width / height;
+    return Number.isFinite(ratio) && ratio > 0 ? ratio : undefined;
+  })();
+
   const currentRender = (state as any).render ?? DEFAULT_RENDER_SLICE;
   const renderDiff = diffToDefaults(
     { invertColors: !!currentRender.invertColors },
@@ -125,6 +135,7 @@ export function buildShareableSessionData({
     init: initDiff,
     engine: engineDiff,
     ...(renderDiff ? { render: renderDiff } : {}),
+    ...(sceneAspectRatio ? { sceneAspectRatio } : {}),
     oscillators: state.oscillators,
   };
 }

@@ -50,5 +50,10 @@ export interface SessionDataV1 {
   oscillators: OscillatorsState;
   oscillatorsElapsedSeconds?: number;
   particles?: SavedParticle[];
+  /**
+   * Optional aspect ratio captured when generating a shareable session URL.
+   * Used to preserve scene framing across different device viewports.
+   */
+  sceneAspectRatio?: number;
 }
 
