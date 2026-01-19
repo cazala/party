@@ -12,7 +12,7 @@ Interactive web application for experimenting with particle physics simulations.
 - **Sophisticated Undo/Redo**: Command pattern with transaction support and action grouping
 - **Parameter Oscillators**: Animate any module parameter with configurable frequency and bounds
 - **Comprehensive Hotkeys**: Efficient keyboard-driven workflow
-- **Text Shape Spawn**: Type text to spawn particles in the INIT panel
+- **Text/Image Shape Spawn**: Type text or provide an image to spawn particles in the INIT panel
 
 ### Physics Modules
 - **Environment**: Gravity, inertia, friction, damping with directional/radial options

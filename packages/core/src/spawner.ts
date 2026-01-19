@@ -28,7 +28,8 @@ export type SpawnShape =
   | "circle"
   | "donut"
   | "square"
-  | "text";
+  | "text"
+  | "image";
 
 export type TextHorizontalAlign = "left" | "center" | "right";
 export type TextVerticalAlign = "top" | "center" | "bottom";
@@ -56,6 +57,9 @@ export interface SpawnOptions {
   textSize?: number;
   position?: { x: number; y: number };
   align?: { horizontal: TextHorizontalAlign; vertical: TextVerticalAlign };
+  // image
+  imageData?: ImageData | null;
+  imageSize?: number;
 }
 
 function calculateVelocity(
@@ -125,6 +129,8 @@ export class Spawner {
       textSize = 64,
       position,
       align,
+      imageData,
+      imageSize,
     } = options;
 
     const particles: IParticle[] = [];
@@ -253,6 +259,119 @@ export class Spawner {
           mass,
           color: getColor(),
         });
+      }
+
+      return particles;
+    }
+
+    if (shape === "image") {
+      if (!imageData) return particles;
+      const width = Math.floor(imageData.width);
+      const height = Math.floor(imageData.height);
+      if (
+        !Number.isFinite(width) ||
+        !Number.isFinite(height) ||
+        width <= 0 ||
+        height <= 0
+      )
+        return particles;
+
+      const data = imageData.data;
+      const sampleStepTarget = Math.max(1, Math.round(size));
+      const targetSize =
+        typeof imageSize === "number" && Number.isFinite(imageSize) && imageSize > 0
+          ? imageSize
+          : Math.max(width, height);
+      const scale = Math.max(0.0001, targetSize / Math.max(width, height));
+      const sampleStepSource = Math.max(1, Math.round(sampleStepTarget / scale));
+      const points: {
+        x: number;
+        y: number;
+        color: { r: number; g: number; b: number; a: number };
+      }[] = [];
+
+      for (let y = 0; y < height; y += sampleStepSource) {
+        for (let x = 0; x < width; x += sampleStepSource) {
+          const idx = (y * width + x) * 4;
+          const alpha = data[idx + 3];
+          if (alpha === 0) continue;
+          points.push({
+            x: x * scale,
+            y: y * scale,
+            color: {
+              r: data[idx] / 255,
+              g: data[idx + 1] / 255,
+              b: data[idx + 2] / 255,
+              a: alpha / 255,
+            },
+          });
+        }
+      }
+
+      const maxCount = Math.max(0, Math.floor(count));
+      if (maxCount <= 0 || points.length === 0) return particles;
+
+      const imagePosition = position ?? center;
+      const horizontal = align?.horizontal ?? "center";
+      const vertical = align?.vertical ?? "center";
+      const scaledWidth = width * scale;
+      const scaledHeight = height * scale;
+      const originX =
+        horizontal === "left"
+          ? imagePosition.x
+          : horizontal === "right"
+          ? imagePosition.x - scaledWidth
+          : imagePosition.x - scaledWidth / 2;
+      const originY =
+        vertical === "top"
+          ? imagePosition.y
+          : vertical === "bottom"
+          ? imagePosition.y - scaledHeight
+          : imagePosition.y - scaledHeight / 2;
+
+      const baseCount = Math.min(maxCount, points.length);
+      const stride = points.length / baseCount;
+      for (let i = 0; i < baseCount; i++) {
+        const idx = Math.floor(i * stride);
+        const point = points[idx];
+        if (!point) continue;
+        const x = originX + point.x;
+        const y = originY + point.y;
+        const { vx, vy } = calculateVelocity(
+          { x, y },
+          imagePosition,
+          velocity
+        );
+        particles.push({
+          position: { x, y },
+          velocity: { x: vx, y: vy },
+          size,
+          mass,
+          color: point.color,
+        });
+      }
+
+      const extraCount = maxCount - baseCount;
+      if (extraCount > 0) {
+        const jitter = sampleStepTarget * 0.4;
+        for (let i = 0; i < extraCount; i++) {
+          const point = points[Math.floor(Math.random() * points.length)];
+          if (!point) continue;
+          const x = originX + point.x + (Math.random() - 0.5) * jitter;
+          const y = originY + point.y + (Math.random() - 0.5) * jitter;
+          const { vx, vy } = calculateVelocity(
+            { x, y },
+            imagePosition,
+            velocity
+          );
+          particles.push({
+            position: { x, y },
+            velocity: { x: vx, y: vy },
+            size,
+            mass,
+            color: point.color,
+          });
+        }
       }
 
       return particles;

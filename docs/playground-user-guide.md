@@ -158,6 +158,7 @@ The INIT panel controls how particles are spawned when using the Restart button 
 - **Donut**: Particles arranged in a ring (inner + outer radius)
 - **Square**: Particles arranged in a square
 - **Text**: Particles spawn to form the typed text
+- **Image**: Particles spawn to form an image from a URL or upload
 
 ### Particle Properties
 
@@ -182,6 +183,7 @@ The INIT panel controls how particles are spawned when using the Restart button 
 - **Square size**: Square Size slider (Square)
 - **Square corner radius**: Corner Radius slider (Square)
 - **Text fields**: Text, Text Size, and Font (Sans Serif / Serif / Monospace)
+- **Image fields**: Image URL or upload (URL disabled when upload is used), plus Image Size (max dimension). Transparent pixels are ignored and particle colors come from the image.
 
 ## Physics Modules
 

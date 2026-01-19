@@ -318,6 +318,12 @@ export const saveCurrentSessionThunk = createAsyncThunk(
         ? existingSession.id
         : generateSessionId(request.name);
 
+      const initForSave = {
+        ...state.init,
+        imageData: null,
+        imageSource: "url" as const,
+      };
+
       const sessionData: SessionData = {
         version: SESSION_DATA_VERSION,
         id: sessionId,
@@ -331,7 +337,7 @@ export const saveCurrentSessionThunk = createAsyncThunk(
           hasParticleData: shouldSaveParticleData && !!particles,
         },
         modules: state.modules,
-        init: state.init,
+        init: initForSave,
         engine: {
           constrainIterations: state.engine.constrainIterations,
           gridCellSize: state.engine.gridCellSize,

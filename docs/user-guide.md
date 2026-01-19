@@ -158,7 +158,7 @@ Notes
 
 ### Spawner utility
 
-The `Spawner` helper generates `IParticle[]` for common shapes, including text.
+The `Spawner` helper generates `IParticle[]` for common shapes, including text and images.
 
 ```ts
 import { Spawner } from "@cazala/party";
@@ -186,6 +186,28 @@ Notes:
 - `size` controls particle radius; `textSize` is the font size used to rasterize text.
 - `position` + `align` define the anchor point for the text bounds.
 - Supported fonts in the playground UI: `sans-serif`, `serif`, `monospace`.
+
+Image example:
+
+```ts
+const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+const particles = spawner.initParticles({
+  count: 12000,
+  shape: "image",
+  center: { x: 0, y: 0 },
+  position: { x: 0, y: 0 },
+  align: { horizontal: "center", vertical: "center" },
+  imageData,
+  imageSize: 400, // scales to this max dimension
+  size: 3,
+  mass: 1,
+});
+```
+
+Notes:
+
+- `imageData` is required and must be provided synchronously.
+- Fully transparent pixels are ignored; particle colors come from the image pixels.
 
 #### Engine methods and lifecycles
 

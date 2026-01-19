@@ -17,6 +17,10 @@ import {
   setText,
   setTextFont,
   setTextSize,
+  setImageData,
+  setImageSize,
+  setImageSource,
+  setImageUrl,
   selectInitState,
   selectHasInitialSpawned,
   selectIsSpawnLocked,
@@ -50,6 +54,10 @@ export function useInit() {
     textSize,
     textPosition,
     textAlign,
+    imageData,
+    imageSize,
+    imageSource,
+    imageUrl,
   } = initState;
 
   // Setters - wrapped dispatch functions
@@ -158,6 +166,34 @@ export function useInit() {
     [dispatch]
   );
 
+  const setImageDataValue = useCallback(
+    (value: ImageData | null) => {
+      dispatch(setImageData(value));
+    },
+    [dispatch]
+  );
+
+  const setImageSizeValue = useCallback(
+    (value: number) => {
+      dispatch(setImageSize(value));
+    },
+    [dispatch]
+  );
+
+  const setImageSourceValue = useCallback(
+    (value: "url" | "upload") => {
+      dispatch(setImageSource(value));
+    },
+    [dispatch]
+  );
+
+  const setImageUrlValue = useCallback(
+    (value: string) => {
+      dispatch(setImageUrl(value));
+    },
+    [dispatch]
+  );
+
   const markInitialSpawned = useCallback(() => {
     dispatch(setHasInitialSpawned(true));
   }, [dispatch]);
@@ -181,6 +217,10 @@ export function useInit() {
     textSize,
     textPosition,
     textAlign,
+    imageData,
+    imageSize,
+    imageSource,
+    imageUrl,
 
     // Spawn state
     hasInitialSpawned,
@@ -205,6 +245,10 @@ export function useInit() {
     setText: setTextValue,
     setTextFont: setTextFontValue,
     setTextSize: setTextSizeValue,
+    setImageData: setImageDataValue,
+    setImageSize: setImageSizeValue,
+    setImageSource: setImageSourceValue,
+    setImageUrl: setImageUrlValue,
     markInitialSpawned,
   };
 }

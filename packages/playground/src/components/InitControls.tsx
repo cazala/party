@@ -16,6 +16,7 @@ import { useAppDispatch } from "../hooks/useAppDispatch";
 import { lockSpawnTemporarily } from "../slices/init";
 import { buildPlayPath } from "../utils/playUrl";
 import { consumeSharedSessionFromUrlOnce } from "../utils/urlSharedSession";
+import { InitImageInput } from "./InitImageInput";
 import "./InitControls.css";
 
 export function InitControls() {
@@ -45,6 +46,10 @@ export function InitControls() {
     text,
     textFont,
     textSize,
+    imageData,
+    imageSize,
+    imageSource,
+    imageUrl,
     hasInitialSpawned,
     isSpawnLocked,
     setNumParticles,
@@ -62,6 +67,10 @@ export function InitControls() {
     setText,
     setTextFont,
     setTextSize,
+    setImageData,
+    setImageSize,
+    setImageSource,
+    setImageUrl,
     markInitialSpawned,
     initState,
   } = useInit();
@@ -269,6 +278,8 @@ export function InitControls() {
       text,
       textFont,
       textSize,
+      imageData,
+      imageSize,
     });
   }, [
     // NOTE: spawnParticles is intentionally NOT in this dependency array
@@ -291,6 +302,8 @@ export function InitControls() {
     text,
     textFont,
     textSize,
+    imageData,
+    imageSize,
     barsVisible, // Include to detect when component remounts due to UI changes
   ]);
 
@@ -316,6 +329,8 @@ export function InitControls() {
     text,
     textFont,
     textSize,
+    imageData,
+    imageSize,
   ]);
 
   // Create grid joints after particles are spawned
@@ -380,7 +395,14 @@ export function InitControls() {
   const handleSpawnChange = (
     options: {
       newNumParticles?: number;
-      newShape?: "grid" | "random" | "circle" | "donut" | "square" | "text";
+      newShape?:
+        | "grid"
+        | "random"
+        | "circle"
+        | "donut"
+        | "square"
+        | "text"
+        | "image";
       newSpacing?: number;
       newParticleSize?: number;
       newRadius?: number;
@@ -462,7 +484,8 @@ export function InitControls() {
               | "circle"
               | "donut"
               | "square"
-              | "text",
+              | "text"
+              | "image",
           })
         }
         options={[
@@ -471,6 +494,7 @@ export function InitControls() {
           { value: "donut", label: "Donut" },
           { value: "square", label: "Square" },
           { value: "text", label: "Text" },
+          { value: "image", label: "Image" },
           { value: "random", label: "Random" },
         ]}
       />
@@ -572,6 +596,26 @@ export function InitControls() {
             value={textFont}
             onChange={(value) => setTextFont(value)}
             options={textFontOptions}
+          />
+        </>
+      )}
+      {shape === "image" && (
+        <>
+          <InitImageInput
+            imageUrl={imageUrl}
+            imageSource={imageSource}
+            imageData={imageData}
+            onImageUrlChange={setImageUrl}
+            onImageSourceChange={setImageSource}
+            onImageDataChange={setImageData}
+          />
+          <Slider
+            label="Image Size"
+            value={imageSize}
+            min={20}
+            max={2048}
+            step={1}
+            onChange={(value) => setImageSize(value)}
           />
         </>
       )}
