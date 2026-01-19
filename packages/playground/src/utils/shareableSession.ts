@@ -65,7 +65,17 @@ function buildEnabledModulesDiff(modules: RootState["modules"]): Record<string, 
     const enabled = !!moduleState && (moduleState as any).enabled === true;
     if (!enabled) continue;
     const defaults = (DEFAULT_MODULES as any)[name];
-    const diff = diffToDefaults(moduleState, defaults);
+    let diff = diffToDefaults(moduleState, defaults);
+    // Drop large connection lists from share URLs; init state will recreate them.
+    if (
+      diff &&
+      typeof diff === "object" &&
+      (name === "joints" || name === "lines") &&
+      "list" in diff
+    ) {
+      const { list: _list, ...rest } = diff as any;
+      diff = Object.keys(rest).length ? rest : {};
+    }
     // Presence of the module key in the share URL implies "enabled".
     // Drop `enabled: true` to keep payload smaller.
     if (diff && typeof diff === "object" && "enabled" in diff) {
