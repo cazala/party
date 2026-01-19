@@ -31,7 +31,7 @@ export interface ParticleData {
 
 export type SpawnParticlesConfig = {
   numParticles: number;
-  shape: "grid" | "random" | "circle" | "donut" | "square" | "text";
+  shape: "grid" | "random" | "circle" | "donut" | "square" | "text" | "image";
   spacing: number;
   particleSize: number;
   radius?: number;
@@ -57,6 +57,10 @@ export type SpawnParticlesConfig = {
   textSize?: number;
   textPosition?: { x: number; y: number };
   textAlign?: { horizontal: "left" | "center" | "right"; vertical: "top" | "center" | "bottom" };
+  imageData?: ImageData | null;
+  imageSize?: number;
+  imageUrl?: string;
+  imageSource?: "url" | "upload";
 };
 
 export interface EngineState {
@@ -410,6 +414,8 @@ export const spawnParticlesThunk = createAsyncThunk(
       textSize,
       textPosition,
       textAlign,
+      imageData,
+      imageSize,
     } = config;
 
     engine.clear();
@@ -424,13 +430,15 @@ export const spawnParticlesThunk = createAsyncThunk(
     const worldHeight = size.height / Math.max(zoom, 0.0001);
 
     const resolvedTextPosition =
-      shape === "text" ? cam : textPosition ?? { x: 0, y: 0 };
+      shape === "text" || shape === "image" ? cam : textPosition ?? { x: 0, y: 0 };
     const defaultTextAlign = {
       horizontal: "center",
       vertical: "center",
     } as const;
     const resolvedTextAlign =
-      shape === "text" ? defaultTextAlign : textAlign ?? defaultTextAlign;
+      shape === "text" || shape === "image"
+        ? defaultTextAlign
+        : textAlign ?? defaultTextAlign;
 
     const particles = spawner.initParticles({
       count: numParticles,
@@ -450,6 +458,8 @@ export const spawnParticlesThunk = createAsyncThunk(
       textSize,
       position: resolvedTextPosition,
       align: resolvedTextAlign,
+      imageData,
+      imageSize,
       velocity: velocityConfig
         ? {
             speed: velocityConfig.speed,

@@ -11,7 +11,7 @@ A high-performance particle physics simulation system with interactive playgroun
 - **Playground Sessions**: Save/load/share sessions (module settings, oscillators, and optional particles/joints)
 - **Real-time Oscillators**: Animate any module parameter with configurable frequency and bounds
 - **Interactive Playground**: React-based interface with undo/redo, hotkeys, and live parameter adjustment
-- **Text Spawner**: Spawn particles from text in the core spawner and INIT UI
+- **Text/Image Spawner**: Spawn particles from text or images in the core spawner and INIT UI
 
 ## Documentation
 

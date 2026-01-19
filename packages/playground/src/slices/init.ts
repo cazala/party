@@ -35,6 +35,9 @@ const DEFAULT_VELOCITY_ANGLE = 0;
 const DEFAULT_TEXT = "Party";
 const DEFAULT_TEXT_FONT = "sans-serif";
 const DEFAULT_TEXT_SIZE = 400;
+const DEFAULT_IMAGE_SIZE = 400;
+const DEFAULT_IMAGE_SOURCE = "url" as const;
+const DEFAULT_IMAGE_URL = "https://caza.la/party/favicon.ico";
 
 export interface InitSliceState extends InitState {
   hasInitialSpawned: boolean;
@@ -63,6 +66,10 @@ const initialState: InitSliceState = {
   textSize: DEFAULT_TEXT_SIZE,
   textPosition: { x: 0, y: 0 },
   textAlign: { horizontal: "center", vertical: "center" },
+  imageData: null,
+  imageSize: DEFAULT_IMAGE_SIZE,
+  imageSource: DEFAULT_IMAGE_SOURCE,
+  imageUrl: DEFAULT_IMAGE_URL,
   hasInitialSpawned: false,
   isSpawnLocked: false,
 };
@@ -125,6 +132,21 @@ export const initSlice = createSlice({
     setTextSize: (state, action: PayloadAction<number>) => {
       state.textSize = action.payload;
     },
+    setImageData: (state, action: PayloadAction<ImageData | null>) => {
+      state.imageData = action.payload;
+    },
+    setImageSize: (state, action: PayloadAction<number>) => {
+      state.imageSize = action.payload;
+    },
+    setImageSource: (
+      state,
+      action: PayloadAction<"url" | "upload">
+    ) => {
+      state.imageSource = action.payload;
+    },
+    setImageUrl: (state, action: PayloadAction<string>) => {
+      state.imageUrl = action.payload;
+    },
     setState: (state, action: PayloadAction<Partial<InitState>>) => {
       Object.assign(state, action.payload);
     },
@@ -155,6 +177,10 @@ export const {
   setText,
   setTextFont,
   setTextSize,
+  setImageData,
+  setImageSize,
+  setImageSource,
+  setImageUrl,
   setState,
   setHasInitialSpawned,
   setSpawnLocked,
@@ -197,6 +223,10 @@ export const selectInitState = createSelector(
     textSize: init.textSize,
     textPosition: init.textPosition,
     textAlign: init.textAlign,
+    imageData: init.imageData,
+    imageSize: init.imageSize,
+    imageSource: init.imageSource,
+    imageUrl: init.imageUrl,
   })
 );
 

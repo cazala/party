@@ -94,7 +94,12 @@ export function buildShareableSessionData({
   particleCount: number;
 }): ShareableSessionData {
   const currentInit = selectInitState(state as any);
-  const initDiff = diffToDefaults(currentInit, DEFAULT_INIT) ?? {};
+  const shareableInit = {
+    ...currentInit,
+    imageData: null,
+    imageSource: "url" as const,
+  };
+  const initDiff = diffToDefaults(shareableInit, DEFAULT_INIT) ?? {};
 
   const currentEngine = {
     constrainIterations: state.engine.constrainIterations,
