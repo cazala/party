@@ -89,23 +89,18 @@
 .homepage-demo-dots {
   position: fixed;
   left: 50%;
-  bottom: 32px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 4px;
-  z-index: 2;
+  z-index: 200;
   pointer-events: auto;
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  transition: background 0.2s ease;
 }
 
-.homepage-demo-dots:hover {
-  background-color: rgba(255, 255, 255, 0.9);
-}
 
 .homepage-demo-dot-button {
+  -webkit-tap-highlight-color: transparent;
   width: 32px;
   height: 32px;
   display: inline-flex;
@@ -117,6 +112,17 @@
   cursor: pointer;
   border-radius: 999px;
   transition: background 0.2s ease;
+}
+
+.homepage-demo-dot-button:focus,
+.homepage-demo-dot-button:active {
+  background: transparent;
+  outline: none;
+}
+
+.homepage-demo-dot-button:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.2);
+  outline-offset: 2px;
 }
 
 .homepage-demo-dot-button:hover .homepage-demo-dot{
@@ -161,7 +167,7 @@
 
 @media (max-width: 768px) {
   .homepage-demo-dots {
-    bottom: 20px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
     gap: 6px;
   }
 
