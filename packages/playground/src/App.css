@@ -114,6 +114,45 @@
   position: relative;
 }
 
+.demo-selector {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.demo-selector-button {
+  min-width: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.demo-selector .button {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--color-text-primary);
+}
+
+.demo-selector .button:hover {
+  background: #343434;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.demo-selector .button.playing {
+  background: #3b2b10;
+  border-color: var(--color-active-pause);
+  color: var(--color-text-primary);
+}
+
+.demo-selector .button.playing:hover {
+  background: #463414;
+}
+
 .canvas-overlay {
   position: absolute;
   top: 0;
@@ -209,5 +248,15 @@ body {
     height: 50svh;
     height: 50dvh;
     order: -1; /* Put canvas first on mobile */
+  }
+
+  .demo-selector {
+    bottom: 16px;
+  }
+
+  .demo-selector-button {
+    min-width: 28px;
+    padding: 6px 8px;
+    font-size: 11px;
   }
 }

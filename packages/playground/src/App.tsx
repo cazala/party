@@ -54,8 +54,16 @@ function AppContent() {
   const dispatch = useAppDispatch();
   const { barsVisible, restoreBarsFromFullscreenMode, setBarsVisibility } = useUI();
   const { invertColors } = useRender();
-  const { hasStarted, isPlaying: isDemoPlaying, stop, play: playDemo, reduceParticles } =
-    useDemo({ canAutostart: !openedWithSessionUrl });
+  const {
+    hasStarted,
+    isPlaying: isDemoPlaying,
+    stop,
+    play: playDemo,
+    reduceParticles,
+    demoCount,
+    currentDemoIndex,
+    selectDemo,
+  } = useDemo({ canAutostart: !openedWithSessionUrl });
   const {
     spawnParticles,
     play: playEngine,
@@ -269,6 +277,32 @@ function AppContent() {
     resetUrlToPlay,
   ]);
 
+  const handleSelectHomepageDemo = useCallback(
+    (index: number) => {
+      selectDemo(index, "resume");
+    },
+    [selectDemo]
+  );
+
+  const handleSelectHomepageNext = useCallback(() => {
+    if (demoCount === 0) return;
+    const nextIndex = (currentDemoIndex + 1) % demoCount;
+    selectDemo(nextIndex, "resume");
+  }, [currentDemoIndex, demoCount, selectDemo]);
+
+  const handleSelectHomepagePrev = useCallback(() => {
+    if (demoCount === 0) return;
+    const prevIndex = (currentDemoIndex - 1 + demoCount) % demoCount;
+    selectDemo(prevIndex, "resume");
+  }, [currentDemoIndex, demoCount, selectDemo]);
+
+  const handleSelectPlaygroundDemo = useCallback(
+    (index: number) => {
+      selectDemo(index, "pause");
+    },
+    [selectDemo]
+  );
+
   // Handle fullscreen change events (when user exits via ESC or browser controls)
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -327,9 +361,28 @@ function AppContent() {
             >
               <Canvas className="canvas" isPlaying={isDemoPlaying} />
               <Overlay isPlaying={isDemoPlaying} />
+              {!isHomepage && isDemoPlaying && demoCount > 0 && (
+                <div className="demo-selector button-group" aria-label="Demo selector">
+                  {Array.from({ length: demoCount }).map((_, index) => (
+                    <button
+                      key={`demo-${index}`}
+                      className={`button demo-selector-button ${index === currentDemoIndex ? "playing" : ""}`}
+                      onClick={() => handleSelectPlaygroundDemo(index)}
+                      aria-pressed={index === currentDemoIndex}
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
+                </div>
+              )}
               <Homepage
                 onPlay={handlePlay}
                 isVisible={isHomepage}
+                demoCount={demoCount}
+                currentDemoIndex={currentDemoIndex}
+                onSelectDemo={handleSelectHomepageDemo}
+                onSwipeNextDemo={handleSelectHomepageNext}
+                onSwipePrevDemo={handleSelectHomepagePrev}
                 isWebGPUWarningDismissed={isWebGPUWarningDismissed}
                 onDismissWebGPUWarning={() => setIsWebGPUWarningDismissed(true)}
               />
