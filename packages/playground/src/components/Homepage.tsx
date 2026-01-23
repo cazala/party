@@ -9,6 +9,11 @@ import "./Homepage.css";
 interface HomepageProps {
   onPlay: () => void;
   isVisible: boolean;
+  demoCount: number;
+  currentDemoIndex: number;
+  onSelectDemo: (index: number) => void;
+  onSwipeNextDemo: () => void;
+  onSwipePrevDemo: () => void;
   isWebGPUWarningDismissed: boolean;
   onDismissWebGPUWarning: () => void;
 }
@@ -16,6 +21,11 @@ interface HomepageProps {
 export function Homepage({
   onPlay,
   isVisible,
+  demoCount,
+  currentDemoIndex,
+  onSelectDemo,
+  onSwipeNextDemo,
+  onSwipePrevDemo,
   isWebGPUWarningDismissed,
   onDismissWebGPUWarning,
 }: HomepageProps) {
@@ -24,6 +34,7 @@ export function Homepage({
   const { canvasRef, screenToWorld, isWebGPU, isInitialized, isInitializing } = useEngine();
   const { setPosition, setActive, setMode, setStrength, setRadius } = useInteraction();
   const isMouseDownRef = useRef(false);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   // Mouse and touch interaction for homepage demo
   useEffect(() => {
@@ -70,6 +81,12 @@ export function Homepage({
       setActive(false);
     };
 
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    };
+
     const handleTouchMove = (e: TouchEvent) => {
       e.preventDefault();
       const touch = e.touches[0];
@@ -82,10 +99,30 @@ export function Homepage({
       setActive(true);
     };
 
-    const handleTouchEnd = () => {
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      if (touch && start && demoCount > 0) {
+        const deltaX = touch.clientX - start.x;
+        const deltaY = touch.clientY - start.y;
+        const elapsed = Date.now() - start.time;
+        const horizontalSwipe = Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3;
+        const withinTime = elapsed < 600;
+
+        if (horizontalSwipe && withinTime) {
+          if (deltaX < 0) {
+            onSwipeNextDemo();
+          } else {
+            onSwipePrevDemo();
+          }
+        }
+      }
+
       setActive(false);
     };
 
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: true });
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mouseup", handleMouseUp);
@@ -95,6 +132,7 @@ export function Homepage({
     canvas.addEventListener("touchcancel", handleTouchEnd);
 
     return () => {
+      canvas.removeEventListener("touchstart", handleTouchStart);
       canvas.removeEventListener("mousedown", handleMouseDown);
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("mouseup", handleMouseUp);
@@ -104,8 +142,24 @@ export function Homepage({
       canvas.removeEventListener("touchcancel", handleTouchEnd);
       setActive(false);
       isMouseDownRef.current = false;
+      touchStartRef.current = null;
     };
-  }, [isVisible, showWarning, canvasRef, screenToWorld, setPosition, setActive, setMode, setStrength, setRadius, isWebGPU, isMobile]);
+  }, [
+    isVisible,
+    showWarning,
+    canvasRef,
+    screenToWorld,
+    setPosition,
+    setActive,
+    setMode,
+    setStrength,
+    setRadius,
+    isWebGPU,
+    isMobile,
+    demoCount,
+    onSwipeNextDemo,
+    onSwipePrevDemo,
+  ]);
 
   if (!isVisible) return null;
 
@@ -171,6 +225,21 @@ export function Homepage({
           </a>
         </div>
       </div>
+      {demoCount > 0 && (
+        <div className="homepage-demo-dots" aria-label="Demo selector">
+          {Array.from({ length: demoCount }).map((_, index) => (
+            <button
+              key={`demo-dot-${index}`}
+              className={`homepage-demo-dot-button ${index === currentDemoIndex ? "active" : ""}`}
+              onClick={() => onSelectDemo(index)}
+              aria-pressed={index === currentDemoIndex}
+              aria-label={`Show demo ${index + 1}`}
+            >
+              <span className="homepage-demo-dot" />
+            </button>
+          ))}
+        </div>
+      )}
     </>
   );
 }

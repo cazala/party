@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUI } from "./useUI";
 import { useEngine } from "./useEngine";
 import { useInit } from "./useInit";
@@ -83,6 +83,12 @@ export function useDemo({
   const interactionTickCountRef = useRef(0);
   const interactionIntervalRef = useRef<number | null>(null);
   const demoTimeoutRef = useRef<number | null>(null);
+  const demoSequenceRef = useRef<DemoSequenceItem[]>([]);
+  const currentDemoIndexRef = useRef(0);
+  const autoCycleEnabledRef = useRef(true);
+  const scheduleNextRef = useRef<(index: number) => void>(() => {});
+  const [currentDemoIndex, setCurrentDemoIndex] = useState(0);
+  const [autoCycleEnabled, setAutoCycleEnabled] = useState(true);
 
   // The engine can be re-created (strict mode, runtime toggle, hot reload, etc.).
   // Any setInterval callback that closes over engine/module references can keep writing to the OLD engine.
@@ -118,6 +124,14 @@ export function useDemo({
     setPositionRef.current = setPosition;
     setActiveRef.current = setActive;
   }, [setMode, setStrength, setRadius, setPosition, setActive]);
+
+  useEffect(() => {
+    currentDemoIndexRef.current = currentDemoIndex;
+  }, [currentDemoIndex]);
+
+  useEffect(() => {
+    autoCycleEnabledRef.current = autoCycleEnabled;
+  }, [autoCycleEnabled]);
 
   // Ensure we don't keep intervals/timeouts alive across unmounts.
   useEffect(() => {
@@ -289,6 +303,8 @@ export function useDemo({
       // Prevent multiple simultaneous play calls.
       if (!isWebGPU || !isInitialized || isInitializing || isPlaying) return;
 
+      autoCycleEnabledRef.current = true;
+      setAutoCycleEnabled(true);
       setIsPlaying(true);
       if (!hasStarted) setHasStarted(true);
 
@@ -303,6 +319,7 @@ export function useDemo({
       isInitializing,
       isPlaying,
       isWebGPU,
+      setAutoCycleEnabled,
     ]
   );
 
@@ -494,19 +511,13 @@ export function useDemo({
     prevIsWebGPURef.current = isWebGPU;
   }, [isWebGPU, isPlaying, stop]);
 
-  // Rotate demos with transitions at random intervals between 20-30 seconds
-  useEffect(() => {
-    // Demo sequence runs whenever demo is playing (homepage auto-demo OR Demo button).
-    // It is explicitly stopped on runtime toggles via the isWebGPU watcher above.
-    if (!isWebGPU || !isInitialized || isInitializing || !isPlaying) return;
+  const demoSequence = useMemo(() => {
+    if (deviceMaxParticles === 0) {
+      return [];
+    }
 
     if (isMobileDevice()) {
       demo3SessionData.modules.environment.gravityStrength = 1000;
-    }
-
-    // Wait for device capabilities to be calculated
-    if (deviceMaxParticles === 0) {
-      return;
     }
 
     // Calculate particle counts based on device capabilities
@@ -515,7 +526,7 @@ export function useDemo({
     const veryLowPerformanceMaxParticles = deviceMaxParticles / 6 | 0; // For very demanding demos (Demo6)
     const mediumPerformanceMaxParticles = deviceMaxParticles / 2.5 | 0;
 
-    const sequence: DemoSequenceItem[] = [
+    return [
       {
         sessionData: migrateSessionDataToLatest(demo3SessionData),
         duration: isMobileDevice() ? 12000 : 15000,
@@ -558,23 +569,51 @@ export function useDemo({
         maxParticles: isMobileDevice() ? veryLowPerformanceMaxParticles : mediumPerformanceMaxParticles,
         transitionDuration: 2500,
       },
-      
-    ];
+    ] satisfies DemoSequenceItem[];
+  }, [deviceMaxParticles]);
 
-    let currentIndex = 0;
-
-    // Set initial maxParticles for first demo
-    const initialItem = sequence[0];
-    if (initialItem) {
-      setTargetMaxParticles(initialItem.maxParticles);
-      setTargetTransitionDuration(initialItem.transitionDuration);
+  useEffect(() => {
+    demoSequenceRef.current = demoSequence;
+    if (demoSequence.length > 0 && currentDemoIndexRef.current >= demoSequence.length) {
+      currentDemoIndexRef.current = 0;
+      setCurrentDemoIndex(0);
     }
+  }, [demoSequence]);
 
-    void quickLoadSessionData(initialItem?.sessionData);
+  const applyDemoIndex = useCallback(
+    (index: number, { shouldSchedule = true }: { shouldSchedule?: boolean } = {}) => {
+      const sequence = demoSequenceRef.current;
+      const nextItem = sequence[index];
+      if (!nextItem) return;
 
-    const scheduleNext = () => {
-      const currentItem = sequence[currentIndex];
-      if (!currentItem) return;
+      currentDemoIndexRef.current = index;
+      setCurrentDemoIndex(index);
+
+      const sessionData = nextItem.sessionData;
+      if (sessionData?.name === "Demo5" || sessionData?.name === "Demo6") {
+        setTrailsEnabled(false);
+      } else {
+        setTrailsEnabled(true);
+      }
+
+      // Set target maxParticles and transition duration
+      setTargetMaxParticles(nextItem.maxParticles);
+      setTargetTransitionDuration(nextItem.transitionDuration);
+
+      void quickLoadSessionData(sessionData);
+
+      if (shouldSchedule && autoCycleEnabledRef.current) {
+        scheduleNextRef.current(index);
+      }
+    },
+    [quickLoadSessionData, setTargetMaxParticles, setTargetTransitionDuration, setTrailsEnabled]
+  );
+
+  const scheduleNext = useCallback(
+    (index: number) => {
+      const sequence = demoSequenceRef.current;
+      const currentItem = sequence[index];
+      if (!currentItem || !autoCycleEnabledRef.current) return;
 
       // Clear any existing timeout before creating a new one
       if (demoTimeoutRef.current !== null) {
@@ -583,42 +622,37 @@ export function useDemo({
       }
 
       demoTimeoutRef.current = window.setTimeout(() => {
-        currentIndex++;
-
-        // If we've completed the sequence, restart
-        if (currentIndex >= sequence.length) {
-          currentIndex = 0;
-        }
-
-        const nextItem = sequence[currentIndex];
-        if (!nextItem) return;
-
-        const sessionData = nextItem.sessionData;
-        if (sessionData?.name === "Demo5" || sessionData?.name === "Demo6") {
-          setTrailsEnabled(false);
-        } else {
-          setTrailsEnabled(true);
-        }
-
-        // Set target maxParticles and transition duration
-        setTargetMaxParticles(nextItem.maxParticles);
-        setTargetTransitionDuration(nextItem.transitionDuration);
-
-        void quickLoadSessionData(sessionData);
-
-        scheduleNext();
+        if (!autoCycleEnabledRef.current) return;
+        const nextIndex = (index + 1) % sequence.length;
+        applyDemoIndex(nextIndex);
       }, currentItem.duration);
-    };
+    },
+    [applyDemoIndex]
+  );
 
-    scheduleNext();
+  useEffect(() => {
+    scheduleNextRef.current = scheduleNext;
+  }, [scheduleNext]);
 
-    return () => {
-      if (demoTimeoutRef.current !== null) {
-        clearTimeout(demoTimeoutRef.current);
-        demoTimeoutRef.current = null;
-      }
-    };
-  }, [isWebGPU, isInitialized, isInitializing, isPlaying, quickLoadSessionData, setTrailsEnabled, deviceMaxParticles]);
+  useEffect(() => {
+    if (!autoCycleEnabled && demoTimeoutRef.current !== null) {
+      clearTimeout(demoTimeoutRef.current);
+      demoTimeoutRef.current = null;
+    }
+  }, [autoCycleEnabled]);
+
+  useEffect(() => {
+    // Demo sequence runs whenever demo is playing (homepage auto-demo OR Demo button).
+    // It is explicitly stopped on runtime toggles via the isWebGPU watcher above.
+    if (!isWebGPU || !isInitialized || isInitializing || !isPlaying) return;
+    if (demoSequence.length === 0) return;
+
+    const startingIndex = currentDemoIndexRef.current < demoSequence.length
+      ? currentDemoIndexRef.current
+      : 0;
+
+    applyDemoIndex(startingIndex, { shouldSchedule: autoCycleEnabledRef.current });
+  }, [applyDemoIndex, demoSequence, isWebGPU, isInitialized, isInitializing, isPlaying]);
 
   // Update ref when currentMaxParticles changes (for interpolation start value)
   useEffect(() => {
@@ -697,12 +731,40 @@ export function useDemo({
     }
   }, [isWebGPU, spawnParticles]);
 
+  const selectDemo = useCallback(
+    (index: number, mode: "resume" | "pause" | "keep" = "keep") => {
+      if (demoSequenceRef.current.length === 0) return;
+
+      if (mode === "pause") {
+        autoCycleEnabledRef.current = false;
+        setAutoCycleEnabled(false);
+        if (demoTimeoutRef.current !== null) {
+          clearTimeout(demoTimeoutRef.current);
+          demoTimeoutRef.current = null;
+        }
+        applyDemoIndex(index, { shouldSchedule: false });
+        return;
+      }
+
+      if (mode === "resume") {
+        autoCycleEnabledRef.current = true;
+        setAutoCycleEnabled(true);
+      }
+
+      applyDemoIndex(index, { shouldSchedule: autoCycleEnabledRef.current });
+    },
+    [applyDemoIndex]
+  );
+
   return {
     hasStarted,
     isPlaying,
     play,
     stop,
     reduceParticles,
+    demoCount: demoSequence.length,
+    currentDemoIndex,
+    selectDemo,
   };
 }
 

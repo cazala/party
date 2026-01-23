@@ -86,6 +86,63 @@
   background-color: #333333;
 }
 
+.homepage-demo-dots {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 200;
+  pointer-events: auto;
+}
+
+
+.homepage-demo-dot-button {
+  -webkit-tap-highlight-color: transparent;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+.homepage-demo-dot-button:focus,
+.homepage-demo-dot-button:active {
+  background: transparent;
+  outline: none;
+}
+
+.homepage-demo-dot-button:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.2);
+  outline-offset: 2px;
+}
+
+.homepage-demo-dot-button:hover .homepage-demo-dot{
+  opacity: 0.75;
+}
+
+.homepage-demo-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #000000;
+  opacity: 0.25;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.homepage-demo-dot-button.active .homepage-demo-dot {
+  opacity: 0.75;
+  transform: scale(1.2);
+}
+
 @media (max-width: 1024px) {
   .homepage-subtitle {
     width: 800px;
@@ -108,3 +165,19 @@
   }
 }
 
+@media (max-width: 768px) {
+  .homepage-demo-dots {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+
+  .homepage-demo-dot-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .homepage-demo-dot {
+    width: 7px;
+    height: 7px;
+  }
+}
