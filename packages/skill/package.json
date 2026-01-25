@@ -1,0 +1,12 @@
+{
+  "name": "@cazala/party-skill",
+  "version": "0.1.0",
+  "description": "Agent skill for the `@cazala/party` library",
+  "private": true,
+  "type": "module",
+  "files": [
+    "SKILL.md",
+    "REFERENCE.md",
+    "README.md"
+  ]
+}
