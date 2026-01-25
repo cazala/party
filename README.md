@@ -61,6 +61,12 @@ A route-scoped reverse proxy that serves the playground at `caza.la/party` while
 
 Agent skill for the `@cazala/party` library.
 
+Install with:
+
+```bash
+npx skills add cazala/party
+```
+
 ## Quick Start
 
 ### Installation
