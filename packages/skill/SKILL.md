@@ -1,6 +1,6 @@
 ---
 name: party
-description: Programmatic guide for the @cazala/party library: engine setup, modules, particles, and performance across CPU + WebGPU.
+description: "Programmatic guide for the @cazala/party library: engine setup, modules, particles, and performance across CPU + WebGPU."
 version: 0.1.0
 license: MIT
 tags: [party, particles, physics, webgpu, cpu, simulation, typescript]
