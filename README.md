@@ -57,6 +57,10 @@ A React-based web application providing:
 
 A route-scoped reverse proxy that serves the playground at `caza.la/party` while proxying to `party.caza.la`.
 
+### [`skill`](./packages/skill) - Party Skill
+
+Agent skill for the `@cazala/party` library.
+
 ## Quick Start
 
 ### Installation
