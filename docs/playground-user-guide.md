@@ -189,6 +189,16 @@ The INIT panel controls how particles are spawned when using the Restart button 
 
 Each module controls a different aspect of particle physics. Modules can be enabled/disabled and have adjustable parameters.
 
+### Grid Modules
+
+The playground also includes grid-based simulations:
+
+- Game of Life
+- Reaction Diffusion
+- Elementary Cellular Automata
+
+Enable them in the Modules panel to render grid-based simulations without particles.
+
 ### Environment
 
 Global physics affecting all particles:

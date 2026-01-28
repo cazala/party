@@ -58,7 +58,7 @@ Core type is `Module` in `packages/core/src/module.ts`:
 
 - Modules declare:
   - `name` (string literal, unique)
-  - `role`: `ModuleRole.Force` or `ModuleRole.Render`
+  - `role`: `ModuleRole.Force`, `ModuleRole.Render`, or `ModuleRole.Grid`
   - `inputs`: map of input keys to `DataType.NUMBER` or `DataType.ARRAY`
 - Modules implement both descriptors:
   - `webgpu(): WebGPUDescriptor`
@@ -78,12 +78,20 @@ Render modules contribute passes:
 - WebGPU: `RenderPassKind.Fullscreen` or `RenderPassKind.Compute` (optionally `instanced`)
 - CPU: Canvas2D composition via `CPURenderDescriptor`
 
+Grid modules:
+
+- Declare a `gridSpec` (resolution + format + wrap mode) and run in a dedicated grid pipeline.
+- Provide `init`/`step`/`post` (CPU + WebGPU WGSL) and can add render passes that read from grid buffers.
+- The engine owns `getGrid(name)`/`setGrid(name, data)`; on WebGPU these are GPU readbacks/writes, so avoid in hot paths.
+- Interop modules (`GridFieldForce`, `ParticleDepositGrid`) bridge particle ↔ grid workflows.
+
 ### Where to look when debugging WebGPU behavior
 
 - Engine orchestrator: `packages/core/src/runtimes/webgpu/engine.ts`
 - Resource plumbing: `packages/core/src/runtimes/webgpu/gpu-resources.ts`
 - WGSL program build: `packages/core/src/runtimes/webgpu/module-registry.ts`
 - Simulation concat/dispatch: `packages/core/src/runtimes/webgpu/simulation-pipeline.ts`
+- Grid pipeline: `packages/core/src/runtimes/webgpu/grid-pipeline.ts`
 - Local neighborhood query (avoids full readback): `packages/core/src/runtimes/webgpu/local-query.ts`
 - Spatial grid: `packages/core/src/runtimes/webgpu/spacial-grid.ts` (typo is in filename/class)
 
@@ -131,4 +139,3 @@ If you need deeper narrative docs, start here:
 - `docs/maintainer-guide.md` (core internals)
 - `docs/playground-user-guide.md` (UI/tools/hotkeys)
 - `docs/playground-maintainer-guide.md` (playground patterns)
-

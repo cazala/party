@@ -14,11 +14,14 @@ import type { ModuleUniformLayout, Program } from "./builders/program";
 import type { GPUResources } from "./gpu-resources";
 import {
   Module,
+  ModuleRole,
   ComputeRenderPass,
   RenderPassKind,
   DataType,
   type FullscreenRenderPass,
   type WebGPURenderDescriptor,
+  type WebGPUGridDescriptor,
+  type GridSpec,
 } from "../../module";
 import {
   buildComputeImagePassWGSL,
@@ -90,7 +93,8 @@ export class RenderPipeline {
     resources: GPUResources,
     viewSize: { width: number; height: number },
     particleCount: number,
-    clearColor: { r: number; g: number; b: number; a: number }
+    clearColor: { r: number; g: number; b: number; a: number },
+    gridBuffers?: Map<string, GPUBuffer>
   ): GPUTextureView {
     let currentView = resources.getCurrentSceneTextureView();
     let otherView = resources.getOtherSceneTextureView();
@@ -99,8 +103,12 @@ export class RenderPipeline {
 
     for (let i = 0; i < modules.length; i++) {
       const module = modules[i];
-      const descriptor = module.webgpu() as WebGPURenderDescriptor;
-      if (!descriptor.passes || descriptor.passes.length === 0) continue;
+      const descriptor =
+        module.role === ModuleRole.Grid
+          ? (module.webgpu() as WebGPUGridDescriptor).render
+          : (module.webgpu() as WebGPURenderDescriptor);
+      if (!descriptor || !descriptor.passes || descriptor.passes.length === 0)
+        continue;
       for (const pass of descriptor.passes) {
         // Resolve the uniform layout for this module
         const layout = program.layouts.find(
@@ -119,7 +127,8 @@ export class RenderPipeline {
             views,
             resources,
             particleCount,
-            clearColor
+            clearColor,
+            gridBuffers
           );
           wrote = pass.writesScene ? "current" : null;
         }
@@ -133,7 +142,8 @@ export class RenderPipeline {
             views,
             resources,
             viewSize,
-            clearColor
+            clearColor,
+            gridBuffers
           );
           wrote = pass.writesScene ? "other" : null;
         }
@@ -216,21 +226,34 @@ export class RenderPipeline {
     },
     resources: GPUResources,
     particleCount: number,
-    clearColor: { r: number; g: number; b: number; a: number }
+    clearColor: { r: number; g: number; b: number; a: number },
+    gridBuffers?: Map<string, GPUBuffer>
   ): void {
     // Generate WGSL for the fullscreen pass
+    const isGridModule = module.role === ModuleRole.Grid;
+    const gridSpec = isGridModule
+      ? (module as unknown as { gridSpec?: GridSpec }).gridSpec
+      : undefined;
     const wgsl = buildFullscreenPassWGSL(
       pass as FullscreenRenderPass,
       module.name,
       layout,
       module.inputs,
-      clearColor
+      clearColor,
+      gridSpec
+        ? { spec: gridSpec, bindingIndex: this.getGridBindingIndex(module, module.inputs, true) }
+        : undefined
     );
 
     // Get array inputs for this module
     const arrayInputs = Object.entries(module.inputs)
       .filter(([_, type]) => type === DataType.ARRAY)
       .map(([key, _]) => key);
+
+    const gridBindingIndex = gridSpec
+      ? this.getGridBindingIndex(module, module.inputs, true)
+      : undefined;
+    const gridBuffer = gridSpec ? gridBuffers?.get(module.name) : undefined;
 
     // Check if this is a non-instanced pass that needs fragment particle access
     const fragmentParticleAccess = pass.instanced === false;
@@ -239,7 +262,8 @@ export class RenderPipeline {
     const pipeline = resources.getOrCreateFullscreenRenderPipeline(
       wgsl,
       arrayInputs,
-      fragmentParticleAccess
+      fragmentParticleAccess,
+      gridBindingIndex
     );
 
     // Create bind group with particle data, global render uniforms, scene sampler/texture, and module uniforms
@@ -253,7 +277,9 @@ export class RenderPipeline {
         .find((muf) => muf.layout.moduleName === module.name)!.buffer,
       module.name,
       arrayInputs,
-      fragmentParticleAccess
+      fragmentParticleAccess,
+      gridBuffer,
+      gridBindingIndex
     );
 
     // Begin render pass targeting the current view. Clear only on the very first write
@@ -299,21 +325,34 @@ export class RenderPipeline {
     },
     resources: GPUResources,
     size: { width: number; height: number },
-    clearColor: { r: number; g: number; b: number; a: number }
+    clearColor: { r: number; g: number; b: number; a: number },
+    gridBuffers?: Map<string, GPUBuffer>
   ): void {
     // Generate WGSL for the compute pass
+    const isGridModule = module.role === ModuleRole.Grid;
+    const gridSpec = isGridModule
+      ? (module as unknown as { gridSpec?: GridSpec }).gridSpec
+      : undefined;
     const wgsl = buildComputeImagePassWGSL(
       pass as ComputeRenderPass,
       module.name,
       layout,
       module.inputs,
-      clearColor
+      clearColor,
+      pass.workgroupSize ?? [8, 8, 1],
+      gridSpec
+        ? { spec: gridSpec, bindingIndex: this.getGridBindingIndex(module, module.inputs, false) }
+        : undefined
     );
 
     // Get array inputs for this module
     const arrayInputs = Object.entries(module.inputs)
       .filter(([_, type]) => type === DataType.ARRAY)
       .map(([key, _]) => key);
+    const gridBindingIndex = gridSpec
+      ? this.getGridBindingIndex(module, module.inputs, false)
+      : undefined;
+    const gridBuffer = gridSpec ? gridBuffers?.get(module.name) : undefined;
 
     // Acquire or create a cached compute pipeline
     const pipeline = resources.getOrCreateImageComputePipeline(wgsl);
@@ -327,7 +366,9 @@ export class RenderPipeline {
       views.otherView,
       muf.buffer,
       module.name,
-      arrayInputs
+      arrayInputs,
+      gridBuffer,
+      gridBindingIndex
     );
     const canvasSize = size;
     // Compute dispatch size (assuming 8x8 threadgroups)
@@ -338,5 +379,19 @@ export class RenderPipeline {
     cp.setBindGroup(0, bindGroup);
     cp.dispatchWorkgroups(workgroupsX, workgroupsY);
     cp.end();
+  }
+
+  private getGridBindingIndex(
+    _module: Module,
+    inputs: Record<string, DataType>,
+    fullscreen: boolean
+  ): number {
+    const arrayInputs = Object.entries(inputs)
+      .filter(([_, type]) => type === DataType.ARRAY)
+      .map(([key, _]) => key);
+    if (fullscreen) {
+      return arrayInputs.length > 0 ? 6 : 5;
+    }
+    return arrayInputs.length > 0 ? 4 : 3;
   }
 }

@@ -1,5 +1,6 @@
 import { Particle } from "../../particle";
 import { Vector } from "../../vector";
+import { GridGeometry } from "../../grid/geometry";
 
 export interface SpatialGridOptions {
   width: number;
@@ -10,16 +11,13 @@ export interface SpatialGridOptions {
 export class SpatialGrid {
   private width: number;
   private height: number;
-  private cellSize: number;
   private cols!: number;
   private rows!: number;
   private grid!: Particle[][][];
+  private geometry: GridGeometry;
+  private paddingRatio: number = 0.5;
 
   // Dynamic bounds that match current camera view
-  private minX!: number;
-  private minY!: number;
-  private maxX!: number;
-  private maxY!: number;
   // Camera tracking
   private cameraX: number = 0;
   private cameraY: number = 0;
@@ -32,7 +30,9 @@ export class SpatialGrid {
   constructor(options: SpatialGridOptions) {
     this.width = options.width;
     this.height = options.height;
-    this.cellSize = options.cellSize;
+    this.geometry = new GridGeometry(options.cellSize, {
+      paddingRatio: this.paddingRatio,
+    });
 
     // Initialize with default camera view (canvas coordinates)
     this.updateBounds(0, 0, 1);
@@ -43,29 +43,26 @@ export class SpatialGrid {
     this.cameraY = cameraY;
     this.zoom = zoom;
 
-    // Calculate visible world bounds
-    const worldLeft = -cameraX / zoom;
-    const worldTop = -cameraY / zoom;
-    const worldRight = (this.width - cameraX) / zoom;
-    const worldBottom = (this.height - cameraY) / zoom;
-
-    // Add padding around visible area to catch particles just outside view
-    const padding = (Math.max(this.width, this.height) / zoom) * 0.5; // 50% padding
-    this.minX = worldLeft - padding;
-    this.minY = worldTop - padding;
-    this.maxX = worldRight + padding;
-    this.maxY = worldBottom + padding;
-
-    // Recalculate grid dimensions (ensure at least 1x1 to avoid undefined rows/cols)
-    this.cols = Math.max(1, Math.ceil((this.maxX - this.minX) / this.cellSize));
-    this.rows = Math.max(1, Math.ceil((this.maxY - this.minY) / this.cellSize));
+    this.geometry.updateFromView(
+      {
+        width: this.width,
+        height: this.height,
+        cx: this.cameraX,
+        cy: this.cameraY,
+        zoom: this.zoom,
+      },
+      { paddingRatio: this.paddingRatio }
+    );
+    const dims = this.geometry.getDimensions();
+    this.cols = dims.cols;
+    this.rows = dims.rows;
 
     this.initializeGrid();
   }
 
   setCamera(cameraX: number, cameraY: number, zoom: number): void {
     // Only update if camera changed significantly to avoid constant grid rebuilding
-    const threshold = this.cellSize * 0.5; // Half a cell
+    const threshold = this.geometry.getCellSize() * 0.5; // Half a cell
     const zoomThreshold = 0.1;
 
     if (
@@ -126,12 +123,15 @@ export class SpatialGrid {
 
   insert(particle: Particle): void {
     // Convert world coordinates to grid coordinates with offset
-    const col = Math.floor((particle.position.x - this.minX) / this.cellSize);
-    const row = Math.floor((particle.position.y - this.minY) / this.cellSize);
+    const { col, row } = this.geometry.worldToCell(
+      particle.position.x,
+      particle.position.y,
+      true
+    );
 
     // Clamp to grid bounds
-    const clampedCol = Math.max(0, Math.min(col, this.cols - 1));
-    const clampedRow = Math.max(0, Math.min(row, this.rows - 1));
+    const clampedCol = col;
+    const clampedRow = row;
 
     // Insert particle into grid
     // Safety: ensure row/col arrays exist (defensive against any transient zero-dimension states)
@@ -154,11 +154,12 @@ export class SpatialGrid {
   ): Particle[] {
     const neighbors: Particle[] = [];
     // Convert world coordinates to grid coordinates with offset
-    const centerCol = Math.floor((point.x - this.minX) / this.cellSize);
-    const centerRow = Math.floor((point.y - this.minY) / this.cellSize);
+    const center = this.geometry.worldToCell(point.x, point.y, true);
+    const centerCol = center.col;
+    const centerRow = center.row;
 
     // Calculate how many cells to check in each direction
-    const cellRadius = Math.ceil(radius / this.cellSize);
+    const cellRadius = Math.ceil(radius / this.geometry.getCellSize());
 
     for (
       let row = centerRow - cellRadius;
@@ -205,20 +206,11 @@ export class SpatialGrid {
   }
 
   getGridDimensions(): { cols: number; rows: number; cellSize: number } {
-    return {
-      cols: this.cols,
-      rows: this.rows,
-      cellSize: this.cellSize,
-    };
+    return this.geometry.getDimensions();
   }
 
   getGridBounds(): { minX: number; minY: number; maxX: number; maxY: number } {
-    return {
-      minX: this.minX,
-      minY: this.minY,
-      maxX: this.maxX,
-      maxY: this.maxY,
-    };
+    return this.geometry.getBounds();
   }
 
   getSize(): { width: number; height: number } {
@@ -237,11 +229,11 @@ export class SpatialGrid {
   }
 
   getCellSize(): number {
-    return this.cellSize;
+    return this.geometry.getCellSize();
   }
 
   setCellSize(cellSize: number): void {
-    this.cellSize = cellSize;
+    this.geometry.setCellSize(cellSize);
     // Update bounds with new cell size
     this.updateBounds(this.cameraX, this.cameraY, this.zoom);
   }

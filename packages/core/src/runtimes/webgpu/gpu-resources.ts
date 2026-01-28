@@ -530,14 +530,15 @@ export class GPUResources {
 
   getRenderBindGroupLayout(
     arrayInputs?: string[],
-    fragmentParticleAccess?: boolean
+    fragmentParticleAccess?: boolean,
+    gridBindingIndex?: number
   ): GPUBindGroupLayout {
     // Create a cache key based on array inputs and fragment access
     const cacheKey = arrayInputs
       ? `render_${arrayInputs.sort().join("_")}_frag_${
           fragmentParticleAccess || false
-        }`
-      : `render_basic_frag_${fragmentParticleAccess || false}`;
+        }_grid_${gridBindingIndex ?? "none"}`
+      : `render_basic_frag_${fragmentParticleAccess || false}_grid_${gridBindingIndex ?? "none"}`;
 
     // Check if we have a cached layout for this configuration
     if (!this.renderBindGroupLayoutCache) {
@@ -582,6 +583,14 @@ export class GPUResources {
       entries.push({
         binding: 5,
         visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        buffer: { type: "read-only-storage" },
+      });
+    }
+
+    if (gridBindingIndex !== undefined) {
+      entries.push({
+        binding: gridBindingIndex,
+        visibility: GPUShaderStage.FRAGMENT,
         buffer: { type: "read-only-storage" },
       });
     }
@@ -636,6 +645,15 @@ export class GPUResources {
         visibility: GPUShaderStage.COMPUTE,
         buffer: { type: "storage" },
       });
+    }
+    if (compute.extraBindings.gridFields) {
+      for (const binding of Object.values(compute.extraBindings.gridFields)) {
+        entries.push({
+          binding: binding.binding,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "storage" },
+        });
+      }
     }
     if (compute.extraBindings.simState) {
       entries.push({
@@ -746,12 +764,13 @@ export class GPUResources {
   getOrCreateFullscreenRenderPipeline(
     shaderCode: string,
     arrayInputs?: string[],
-    fragmentParticleAccess?: boolean
+    fragmentParticleAccess?: boolean,
+    gridBindingIndex?: number
   ): GPURenderPipeline {
     const arrayKey = arrayInputs?.sort().join("_") || "";
     const key = `fs:${this.hashWGSL(shaderCode)}:${arrayKey}:frag_${
       fragmentParticleAccess || false
-    }`;
+    }:grid_${gridBindingIndex ?? "none"}`;
     const cached = this.fullscreenPipelines.get(key);
     if (cached) return cached;
     const shaderModule = this.getDevice().createShaderModule({
@@ -760,7 +779,11 @@ export class GPUResources {
     const pipeline = this.getDevice().createRenderPipeline({
       layout: this.getDevice().createPipelineLayout({
         bindGroupLayouts: [
-          this.getRenderBindGroupLayout(arrayInputs, fragmentParticleAccess),
+          this.getRenderBindGroupLayout(
+            arrayInputs,
+            fragmentParticleAccess,
+            gridBindingIndex
+          ),
         ],
       }),
       vertex: { module: shaderModule, entryPoint: "vs_main" },
@@ -809,7 +832,9 @@ export class GPUResources {
     moduleUniformBuffer: GPUBuffer,
     moduleName: string,
     arrayInputs?: string[],
-    fragmentParticleAccess?: boolean
+    fragmentParticleAccess?: boolean,
+    gridBuffer?: GPUBuffer,
+    gridBindingIndex?: number
   ): GPUBindGroup {
     const entries: GPUBindGroupEntry[] = [
       { binding: 0, resource: { buffer: particleBuffer } },
@@ -831,16 +856,27 @@ export class GPUResources {
       }
     }
 
+    if (gridBuffer && gridBindingIndex !== undefined) {
+      entries.push({
+        binding: gridBindingIndex,
+        resource: { buffer: gridBuffer },
+      });
+    }
+
     return this.getDevice().createBindGroup({
       layout: this.getRenderBindGroupLayout(
         arrayInputs,
-        fragmentParticleAccess
+        fragmentParticleAccess,
+        gridBindingIndex
       ),
       entries,
     });
   }
 
-  createComputeBindGroup(compute: Program): GPUBindGroup {
+  createComputeBindGroup(
+    compute: Program,
+    gridBuffers?: Map<string, GPUBuffer>
+  ): GPUBindGroup {
     if (!this.computeBindGroupLayout) {
       throw new Error("Compute bind group layout not built");
     }
@@ -913,6 +949,18 @@ export class GPUResources {
         resource: this.getCurrentSceneTextureView(),
       });
     }
+    if (compute.extraBindings.gridFields && gridBuffers) {
+      for (const [name, binding] of Object.entries(
+        compute.extraBindings.gridFields
+      )) {
+        const buffer = gridBuffers.get(name);
+        if (!buffer) continue;
+        entries.push({
+          binding: binding.binding,
+          resource: { buffer },
+        });
+      }
+    }
     return this.getDevice().createBindGroup({
       layout: this.computeBindGroupLayout,
       entries,
@@ -925,7 +973,9 @@ export class GPUResources {
     writeView: GPUTextureView,
     moduleUniformBuffer: GPUBuffer,
     moduleName: string,
-    arrayInputs?: string[]
+    arrayInputs?: string[],
+    gridBuffer?: GPUBuffer,
+    gridBindingIndex?: number
   ): GPUBindGroup {
     const layout = pipeline.getBindGroupLayout(0);
     const entries: GPUBindGroupEntry[] = [
@@ -944,6 +994,13 @@ export class GPUResources {
           resource: { buffer: combinedArrayBuffer },
         });
       }
+    }
+
+    if (gridBuffer && gridBindingIndex !== undefined) {
+      entries.push({
+        binding: gridBindingIndex,
+        resource: { buffer: gridBuffer },
+      });
     }
 
     return this.getDevice().createBindGroup({

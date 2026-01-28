@@ -27,10 +27,14 @@ export class SimulationPipeline {
       gridCellCount: number;
       workgroupSize: number;
       constrainIterations?: number;
+      gridBuffers?: Map<string, GPUBuffer>;
     }
   ): void {
     if (!this.program) throw new Error("SimulationPipeline not initialized");
-    const bindGroup = resources.createComputeBindGroup(this.program);
+    const bindGroup = resources.createComputeBindGroup(
+      this.program,
+      params.gridBuffers
+    );
     const groups = Math.ceil(params.particleCount / params.workgroupSize);
     const pipelines = resources.getSimulationPipelines();
 

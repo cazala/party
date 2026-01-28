@@ -17,6 +17,7 @@ import {
   Module,
   ModuleRole,
   type WebGPURenderDescriptor,
+  type WebGPUGridDescriptor,
   DataType,
 } from "../../module";
 
@@ -134,12 +135,14 @@ export class ModuleRegistry {
   getEnabledRenderModules(): Module[] {
     return this.modules.filter((module, idx) => {
       if (!module.isEnabled()) return false;
-      const descriptor = this.modules[idx].webgpu() as WebGPURenderDescriptor;
-      return !!(
-        descriptor &&
-        descriptor.passes &&
-        descriptor.passes.length > 0
-      );
+      const descriptor = this.modules[idx].webgpu() as
+        | WebGPURenderDescriptor
+        | WebGPUGridDescriptor;
+      const passes =
+        module.role === ModuleRole.Grid
+          ? (descriptor as WebGPUGridDescriptor).render?.passes
+          : (descriptor as WebGPURenderDescriptor).passes;
+      return !!(passes && passes.length > 0);
     });
   }
 
