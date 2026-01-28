@@ -8,6 +8,8 @@ import {
   CanvasComposition,
   type GridSpec,
 } from "../../module";
+import type { IParticle } from "../../interfaces";
+import type { ViewSnapshot } from "../../view";
 
 export type ReactionDiffusionInputs = {
   feed: number;
@@ -15,6 +17,7 @@ export type ReactionDiffusionInputs = {
   diffusionA: number;
   diffusionB: number;
   dt: number;
+  cellSize: number;
 };
 
 export const DEFAULT_RD_FEED = 0.0367;
@@ -22,10 +25,13 @@ export const DEFAULT_RD_KILL = 0.0649;
 export const DEFAULT_RD_DIFFUSION_A = 1.0;
 export const DEFAULT_RD_DIFFUSION_B = 0.5;
 export const DEFAULT_RD_DT = 1.0;
+export const DEFAULT_RD_CELL_SIZE = 2;
 
 export type ReactionDiffusionOptions = {
   width: number;
   height: number;
+  cellSize?: number;
+  followView?: boolean;
 };
 
 export class ReactionDiffusionGrid extends Module<
@@ -40,6 +46,7 @@ export class ReactionDiffusionGrid extends Module<
     diffusionA: DataType.NUMBER,
     diffusionB: DataType.NUMBER,
     dt: DataType.NUMBER,
+    cellSize: DataType.NUMBER,
   } as const;
   readonly gridSpec: GridSpec;
   private renderCanvas?: HTMLCanvasElement;
@@ -53,6 +60,8 @@ export class ReactionDiffusionGrid extends Module<
       height: options.height,
       format: "vec2f",
       wrap: "repeat",
+      cellSize: options.cellSize ?? DEFAULT_RD_CELL_SIZE,
+      followView: options.followView ?? true,
     };
     this.write({
       feed: DEFAULT_RD_FEED,
@@ -60,12 +69,54 @@ export class ReactionDiffusionGrid extends Module<
       diffusionA: DEFAULT_RD_DIFFUSION_A,
       diffusionB: DEFAULT_RD_DIFFUSION_B,
       dt: DEFAULT_RD_DT,
+      cellSize: options.cellSize ?? DEFAULT_RD_CELL_SIZE,
     });
+  }
+
+  private seedFromParticles(
+    particles: IParticle[],
+    view: ViewSnapshot,
+    buffer: Float32Array
+  ): boolean {
+    if (!particles || particles.length === 0) return false;
+    const width = this.gridSpec.width;
+    const height = this.gridSpec.height;
+    const channels = 2;
+    buffer.fill(0);
+    const total = width * height;
+    for (let i = 0; i < total; i++) {
+      buffer[i * channels + 0] = 1;
+      buffer[i * channels + 1] = 0;
+    }
+    const centerX = view.width / 2;
+    const centerY = view.height / 2;
+    for (const particle of particles) {
+      if (particle.mass === 0) continue;
+      const screenX = centerX + (particle.position.x - view.cx) * view.zoom;
+      const screenY = centerY + (particle.position.y - view.cy) * view.zoom;
+      const gx = Math.floor((screenX / view.width) * width);
+      const gy = Math.floor((screenY / view.height) * height);
+      if (gx < 0 || gy < 0 || gx >= width || gy >= height) continue;
+      const idx = (gy * width + gx) * channels;
+      buffer[idx + 1] = 1;
+    }
+    return true;
+  }
+
+  seedFromParticlesBuffer(
+    particles: IParticle[],
+    view: ViewSnapshot
+  ): Float32Array | null {
+    const total = this.gridSpec.width * this.gridSpec.height * 2;
+    const buffer = new Float32Array(total);
+    return this.seedFromParticles(particles, view, buffer) ? buffer : null;
   }
 
   cpu(): CPUDescriptor<ReactionDiffusionInputs> {
     return {
-      init: ({ grid }) => {
+      init: ({ grid, particles, view }) => {
+        const buf = grid.writeBuffer as Float32Array;
+        if (this.seedFromParticles(particles, view, buf)) return;
         const width = grid.width;
         const height = grid.height;
         for (let y = 0; y < height; y++) {
@@ -133,9 +184,11 @@ export class ReactionDiffusionGrid extends Module<
                 (input.kill + input.feed) * b) *
                 input.dt;
 
+            const clampedA = Math.max(0, Math.min(1, newA));
+            const clampedB = Math.max(0, Math.min(1, newB));
             const idx = (y * width + x) * grid.channels;
-            (grid.writeBuffer as any)[idx + 0] = newA;
-            (grid.writeBuffer as any)[idx + 1] = newB;
+            (grid.writeBuffer as any)[idx + 0] = clampedA;
+            (grid.writeBuffer as any)[idx + 1] = clampedB;
           }
         }
       },
@@ -227,8 +280,10 @@ let diffB = ${getUniform("diffusionB")};
 let dt = ${getUniform("dt")};
 let newA = a + (diffA * lapA - reaction + feed * (1.0 - a)) * dt;
 let newB = b + (diffB * lapB + reaction - (kill + feed) * b) * dt;
-grid_write(x, y, 0u, newA);
-grid_write(x, y, 1u, newB);
+let clampedA = clamp(newA, 0.0, 1.0);
+let clampedB = clamp(newB, 0.0, 1.0);
+grid_write(x, y, 0u, clampedA);
+grid_write(x, y, 1u, clampedB);
 `;
       },
       render: {
@@ -236,6 +291,8 @@ grid_write(x, y, 1u, newB);
           {
             kind: RenderPassKind.Fullscreen,
             bindings: [],
+            instanced: false,
+            writesScene: true,
             fragment: () => `{
   let gx = i32(floor(frag_coord.x / render_uniforms.canvas_size.x * f32(GRID_WIDTH)));
   let gy = i32(floor(frag_coord.y / render_uniforms.canvas_size.y * f32(GRID_HEIGHT)));

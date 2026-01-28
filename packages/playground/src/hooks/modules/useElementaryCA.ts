@@ -7,12 +7,13 @@ import {
   selectElementaryCA,
   setElementaryCAEnabled,
   setElementaryCARule,
+  setElementaryCACellSize,
   resetElementaryCA,
 } from "../../slices/modules/elementaryCa";
 
 export function useElementaryCA() {
   const dispatch = useAppDispatch();
-  const { elementaryCa } = useEngine();
+  const { elementaryCa, engine } = useEngine();
 
   const modulesState = useAppSelector(selectModules);
   const state = useMemo(() => selectElementaryCA(modulesState), [modulesState]);
@@ -22,8 +23,10 @@ export function useElementaryCA() {
     if (!elementaryCa) return;
     elementaryCa.write({
       rule: state.rule,
+      cellSize: state.cellSize,
     });
-  }, [elementaryCa, state]);
+    engine?.notifyModuleSettingsChanged?.();
+  }, [elementaryCa, engine, state]);
 
   const setEnabled = useCallback(
     (enabled: boolean) => {
@@ -40,6 +43,15 @@ export function useElementaryCA() {
     [dispatch, elementaryCa]
   );
 
+  const setCellSize = useCallback(
+    (value: number) => {
+      dispatch(setElementaryCACellSize(value));
+      elementaryCa?.write({ cellSize: value });
+      engine?.notifyModuleSettingsChanged?.();
+    },
+    [dispatch, elementaryCa, engine]
+  );
+
   const reset = useCallback(() => {
     dispatch(resetElementaryCA());
   }, [dispatch]);
@@ -49,6 +61,7 @@ export function useElementaryCA() {
     isEnabled,
     setEnabled,
     setRule,
+    setCellSize,
     reset,
   };
 }

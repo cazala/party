@@ -60,7 +60,8 @@ const spawnToolState: SpawnToolState = {
 };
 
 export function useSpawnTool(isActive: boolean) {
-  const { screenToWorld, addParticle, zoom } = useEngine();
+  const { screenToWorld, addParticle, zoom, stampGridsAtWorldPositions } =
+    useEngine();
   const { beginTransaction, appendToTransaction, commitTransaction } =
     useHistory();
   const { particleSize, colors } = useInit();
@@ -112,6 +113,7 @@ export function useSpawnTool(isActive: boolean) {
       timestamp: Date.now(),
       do: async (ctx: { engine: any }) => {
         addParticle({ position: worldPos, velocity, size, mass, color });
+        stampGridsAtWorldPositions([{ x: worldPos.x, y: worldPos.y }]);
         // Resolve created index from engine after it applies
         if (ctx.engine?.getParticles) {
           const particles = await ctx.engine.getParticles();
@@ -129,7 +131,13 @@ export function useSpawnTool(isActive: boolean) {
     } as unknown as Command;
 
     appendToTransaction(cmd);
-  }, [addParticle, screenToWorld, zoom, appendToTransaction]);
+  }, [
+    addParticle,
+    screenToWorld,
+    zoom,
+    appendToTransaction,
+    stampGridsAtWorldPositions,
+  ]);
 
   // Calculate dynamic streaming rate based on particle size and velocity
   const calculateStreamingRate = useCallback(() => {

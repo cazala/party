@@ -54,10 +54,10 @@ export class GridPipeline {
       const wrapMode = spec.wrap ?? "clamp";
       const wrapFn =
         wrapMode === "repeat"
-          ? `fn grid_wrap(v: i32, max: i32) -> i32 { let m = ((v % max) + max) % max; return m; }`
+          ? `fn grid_wrap(v: i32, maxv: i32) -> i32 { let m = ((v % maxv) + maxv) % maxv; return m; }`
           : wrapMode === "mirror"
-            ? `fn grid_wrap(v: i32, max: i32) -> i32 { let period = max * 2; let m = ((v % period) + period) % period; return select(m, period - 1 - m, m >= max); }`
-            : `fn grid_wrap(v: i32, max: i32) -> i32 { return max(0, min(v, max - 1)); }`;
+            ? `fn grid_wrap(v: i32, maxv: i32) -> i32 { let period = maxv * 2; let m = ((v % period) + period) % period; return select(m, period - 1 - m, m >= maxv); }`
+            : `fn grid_wrap(v: i32, maxv: i32) -> i32 { return max(0, min(v, maxv - 1)); }`;
 
       const helpers = `
 const GRID_WIDTH: u32 = ${spec.width}u;
@@ -184,8 +184,16 @@ fn ${name}_${module.name}(@builtin(global_invocation_id) gid: vec3<u32>) {
         height: spec.height,
       };
 
-      this.pipelines.set(module.name, entry);
+    this.pipelines.set(module.name, entry);
     }
+  }
+
+  markInitialized(moduleName: string): void {
+    this.initialized.add(moduleName);
+  }
+
+  isInitialized(moduleName: string): boolean {
+    return this.initialized.has(moduleName);
   }
 
   run(

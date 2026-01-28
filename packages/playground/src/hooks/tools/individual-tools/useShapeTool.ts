@@ -20,7 +20,8 @@ const MIN_RADIUS = 20;
 const MAX_RADIUS = 200;
 
 export function useShapeTool(isActive: boolean) {
-  const { engine, screenToWorld, addParticle } = useEngine();
+  const { engine, screenToWorld, addParticle, stampGridsAtWorldPositions } =
+    useEngine();
   const joints = useJoints();
   const lines = useLines();
   const { particleSize, colors } = useInit();
@@ -96,6 +97,7 @@ export function useShapeTool(isActive: boolean) {
               | undefined;
             holders[i].idx = (particles?.length ?? 1) - 1;
           }
+          stampGridsAtWorldPositions(vertices);
           // Create joints after all indices are resolved
           if (!joints.enabled) joints.setEnabled(true);
           if (!lines.enabled) lines.setEnabled(true);
@@ -147,6 +149,7 @@ export function useShapeTool(isActive: boolean) {
       joints,
       lines,
       executeCommand,
+      stampGridsAtWorldPositions,
     ]
   );
 

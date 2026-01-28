@@ -149,12 +149,15 @@ export class GPUResources {
       // Step 2: Request device with timeout
       // Request the maximum buffer size limit to avoid buffer size errors
       const maxBufferSize = this.adapter.limits.maxBufferSize || this.adapter.limits.maxStorageBufferBindingSize;
+      const maxStorageBuffersPerShaderStage =
+        this.adapter.limits.maxStorageBuffersPerShaderStage;
       this.device = await withTimeout(
         this.adapter.requestDevice({
           requiredFeatures: this.requiredFeatures || [],
           requiredLimits: {
             maxStorageBufferBindingSize: this.adapter.limits.maxStorageBufferBindingSize,
             maxBufferSize: maxBufferSize,
+            maxStorageBuffersPerShaderStage: maxStorageBuffersPerShaderStage,
           },
         }),
         5000,

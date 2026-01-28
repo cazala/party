@@ -3,6 +3,7 @@ import {
   DEFAULT_GOL_BIRTH_MASK,
   DEFAULT_GOL_SURVIVE_MASK,
   DEFAULT_GOL_SEED_DENSITY,
+  DEFAULT_GOL_CELL_SIZE,
 } from "@cazala/party";
 
 export interface GameOfLifeModuleState {
@@ -10,6 +11,7 @@ export interface GameOfLifeModuleState {
   birthMask: number;
   surviveMask: number;
   seedDensity: number;
+  cellSize: number;
 }
 
 const initialState: GameOfLifeModuleState = {
@@ -17,6 +19,7 @@ const initialState: GameOfLifeModuleState = {
   birthMask: DEFAULT_GOL_BIRTH_MASK,
   surviveMask: DEFAULT_GOL_SURVIVE_MASK,
   seedDensity: DEFAULT_GOL_SEED_DENSITY,
+  cellSize: DEFAULT_GOL_CELL_SIZE,
 };
 
 export const gameOfLifeSlice = createSlice({
@@ -35,6 +38,9 @@ export const gameOfLifeSlice = createSlice({
     setGameOfLifeSeedDensity: (state, action: PayloadAction<number>) => {
       state.seedDensity = action.payload;
     },
+    setGameOfLifeCellSize: (state, action: PayloadAction<number>) => {
+      state.cellSize = action.payload;
+    },
     resetGameOfLife: () => initialState,
     importGameOfLifeSettings: (
       state,
@@ -50,6 +56,7 @@ export const {
   setGameOfLifeBirthMask,
   setGameOfLifeSurviveMask,
   setGameOfLifeSeedDensity,
+  setGameOfLifeCellSize,
   resetGameOfLife,
   importGameOfLifeSettings,
 } = gameOfLifeSlice.actions;

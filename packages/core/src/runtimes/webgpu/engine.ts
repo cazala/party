@@ -29,7 +29,7 @@ import { SimulationPipeline } from "./simulation-pipeline";
 import { RenderPipeline } from "./render-pipeline";
 import { LocalQuery } from "./local-query";
 import { GridPipeline } from "./grid-pipeline";
-import { getGridChannelCount } from "../../grid/store";
+import { getGridChannelCount, resampleGridBuffer } from "../../grid/store";
 
 export class WebGPUEngine extends AbstractEngine {
   private resources: GPUResources;
@@ -41,6 +41,8 @@ export class WebGPUEngine extends AbstractEngine {
   private gridPipeline: GridPipeline;
   private gridStores: Map<string, { spec: GridSpec; read: GPUBuffer; write: GPUBuffer }> = new Map();
   private gridSpecs: Map<string, GridSpec> = new Map();
+  private lastGridResizeAt = 0;
+  private gridResizeCooldownMs = 150;
   private bufferMaxParticles: number; // Buffer allocation size (separate from effective maxParticles)
   private workgroupSize: number;
   private simStrideValue: number = 0;
@@ -118,6 +120,7 @@ export class WebGPUEngine extends AbstractEngine {
       this.gridModules,
       this.gridSpecs
     );
+    this.seedGridsFromParticles();
 
     // Ensure scene textures
     const size = this.view.getSize();
@@ -193,6 +196,7 @@ export class WebGPUEngine extends AbstractEngine {
       this.resources,
       this.registry.getProgram()
     );
+    this.updateGridStoresForView();
   }
 
   setParticles(p: IParticle[]): void {
@@ -340,6 +344,7 @@ export class WebGPUEngine extends AbstractEngine {
     if (this.playing) {
       // Update engine-owned oscillators before simulation uniforms are written
       this.updateOscillators(dt);
+      this.seedGridsFromParticles();
       if (this.gridModules.length > 0 && this.gridStores.size > 0) {
         this.gridPipeline.run(
           encoder,
@@ -435,13 +440,18 @@ export class WebGPUEngine extends AbstractEngine {
     const device = this.resources.getDevice();
     this.gridStores.clear();
     this.gridSpecs.clear();
+    const view = this.view.getSnapshot();
     for (const module of this.gridModules) {
       if (module.role !== "grid") continue;
       const spec = (module as unknown as { gridSpec?: GridSpec }).gridSpec;
       if (!spec) continue;
-      const channels = getGridChannelCount(spec);
+      const resolved = this.resolveGridSpec(spec, view);
+      if (resolved !== spec) {
+        (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+      }
+      const channels = getGridChannelCount(resolved);
       const length =
-        Math.max(1, spec.width) * Math.max(1, spec.height) * channels;
+        Math.max(1, resolved.width) * Math.max(1, resolved.height) * channels;
       const sizeBytes = length * 4;
       const usage =
         GPUBufferUsage.STORAGE |
@@ -449,8 +459,8 @@ export class WebGPUEngine extends AbstractEngine {
         GPUBufferUsage.COPY_DST;
       const read = device.createBuffer({ size: sizeBytes, usage });
       const write = device.createBuffer({ size: sizeBytes, usage });
-      this.gridStores.set(module.name, { spec, read, write });
-      this.gridSpecs.set(module.name, spec);
+      this.gridStores.set(module.name, { spec: resolved, read, write });
+      this.gridSpecs.set(module.name, resolved);
     }
     for (const module of this.modules) {
       const attach = (module as unknown as { attachGridSpec?: (spec: GridSpec) => void }).attachGridSpec;
@@ -476,6 +486,131 @@ export class WebGPUEngine extends AbstractEngine {
       const gridName = getName.call(module);
       const spec = specs.get(gridName);
       if (spec) attach.call(module, spec);
+    }
+  }
+
+  private resolveGridSpec(
+    spec: GridSpec,
+    view: { width: number; height: number; zoom: number }
+  ) {
+    if (!spec.followView) return spec;
+    const cellSize = spec.cellSize;
+    if (!cellSize || cellSize <= 0) return spec;
+    const width = Math.max(1, Math.ceil(view.width / cellSize));
+    const height = Math.max(1, Math.ceil(view.height / cellSize));
+    if (
+      width === spec.width &&
+      height === spec.height &&
+      cellSize === spec.cellSize
+    ) {
+      return spec;
+    }
+    return { ...spec, width, height, cellSize };
+  }
+
+  private updateGridStoresForView(): void {
+    if (this.gridModules.length === 0) return;
+    const view = this.view.getSnapshot();
+    const now = performance.now();
+    const allowResize = now - this.lastGridResizeAt >= this.gridResizeCooldownMs;
+    let resized = false;
+    let specChanged = false;
+    const regenerate = new Set<string>();
+    const previousStores = new Map(this.gridStores);
+    for (const module of this.gridModules) {
+      if (module.role !== "grid") continue;
+      const spec = (module as unknown as { gridSpec?: GridSpec }).gridSpec;
+      if (!spec) continue;
+      const input = module.read() as Record<string, number>;
+      const inputCellSize =
+        typeof input.cellSize === "number" && input.cellSize > 0
+          ? input.cellSize
+          : undefined;
+      const cellSizeChanged =
+        inputCellSize !== undefined && inputCellSize !== spec.cellSize;
+      const baseSpec = cellSizeChanged
+        ? { ...spec, cellSize: inputCellSize }
+        : spec;
+      if (!cellSizeChanged && !allowResize) continue;
+      const resolved = this.resolveGridSpec(baseSpec, view);
+      if (resolved === spec) continue;
+      const sizeChanged =
+        resolved.width !== spec.width || resolved.height !== spec.height;
+      if (cellSizeChanged) {
+        (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+        regenerate.add(module.name);
+        resized = true;
+        continue;
+      }
+      if (!sizeChanged) {
+        (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+        const store = this.gridStores.get(module.name);
+        if (store) {
+          store.spec = resolved;
+          this.gridSpecs.set(module.name, resolved);
+        }
+        specChanged = true;
+        continue;
+      }
+      (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+      resized = true;
+    }
+    if (!resized && !specChanged) return;
+    if (!resized) {
+      this.attachGridSpecsFromModules();
+      return;
+    }
+    this.lastGridResizeAt = now;
+    this.setupGridStores();
+    this.gridPipeline.initialize(
+      this.resources,
+      this.registry,
+      this.gridModules,
+      this.gridSpecs
+    );
+    for (const module of this.gridModules) {
+      if (regenerate.has(module.name)) continue;
+      const prev = previousStores.get(module.name);
+      const next = this.gridStores.get(module.name);
+      if (!prev || !next) continue;
+      const prevSpec = prev.spec;
+      const prevChannels = getGridChannelCount(prevSpec);
+      const readBytes =
+        Math.max(1, prevSpec.width) *
+        Math.max(1, prevSpec.height) *
+        prevChannels *
+        4;
+      this.resources.readBuffer(prev.read, readBytes).then((buf) => {
+        const src = new Float32Array(buf);
+        const resampled = resampleGridBuffer(src, prevSpec, next.spec, {
+          forceFloat: true,
+        }) as Float32Array;
+        this.setGrid(module.name, resampled);
+        this.gridPipeline.markInitialized(module.name);
+      });
+    }
+  }
+
+  private seedGridsFromParticles(): void {
+    if (this.gridModules.length === 0 || this.gridStores.size === 0) return;
+    const particles = this.particles.getParticles();
+    if (particles.length === 0) return;
+    const view = this.view.getSnapshot();
+
+    for (const module of this.gridModules) {
+      if (!module.isEnabled()) continue;
+      if (this.gridPipeline.isInitialized(module.name)) continue;
+      const seed = (module as unknown as {
+        seedFromParticlesBuffer?: (
+          particles: IParticle[],
+          view: { width: number; height: number; cx: number; cy: number; zoom: number }
+        ) => Float32Array | null;
+      }).seedFromParticlesBuffer;
+      if (!seed) continue;
+      const data = seed.call(module, particles, view);
+      if (!data) continue;
+      this.setGrid(module.name, data);
+      this.gridPipeline.markInitialized(module.name);
     }
   }
 
@@ -536,6 +671,7 @@ export class WebGPUEngine extends AbstractEngine {
   // Override onModuleSettingsChanged to sync to GPU
   protected onModuleSettingsChanged(): void {
     this.registry.writeAllModuleUniforms();
+    this.updateGridStoresForView();
   }
 
   // Handle configuration changes

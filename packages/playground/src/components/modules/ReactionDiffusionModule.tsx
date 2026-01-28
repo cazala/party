@@ -12,11 +12,13 @@ export function ReactionDiffusionModule({
     diffusionA,
     diffusionB,
     dt,
+    cellSize,
     setFeed,
     setKill,
     setDiffusionA,
     setDiffusionB,
     setDt,
+    setCellSize,
   } = useReactionDiffusion();
 
   return (
@@ -74,6 +76,17 @@ export function ReactionDiffusionModule({
         step={0.01}
         formatValue={(v) => v.toFixed(2)}
         onChange={setDt}
+        disabled={!enabled}
+      />
+      <Slider
+        sliderId="rd.cellSize"
+        label="Cell Size"
+        value={cellSize}
+        min={0.5}
+        max={10}
+        step={0.1}
+        formatValue={(v) => v.toFixed(1)}
+        onChange={setCellSize}
         disabled={!enabled}
       />
     </>
