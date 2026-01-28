@@ -8,7 +8,7 @@
  * Provides helpers to resolve module uniforms (`getUniform`), sample/read/write scene
  * textures, and injects default vertex logic for instanced vs non-instanced fullscreen draws.
  */
-import type { FullscreenRenderPass, ComputeRenderPass } from "../../../module";
+import type { FullscreenRenderPass, ComputeRenderPass, GridSpec } from "../../../module";
 import { DataType } from "../../../module";
 import { ModuleUniformLayout } from "./program";
 
@@ -145,7 +145,8 @@ export function buildFullscreenPassWGSL<
   moduleName: string,
   layout: ModuleUniformLayout,
   moduleInputs: Record<keyof Inputs, DataType>,
-  clearColor: { r: number; g: number; b: number; a: number }
+  clearColor: { r: number; g: number; b: number; a: number },
+  grid?: { spec: GridSpec; bindingIndex: number }
 ): string {
   // build WGSL
   const struct = buildModuleUniformStruct(moduleName, layout);
@@ -217,6 +218,23 @@ export function buildFullscreenPassWGSL<
       ? `@group(0) @binding(5) var<storage, read> ${moduleName}_arrays: array<f32>;`
       : "";
 
+  const gridDecl =
+    grid
+      ? `@group(0) @binding(${grid.bindingIndex}) var<storage, read> grid_buffer: array<f32>;
+const GRID_WIDTH: u32 = ${grid.spec.width}u;
+const GRID_HEIGHT: u32 = ${grid.spec.height}u;
+const GRID_CHANNELS: u32 = ${
+  grid.spec.channels ??
+  (grid.spec.format === "vec2f" ? 2 : grid.spec.format === "vec4f" ? 4 : 1)
+}u;
+fn grid_index(x: i32, y: i32, c: u32) -> u32 {
+  let xx = max(0, min(x, i32(GRID_WIDTH) - 1));
+  let yy = max(0, min(y, i32(GRID_HEIGHT) - 1));
+  return (u32(yy) * GRID_WIDTH + u32(xx)) * GRID_CHANNELS + c;
+}
+fn grid_read(x: i32, y: i32, c: u32) -> f32 { return grid_buffer[grid_index(x, y, c)]; }`
+      : "";
+
   const code = `
 struct Particle {
   position: vec2<f32>, velocity: vec2<f32>, acceleration: vec2<f32>,
@@ -228,6 +246,7 @@ struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: v
 @group(0) @binding(1) var<uniform> render_uniforms: RenderUniforms;
 @group(0) @binding(2) var scene_texture: texture_2d<f32>;
 @group(0) @binding(3) var scene_sampler: sampler;
+${gridDecl}
 @vertex fn vs_main(@builtin(vertex_index) i: u32, @builtin(instance_index) inst: u32) -> VertexOutput {
   var out: VertexOutput;
   let qpos = array<vec2<f32>,4>(vec2<f32>(-1,-1),vec2<f32>(1,-1),vec2<f32>(-1,1),vec2<f32>(1,1));
@@ -273,7 +292,8 @@ export function buildComputeImagePassWGSL<
   layout: ModuleUniformLayout,
   moduleInputs: Record<keyof Inputs, DataType>,
   clearColor: { r: number; g: number; b: number; a: number },
-  workgroup: [number, number, number] = [8, 8, 1]
+  workgroup: [number, number, number] = [8, 8, 1],
+  grid?: { spec: GridSpec; bindingIndex: number }
 ): string {
   // struct and uniform lookup
   const struct = buildModuleUniformStruct(moduleName, layout);
@@ -298,6 +318,23 @@ export function buildComputeImagePassWGSL<
       ? `@group(0) @binding(3) var<storage, read> ${moduleName}_arrays: array<f32>;`
       : "";
 
+  const gridDecl =
+    grid
+      ? `@group(0) @binding(${grid.bindingIndex}) var<storage, read> grid_buffer: array<f32>;
+const GRID_WIDTH: u32 = ${grid.spec.width}u;
+const GRID_HEIGHT: u32 = ${grid.spec.height}u;
+const GRID_CHANNELS: u32 = ${
+  grid.spec.channels ??
+  (grid.spec.format === "vec2f" ? 2 : grid.spec.format === "vec4f" ? 4 : 1)
+}u;
+fn grid_index(x: i32, y: i32, c: u32) -> u32 {
+  let xx = max(0, min(x, i32(GRID_WIDTH) - 1));
+  let yy = max(0, min(y, i32(GRID_HEIGHT) - 1));
+  return (u32(yy) * GRID_WIDTH + u32(xx)) * GRID_CHANNELS + c;
+}
+fn grid_read(x: i32, y: i32, c: u32) -> f32 { return grid_buffer[grid_index(x, y, c)]; }`
+      : "";
+
   // kernel
   const kernelBody = pass.kernel({
     getUniform: getUniformForCompute<Inputs>(uniformExpr, clearColor),
@@ -312,6 +349,7 @@ export function buildComputeImagePassWGSL<
   const code = `
 @group(0) @binding(0) var input_texture: texture_2d<f32>;
 @group(0) @binding(1) var output_texture: texture_storage_2d<rgba8unorm, write>;
+${gridDecl}
 @compute @workgroup_size(${workgroup[0]}, ${workgroup[1]}, ${workgroup[2]})
 fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let coords = vec2<i32>(i32(gid.x), i32(gid.y));

@@ -71,6 +71,8 @@ export interface IEngine {
     radius: number,
     opts?: GetParticlesInRadiusOptions
   ): Promise<GetParticlesInRadiusResult>;
+  getGrid(moduleName: string): Promise<ArrayBufferView>;
+  setGrid(moduleName: string, data: ArrayBufferView): void;
   clear(): void;
   getCount(): number;
   getFPS(): number;
@@ -164,6 +166,7 @@ export abstract class AbstractEngine implements IEngine {
   protected maxParticles: number | null = null;
   protected view: View;
   protected modules: Module[];
+  protected gridModules: Module[];
   protected maxSize: number = 0;
   protected oscillatorManager: OscillatorManager;
 
@@ -171,13 +174,19 @@ export abstract class AbstractEngine implements IEngine {
     canvas: HTMLCanvasElement;
     forces: Module[];
     render: Module[];
+    grids?: Module[];
     constrainIterations?: number;
     clearColor?: { r: number; g: number; b: number; a: number };
     cellSize?: number;
     maxNeighbors?: number;
   }) {
     this.view = new View(options.canvas.width, options.canvas.height);
-    this.modules = [...options.forces, ...options.render];
+    this.gridModules = options.grids ?? [];
+    this.modules = [
+      ...options.forces,
+      ...options.render,
+      ...this.gridModules,
+    ];
     this.constrainIterations = options.constrainIterations ?? 5;
     this.clearColor = options.clearColor ?? { r: 0, g: 0, b: 0, a: 1 };
     this.cellSize = options.cellSize ?? 16;
@@ -206,6 +215,8 @@ export abstract class AbstractEngine implements IEngine {
   abstract setParticles(p: IParticle[]): void;
   abstract getParticles(): Promise<IParticle[]>;
   abstract getParticle(index: number): Promise<IParticle>;
+  abstract getGrid(moduleName: string): Promise<ArrayBufferView>;
+  abstract setGrid(moduleName: string, data: ArrayBufferView): void;
   abstract getParticlesInRadius(
     center: { x: number; y: number },
     radius: number,

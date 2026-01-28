@@ -19,6 +19,9 @@ import {
   Joints,
   Lines,
   Grab,
+  GameOfLifeGrid,
+  ReactionDiffusionGrid,
+  ElementaryCAGrid,
 } from "@cazala/party";
 import { useEngineInternal } from "../hooks/useEngineInternal";
 import { useWindowSize } from "../hooks/useWindowSize";
@@ -103,6 +106,9 @@ export interface EngineContextType {
   joints: Joints | null;
   lines: Lines | null;
   grab: Grab | null;
+  gameOfLife: GameOfLifeGrid | null;
+  reactionDiffusion: ReactionDiffusionGrid | null;
+  elementaryCa: ElementaryCAGrid | null;
 }
 
 export const EngineContext = createContext<EngineContextType | null>(null);

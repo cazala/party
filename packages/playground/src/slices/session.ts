@@ -63,6 +63,15 @@ import {
   setLinesEnabled,
   importGrabSettings,
   setGrabEnabled,
+  resetGameOfLife,
+  importGameOfLifeSettings,
+  setGameOfLifeEnabled,
+  resetReactionDiffusion,
+  importReactionDiffusionSettings,
+  setReactionDiffusionEnabled,
+  resetElementaryCA,
+  importElementaryCASettings,
+  setElementaryCAEnabled,
 } from "./modules";
 import { initReducer, selectInitState } from "./init";
 import { engineReducer } from "./engine";
@@ -150,6 +159,35 @@ const loadModuleSettings = (
       dispatch(importSensorsSettings(sessionData.modules.sensors));
     } else {
       dispatch(setSensorsEnabled(false));
+    }
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("gameOfLife")) {
+    dispatch(resetGameOfLife());
+    if (sessionData.modules?.gameOfLife) {
+      dispatch(importGameOfLifeSettings(sessionData.modules.gameOfLife));
+    } else {
+      dispatch(setGameOfLifeEnabled(false));
+    }
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("reactionDiffusion")) {
+    dispatch(resetReactionDiffusion());
+    if (sessionData.modules?.reactionDiffusion) {
+      dispatch(
+        importReactionDiffusionSettings(sessionData.modules.reactionDiffusion)
+      );
+    } else {
+      dispatch(setReactionDiffusionEnabled(false));
+    }
+  }
+
+  if (RESTART_AFFECTED_MODULES.includes("elementaryCa")) {
+    dispatch(resetElementaryCA());
+    if (sessionData.modules?.elementaryCa) {
+      dispatch(importElementaryCASettings(sessionData.modules.elementaryCa));
+    } else {
+      dispatch(setElementaryCAEnabled(false));
     }
   }
 
@@ -456,6 +494,29 @@ const applyFullSessionLoad = async (
     dispatch(importSensorsSettings(sessionData.modules.sensors));
   } else {
     dispatch(setSensorsEnabled(false));
+  }
+
+  dispatch(resetGameOfLife());
+  if (sessionData.modules?.gameOfLife) {
+    dispatch(importGameOfLifeSettings(sessionData.modules.gameOfLife));
+  } else {
+    dispatch(setGameOfLifeEnabled(false));
+  }
+
+  dispatch(resetReactionDiffusion());
+  if (sessionData.modules?.reactionDiffusion) {
+    dispatch(
+      importReactionDiffusionSettings(sessionData.modules.reactionDiffusion)
+    );
+  } else {
+    dispatch(setReactionDiffusionEnabled(false));
+  }
+
+  dispatch(resetElementaryCA());
+  if (sessionData.modules?.elementaryCa) {
+    dispatch(importElementaryCASettings(sessionData.modules.elementaryCa));
+  } else {
+    dispatch(setElementaryCAEnabled(false));
   }
 
   dispatch(resetJoints());

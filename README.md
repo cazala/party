@@ -8,6 +8,7 @@ A high-performance particle physics simulation system with interactive playgroun
 - **High Performance**: Spatial grid optimization, configurable workgroup sizes, and efficient neighbor queries
 - **Modular Force System**: Environment, boundary, collisions, behavior (flocking), fluid dynamics (SPH), sensors, joints, interaction, and grab modules
 - **Advanced Rendering**: Trails with decay/diffusion, particle instancing, line rendering, and multiple color modes
+- **Grid Simulations**: Built-in grid modules (Game of Life, reaction-diffusion, elementary cellular automata)
 - **Playground Sessions**: Save/load/share sessions (module settings, oscillators, and optional particles/joints)
 - **Real-time Oscillators**: Animate any module parameter with configurable frequency and bounds
 - **Interactive Playground**: React-based interface with undo/redo, hotkeys, and live parameter adjustment

@@ -9,7 +9,9 @@ This document explains the internal architecture of the core library for contrib
   - [`interfaces.ts`](../packages/core/src/interfaces.ts): `IEngine`, `IParticle`, `AbstractEngine` common logic (view, modules, config, oscillators, export/import, FPS)
   - [`module.ts`](../packages/core/src/module.ts): `Module` base class, `ModuleRole`, `DataType`, and uniform plumbing
   - [`modules/forces/*`](../packages/core/src/modules/forces/): built-in forces (environment, boundary, collisions, behavior, fluids, sensors, interaction, joints, grab)
+  - [`modules/grids/*`](../packages/core/src/modules/grids/): built-in grid simulations (Game of Life, reaction-diffusion, elementary CA)
   - [`modules/render/*`](../packages/core/src/modules/render/): built-in render modules (particles, trails, lines)
+  - [`grid/*`](../packages/core/src/grid/): shared grid geometry + `GridStore` utilities used by CPU + WebGPU
   - [`runtimes/cpu/*`](../packages/core/src/runtimes/cpu/): CPU engine and helpers (Canvas2D rendering, neighbor queries, descriptors)
   - [`runtimes/webgpu/*`](../packages/core/src/runtimes/webgpu/): WebGPU engine and builders (GPU resources, program/pipeline builders, spatial grid, shaders)
 
@@ -76,6 +78,41 @@ Parallels the WebGPU phases with pure TypeScript:
 - The base `Module` exposes `write()` to update inputs and `read()` to snapshot them; `setEnabled()` toggles an implicit `enabled` input
 - For force modules, both runtimes support the lifecycle hooks; render modules contribute render passes
 - Arrays are supported and surfaced in WGSL via `getLength()` and indexed `getUniform()` access
+
+### Grid modules and pipeline
+
+Grid modules (`ModuleRole.Grid`) are for simulations that live on a cell lattice (Conway, reaction-diffusion, cellular automata). They have their own storage and update pipeline, but can interoperate with particles.
+
+Key concepts:
+
+- `gridSpec` lives on the module and describes the lattice:
+  - `width`/`height` cell resolution.
+  - `format` determines channel count (e.g. `r`, `rg`, `rgba`). Storage is currently float for both runtimes.
+  - `wrapMode` controls addressing (`Clamp` or `Repeat`).
+- The engine holds one `GridStore` per grid module, with ping-pong buffers for read/write.
+- `getGrid(name)` / `setGrid(name, data)` is part of the public engine API.
+  - On WebGPU these perform GPU ↔ CPU transfers; avoid in hot paths.
+
+Pipeline timing:
+
+- CPU: grid steps run before particle simulation by default. Each module gets:
+  - `init` (optional one-time seed), `step` (per-frame update), `post` (optional correction).
+  - `render` callbacks can read the grid for Canvas2D drawing.
+- WebGPU: grid steps run in compute passes via `grid-pipeline.ts`:
+  - `init`/`step`/`post` are WGSL snippets per module.
+  - Each step ping-pongs read/write storage buffers.
+  - Grid modules can add render passes (fullscreen/compute) that bind grid buffers.
+
+Interop with particles:
+
+- `GridFieldForce` reads a grid field to apply per-particle forces.
+- `ParticleDepositGrid` writes particle data into a grid.
+- Interop modules must know which grid they target and attach its spec before WebGPU program build.
+
+Relation to the spatial grid:
+
+- The particle neighbor spatial grid is distinct from grid modules.
+- Both share `GridGeometry` helpers for world↔cell conversions to keep math consistent across runtimes.
 
 ### Built-in module notes
 
