@@ -178,6 +178,23 @@ Performance and correctness:
 - Avoid `getGrid()`/`setGrid()` in per-frame CPU hot paths on WebGPU (they trigger GPU ↔ CPU transfers).
 - Keep grid sizes reasonable; 512×512×4 floats is already ~4 MB per buffer, and grids are ping-ponged.
 
+### Particle ↔ grid interop modules
+
+Two built-in force modules act as the interop bridge between particles and grids:
+
+- `GridFieldForce`: samples a grid and applies a force to particles (e.g. flow fields, chemotaxis).
+- `ParticleDepositGrid`: writes particle data into a grid (e.g. density/ink/temperature deposits).
+
+Common real-world patterns:
+
+- **Agent chemotaxis**: agents deposit a field and steer up its gradient.
+- **Ink/smoke**: particles paint a grid and get pushed/repelled by its values.
+
+Authoring notes:
+
+- Interop modules must target a grid by name and attach its `gridSpec` before WebGPU program build.
+- Use these modules as templates if you’re authoring a custom particle↔grid coupling module.
+
 ### Arrays and large inputs
 
 - Declare array inputs with `DataType.ARRAY` (e.g., index lists for [`Lines`](../packages/core/src/modules/render/lines.ts)/[`Joints`](../packages/core/src/modules/forces/joints.ts)).

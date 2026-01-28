@@ -36,7 +36,8 @@ function cellKey(cx: number, cy: number) {
 const f32 = (v: number) => Math.fround(v);
 
 export function useBrushTool(isActive: boolean) {
-  const { engine, screenToWorld, zoom, addParticle } = useEngine();
+  const { engine, screenToWorld, zoom, addParticle, stampGridsAtWorldPositions } =
+    useEngine();
   const { particleSize, colors } = useInit();
   const { recordCommand } = useHistory();
 
@@ -215,6 +216,7 @@ export function useBrushTool(isActive: boolean) {
       const mass = pinned ? -1 : calculateMassFromSize(r);
 
       let spawned = 0;
+      const stamped: Array<{ x: number; y: number }> = [];
       // Safety cap to avoid freezing the UI with extremely tiny particles + large radius.
       // Still high enough to fill the circle for common settings (e.g. size=1, radius=200px).
       const MAX_SPAWN_PER_APPLY = truncatedQueryRef.current ? 4000 : 50000;
@@ -261,12 +263,21 @@ export function useBrushTool(isActive: boolean) {
           if (typeof createdIndex === "number" && createdIndex >= 0) {
             spawnedRef.current.push({ index: createdIndex, particle: p });
           }
+          stamped.push({ x: px, y });
 
           // Update index immediately so subsequent candidates/moves don't overlap.
           insertIntoIndex({ x: px, y, r });
           spawned++;
-          if (spawned >= MAX_SPAWN_PER_APPLY) return;
+          if (spawned >= MAX_SPAWN_PER_APPLY) {
+            if (stamped.length > 0) {
+              stampGridsAtWorldPositions(stamped);
+            }
+            return;
+          }
         }
+      }
+      if (stamped.length > 0) {
+        stampGridsAtWorldPositions(stamped);
       }
     },
     [
@@ -278,6 +289,7 @@ export function useBrushTool(isActive: boolean) {
       particleSize,
       overlapsAny,
       insertIntoIndex,
+      stampGridsAtWorldPositions,
     ]
   );
 

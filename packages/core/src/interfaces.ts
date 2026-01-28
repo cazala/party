@@ -78,6 +78,7 @@ export interface IEngine {
   getFPS(): number;
   export(): Record<string, Record<string, number>>;
   import(settings: Record<string, Record<string, number>>): void;
+  notifyModuleSettingsChanged(): void;
 
   // Configuration getters and setters
   getClearColor(): { r: number; g: number; b: number; a: number };
@@ -401,6 +402,10 @@ export abstract class AbstractEngine implements IEngine {
         module.write(moduleSettings);
       }
     }
+    this.onModuleSettingsChanged();
+  }
+
+  notifyModuleSettingsChanged(): void {
     this.onModuleSettingsChanged();
   }
 

@@ -44,6 +44,50 @@ export function createGridBuffer(spec: GridSpec, length?: number): GridBuffer {
   }
 }
 
+export function resampleGridBuffer(
+  source: ArrayBufferView,
+  sourceSpec: GridSpec,
+  targetSpec: GridSpec,
+  opts: { forceFloat?: boolean } = {}
+): GridBuffer | Float32Array {
+  const srcWidth = Math.max(1, sourceSpec.width);
+  const srcHeight = Math.max(1, sourceSpec.height);
+  const srcChannels = getGridChannelCount(sourceSpec);
+  const dstWidth = Math.max(1, targetSpec.width);
+  const dstHeight = Math.max(1, targetSpec.height);
+  const dstChannels = getGridChannelCount(targetSpec);
+
+  const dst = opts.forceFloat
+    ? new Float32Array(dstWidth * dstHeight * dstChannels)
+    : createGridBuffer(targetSpec, dstWidth * dstHeight * dstChannels);
+
+  const src = source as any;
+  const maxSrcX = Math.max(0, srcWidth - 1);
+  const maxSrcY = Math.max(0, srcHeight - 1);
+  const maxDstX = Math.max(1, dstWidth - 1);
+  const maxDstY = Math.max(1, dstHeight - 1);
+  const channelCopyCount = Math.min(srcChannels, dstChannels);
+
+  for (let y = 0; y < dstHeight; y++) {
+    const v = maxDstY === 0 ? 0 : y / maxDstY;
+    const sy = Math.min(maxSrcY, Math.max(0, Math.round(v * maxSrcY)));
+    for (let x = 0; x < dstWidth; x++) {
+      const u = maxDstX === 0 ? 0 : x / maxDstX;
+      const sx = Math.min(maxSrcX, Math.max(0, Math.round(u * maxSrcX)));
+      const srcBase = (sy * srcWidth + sx) * srcChannels;
+      const dstBase = (y * dstWidth + x) * dstChannels;
+      for (let c = 0; c < channelCopyCount; c++) {
+        (dst as any)[dstBase + c] = src[srcBase + c] ?? 0;
+      }
+      for (let c = channelCopyCount; c < dstChannels; c++) {
+        (dst as any)[dstBase + c] = 0;
+      }
+    }
+  }
+
+  return dst;
+}
+
 export class GridStore {
   readonly spec: GridSpec;
   readonly width: number;

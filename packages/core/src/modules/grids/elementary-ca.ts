@@ -8,17 +8,23 @@ import {
   CanvasComposition,
   type GridSpec,
 } from "../../module";
+import type { IParticle } from "../../interfaces";
+import type { ViewSnapshot } from "../../view";
 
 export type ElementaryCAInputs = {
   rule: number;
+  cellSize: number;
 };
 
 export const DEFAULT_ECA_RULE = 30;
+export const DEFAULT_ECA_CELL_SIZE = 2;
 
 export type ElementaryCAOptions = {
   width: number;
   height: number;
   rule?: number;
+  cellSize?: number;
+  followView?: boolean;
 };
 
 export class ElementaryCAGrid extends Module<"elementaryCA", ElementaryCAInputs> {
@@ -26,6 +32,7 @@ export class ElementaryCAGrid extends Module<"elementaryCA", ElementaryCAInputs>
   readonly role = ModuleRole.Grid;
   readonly inputs = {
     rule: DataType.NUMBER,
+    cellSize: DataType.NUMBER,
   } as const;
   readonly gridSpec: GridSpec;
   private renderCanvas?: HTMLCanvasElement;
@@ -39,15 +46,50 @@ export class ElementaryCAGrid extends Module<"elementaryCA", ElementaryCAInputs>
       height: options.height,
       format: "u8",
       wrap: "clamp",
+      cellSize: options.cellSize ?? DEFAULT_ECA_CELL_SIZE,
+      followView: options.followView ?? true,
     };
     this.write({
       rule: options.rule ?? DEFAULT_ECA_RULE,
+      cellSize: options.cellSize ?? DEFAULT_ECA_CELL_SIZE,
     });
+  }
+
+  private seedFromParticles(
+    particles: IParticle[],
+    view: ViewSnapshot,
+    buffer: Float32Array
+  ): boolean {
+    if (!particles || particles.length === 0) return false;
+    const width = this.gridSpec.width;
+    const height = this.gridSpec.height;
+    buffer.fill(0);
+    const centerX = view.width / 2;
+    for (const particle of particles) {
+      if (particle.mass === 0) continue;
+      const screenX = centerX + (particle.position.x - view.cx) * view.zoom;
+      const gx = Math.floor((screenX / view.width) * width);
+      if (gx < 0 || gx >= width) continue;
+      buffer[gx] = 1;
+    }
+    // Only seed the first row; remaining rows stay zero.
+    return true;
+  }
+
+  seedFromParticlesBuffer(
+    particles: IParticle[],
+    view: ViewSnapshot
+  ): Float32Array | null {
+    const total = this.gridSpec.width * this.gridSpec.height;
+    const buffer = new Float32Array(total);
+    return this.seedFromParticles(particles, view, buffer) ? buffer : null;
   }
 
   cpu(): CPUDescriptor<ElementaryCAInputs> {
     return {
-      init: ({ grid }) => {
+      init: ({ grid, particles, view }) => {
+        const buf = grid.writeBuffer as Float32Array;
+        if (this.seedFromParticles(particles, view, buf)) return;
         const width = grid.width;
         const height = grid.height;
         for (let y = 0; y < height; y++) {
@@ -158,6 +200,8 @@ if (y == 0) {
           {
             kind: RenderPassKind.Fullscreen,
             bindings: [],
+            instanced: false,
+            writesScene: true,
             fragment: () => `{
   let gx = i32(floor(frag_coord.x / render_uniforms.canvas_size.x * f32(GRID_WIDTH)));
   let gy = i32(floor(frag_coord.y / render_uniforms.canvas_size.y * f32(GRID_HEIGHT)));

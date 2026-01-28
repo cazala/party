@@ -91,6 +91,7 @@ export interface EngineContextType {
   isSupported: (module: any) => boolean;
   getCount: () => number;
   getFPS: () => number;
+  stampGridsAtWorldPositions: (positions: Array<{ x: number; y: number }>) => void;
 
   // Module references
   engine: Engine | null;

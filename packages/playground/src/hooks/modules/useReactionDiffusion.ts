@@ -11,12 +11,13 @@ import {
   setReactionDiffusionDiffusionA,
   setReactionDiffusionDiffusionB,
   setReactionDiffusionDt,
+  setReactionDiffusionCellSize,
   resetReactionDiffusion,
 } from "../../slices/modules/reactionDiffusion";
 
 export function useReactionDiffusion() {
   const dispatch = useAppDispatch();
-  const { reactionDiffusion } = useEngine();
+  const { reactionDiffusion, engine } = useEngine();
 
   const modulesState = useAppSelector(selectModules);
   const state = useMemo(
@@ -33,8 +34,10 @@ export function useReactionDiffusion() {
       diffusionA: state.diffusionA,
       diffusionB: state.diffusionB,
       dt: state.dt,
+      cellSize: state.cellSize,
     });
-  }, [reactionDiffusion, state]);
+    engine?.notifyModuleSettingsChanged?.();
+  }, [reactionDiffusion, engine, state]);
 
   const setEnabled = useCallback(
     (enabled: boolean) => {
@@ -83,6 +86,15 @@ export function useReactionDiffusion() {
     [dispatch, reactionDiffusion]
   );
 
+  const setCellSize = useCallback(
+    (value: number) => {
+      dispatch(setReactionDiffusionCellSize(value));
+      reactionDiffusion?.write({ cellSize: value });
+      engine?.notifyModuleSettingsChanged?.();
+    },
+    [dispatch, reactionDiffusion, engine]
+  );
+
   const reset = useCallback(() => {
     dispatch(resetReactionDiffusion());
   }, [dispatch]);
@@ -96,6 +108,7 @@ export function useReactionDiffusion() {
     setDiffusionA,
     setDiffusionB,
     setDt,
+    setCellSize,
     reset,
   };
 }

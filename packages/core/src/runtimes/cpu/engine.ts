@@ -17,7 +17,7 @@ import {
 import { SpatialGrid } from "./spatial-grid";
 import { Particle } from "../../particle";
 import { Vector } from "../../vector";
-import { GridStore } from "../../grid/store";
+import { GridStore, resampleGridBuffer } from "../../grid/store";
 
 export class CPUEngine extends AbstractEngine {
   private particles: Particle[] = [];
@@ -27,6 +27,8 @@ export class CPUEngine extends AbstractEngine {
   private particleIdToIndex: Map<number, number> = new Map();
   private gridStores: Map<string, GridStore> = new Map();
   private gridInitialized: Set<string> = new Set();
+  private lastGridResizeAt = 0;
+  private gridResizeCooldownMs = 150;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
@@ -272,6 +274,14 @@ export class CPUEngine extends AbstractEngine {
     // No additional state to update on CPU when max particles changes
   }
 
+  protected onModuleSettingsChanged(): void {
+    this.updateGridStoresForView();
+  }
+
+  protected onViewChanged(): void {
+    this.updateGridStoresForView();
+  }
+
   private animate = (): void => {
     const dt = this.getTimeDelta();
     this.updateFPS(dt);
@@ -334,6 +344,7 @@ export class CPUEngine extends AbstractEngine {
   private update(dt: number): void {
     const effectiveCount = this.getEffectiveCount();
 
+    this.updateGridStoresForView();
     this.stepGrids(dt);
     
     // Update spatial grid with current particle positions and camera
@@ -752,11 +763,16 @@ export class CPUEngine extends AbstractEngine {
   private setupGridStores(): void {
     this.gridStores.clear();
     this.gridInitialized.clear();
+    const view = this.view.getSnapshot();
     for (const module of this.gridModules) {
       if (module.role !== ModuleRole.Grid) continue;
       const spec = (module as unknown as { gridSpec?: GridSpec }).gridSpec;
       if (!spec) continue;
-      this.gridStores.set(module.name, new GridStore(spec));
+      const resolved = this.resolveGridSpec(spec, view);
+      if (resolved !== spec) {
+        (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+      }
+      this.gridStores.set(module.name, new GridStore(resolved));
     }
     for (const module of this.modules) {
       const attach = (module as unknown as { attachGridSpec?: (spec: GridSpec) => void }).attachGridSpec;
@@ -796,6 +812,8 @@ export class CPUEngine extends AbstractEngine {
           sample: (x: number, y: number, channel?: number) =>
             store.read(x, y, channel),
           grid: store,
+          particles: this.particles,
+          view: this.view.getSnapshot(),
         };
 
         if (!this.gridInitialized.has(module.name)) {
@@ -811,6 +829,104 @@ export class CPUEngine extends AbstractEngine {
           store.swap();
         }
       } catch (error) {}
+    }
+  }
+
+  private resolveGridSpec(
+    spec: GridSpec,
+    view: { width: number; height: number; zoom: number }
+  ) {
+    if (!spec.followView) return spec;
+    const cellSize = spec.cellSize;
+    if (!cellSize || cellSize <= 0) return spec;
+    const width = Math.max(1, Math.ceil(view.width / cellSize));
+    const height = Math.max(1, Math.ceil(view.height / cellSize));
+    if (
+      width === spec.width &&
+      height === spec.height &&
+      cellSize === spec.cellSize
+    ) {
+      return spec;
+    }
+    return { ...spec, width, height, cellSize };
+  }
+
+  private updateGridStoresForView(): void {
+    if (this.gridModules.length === 0) return;
+    const view = this.view.getSnapshot();
+    const now = performance.now();
+    const allowResize = now - this.lastGridResizeAt >= this.gridResizeCooldownMs;
+    let resized = false;
+    let specChanged = false;
+    for (const module of this.gridModules) {
+      if (module.role !== ModuleRole.Grid) continue;
+      const spec = (module as unknown as { gridSpec?: GridSpec }).gridSpec;
+      if (!spec) continue;
+      const input = module.read() as Record<string, number>;
+      const inputCellSize =
+        typeof input.cellSize === "number" && input.cellSize > 0
+          ? input.cellSize
+          : undefined;
+      const cellSizeChanged =
+        inputCellSize !== undefined && inputCellSize !== spec.cellSize;
+      const baseSpec = cellSizeChanged
+        ? { ...spec, cellSize: inputCellSize }
+        : spec;
+      if (!cellSizeChanged && !allowResize) continue;
+      const resolved = this.resolveGridSpec(baseSpec, view);
+      if (resolved === spec) continue;
+      const sizeChanged =
+        resolved.width !== spec.width || resolved.height !== spec.height;
+      if (cellSizeChanged) {
+        (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+        this.gridStores.set(module.name, new GridStore(resolved));
+        this.gridInitialized.delete(module.name);
+        resized = true;
+        continue;
+      }
+      if (!sizeChanged) {
+        (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+        const store = this.gridStores.get(module.name);
+        if (store) {
+          (store as any).spec = resolved;
+        }
+        specChanged = true;
+        continue;
+      }
+      const prev = this.gridStores.get(module.name);
+      const newStore = prev
+        ? (() => {
+            const buffer = resampleGridBuffer(prev.readBuffer, prev.spec, resolved);
+            const store = new GridStore(resolved);
+            (store.readBuffer as any).set(buffer as any);
+            (store.writeBuffer as any).set(buffer as any);
+            return store;
+          })()
+        : new GridStore(resolved);
+      (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+      this.gridStores.set(module.name, newStore);
+      if (prev) {
+        this.gridInitialized.add(module.name);
+      } else {
+        this.gridInitialized.delete(module.name);
+      }
+      resized = true;
+    }
+    if (!resized && !specChanged) return;
+    if (resized) {
+      this.lastGridResizeAt = now;
+    }
+    for (const module of this.modules) {
+      const attach = (module as unknown as {
+        attachGridSpec?: (spec: GridSpec) => void;
+      }).attachGridSpec;
+      const getName = (module as unknown as {
+        getGridModuleName?: () => string;
+      }).getGridModuleName;
+      if (!attach || !getName) continue;
+      const gridName = getName.call(module);
+      const store = this.gridStores.get(gridName);
+      if (store) attach.call(module, store.spec);
     }
   }
 }

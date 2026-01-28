@@ -9,12 +9,13 @@ import {
   setGameOfLifeBirthMask,
   setGameOfLifeSurviveMask,
   setGameOfLifeSeedDensity,
+  setGameOfLifeCellSize,
   resetGameOfLife,
 } from "../../slices/modules/gameOfLife";
 
 export function useGameOfLife() {
   const dispatch = useAppDispatch();
-  const { gameOfLife } = useEngine();
+  const { gameOfLife, engine } = useEngine();
 
   const modulesState = useAppSelector(selectModules);
   const state = useMemo(() => selectGameOfLife(modulesState), [modulesState]);
@@ -26,8 +27,10 @@ export function useGameOfLife() {
       birthMask: state.birthMask,
       surviveMask: state.surviveMask,
       seedDensity: state.seedDensity,
+      cellSize: state.cellSize,
     });
-  }, [gameOfLife, state]);
+    engine?.notifyModuleSettingsChanged?.();
+  }, [gameOfLife, engine, state]);
 
   const setEnabled = useCallback(
     (enabled: boolean) => {
@@ -60,6 +63,15 @@ export function useGameOfLife() {
     [dispatch, gameOfLife]
   );
 
+  const setCellSize = useCallback(
+    (value: number) => {
+      dispatch(setGameOfLifeCellSize(value));
+      gameOfLife?.write({ cellSize: value });
+      engine?.notifyModuleSettingsChanged?.();
+    },
+    [dispatch, gameOfLife, engine]
+  );
+
   const reset = useCallback(() => {
     dispatch(resetGameOfLife());
   }, [dispatch]);
@@ -71,6 +83,7 @@ export function useGameOfLife() {
     setBirthMask,
     setSurviveMask,
     setSeedDensity,
+    setCellSize,
     reset,
   };
 }

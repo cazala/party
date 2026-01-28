@@ -5,6 +5,7 @@ import {
   DEFAULT_RD_DIFFUSION_A,
   DEFAULT_RD_DIFFUSION_B,
   DEFAULT_RD_DT,
+  DEFAULT_RD_CELL_SIZE,
 } from "@cazala/party";
 
 export interface ReactionDiffusionModuleState {
@@ -14,6 +15,7 @@ export interface ReactionDiffusionModuleState {
   diffusionA: number;
   diffusionB: number;
   dt: number;
+  cellSize: number;
 }
 
 const initialState: ReactionDiffusionModuleState = {
@@ -23,6 +25,7 @@ const initialState: ReactionDiffusionModuleState = {
   diffusionA: DEFAULT_RD_DIFFUSION_A,
   diffusionB: DEFAULT_RD_DIFFUSION_B,
   dt: DEFAULT_RD_DT,
+  cellSize: DEFAULT_RD_CELL_SIZE,
 };
 
 export const reactionDiffusionSlice = createSlice({
@@ -47,6 +50,9 @@ export const reactionDiffusionSlice = createSlice({
     setReactionDiffusionDt: (state, action: PayloadAction<number>) => {
       state.dt = action.payload;
     },
+    setReactionDiffusionCellSize: (state, action: PayloadAction<number>) => {
+      state.cellSize = action.payload;
+    },
     resetReactionDiffusion: () => initialState,
     importReactionDiffusionSettings: (
       state,
@@ -64,6 +70,7 @@ export const {
   setReactionDiffusionDiffusionA,
   setReactionDiffusionDiffusionB,
   setReactionDiffusionDt,
+  setReactionDiffusionCellSize,
   resetReactionDiffusion,
   importReactionDiffusionSettings,
 } = reactionDiffusionSlice.actions;

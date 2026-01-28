@@ -133,7 +133,7 @@ export class ModuleRegistry {
    *  Includes any module that provides render passes in its descriptor, regardless of role.
    */
   getEnabledRenderModules(): Module[] {
-    return this.modules.filter((module, idx) => {
+    const renderables = this.modules.filter((module, idx) => {
       if (!module.isEnabled()) return false;
       const descriptor = this.modules[idx].webgpu() as
         | WebGPURenderDescriptor
@@ -144,6 +144,21 @@ export class ModuleRegistry {
           : (descriptor as WebGPURenderDescriptor).passes;
       return !!(passes && passes.length > 0);
     });
+
+    // Render grid modules first so particle passes overlay them.
+    const grids: Module[] = [];
+    const renders: Module[] = [];
+    const others: Module[] = [];
+    for (const module of renderables) {
+      if (module.role === ModuleRole.Grid) {
+        grids.push(module);
+      } else if (module.role === ModuleRole.Render) {
+        renders.push(module);
+      } else {
+        others.push(module);
+      }
+    }
+    return [...grids, ...renders, ...others];
   }
 
   /** Get all modules. */

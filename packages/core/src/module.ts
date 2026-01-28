@@ -1,5 +1,5 @@
 import { Particle } from "./particle";
-import { View } from "./view";
+import { View, type ViewSnapshot } from "./view";
 
 /**
  * Module descriptors and base Module class
@@ -450,6 +450,8 @@ export interface CPUGridDescriptor<
     write: (x: number, y: number, value: number | number[]) => void;
     sample: (x: number, y: number, channel?: number) => number;
     grid: GridStoreLike;
+    particles: Particle[];
+    view: ViewSnapshot;
   }) => void;
   step: (args: {
     input: Inputs;
@@ -460,6 +462,8 @@ export interface CPUGridDescriptor<
     write: (x: number, y: number, value: number | number[]) => void;
     sample: (x: number, y: number, channel?: number) => number;
     grid: GridStoreLike;
+    particles: Particle[];
+    view: ViewSnapshot;
   }) => void;
   post?: (args: {
     input: Inputs;
@@ -470,6 +474,8 @@ export interface CPUGridDescriptor<
     write: (x: number, y: number, value: number | number[]) => void;
     sample: (x: number, y: number, channel?: number) => number;
     grid: GridStoreLike;
+    particles: Particle[];
+    view: ViewSnapshot;
   }) => void;
   render?: CPURenderDescriptor<Inputs>;
 }

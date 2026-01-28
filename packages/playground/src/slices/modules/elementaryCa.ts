@@ -1,14 +1,16 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { DEFAULT_ECA_RULE } from "@cazala/party";
+import { DEFAULT_ECA_RULE, DEFAULT_ECA_CELL_SIZE } from "@cazala/party";
 
 export interface ElementaryCAModuleState {
   enabled: boolean;
   rule: number;
+  cellSize: number;
 }
 
 const initialState: ElementaryCAModuleState = {
   enabled: false,
   rule: DEFAULT_ECA_RULE,
+  cellSize: DEFAULT_ECA_CELL_SIZE,
 };
 
 export const elementaryCaSlice = createSlice({
@@ -20,6 +22,9 @@ export const elementaryCaSlice = createSlice({
     },
     setElementaryCARule: (state, action: PayloadAction<number>) => {
       state.rule = action.payload;
+    },
+    setElementaryCACellSize: (state, action: PayloadAction<number>) => {
+      state.cellSize = action.payload;
     },
     resetElementaryCA: () => initialState,
     importElementaryCASettings: (
@@ -34,6 +39,7 @@ export const elementaryCaSlice = createSlice({
 export const {
   setElementaryCAEnabled,
   setElementaryCARule,
+  setElementaryCACellSize,
   resetElementaryCA,
   importElementaryCASettings,
 } = elementaryCaSlice.actions;

@@ -6,9 +6,11 @@ export function GameOfLifeModule({ enabled = true }: { enabled?: boolean }) {
     birthMask,
     surviveMask,
     seedDensity,
+    cellSize,
     setBirthMask,
     setSurviveMask,
     setSeedDensity,
+    setCellSize,
   } = useGameOfLife();
 
   return (
@@ -44,6 +46,17 @@ export function GameOfLifeModule({ enabled = true }: { enabled?: boolean }) {
         step={0.01}
         formatValue={(v) => v.toFixed(2)}
         onChange={setSeedDensity}
+        disabled={!enabled}
+      />
+      <Slider
+        sliderId="gol.cellSize"
+        label="Cell Size"
+        value={cellSize}
+        min={0.5}
+        max={10}
+        step={0.1}
+        formatValue={(v) => v.toFixed(1)}
+        onChange={setCellSize}
         disabled={!enabled}
       />
     </>

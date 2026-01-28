@@ -8,21 +8,27 @@ import {
   CanvasComposition,
   type GridSpec,
 } from "../../module";
+import type { IParticle } from "../../interfaces";
+import type { ViewSnapshot } from "../../view";
 
 export type GameOfLifeInputs = {
   birthMask: number;
   surviveMask: number;
   seedDensity: number;
+  cellSize: number;
 };
 
 export const DEFAULT_GOL_BIRTH_MASK = 1 << 3;
 export const DEFAULT_GOL_SURVIVE_MASK = (1 << 2) | (1 << 3);
 export const DEFAULT_GOL_SEED_DENSITY = 0.15;
+export const DEFAULT_GOL_CELL_SIZE = 2;
 
 export type GameOfLifeOptions = {
   width: number;
   height: number;
   seedDensity?: number;
+  cellSize?: number;
+  followView?: boolean;
 };
 
 export class GameOfLifeGrid extends Module<"gameOfLife", GameOfLifeInputs> {
@@ -32,6 +38,7 @@ export class GameOfLifeGrid extends Module<"gameOfLife", GameOfLifeInputs> {
     birthMask: DataType.NUMBER,
     surviveMask: DataType.NUMBER,
     seedDensity: DataType.NUMBER,
+    cellSize: DataType.NUMBER,
   } as const;
   readonly gridSpec: GridSpec;
   private renderCanvas?: HTMLCanvasElement;
@@ -45,21 +52,57 @@ export class GameOfLifeGrid extends Module<"gameOfLife", GameOfLifeInputs> {
       height: options.height,
       format: "u8",
       wrap: "clamp",
+      cellSize: options.cellSize ?? DEFAULT_GOL_CELL_SIZE,
+      followView: options.followView ?? true,
     };
     this.write({
       birthMask: DEFAULT_GOL_BIRTH_MASK, // B3
       surviveMask: DEFAULT_GOL_SURVIVE_MASK, // S23
       seedDensity: options.seedDensity ?? DEFAULT_GOL_SEED_DENSITY,
+      cellSize: options.cellSize ?? DEFAULT_GOL_CELL_SIZE,
     });
+  }
+
+  private seedFromParticles(
+    particles: IParticle[],
+    view: ViewSnapshot,
+    buffer: Float32Array
+  ): boolean {
+    if (!particles || particles.length === 0) return false;
+    const width = this.gridSpec.width;
+    const height = this.gridSpec.height;
+    buffer.fill(0);
+    const centerX = view.width / 2;
+    const centerY = view.height / 2;
+    for (const particle of particles) {
+      if (particle.mass === 0) continue;
+      const screenX = centerX + (particle.position.x - view.cx) * view.zoom;
+      const screenY = centerY + (particle.position.y - view.cy) * view.zoom;
+      const gx = Math.floor((screenX / view.width) * width);
+      const gy = Math.floor((screenY / view.height) * height);
+      if (gx < 0 || gy < 0 || gx >= width || gy >= height) continue;
+      buffer[gy * width + gx] = 1;
+    }
+    return true;
+  }
+
+  seedFromParticlesBuffer(
+    particles: IParticle[],
+    view: ViewSnapshot
+  ): Float32Array | null {
+    const total = this.gridSpec.width * this.gridSpec.height;
+    const buffer = new Float32Array(total);
+    return this.seedFromParticles(particles, view, buffer) ? buffer : null;
   }
 
   cpu(): CPUDescriptor<GameOfLifeInputs> {
     return {
-      init: ({ grid, input }) => {
+      init: ({ grid, input, particles, view }) => {
+        const buf = grid.writeBuffer as Float32Array;
+        if (this.seedFromParticles(particles, view, buf)) return;
         const total = grid.width * grid.height;
         for (let i = 0; i < total; i++) {
-          (grid.writeBuffer as any)[i] =
-            Math.random() < input.seedDensity ? 1 : 0;
+          buf[i] = Math.random() < input.seedDensity ? 1 : 0;
         }
       },
       step: ({ grid, input }) => {
@@ -163,6 +206,8 @@ grid_write(x, y, 0u, f32(bit));
           {
             kind: RenderPassKind.Fullscreen,
             bindings: [],
+            instanced: false,
+            writesScene: true,
             fragment: () => `{
   let gx = i32(floor(frag_coord.x / render_uniforms.canvas_size.x * f32(GRID_WIDTH)));
   let gy = i32(floor(frag_coord.y / render_uniforms.canvas_size.y * f32(GRID_HEIGHT)));

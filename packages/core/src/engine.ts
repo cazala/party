@@ -287,6 +287,9 @@ export class Engine implements IEngine {
   import(settings: Record<string, Record<string, number>>): void {
     this.engine.import(settings);
   }
+  notifyModuleSettingsChanged(): void {
+    this.engine.notifyModuleSettingsChanged();
+  }
 
   // Configuration getters and setters
   getClearColor(): { r: number; g: number; b: number; a: number } {

@@ -295,17 +295,24 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           512,
           Math.max(64, Math.floor(canvasHeight))
         );
+        const gridCellSize = 2;
         const gameOfLife = new GameOfLifeGrid({
           width: gridWidth,
           height: gridHeight,
+          cellSize: gridCellSize,
+          followView: true,
         });
         const reactionDiffusion = new ReactionDiffusionGrid({
           width: gridWidth,
           height: gridHeight,
+          cellSize: gridCellSize,
+          followView: true,
         });
         const elementaryCa = new ElementaryCAGrid({
           width: gridWidth,
           height: gridHeight,
+          cellSize: gridCellSize,
+          followView: true,
         });
         gameOfLife.setEnabled(false);
         reactionDiffusion.setEnabled(false);
@@ -787,6 +794,118 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     return engineRef.current?.getFPS() || 0;
   }, []);
 
+  const gridStampQueueRef = useRef<Array<{ x: number; y: number }>>([]);
+  const gridStampScheduledRef = useRef(false);
+
+  const stampGridsAtWorldPositions = useCallback(
+    (positions: Array<{ x: number; y: number }>) => {
+      if (!positions.length) return;
+      gridStampQueueRef.current.push(...positions);
+      if (gridStampScheduledRef.current) return;
+      gridStampScheduledRef.current = true;
+      requestAnimationFrame(() => {
+        gridStampScheduledRef.current = false;
+        const queued = gridStampQueueRef.current.splice(
+          0,
+          gridStampQueueRef.current.length
+        );
+        if (queued.length === 0) return;
+        const engine = engineRef.current;
+        if (!engine || !engine.getGrid || !engine.setGrid) return;
+        const size = engine.getSize();
+        const camera = engine.getCamera();
+        const zoom = engine.getZoom();
+        const centerX = size.width / 2;
+        const centerY = size.height / 2;
+        const view = {
+          width: size.width,
+          height: size.height,
+          cx: camera.x,
+          cy: camera.y,
+          zoom,
+        };
+
+        const modules = [
+          gameOfLifeRef.current,
+          reactionDiffusionRef.current,
+          elementaryCaRef.current,
+        ].filter(Boolean) as Array<{
+          name: string;
+          gridSpec?: {
+            width: number;
+            height: number;
+            format: string;
+            channels?: number;
+          };
+          isEnabled?: () => boolean;
+        }>;
+
+        const stampModule = async (mod: {
+          name: string;
+          gridSpec?: {
+            width: number;
+            height: number;
+            format: string;
+            channels?: number;
+          };
+        }) => {
+          const spec = mod.gridSpec;
+          if (!spec) return;
+          const width = spec.width;
+          const height = spec.height;
+          if (width <= 0 || height <= 0) return;
+          const channels =
+            spec.channels ??
+            (spec.format === "vec2f" ? 2 : spec.format === "vec4f" ? 4 : 1);
+          let data: ArrayBufferView;
+          try {
+            data = await engine.getGrid(mod.name);
+          } catch {
+            return;
+          }
+          const buffer =
+            data instanceof Float32Array
+              ? data
+              : new Float32Array(
+                  data.buffer,
+                  data.byteOffset,
+                  data.byteLength / 4
+                );
+
+          for (const pos of queued) {
+            const screenX = centerX + (pos.x - view.cx) * view.zoom;
+            const screenY = centerY + (pos.y - view.cy) * view.zoom;
+            const gx = Math.floor((screenX / view.width) * width);
+            const gy = Math.floor((screenY / view.height) * height);
+            if (gx < 0 || gy < 0 || gx >= width || gy >= height) continue;
+
+            if (mod.name === "elementaryCA") {
+              const idx = gx;
+              buffer[idx] = 1;
+              continue;
+            }
+
+            const idx = (gy * width + gx) * channels;
+            if (mod.name === "reactionDiffusion" && channels >= 2) {
+              buffer[idx + 0] = 1;
+              buffer[idx + 1] = 1;
+            } else {
+              buffer[idx] = 1;
+            }
+          }
+
+          engine.setGrid(mod.name, buffer);
+        };
+
+        modules.forEach((mod) => {
+          if (mod.isEnabled && !mod.isEnabled()) return;
+          stampModule(mod);
+        });
+      });
+    },
+    []
+  );
+
   return {
     // State values (from Redux selectors)
     isAutoMode,
@@ -827,6 +946,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     isSupported,
     getCount,
     getFPS,
+    stampGridsAtWorldPositions,
 
     // Module references (direct access to engine instances)
     engine: engineRef.current,
