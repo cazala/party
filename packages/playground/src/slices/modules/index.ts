@@ -11,6 +11,15 @@ import { particlesReducer, ParticlesModuleState } from "./particles";
 import { jointsReducer, JointsModuleState } from "./joints";
 import { linesReducer, LinesModuleState } from "./lines";
 import { grabReducer, GrabModuleState } from "./grab";
+import { gameOfLifeReducer, GameOfLifeModuleState } from "./gameOfLife";
+import {
+  reactionDiffusionReducer,
+  ReactionDiffusionModuleState,
+} from "./reactionDiffusion";
+import {
+  elementaryCaReducer,
+  ElementaryCAModuleState,
+} from "./elementaryCa";
 
 // Re-export all module types
 export type {
@@ -26,6 +35,9 @@ export type {
   JointsModuleState,
   LinesModuleState,
   GrabModuleState,
+  GameOfLifeModuleState,
+  ReactionDiffusionModuleState,
+  ElementaryCAModuleState,
 };
 
 // Re-export all module actions and reducers
@@ -41,6 +53,9 @@ export * from "./particles";
 export * from "./joints";
 export * from "./lines";
 export * from "./grab";
+export * from "./gameOfLife";
+export * from "./reactionDiffusion";
+export * from "./elementaryCa";
 
 // Re-export combinedReducer for easier imports
 export interface ModulesState {
@@ -56,6 +71,9 @@ export interface ModulesState {
   joints: JointsModuleState;
   lines: LinesModuleState;
   grab: GrabModuleState;
+  gameOfLife: GameOfLifeModuleState;
+  reactionDiffusion: ReactionDiffusionModuleState;
+  elementaryCa: ElementaryCAModuleState;
 }
 
 export const modulesReducer = combineReducers({
@@ -71,6 +89,9 @@ export const modulesReducer = combineReducers({
   joints: jointsReducer,
   lines: linesReducer,
   grab: grabReducer,
+  gameOfLife: gameOfLifeReducer,
+  reactionDiffusion: reactionDiffusionReducer,
+  elementaryCa: elementaryCaReducer,
 });
 
 // Global selectors

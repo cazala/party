@@ -1,5 +1,5 @@
 import { Particle } from "./particle";
-import { View } from "./view";
+import { View, type ViewSnapshot } from "./view";
 
 /**
  * Module descriptors and base Module class
@@ -17,12 +17,47 @@ import { View } from "./view";
 export enum ModuleRole {
   Force = "force",
   Render = "render",
+  Grid = "grid",
 }
 
 export enum DataType {
   NUMBER = "number",
   ARRAY = "array",
 }
+
+export type GridFormat =
+  | "u8"
+  | "i8"
+  | "u16"
+  | "i16"
+  | "f16"
+  | "f32"
+  | "vec2f"
+  | "vec4f";
+
+export type GridWrapMode = "clamp" | "repeat" | "mirror";
+
+export type GridSpec = {
+  width: number;
+  height: number;
+  format: GridFormat;
+  channels?: 1 | 2 | 4;
+  cellSize?: number;
+  origin?: { x: number; y: number };
+  wrap?: GridWrapMode;
+  followView?: boolean;
+};
+
+export type GridStoreLike = {
+  spec: GridSpec;
+  width: number;
+  height: number;
+  channels: number;
+  readBuffer: ArrayBufferView;
+  writeBuffer: ArrayBufferView;
+  read: (x: number, y: number, channel?: number) => number;
+  index: (x: number, y: number, channel?: number) => number;
+};
 
 export abstract class Module<
   Name extends string = string,
@@ -158,6 +193,49 @@ export interface WebGPUForceDescriptor<
   }) => string;
 }
 
+export interface WebGPUGridDescriptor<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >
+> {
+  globals?: (args: {
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
+    getLength: (id: keyof Inputs) => string;
+  }) => string;
+  init?: (args: {
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
+    getLength: (id: keyof Inputs) => string;
+    gridRead: string;
+    gridWrite: string;
+    cellIndexVar: string;
+    cellCoordVar: string;
+    widthVar: string;
+    heightVar: string;
+  }) => string;
+  step: (args: {
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
+    getLength: (id: keyof Inputs) => string;
+    gridRead: string;
+    gridWrite: string;
+    cellIndexVar: string;
+    cellCoordVar: string;
+    widthVar: string;
+    heightVar: string;
+  }) => string;
+  post?: (args: {
+    getUniform: (id: keyof Inputs, index?: number | string) => string;
+    getLength: (id: keyof Inputs) => string;
+    gridRead: string;
+    gridWrite: string;
+    cellIndexVar: string;
+    cellCoordVar: string;
+    widthVar: string;
+    heightVar: string;
+  }) => string;
+  render?: WebGPURenderDescriptor<Inputs>;
+}
+
 export type FullscreenRenderPass<
   Inputs extends Record<string, number | number[]> = Record<
     string,
@@ -257,7 +335,10 @@ export type WebGPUDescriptor<
     number | number[]
   >,
   StateKeys extends string | number | symbol = string
-> = WebGPUForceDescriptor<Inputs, StateKeys> | WebGPURenderDescriptor<Inputs>;
+> =
+  | WebGPUForceDescriptor<Inputs, StateKeys>
+  | WebGPURenderDescriptor<Inputs>
+  | WebGPUGridDescriptor<Inputs>;
 
 export interface CPUForceDescriptor<
   Inputs extends Record<string, number | number[]> = Record<
@@ -285,6 +366,7 @@ export interface CPUForceDescriptor<
       width: number,
       height: number
     ) => ImageData | null;
+    getGrid?: (moduleName: string) => GridStoreLike | undefined;
   }) => void;
   apply?: (args: {
     particle: Particle;
@@ -305,6 +387,7 @@ export interface CPUForceDescriptor<
       width: number,
       height: number
     ) => ImageData | null;
+    getGrid?: (moduleName: string) => GridStoreLike | undefined;
   }) => void;
   constrain?: (args: {
     particle: Particle;
@@ -325,6 +408,7 @@ export interface CPUForceDescriptor<
       width: number,
       height: number
     ) => ImageData | null;
+    getGrid?: (moduleName: string) => GridStoreLike | undefined;
   }) => void;
   correct?: (args: {
     particle: Particle;
@@ -347,7 +431,53 @@ export interface CPUForceDescriptor<
       width: number,
       height: number
     ) => ImageData | null;
+    getGrid?: (moduleName: string) => GridStoreLike | undefined;
   }) => void;
+}
+
+export interface CPUGridDescriptor<
+  Inputs extends Record<string, number | number[]> = Record<
+    string,
+    number | number[]
+  >
+> {
+  init?: (args: {
+    input: Inputs;
+    dt: number;
+    width: number;
+    height: number;
+    read: (x: number, y: number, channel?: number) => number;
+    write: (x: number, y: number, value: number | number[]) => void;
+    sample: (x: number, y: number, channel?: number) => number;
+    grid: GridStoreLike;
+    particles: Particle[];
+    view: ViewSnapshot;
+  }) => void;
+  step: (args: {
+    input: Inputs;
+    dt: number;
+    width: number;
+    height: number;
+    read: (x: number, y: number, channel?: number) => number;
+    write: (x: number, y: number, value: number | number[]) => void;
+    sample: (x: number, y: number, channel?: number) => number;
+    grid: GridStoreLike;
+    particles: Particle[];
+    view: ViewSnapshot;
+  }) => void;
+  post?: (args: {
+    input: Inputs;
+    dt: number;
+    width: number;
+    height: number;
+    read: (x: number, y: number, channel?: number) => number;
+    write: (x: number, y: number, value: number | number[]) => void;
+    sample: (x: number, y: number, channel?: number) => number;
+    grid: GridStoreLike;
+    particles: Particle[];
+    view: ViewSnapshot;
+  }) => void;
+  render?: CPURenderDescriptor<Inputs>;
 }
 
 export interface CPURenderUtils {
@@ -393,6 +523,7 @@ export interface CPURenderDescriptor<
     clearColor: { r: number; g: number; b: number; a: number };
     utils: CPURenderUtils;
     particles: Particle[];
+    grid?: GridStoreLike;
   }) => void;
 
   // Optional per-particle rendering (called for each visible particle with transformed coordinates)
@@ -404,6 +535,7 @@ export interface CPURenderDescriptor<
     screenSize: number;
     input: Inputs;
     utils: CPURenderUtils;
+    grid?: GridStoreLike;
   }) => void;
 
   // Optional teardown phase (called once per frame after all particles)
@@ -411,6 +543,7 @@ export interface CPURenderDescriptor<
     context: CanvasRenderingContext2D;
     input: Inputs;
     utils: CPURenderUtils;
+    grid?: GridStoreLike;
   }) => void;
 }
 
@@ -420,4 +553,7 @@ export type CPUDescriptor<
     number | number[]
   >,
   StateKeys extends string | number | symbol = string
-> = CPUForceDescriptor<Inputs, StateKeys> | CPURenderDescriptor<Inputs>;
+> =
+  | CPUForceDescriptor<Inputs, StateKeys>
+  | CPURenderDescriptor<Inputs>
+  | CPUGridDescriptor<Inputs>;

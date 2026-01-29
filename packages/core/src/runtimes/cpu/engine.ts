@@ -11,10 +11,13 @@ import {
   CanvasComposition,
   CPURenderDescriptor,
   CPUForceDescriptor,
+  CPUGridDescriptor,
+  GridSpec,
 } from "../../module";
 import { SpatialGrid } from "./spatial-grid";
 import { Particle } from "../../particle";
 import { Vector } from "../../vector";
+import { GridStore, resampleGridBuffer } from "../../grid/store";
 
 export class CPUEngine extends AbstractEngine {
   private particles: Particle[] = [];
@@ -22,11 +25,16 @@ export class CPUEngine extends AbstractEngine {
   private grid: SpatialGrid;
   private animationId: number | null = null;
   private particleIdToIndex: Map<number, number> = new Map();
+  private gridStores: Map<string, GridStore> = new Map();
+  private gridInitialized: Set<string> = new Set();
+  private lastGridResizeAt = 0;
+  private gridResizeCooldownMs = 150;
 
   constructor(options: {
     canvas: HTMLCanvasElement;
     forces: Module[];
     render: Module[];
+    grids?: Module[];
     constrainIterations?: number;
     clearColor?: { r: number; g: number; b: number; a: number };
     cellSize?: number;
@@ -41,6 +49,7 @@ export class CPUEngine extends AbstractEngine {
   }
 
   initialize(): Promise<void> {
+    this.setupGridStores();
     return Promise.resolve();
   }
 
@@ -97,6 +106,11 @@ export class CPUEngine extends AbstractEngine {
     // Reset maxSize tracking
     this.resetMaxSize();
     this.particleIdToIndex.clear();
+    for (const store of this.gridStores.values()) {
+      (store.readBuffer as any).fill(0);
+      (store.writeBuffer as any).fill(0);
+    }
+    this.gridInitialized.clear();
   }
 
   getCount(): number {
@@ -157,6 +171,30 @@ export class CPUEngine extends AbstractEngine {
 
   getParticle(index: number): Promise<IParticle> {
     return Promise.resolve(this.particles[index]);
+  }
+
+  getGrid(moduleName: string): Promise<ArrayBufferView> {
+    const store = this.gridStores.get(moduleName);
+    if (!store) {
+      return Promise.reject(new Error(`Grid module not found: ${moduleName}`));
+    }
+    const buffer = store.readBuffer as any;
+    return Promise.resolve(buffer.slice ? buffer.slice() : buffer);
+  }
+
+  setGrid(moduleName: string, data: ArrayBufferView): void {
+    const store = this.gridStores.get(moduleName);
+    if (!store) return;
+    const target = store.readBuffer as any;
+    const src = data as any;
+    const len = Math.min(target.length ?? 0, src.length ?? 0);
+    for (let i = 0; i < len; i++) {
+      target[i] = src[i];
+    }
+    const targetWrite = store.writeBuffer as any;
+    for (let i = 0; i < len; i++) {
+      targetWrite[i] = src[i];
+    }
   }
 
   async getParticlesInRadius(
@@ -236,6 +274,14 @@ export class CPUEngine extends AbstractEngine {
     // No additional state to update on CPU when max particles changes
   }
 
+  protected onModuleSettingsChanged(): void {
+    this.updateGridStoresForView();
+  }
+
+  protected onViewChanged(): void {
+    this.updateGridStoresForView();
+  }
+
   private animate = (): void => {
     const dt = this.getTimeDelta();
     this.updateFPS(dt);
@@ -297,6 +343,9 @@ export class CPUEngine extends AbstractEngine {
 
   private update(dt: number): void {
     const effectiveCount = this.getEffectiveCount();
+
+    this.updateGridStoresForView();
+    this.stepGrids(dt);
     
     // Update spatial grid with current particle positions and camera
     this.grid.setCamera(
@@ -368,6 +417,7 @@ export class CPUEngine extends AbstractEngine {
                 index: pi,
                 particles: this.particles,
                 getImageData,
+                getGrid: (name: string) => this.gridStores.get(name),
               });
             }
           }
@@ -409,6 +459,7 @@ export class CPUEngine extends AbstractEngine {
                 index: pi,
                 particles: this.particles,
                 getImageData,
+                getGrid: (name: string) => this.gridStores.get(name),
               });
             }
           }
@@ -467,6 +518,7 @@ export class CPUEngine extends AbstractEngine {
                   index: pi,
                   particles: this.particles,
                   getImageData,
+                  getGrid: (name: string) => this.gridStores.get(name),
                 });
               }
             }
@@ -521,6 +573,7 @@ export class CPUEngine extends AbstractEngine {
                 index,
                 particles: this.particles,
                 getImageData,
+                getGrid: (name: string) => this.gridStores.get(name),
               });
             }
           }
@@ -582,25 +635,38 @@ export class CPUEngine extends AbstractEngine {
 
     // Check composition requirements of enabled render modules
     const hasBackgroundHandler = this.modules.some((module) => {
-      if (!module.isEnabled() || module.role !== ModuleRole.Render)
-        return false;
-      const descriptor = module.cpu() as CPURenderDescriptor;
-      return descriptor.composition === CanvasComposition.HandlesBackground;
+      if (!module.isEnabled()) return false;
+      const descriptor =
+        module.role === ModuleRole.Render
+          ? (module.cpu() as CPURenderDescriptor)
+          : module.role === ModuleRole.Grid
+            ? (module.cpu() as CPUGridDescriptor).render
+            : undefined;
+      return descriptor?.composition === CanvasComposition.HandlesBackground;
     });
 
     // Determine if there are any enabled renderers
-    const hasEnabledRenderer = this.modules.some(
-      (module) => module.isEnabled() && module.role === ModuleRole.Render
-    );
+    const hasEnabledRenderer = this.modules.some((module) => {
+      if (!module.isEnabled()) return false;
+      if (module.role === ModuleRole.Render) return true;
+      if (module.role === ModuleRole.Grid) {
+        return !!(module.cpu() as CPUGridDescriptor).render;
+      }
+      return false;
+    });
 
     // Only clear canvas if no module handles background AND either some module requires clearing
     // or there are no enabled renderers (to avoid leaving a stale frame on canvas)
     if (!hasBackgroundHandler) {
       const needsClearing = this.modules.some((module) => {
-        if (!module.isEnabled() || module.role !== ModuleRole.Render)
-          return false;
-        const descriptor = module.cpu() as CPURenderDescriptor;
-        return descriptor.composition === CanvasComposition.RequiresClear;
+        if (!module.isEnabled()) return false;
+        const descriptor =
+          module.role === ModuleRole.Render
+            ? (module.cpu() as CPURenderDescriptor)
+            : module.role === ModuleRole.Grid
+              ? (module.cpu() as CPUGridDescriptor).render
+              : undefined;
+        return descriptor?.composition === CanvasComposition.RequiresClear;
       });
 
       if (needsClearing || !hasEnabledRenderer) {
@@ -615,9 +681,15 @@ export class CPUEngine extends AbstractEngine {
       try {
         // Skip disabled modules
         if (!module.isEnabled()) continue;
-        if (module.role === ModuleRole.Render) {
-          const descriptor = module.cpu() as CPURenderDescriptor;
-          const render = descriptor;
+        const isGridModule = module.role === ModuleRole.Grid;
+        const renderDescriptor =
+          module.role === ModuleRole.Render
+            ? (module.cpu() as CPURenderDescriptor)
+            : module.role === ModuleRole.Grid
+              ? (module.cpu() as CPUGridDescriptor).render
+              : undefined;
+        if (renderDescriptor) {
+          const render = renderDescriptor;
           // input
           const input: Record<string, number | number[]> = {};
           for (const key of Object.keys(module.inputs)) {
@@ -626,6 +698,7 @@ export class CPUEngine extends AbstractEngine {
           }
           // Always add enabled
           input.enabled = module.isEnabled() ? 1 : 0;
+          const gridStore = isGridModule ? this.gridStores.get(module.name) : undefined;
 
           // Setup phase
           render.setup?.({
@@ -635,40 +708,44 @@ export class CPUEngine extends AbstractEngine {
             clearColor: this.clearColor,
             utils,
             particles: this.particles,
+            grid: gridStore,
           });
 
-          // Render each visible particle
-          const effectiveCount = this.getEffectiveCount();
-          for (let i = 0; i < effectiveCount; i++) {
-            const particle = this.particles[i];
-            if (particle.mass == 0) continue;
+          if (!isGridModule) {
+            // Render each visible particle
+            const effectiveCount = this.getEffectiveCount();
+            for (let i = 0; i < effectiveCount; i++) {
+              const particle = this.particles[i];
+              if (particle.mass == 0) continue;
 
-            // Transform world position to screen position
-            const worldX = (particle.position.x - camera.x) * zoom;
-            const worldY = (particle.position.y - camera.y) * zoom;
-            const screenX = centerX + worldX;
-            const screenY = centerY + worldY;
-            const screenSize = particle.size * zoom;
+              // Transform world position to screen position
+              const worldX = (particle.position.x - camera.x) * zoom;
+              const worldY = (particle.position.y - camera.y) * zoom;
+              const screenX = centerX + worldX;
+              const screenY = centerY + worldY;
+              const screenSize = particle.size * zoom;
 
-            // Skip rendering if particle is outside canvas bounds (culling)
-            if (
-              screenX + screenSize < 0 ||
-              screenX - screenSize > size.width ||
-              screenY + screenSize < 0 ||
-              screenY - screenSize > size.height
-            ) {
-              continue;
+              // Skip rendering if particle is outside canvas bounds (culling)
+              if (
+                screenX + screenSize < 0 ||
+                screenX - screenSize > size.width ||
+                screenY + screenSize < 0 ||
+                screenY - screenSize > size.height
+              ) {
+                continue;
+              }
+
+              render.render?.({
+                context,
+                particle,
+                screenX,
+                screenY,
+                screenSize,
+                input,
+                utils,
+                grid: gridStore,
+              });
             }
-
-            render.render?.({
-              context,
-              particle,
-              screenX,
-              screenY,
-              screenSize,
-              input,
-              utils,
-            });
           }
 
           // Teardown phase
@@ -676,9 +753,180 @@ export class CPUEngine extends AbstractEngine {
             context,
             input,
             utils,
+            grid: gridStore,
           });
         }
       } catch (error) {}
+    }
+  }
+
+  private setupGridStores(): void {
+    this.gridStores.clear();
+    this.gridInitialized.clear();
+    const view = this.view.getSnapshot();
+    for (const module of this.gridModules) {
+      if (module.role !== ModuleRole.Grid) continue;
+      const spec = (module as unknown as { gridSpec?: GridSpec }).gridSpec;
+      if (!spec) continue;
+      const resolved = this.resolveGridSpec(spec, view);
+      if (resolved !== spec) {
+        (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+      }
+      this.gridStores.set(module.name, new GridStore(resolved));
+    }
+    for (const module of this.modules) {
+      const attach = (module as unknown as { attachGridSpec?: (spec: GridSpec) => void }).attachGridSpec;
+      const getName = (module as unknown as { getGridModuleName?: () => string }).getGridModuleName;
+      if (!attach || !getName) continue;
+      const gridName = getName.call(module);
+      const store = this.gridStores.get(gridName);
+      if (store) attach.call(module, store.spec);
+    }
+  }
+
+  private stepGrids(dt: number): void {
+    for (const module of this.gridModules) {
+      try {
+        if (!module.isEnabled()) continue;
+        if (module.role !== ModuleRole.Grid) continue;
+        const descriptor = module.cpu() as CPUGridDescriptor;
+        if (!descriptor || !descriptor.step) continue;
+        const store = this.gridStores.get(module.name);
+        if (!store) continue;
+        const input: Record<string, number | number[]> = {};
+        for (const key of Object.keys(module.inputs)) {
+          const value = module.read()[key];
+          input[key] = value ?? 0;
+        }
+        input.enabled = module.isEnabled() ? 1 : 0;
+
+        const ctx = {
+          input: input as any,
+          dt,
+          width: store.width,
+          height: store.height,
+          read: (x: number, y: number, channel?: number) =>
+            store.read(x, y, channel),
+          write: (x: number, y: number, value: number | number[]) =>
+            store.write(x, y, value),
+          sample: (x: number, y: number, channel?: number) =>
+            store.read(x, y, channel),
+          grid: store,
+          particles: this.particles,
+          view: this.view.getSnapshot(),
+        };
+
+        if (!this.gridInitialized.has(module.name)) {
+          descriptor.init?.(ctx);
+          store.swap();
+          this.gridInitialized.add(module.name);
+        }
+
+        descriptor.step(ctx);
+        store.swap();
+        if (descriptor.post) {
+          descriptor.post(ctx);
+          store.swap();
+        }
+      } catch (error) {}
+    }
+  }
+
+  private resolveGridSpec(
+    spec: GridSpec,
+    view: { width: number; height: number; zoom: number }
+  ) {
+    if (!spec.followView) return spec;
+    const cellSize = spec.cellSize;
+    if (!cellSize || cellSize <= 0) return spec;
+    const width = Math.max(1, Math.ceil(view.width / cellSize));
+    const height = Math.max(1, Math.ceil(view.height / cellSize));
+    if (
+      width === spec.width &&
+      height === spec.height &&
+      cellSize === spec.cellSize
+    ) {
+      return spec;
+    }
+    return { ...spec, width, height, cellSize };
+  }
+
+  private updateGridStoresForView(): void {
+    if (this.gridModules.length === 0) return;
+    const view = this.view.getSnapshot();
+    const now = performance.now();
+    const allowResize = now - this.lastGridResizeAt >= this.gridResizeCooldownMs;
+    let resized = false;
+    let specChanged = false;
+    for (const module of this.gridModules) {
+      if (module.role !== ModuleRole.Grid) continue;
+      const spec = (module as unknown as { gridSpec?: GridSpec }).gridSpec;
+      if (!spec) continue;
+      const input = module.read() as Record<string, number>;
+      const inputCellSize =
+        typeof input.cellSize === "number" && input.cellSize > 0
+          ? input.cellSize
+          : undefined;
+      const cellSizeChanged =
+        inputCellSize !== undefined && inputCellSize !== spec.cellSize;
+      const baseSpec = cellSizeChanged
+        ? { ...spec, cellSize: inputCellSize }
+        : spec;
+      if (!cellSizeChanged && !allowResize) continue;
+      const resolved = this.resolveGridSpec(baseSpec, view);
+      if (resolved === spec) continue;
+      const sizeChanged =
+        resolved.width !== spec.width || resolved.height !== spec.height;
+      if (cellSizeChanged) {
+        (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+        this.gridStores.set(module.name, new GridStore(resolved));
+        this.gridInitialized.delete(module.name);
+        resized = true;
+        continue;
+      }
+      if (!sizeChanged) {
+        (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+        const store = this.gridStores.get(module.name);
+        if (store) {
+          (store as any).spec = resolved;
+        }
+        specChanged = true;
+        continue;
+      }
+      const prev = this.gridStores.get(module.name);
+      const newStore = prev
+        ? (() => {
+            const buffer = resampleGridBuffer(prev.readBuffer, prev.spec, resolved);
+            const store = new GridStore(resolved);
+            (store.readBuffer as any).set(buffer as any);
+            (store.writeBuffer as any).set(buffer as any);
+            return store;
+          })()
+        : new GridStore(resolved);
+      (module as unknown as { gridSpec?: GridSpec }).gridSpec = resolved;
+      this.gridStores.set(module.name, newStore);
+      if (prev) {
+        this.gridInitialized.add(module.name);
+      } else {
+        this.gridInitialized.delete(module.name);
+      }
+      resized = true;
+    }
+    if (!resized && !specChanged) return;
+    if (resized) {
+      this.lastGridResizeAt = now;
+    }
+    for (const module of this.modules) {
+      const attach = (module as unknown as {
+        attachGridSpec?: (spec: GridSpec) => void;
+      }).attachGridSpec;
+      const getName = (module as unknown as {
+        getGridModuleName?: () => string;
+      }).getGridModuleName;
+      if (!attach || !getName) continue;
+      const gridName = getName.call(module);
+      const store = this.gridStores.get(gridName);
+      if (store) attach.call(module, store.spec);
     }
   }
 }

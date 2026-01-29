@@ -1,9 +1,10 @@
 ## Module Author Guide
 
-This guide explains how to build your own modules for the engine. There are two public roles you can implement:
+This guide explains how to build your own modules for the engine. There are three public roles you can implement:
 
 - **Force**: runs in the simulation pipeline; can add to `acceleration`/`velocity` and perform constraints/corrections
 - **Render**: runs in the rendering pipeline; can draw fullscreen, draw per-instance quads, or compute over the scene texture
+- **Grid**: runs in the grid pipeline; updates a 2D cell field and may render directly
 
 Modules should support both runtimes when possible:
 
@@ -17,7 +18,7 @@ If you only implement one runtime, the other will be unsupported on that module.
 Create a TypeScript class extending `Module<Name, Inputs, StateKeys?>` and declare:
 
 - `name`: string literal, globally unique
-- `role`: `ModuleRole.Force` or `ModuleRole.Render`
+- `role`: `ModuleRole.Force`, `ModuleRole.Render`, or `ModuleRole.Grid`
 - `inputs`: a map of input names to `DataType.NUMBER` or `DataType.ARRAY`
 
 The base class provides:
@@ -132,6 +133,67 @@ Examples in core:
 - [`Particles`](../packages/core/src/modules/render/particles.ts): fullscreen draw of instanced particles; custom color and hue modes; ring style for pinned particles
 - [`Trails`](../packages/core/src/modules/render/trails.ts): compute-like two-pass effect (decay + blur) or canvas equivalents on CPU
 - [`Lines`](../packages/core/src/modules/render/lines.ts): instanced line quads on GPU, stroke lines on CPU
+
+### Grid modules
+
+Grid modules simulate 2D cellular fields (Game of Life, reaction-diffusion, etc.). They declare a `gridSpec` and implement grid lifecycle hooks:
+
+- `init` (optional): initialize grid state
+- `step` (required): advance grid state
+- `post` (optional): post-process
+- `render` (optional): render to the scene (fullscreen or compute pass)
+
+CPU descriptor: `CPUGridDescriptor`  
+WebGPU descriptor: `WebGPUGridDescriptor`
+
+Grid modules should set:
+
+- `role = ModuleRole.Grid`
+- `gridSpec` with:
+  - `width`/`height`: cell resolution
+  - `format`: channel layout (`r`, `rg`, or `rgba`) stored as floats
+  - `wrapMode`: `Clamp` or `Repeat` (addressing at edges)
+
+The engine provides read/write buffers with ping-pong swap semantics.
+
+CPU grid authoring:
+
+- The `step` callback receives typed arrays for `read` and `write`. Treat them as flat arrays where channels are packed per cell.
+- The `render` callback (if present) receives the `GridStore` so you can sample cells for Canvas2D drawing.
+
+WebGPU grid authoring:
+
+- The grid pipeline emits helper accessors to read/write grid cells using the module name.
+- `init`/`step`/`post` are WGSL snippets executed in a compute pass that matches grid dimensions.
+- Render passes can bind grid buffers; use the provided helpers to sample.
+
+Interop with particles:
+
+- If you want particles to read a grid, use `GridFieldForce` as a reference.
+- If you want particles to write into a grid, use `ParticleDepositGrid` as a reference.
+- Interop modules should expose a way to attach the target grid spec before WebGPU program build.
+
+Performance and correctness:
+
+- Avoid `getGrid()`/`setGrid()` in per-frame CPU hot paths on WebGPU (they trigger GPU ↔ CPU transfers).
+- Keep grid sizes reasonable; 512×512×4 floats is already ~4 MB per buffer, and grids are ping-ponged.
+
+### Particle ↔ grid interop modules
+
+Two built-in force modules act as the interop bridge between particles and grids:
+
+- `GridFieldForce`: samples a grid and applies a force to particles (e.g. flow fields, chemotaxis).
+- `ParticleDepositGrid`: writes particle data into a grid (e.g. density/ink/temperature deposits).
+
+Common real-world patterns:
+
+- **Agent chemotaxis**: agents deposit a field and steer up its gradient.
+- **Ink/smoke**: particles paint a grid and get pushed/repelled by its values.
+
+Authoring notes:
+
+- Interop modules must target a grid by name and attach its `gridSpec` before WebGPU program build.
+- Use these modules as templates if you’re authoring a custom particle↔grid coupling module.
 
 ### Arrays and large inputs
 
