@@ -172,47 +172,23 @@ engine.play();
 
 ### Engine Runtime Selection
 
-```mermaid
-flowchart LR
-  A["new Engine({...})"] --> B{"runtime option"}
-  B -->|webgpu| C["Initialize WebGPU runtime"]
-  B -->|cpu| D["Initialize CPU runtime"]
-  B -->|auto| E["Try WebGPU first"]
-  E --> F{"WebGPU initialize() succeeds?"}
-  F -->|yes| C
-  F -->|no| D
-  C --> G["Use unified Engine API"]
-  D --> G
-```
+Runtime behavior is straightforward:
 
-- `auto` fallback happens at `initialize()` time.
-- After initialization, the same Engine API is used regardless of runtime.
+- `runtime: "webgpu"`: use the WebGPU runtime.
+- `runtime: "cpu"`: use the CPU runtime.
+- `runtime: "auto"`: try WebGPU first during `initialize()`, then fall back to CPU if WebGPU initialization fails.
+
+After initialization, you use the same `Engine` API regardless of which runtime is active.
 
 ### Module System
 
-```mermaid
-flowchart TD
-  A["Engine frame loop"] --> B["Force modules"]
-  A --> C["Grid modules"]
-  A --> D["Render modules"]
+The engine runs modules by role each frame:
 
-  B --> B1["state"]
-  B1 --> B2["apply"]
-  B2 --> B3["constrain (iterative)"]
-  B3 --> B4["correct"]
+- **Force modules** update simulation state using the force lifecycle (`state` → `apply` → `constrain` → `correct`).
+- **Render modules** draw the current simulation state.
+- **Oscillators** animate module inputs over time, without changing module wiring.
 
-  C --> C1["init"]
-  C1 --> C2["step"]
-  C2 --> C3["post"]
-
-  E["Oscillators"] --> F["Module inputs"]
-  F --> B
-  F --> C
-  F --> D
-```
-
-- Force/render/grid modules are all registered once and run each frame according to their role.
-- Oscillators update module inputs over time without changing module wiring.
+Modules are registered once and then executed each frame according to their role.
 
 ### Force System Lifecycle
 
