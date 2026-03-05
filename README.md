@@ -6,7 +6,7 @@ A high-performance particle physics simulation system with interactive playgroun
 
 - **Dual Runtime Architecture**: Auto-selection between WebGPU (GPU compute) and CPU fallback for maximum compatibility
 - **High Performance**: Spatial grid optimization, configurable workgroup sizes, and efficient neighbor queries
-- **Modular Force System**: Environment, boundary, collisions, behavior (flocking), fluid dynamics (SPH), sensors, joints, interaction, and grab modules
+- **Modular Force System**: Environment, boundary, collisions, behavior (flocking), fluid dynamics (SPH + PIC/FLIP), sensors, joints, interaction, and grab modules
 - **Advanced Rendering**: Trails with decay/diffusion, particle instancing, line rendering, and multiple color modes
 - **Playground Sessions**: Save/load/share sessions (module settings, oscillators, and optional particles/joints)
 - **Real-time Oscillators**: Animate any module parameter with configurable frequency and bounds
@@ -47,10 +47,10 @@ The heart of the system - a TypeScript particle physics engine featuring:
 A React-based web application providing:
 
 - **Visual Interface**: Real-time controls for all simulation parameters
-- **Multiple Tools**: Spawn, grab, joint, pin, remove, and draw modes
+- **Multiple Tools**: Interaction, spawn, remove, joint, grab, pin, draw, brush, and shape modes
 - **Session System**: Save, load, rename, duplicate, and reorder sessions with drag-and-drop
 - **Oscillator UI**: Visual sliders with speed cycling and parameter automation
-- **Hotkeys**: Comprehensive keyboard shortcuts for efficient workflow
+- **Hotkeys**: Cmd/Ctrl + A/S/D/F/G/H/J/K/L for tools, Cmd/Ctrl + B for sidebar toggle, plus undo/redo and quick-load shortcuts
 - **Undo/Redo**: Full history system for non-destructive editing
 
 ### [`worker`](./packages/worker) - Cloudflare Worker
@@ -132,7 +132,7 @@ const forces = [
     viewRadius: 100,
   }),
 
-  // Fluid dynamics
+  // Fluid dynamics (SPH by default; can switch to PIC/FLIP with setMethod)
   new Fluids({
     influenceRadius: 80,
     pressureMultiplier: 25,
@@ -172,33 +172,47 @@ engine.play();
 
 ### Engine Runtime Selection
 
+```mermaid
+flowchart LR
+  A["new Engine({...})"] --> B{"runtime option"}
+  B -->|webgpu| C["Initialize WebGPU runtime"]
+  B -->|cpu| D["Initialize CPU runtime"]
+  B -->|auto| E["Try WebGPU first"]
+  E --> F{"WebGPU initialize() succeeds?"}
+  F -->|yes| C
+  F -->|no| D
+  C --> G["Use unified Engine API"]
+  D --> G
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│     Engine      │    │   WebGPU        │    │      CPU        │
-│                 │    │   Runtime       │    │    Runtime      │
-│ • Auto-select   │◄──►│ • GPU Compute   │    │ • Canvas2D      │
-│ • Unified API   │    │ • Spatial Grid  │    │ • JS Simulation │
-│ • Module System │    │ • WGSL Shaders  │    │ • Fallback      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
+
+- `auto` fallback happens at `initialize()` time.
+- After initialization, the same Engine API is used regardless of runtime.
 
 ### Module System
 
+```mermaid
+flowchart TD
+  A["Engine frame loop"] --> B["Force modules"]
+  A --> C["Grid modules"]
+  A --> D["Render modules"]
+
+  B --> B1["state"]
+  B1 --> B2["apply"]
+  B2 --> B3["constrain (iterative)"]
+  B3 --> B4["correct"]
+
+  C --> C1["init"]
+  C1 --> C2["step"]
+  C2 --> C3["post"]
+
+  E["Oscillators"] --> F["Module inputs"]
+  F --> B
+  F --> C
+  F --> D
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Force Modules  │    │ Render Modules  │    │   Oscillators   │
-│                 │    │                 │    │                 │
-│ • Environment   │    │ • Particles     │    │ • Parameter     │
-│ • Boundary      │    │ • Trails        │    │   Animation     │
-│ • Collisions    │    │ • Lines         │    │ • Time-based    │
-│ • Behavior      │    │                 │    │ • Configurable  │
-│ • Fluids        │    │                 │    │   Frequency     │
-│ • Sensors       │    │                 │    │                 │
-│ • Interaction   │    │                 │    │                 │
-│ • Joints        │    │                 │    │                 │
-│ • Grab          │    │                 │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
+
+- Force/render/grid modules are all registered once and run each frame according to their role.
+- Oscillators update module inputs over time without changing module wiring.
 
 ### Force System Lifecycle
 
@@ -217,7 +231,7 @@ The force system uses a multi-phase lifecycle for optimal performance:
 - **Boundary**: Boundary interactions (bounce, kill, warp) with repel forces and friction
 - **Collisions**: Particle-particle collision detection and elastic response
 - **Behavior**: Flocking behaviors (cohesion, alignment, separation, wander, chase/avoid)
-- **Fluids**: Smoothed Particle Hydrodynamics (SPH) with near-pressure optimization
+- **Fluids**: Switchable SPH or PIC/FLIP method with density/pressure, viscosity, and method-specific tuning controls
 - **Sensors**: Trail-following and color-based steering with configurable behaviors
 - **Interaction**: User-controlled attraction/repulsion with falloff
 - **Joints**: Distance constraints between particles with momentum preservation
@@ -248,65 +262,6 @@ npm run build
 
 # Type check all packages
 npm run type-check
-
-# Run tests
-npm test
-```
-
-### Project Structure
-
-```
-party/
-├── packages/
-│   ├── core/                      # Core engine library
-│   │   ├── src/
-│   │   │   ├── engine.ts          # Main engine facade
-│   │   │   ├── index.ts           # Public API exports
-│   │   │   ├── interfaces.ts      # Common interfaces
-│   │   │   ├── modules/           # Force and render modules
-│   │   │   │   ├── forces/
-│   │   │   │   └── render/
-│   │   │   ├── oscillators.ts
-│   │   │   ├── particle.ts
-│   │   │   ├── runtimes/          # WebGPU and CPU implementations
-│   │   │   │   ├── cpu/
-│   │   │   │   └── webgpu/
-│   │   │   ├── spawner.ts
-│   │   │   ├── vector.ts
-│   │   │   └── view.ts
-│   │   ├── package.json
-│   │   ├── README.md
-│   │   ├── rollup.config.js
-│   │   └── tsconfig.json
-│   └── playground/                # React playground application
-│       ├── src/
-│       │   ├── components/
-│       │   ├── constants/
-│       │   ├── contexts/
-│       │   ├── history/
-│       │   ├── hooks/
-│       │   ├── slices/
-│       │   ├── styles/
-│       │   ├── types/
-│       │   └── utils/
-│       ├── index.html
-│       ├── package.json
-│       ├── README.md
-│       ├── tsconfig.json
-│       └── vite.config.js
-├── docs/                          # Documentation
-│   ├── maintainer-guide.md
-│   ├── module-author-guide.md
-│   ├── playground-maintainer-guide.md
-│   ├── playground-user-guide.md
-│   └── user-guide.md
-├── LICENSE
-├── package.json                   # Root workspace configuration
-├── package-lock.json
-├── pnpm-lock.yaml
-├── pnpm-workspace.yaml
-├── tsconfig.json
-└── README.md
 ```
 
 ## Performance
@@ -335,7 +290,7 @@ party/
 
 ## Browser Support
 
-- **WebGPU**: Chrome 113+, Edge 113+, Safari 18+, Firefox (experimental)
+- **WebGPU**: Chrome 113+, Edge 113+, Safari 18+, Firefox
 - **Mobile**: iOS 18+ (Safari), Android (Chrome 113+)
 - **CPU Fallback**: All modern browsers with Canvas2D support
 - **Auto-Detection**: Seamless fallback when WebGPU is unavailable
