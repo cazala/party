@@ -6,6 +6,9 @@ import { FluidsModule } from "./modules/FluidsModule";
 import { BehaviorModule } from "./modules/BehaviorModule";
 import { SensorsModule } from "./modules/SensorsModule";
 import { JointsModule } from "./modules/JointsModule";
+import { GameOfLifeModule } from "./modules/GameOfLifeModule";
+import { ReactionDiffusionModule } from "./modules/ReactionDiffusionModule";
+import { ElementaryCAModule } from "./modules/ElementaryCAModule";
 import { ModuleWrapper } from "./ModuleWrapper";
 import { useEngine } from "../hooks/useEngine";
 import { useOscillators } from "../hooks/useOscillators";
@@ -19,6 +22,9 @@ import {
   useBehavior,
   useSensors,
   useJoints,
+  useGameOfLife,
+  useReactionDiffusion,
+  useElementaryCA,
 } from "../hooks/modules";
 import { RESTART_AFFECTED_MODULES } from "../constants/modules";
 import "./ModulesSidebar.css";
@@ -33,6 +39,9 @@ export function ModulesSidebar() {
     behavior,
     sensors,
     joints,
+    gameOfLife,
+    reactionDiffusion,
+    elementaryCa,
     isSupported,
   } = useEngine();
 
@@ -74,6 +83,21 @@ export function ModulesSidebar() {
     setEnabled: setJointsEnabled,
     reset: resetJoints,
   } = useJoints();
+  const {
+    isEnabled: isGameOfLifeEnabled,
+    setEnabled: setGameOfLifeEnabled,
+    reset: resetGameOfLife,
+  } = useGameOfLife();
+  const {
+    isEnabled: isReactionDiffusionEnabled,
+    setEnabled: setReactionDiffusionEnabled,
+    reset: resetReactionDiffusion,
+  } = useReactionDiffusion();
+  const {
+    isEnabled: isElementaryCAEnabled,
+    setEnabled: setElementaryCAEnabled,
+    reset: resetElementaryCA,
+  } = useElementaryCA();
 
   return (
     <div className="controls-panel">
@@ -101,6 +125,9 @@ export function ModulesSidebar() {
             resetBehavior();
             resetSensors();
             resetJoints();
+            resetGameOfLife();
+            resetReactionDiffusion();
+            resetElementaryCA();
             
             // Clear reset flag after a brief delay
             setTimeout(() => setIsResetting(false), 10);
@@ -179,6 +206,36 @@ export function ModulesSidebar() {
         setEnabled={setJointsEnabled}
       >
         <JointsModule />
+      </ModuleWrapper>
+
+      <ModuleWrapper
+        title="Game of Life"
+        module={gameOfLife}
+        isSupported={isSupported(gameOfLife)}
+        enabled={isGameOfLifeEnabled}
+        setEnabled={setGameOfLifeEnabled}
+      >
+        <GameOfLifeModule />
+      </ModuleWrapper>
+
+      <ModuleWrapper
+        title="Reaction Diffusion"
+        module={reactionDiffusion}
+        isSupported={isSupported(reactionDiffusion)}
+        enabled={isReactionDiffusionEnabled}
+        setEnabled={setReactionDiffusionEnabled}
+      >
+        <ReactionDiffusionModule />
+      </ModuleWrapper>
+
+      <ModuleWrapper
+        title="Elementary CA"
+        module={elementaryCa}
+        isSupported={isSupported(elementaryCa)}
+        enabled={isElementaryCAEnabled}
+        setEnabled={setElementaryCAEnabled}
+      >
+        <ElementaryCAModule />
       </ModuleWrapper>
 
       {/* Interaction controls moved into the Interact tool; module UI removed */}

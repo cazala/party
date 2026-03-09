@@ -13,6 +13,9 @@ import {
   Joints,
   Lines,
   Grab,
+  GameOfLifeGrid,
+  ReactionDiffusionGrid,
+  ElementaryCAGrid,
 } from "@cazala/party";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
@@ -71,6 +74,9 @@ import {
   importParticlesSettings,
   importLinesSettings,
   importJointsSettings,
+  importGameOfLifeSettings,
+  importReactionDiffusionSettings,
+  importElementaryCASettings,
 } from "../slices/modules";
 
 export interface UseEngineProps {
@@ -112,6 +118,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
   const jointsRef = useRef<Joints | null>(null);
   const linesRef = useRef<Lines | null>(null);
   const grabRef = useRef<Grab | null>(null);
+  const gameOfLifeRef = useRef<GameOfLifeGrid | null>(null);
+  const reactionDiffusionRef = useRef<ReactionDiffusionGrid | null>(null);
+  const elementaryCaRef = useRef<ElementaryCAGrid | null>(null);
 
   // Local state for engine initialization
   const [isAutoMode, setIsAutoMode] = useState(true);
@@ -184,6 +193,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           particlesRef.current = null;
           jointsRef.current = null;
           linesRef.current = null;
+          gameOfLifeRef.current = null;
+          reactionDiffusionRef.current = null;
+          elementaryCaRef.current = null;
           registerEngine(null);
         } catch (err) {
           console.warn("Error cleaning up previous engine:", err);
@@ -275,6 +287,37 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         const lines = new Lines({ enabled: false });
         const grab = new Grab({ enabled: false });
 
+        const gridWidth = Math.min(
+          512,
+          Math.max(64, Math.floor(canvasWidth))
+        );
+        const gridHeight = Math.min(
+          512,
+          Math.max(64, Math.floor(canvasHeight))
+        );
+        const gridCellSize = 2;
+        const gameOfLife = new GameOfLifeGrid({
+          width: gridWidth,
+          height: gridHeight,
+          cellSize: gridCellSize,
+          followView: true,
+        });
+        const reactionDiffusion = new ReactionDiffusionGrid({
+          width: gridWidth,
+          height: gridHeight,
+          cellSize: gridCellSize,
+          followView: true,
+        });
+        const elementaryCa = new ElementaryCAGrid({
+          width: gridWidth,
+          height: gridHeight,
+          cellSize: gridCellSize,
+          followView: true,
+        });
+        gameOfLife.setEnabled(false);
+        reactionDiffusion.setEnabled(false);
+        elementaryCa.setEnabled(false);
+
         // Create particles renderer
         const particles = new Particles();
 
@@ -290,12 +333,14 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           grab,
         ];
         const render = [trails, lines, particles];
+        const grids = [gameOfLife, reactionDiffusion, elementaryCa];
 
         // Create engine with device-appropriate maxParticles
         const engine = new Engine({
           canvas,
           forces,
           render,
+          grids,
           runtime: requestedRuntime,
           maxParticles,
         });
@@ -331,6 +376,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
         jointsRef.current = joints;
         linesRef.current = lines;
         grabRef.current = grab;
+        gameOfLifeRef.current = gameOfLife;
+        reactionDiffusionRef.current = reactionDiffusion;
+        elementaryCaRef.current = elementaryCa;
         // Register engine for thunks
         registerEngine(engine);
 
@@ -387,6 +435,11 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
             dispatch(importJointsSettings(modules.joints));
             dispatch(importLinesSettings(modules.lines));
             dispatch(importParticlesSettings(modules.particles));
+            dispatch(importGameOfLifeSettings(modules.gameOfLife));
+            dispatch(
+              importReactionDiffusionSettings(modules.reactionDiffusion)
+            );
+            dispatch(importElementaryCASettings(modules.elementaryCa));
           }
         }
 
@@ -430,6 +483,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
           particlesRef.current = null;
           jointsRef.current = null;
           linesRef.current = null;
+          gameOfLifeRef.current = null;
+          reactionDiffusionRef.current = null;
+          elementaryCaRef.current = null;
           registerEngine(null);
         };
       } catch (err) {
@@ -511,6 +567,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     const particles = particlesRef.current;
     const joints = jointsRef.current;
     const lines = linesRef.current;
+    const gameOfLife = gameOfLifeRef.current;
+    const reactionDiffusion = reactionDiffusionRef.current;
+    const elementaryCa = elementaryCaRef.current;
     try {
       // Apply module enabled/disabled states from Redux to module instances
       if (environment && environment.setEnabled) {
@@ -556,6 +615,15 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
       if (lines && lines.setEnabled) {
         lines.setEnabled(modulesState.lines.enabled);
       }
+      if (gameOfLife && gameOfLife.setEnabled) {
+        gameOfLife.setEnabled(modulesState.gameOfLife.enabled);
+      }
+      if (reactionDiffusion && reactionDiffusion.setEnabled) {
+        reactionDiffusion.setEnabled(modulesState.reactionDiffusion.enabled);
+      }
+      if (elementaryCa && elementaryCa.setEnabled) {
+        elementaryCa.setEnabled(modulesState.elementaryCa.enabled);
+      }
     } catch (err) {
       console.warn("Error applying module states:", err);
     }
@@ -574,6 +642,9 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     modulesState.particles.enabled,
     modulesState.joints.enabled,
     modulesState.lines.enabled,
+    modulesState.gameOfLife.enabled,
+    modulesState.reactionDiffusion.enabled,
+    modulesState.elementaryCa.enabled,
   ]);
 
   // Action functions (wrapped thunks)
@@ -723,6 +794,118 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     return engineRef.current?.getFPS() || 0;
   }, []);
 
+  const gridStampQueueRef = useRef<Array<{ x: number; y: number }>>([]);
+  const gridStampScheduledRef = useRef(false);
+
+  const stampGridsAtWorldPositions = useCallback(
+    (positions: Array<{ x: number; y: number }>) => {
+      if (!positions.length) return;
+      gridStampQueueRef.current.push(...positions);
+      if (gridStampScheduledRef.current) return;
+      gridStampScheduledRef.current = true;
+      requestAnimationFrame(() => {
+        gridStampScheduledRef.current = false;
+        const queued = gridStampQueueRef.current.splice(
+          0,
+          gridStampQueueRef.current.length
+        );
+        if (queued.length === 0) return;
+        const engine = engineRef.current;
+        if (!engine || !engine.getGrid || !engine.setGrid) return;
+        const size = engine.getSize();
+        const camera = engine.getCamera();
+        const zoom = engine.getZoom();
+        const centerX = size.width / 2;
+        const centerY = size.height / 2;
+        const view = {
+          width: size.width,
+          height: size.height,
+          cx: camera.x,
+          cy: camera.y,
+          zoom,
+        };
+
+        const modules = [
+          gameOfLifeRef.current,
+          reactionDiffusionRef.current,
+          elementaryCaRef.current,
+        ].filter(Boolean) as Array<{
+          name: string;
+          gridSpec?: {
+            width: number;
+            height: number;
+            format: string;
+            channels?: number;
+          };
+          isEnabled?: () => boolean;
+        }>;
+
+        const stampModule = async (mod: {
+          name: string;
+          gridSpec?: {
+            width: number;
+            height: number;
+            format: string;
+            channels?: number;
+          };
+        }) => {
+          const spec = mod.gridSpec;
+          if (!spec) return;
+          const width = spec.width;
+          const height = spec.height;
+          if (width <= 0 || height <= 0) return;
+          const channels =
+            spec.channels ??
+            (spec.format === "vec2f" ? 2 : spec.format === "vec4f" ? 4 : 1);
+          let data: ArrayBufferView;
+          try {
+            data = await engine.getGrid(mod.name);
+          } catch {
+            return;
+          }
+          const buffer =
+            data instanceof Float32Array
+              ? data
+              : new Float32Array(
+                  data.buffer,
+                  data.byteOffset,
+                  data.byteLength / 4
+                );
+
+          for (const pos of queued) {
+            const screenX = centerX + (pos.x - view.cx) * view.zoom;
+            const screenY = centerY + (pos.y - view.cy) * view.zoom;
+            const gx = Math.floor((screenX / view.width) * width);
+            const gy = Math.floor((screenY / view.height) * height);
+            if (gx < 0 || gy < 0 || gx >= width || gy >= height) continue;
+
+            if (mod.name === "elementaryCA") {
+              const idx = gx;
+              buffer[idx] = 1;
+              continue;
+            }
+
+            const idx = (gy * width + gx) * channels;
+            if (mod.name === "reactionDiffusion" && channels >= 2) {
+              buffer[idx + 0] = 1;
+              buffer[idx + 1] = 1;
+            } else {
+              buffer[idx] = 1;
+            }
+          }
+
+          engine.setGrid(mod.name, buffer);
+        };
+
+        modules.forEach((mod) => {
+          if (mod.isEnabled && !mod.isEnabled()) return;
+          stampModule(mod);
+        });
+      });
+    },
+    []
+  );
+
   return {
     // State values (from Redux selectors)
     isAutoMode,
@@ -763,6 +946,7 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     isSupported,
     getCount,
     getFPS,
+    stampGridsAtWorldPositions,
 
     // Module references (direct access to engine instances)
     engine: engineRef.current,
@@ -778,5 +962,8 @@ export function useEngineInternal({ canvasRef, initialSize }: UseEngineProps) {
     joints: jointsRef.current,
     lines: linesRef.current,
     grab: grabRef.current,
+    gameOfLife: gameOfLifeRef.current,
+    reactionDiffusion: reactionDiffusionRef.current,
+    elementaryCa: elementaryCaRef.current,
   };
 }

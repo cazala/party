@@ -5,3 +5,5 @@ export * from "./interfaces";
 export * from "./modules";
 export * from "./vector";
 export * from "./oscillators";
+export * from "./grid/geometry";
+export * from "./grid/store";

@@ -19,6 +19,7 @@ import {
   ModuleRole,
   DataType,
   WebGPUForceDescriptor,
+  GridSpec,
 } from "../../../module";
 
 export const PARTICLE_STRUCT = `
@@ -60,6 +61,7 @@ export interface Program {
     simState?: { stateBinding: number };
     sceneTexture?: { textureBinding: number };
     arrays?: Record<string, { arrayBinding: number; lengthBinding: number }>; // moduleName_arrayKey -> bindings
+    gridFields?: Record<string, { binding: number }>;
   };
 }
 
@@ -308,11 +310,49 @@ export function buildProgram(modules: readonly Module[]): Program {
   const SIM_STATE_STRIDE_VAL = nextSlot;
 
   // Grid and system bindings come after all module bindings (including arrays)
+  const gridFieldBindings: Record<string, { binding: number; spec: GridSpec }> =
+    {};
+  const gridFieldDecls: string[] = [];
+  const gridFieldHelpers: string[] = [];
+  for (const module of modules) {
+    if (module.role !== ModuleRole.Grid) continue;
+    const spec = (module as unknown as { gridSpec?: GridSpec }).gridSpec;
+    if (!spec) continue;
+    const binding = nextBindingIndex++;
+    gridFieldBindings[module.name] = { binding, spec };
+    gridFieldDecls.push(
+      `@group(0) @binding(${binding}) var<storage, read_write> GRID_FIELD_${module.name}: array<f32>;`
+    );
+    const channels =
+      spec.channels ??
+      (spec.format === "vec2f" ? 2 : spec.format === "vec4f" ? 4 : 1);
+    gridFieldHelpers.push(`const GRID_${module.name}_WIDTH: u32 = ${spec.width}u;`);
+    gridFieldHelpers.push(
+      `const GRID_${module.name}_HEIGHT: u32 = ${spec.height}u;`
+    );
+    gridFieldHelpers.push(
+      `const GRID_${module.name}_CHANNELS: u32 = ${channels}u;`
+    );
+    gridFieldHelpers.push(
+      `fn grid_${module.name}_index(x: i32, y: i32, c: u32) -> u32 {
+  let xx = max(0, min(x, i32(GRID_${module.name}_WIDTH) - 1));
+  let yy = max(0, min(y, i32(GRID_${module.name}_HEIGHT) - 1));
+  return (u32(yy) * GRID_${module.name}_WIDTH + u32(xx)) * GRID_${module.name}_CHANNELS + c;
+}`
+    );
+    gridFieldHelpers.push(
+      `fn grid_${module.name}_read(x: i32, y: i32, c: u32) -> f32 { return GRID_FIELD_${module.name}[grid_${module.name}_index(x, y, c)]; }`
+    );
+    gridFieldHelpers.push(
+      `fn grid_${module.name}_write(x: i32, y: i32, c: u32, v: f32) { GRID_FIELD_${module.name}[grid_${module.name}_index(x, y, c)] = v; }`
+    );
+  }
   const gridCountsBinding = nextBindingIndex++;
   const gridIndicesBinding = nextBindingIndex++;
   const simStateBinding = nextBindingIndex++;
   const sceneTextureBinding = nextBindingIndex++;
   const gridDecls = [
+    ...gridFieldDecls,
     `@group(0) @binding(${gridCountsBinding}) var<storage, read_write> GRID_COUNTS: array<atomic<u32>>;`,
     `@group(0) @binding(${gridIndicesBinding}) var<storage, read_write> GRID_INDICES: array<u32>;`,
     `@group(0) @binding(${simStateBinding}) var<storage, read_write> SIM_STATE: array<f32>;`,
@@ -411,6 +451,11 @@ fn neighbor_iter_next(it: ptr<function, NeighborIter>, selfIndex: u32) -> u32 {
   return result;
 }`
   );
+
+  if (gridFieldHelpers.length > 0) {
+    globals.push(`// Grid field helpers`);
+    globals.push(...gridFieldHelpers);
+  }
 
   // Optional: allow force modules to inject globals
   const addGlobal = (module: Module, descriptor: WebGPUForceDescriptor) => {
@@ -637,6 +682,15 @@ fn grid_build(@builtin(global_invocation_id) global_id: vec3<u32>) {
       simState: { stateBinding: simStateBinding },
       sceneTexture: { textureBinding: sceneTextureBinding },
       arrays: Object.keys(arrayBindings).length > 0 ? arrayBindings : undefined,
+      gridFields:
+        Object.keys(gridFieldBindings).length > 0
+          ? Object.fromEntries(
+              Object.entries(gridFieldBindings).map(([name, entry]) => [
+                name,
+                { binding: entry.binding },
+              ])
+            )
+          : undefined,
     },
   };
 }

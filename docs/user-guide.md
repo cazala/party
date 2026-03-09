@@ -136,6 +136,7 @@ engine.play();
   - **canvas**: HTMLCanvasElement used for rendering
   - **forces**: `Module[]` list of force modules
   - **render**: `Module[]` list of render modules
+  - **grids**: `Module[]` list of grid modules (optional)
   - **runtime**: `"cpu" | "webgpu" | "auto"` (use "auto" for best experience)
   - Optional: `constrainIterations`, `clearColor`, `cellSize`, `maxNeighbors`, `maxParticles`, `workgroupSize`
 
@@ -147,6 +148,7 @@ engine.play();
 - **Modules**: `getModule(name)` returns the module instance by name
 - **Serialization**: `export()` returns `{ [moduleName]: settings }`; `import(settings)` applies them
 - **Oscillators**: see “Oscillators” below
+- **Grids**: `getGrid(moduleName)` / `setGrid(moduleName, data)` for explicit grid read/write
 
 Notes
 
@@ -208,6 +210,36 @@ Notes:
 
 - `imageData` is required and must be provided synchronously.
 - Fully transparent pixels are ignored; particle colors come from the image pixels.
+
+### Grid modules
+
+Grid modules simulate 2D cellular fields (e.g. Game of Life, reaction-diffusion). They can run without particles and render directly.
+
+Built-in grid modules:
+
+- `GameOfLifeGrid`
+- `ReactionDiffusionGrid`
+- `ElementaryCAGrid`
+
+Interop modules:
+
+- `GridFieldForce` (grid → particles)
+- `ParticleDepositGrid` (particles → grid)
+
+Example:
+
+```ts
+import { Engine, GameOfLifeGrid } from "@cazala/party";
+
+const grid = new GameOfLifeGrid({ width: 256, height: 256 });
+const engine = new Engine({
+  canvas,
+  forces: [],
+  render: [],
+  grids: [grid],
+  runtime: "auto",
+});
+```
 
 #### Engine methods and lifecycles
 

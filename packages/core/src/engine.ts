@@ -12,6 +12,7 @@ export type EngineOptions = {
   canvas: HTMLCanvasElement;
   forces: Module<string, any>[];
   render: Module<string, any>[];
+  grids?: Module<string, any>[];
   runtime: "cpu" | "webgpu" | "auto";
   constrainIterations?: number;
   clearColor?: { r: number; g: number; b: number; a: number };
@@ -229,6 +230,12 @@ export class Engine implements IEngine {
   getParticle(index: number): Promise<IParticle> {
     return this.engine.getParticle(index);
   }
+  getGrid(moduleName: string): Promise<ArrayBufferView> {
+    return this.engine.getGrid(moduleName);
+  }
+  setGrid(moduleName: string, data: ArrayBufferView): void {
+    this.engine.setGrid(moduleName, data);
+  }
   getParticlesInRadius(
     center: { x: number; y: number },
     radius: number,
@@ -279,6 +286,9 @@ export class Engine implements IEngine {
   }
   import(settings: Record<string, Record<string, number>>): void {
     this.engine.import(settings);
+  }
+  notifyModuleSettingsChanged(): void {
+    this.engine.notifyModuleSettingsChanged();
   }
 
   // Configuration getters and setters
