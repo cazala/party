@@ -1,14 +1,14 @@
-## Party User Guide
+# Party User Guide
 
 This guide shows how to use the core library as an end user: creating an engine, selecting a runtime (CPU/WebGPU), configuring modules, adding particles, and using oscillators. It also documents all built-in force and render modules with their main inputs and simple examples.
 
-### Installation
+## Installation
 
 ```bash
 npm install @cazala/party
 ```
 
-### Quick start
+## Quick start
 
 ```ts
 import {
@@ -129,7 +129,7 @@ await engine.initialize();
 engine.play();
 ```
 
-### Engine API
+## Engine API
 
 - **Construction (required)**: `new Engine({ canvas, forces, render, runtime, ... })`
 
@@ -156,7 +156,7 @@ Notes
 - `getParticles()` can be expensive on WebGPU because it requires a GPU → CPU readback of the particle buffer; prefer `getParticlesInRadius(...)` for tool-like / local queries.
 - `getParticlesInRadius(center, radius, { maxResults })` returns `{ particles, truncated }` with only the fields needed for local occupancy (`position`, `size`, `mass`).
 
-### Spawner utility
+## Spawner utility
 
 The `Spawner` helper generates `IParticle[]` for common shapes, including text and images.
 
@@ -209,7 +209,7 @@ Notes:
 - `imageData` is required and must be provided synchronously.
 - Fully transparent pixels are ignored; particle colors come from the image pixels.
 
-#### Engine methods and lifecycles
+### Engine methods and lifecycles
 
 - `initialize()`
   - Creates runtime resources (GPU device/queues or CPU canvas context), binds module uniforms, and builds pipelines. Await this before `play()`.
@@ -247,21 +247,21 @@ Performance-critical settings
 - `setConstrainIterations(iterations: number)`
   - Number of constraint iterations per frame (affects boundary/collision correction and joints). More = more stable/rigid, but slower. Defaults: CPU ≈ 5, WebGPU ≈ 50.
 
-### Runtime selection
+## Runtime selection
 
 - Use `runtime: "auto"` unless you explicitly need one runtime.
 - WebGPU unlocks large particle counts and GPU compute; CPU offers maximum compatibility.
 
-### Camera and coordinates
+## Camera and coordinates
 
 - World coordinates are independent of canvas pixels; `setCamera(x,y)` centers the view and `setZoom(z)` controls scale.
 - Bounds-aware modules (e.g., `Boundary`) use the camera and zoom to compute visible extents consistently across runtimes.
 
-### Oscillators
+## Oscillators
 
 Oscillators modulate module inputs continuously over time.
 
-#### Oscillator API
+### Oscillator API
 
 - `addOscillator(params)` - Add an oscillator to animate a module input
 - `removeOscillator(moduleName, inputName)` - Remove a specific oscillator
@@ -529,7 +529,7 @@ lines.setLineWidth(2);
 
 ---
 
-### Tips
+## Tips
 
 - Start with a small number of modules enabled; add more as needed.
 - Increase `cellSize` for sparser scenes; reduce it for dense ones.
