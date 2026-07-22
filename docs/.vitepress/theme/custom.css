@@ -1,0 +1,11 @@
+/*
+ * VitePress centers its entire three-column docs layout inside 1440px by
+ * default. On wide desktop displays that leaves both navigation rails floating
+ * beside the article. Let the rails use the available space while retaining a
+ * cap for ultrawide monitors; VitePress keeps the prose column readable.
+ */
+@media (min-width: 1440px) {
+  :root {
+    --vp-layout-max-width: clamp(1440px, 100vw, 2560px);
+  }
+}
