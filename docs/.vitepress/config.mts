@@ -120,6 +120,34 @@ export default defineConfig({
 
   markdown: {
     config(md) {
+      md.core.ruler.after("inline", "party-homepage-title", (state) => {
+        const sourcePage = String(
+          state.env?.relativePath ?? state.env?.path ?? "",
+        );
+        if (sourcePage !== "index.md") return;
+
+        const headingIndex = state.tokens.findIndex(
+          (token) => token.type === "heading_open" && token.tag === "h1",
+        );
+        if (headingIndex === -1) return;
+
+        const title = state.tokens[headingIndex + 1];
+        if (
+          title?.type !== "inline" ||
+          title.content !==
+            "Party 🎉 - [caza.la/party](https://caza.la/party)"
+        ) {
+          return;
+        }
+
+        const text = title.children?.find((token) => token.type === "text");
+        if (!text) return;
+
+        text.content = "Party 🎉";
+        title.content = text.content;
+        title.children = [text];
+      });
+
       const defaultLinkOpen =
         md.renderer.rules.link_open ??
         ((tokens, index, options, _env, renderer) =>
