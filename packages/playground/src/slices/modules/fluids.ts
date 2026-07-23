@@ -29,7 +29,7 @@ export interface FluidsModuleState {
 
 const initialState: FluidsModuleState = {
   enabled: false,
-  method: FluidsMethod.Sph,
+  method: FluidsMethod.Picflip,
   influenceRadius: DEFAULT_FLUIDS_INFLUENCE_RADIUS,
   targetDensity: DEFAULT_FLUIDS_TARGET_DENSITY,
   pressureMultiplier: DEFAULT_FLUIDS_PRESSURE_MULTIPLIER,
