@@ -1,189 +1,135 @@
 ---
 name: party
-description: "Programmatic guide for the @cazala/party library: engine setup, modules, particles, and performance across CPU + WebGPU."
-version: 0.1.0
-license: MIT
-tags: [party, particles, physics, webgpu, cpu, simulation, typescript]
+description: Build creative particle effects, generative art, interactive physics scenes, and production integrations with @cazala/party across WebGPU and CPU. Use when creating or tuning simulations, composing modules, spawning shape/text/image particles, translating Party playground demos into code, optimizing performance, or authoring custom modules.
 ---
 
-# Party Skill
+# Party
 
-Reusable guidance for using the `@cazala/party` library programmatically: engine setup, runtime selection, particles, modules, and performance constraints across CPU + WebGPU.
+Build a visible result first, then tune it. Treat a Party scene as four layers:
 
-## When to use this skill
+1. Spawn geometry and initial velocity.
+2. One or two primary force modules.
+3. Render treatment such as trails, lines, or color.
+4. Slow animation of a few meaningful parameters.
 
-- You need to instantiate the Party engine in a custom app (not the playground).
-- You want examples for adding particles, configuring modules, or using oscillators.
-- You need performance-safe patterns for WebGPU (avoiding full readbacks).
+## Start with a working scene
 
-## Quick start (minimal)
+Use semantic enums and create particles before calling `play()`:
 
 ```ts
 import {
-  Engine,
-  Environment,
+  Behavior,
   Boundary,
-  Collisions,
+  Engine,
   Particles,
+  ParticlesColorType,
+  Spawner,
   Trails,
 } from "@cazala/party";
 
-const canvas = document.querySelector("canvas")!;
+const canvas = document.querySelector<HTMLCanvasElement>("canvas")!;
+const width = window.innerWidth;
+const height = window.innerHeight;
 
 const forces = [
-  new Environment({ gravityStrength: 600, gravityDirection: "down" }),
-  new Boundary({ mode: "bounce", restitution: 0.9, friction: 0.1 }),
-  new Collisions({ restitution: 0.85 }),
+  new Boundary({ mode: "warp" }),
+  new Behavior({
+    wander: 18,
+    cohesion: 1.4,
+    alignment: 4,
+    separation: 35,
+    viewRadius: 80,
+  }),
 ];
-
 const render = [
-  new Trails({ trailDecay: 10, trailDiffuse: 4 }),
-  new Particles({ colorType: 2, hue: 0.55 }),
+  new Trails({ trailDecay: 8, trailDiffuse: 1 }),
+  new Particles({ colorType: ParticlesColorType.Hue, hue: 0.62 }),
 ];
-
-const engine = new Engine({ canvas, forces, render, runtime: "auto" });
-
-await engine.initialize();
-engine.play();
-```
-
-## Core concepts
-
-### Particle shape
-
-```ts
-type IParticle = {
-  position: { x: number; y: number };
-  velocity: { x: number; y: number };
-  size: number;
-  mass: number;
-  color: { r: number; g: number; b: number; a: number }; // 0..1 floats
-};
-```
-
-- Pinned particles: `mass < 0`
-- Removed particles: `mass === 0`
-
-### Runtime selection
-
-- `"auto"` tries WebGPU first, then falls back to CPU on `initialize()`.
-- WebGPU has higher throughput but GPU → CPU readbacks are expensive.
-
-### Engine lifecycle
-
-```ts
-await engine.initialize();
-engine.play();   // start loop
-engine.pause();  // pause loop
-engine.stop();   // cancel loop
-engine.destroy(); // clean up
-```
-
-### Module system
-
-Modules are typed force or render units:
-
-- **Force**: apply acceleration/velocity changes or constraints.
-- **Render**: draw particles/lines or post-process scene texture.
-
-Each module exposes inputs and helpers, and can be toggled:
-
-```ts
-const boundary = new Boundary();
-boundary.setEnabled(false);
-boundary.setRestitution(0.8);
-```
-
-## Common tasks
-
-### Add particles
-
-```ts
-for (let i = 0; i < 200; i++) {
-  engine.addParticle({
-    position: { x: Math.random() * 500, y: Math.random() * 500 },
-    velocity: { x: (Math.random() - 0.5) * 6, y: (Math.random() - 0.5) * 6 },
-    mass: 1,
-    size: 3,
-    color: { r: 1, g: 1, b: 1, a: 1 },
-  });
-}
-```
-
-### Bulk set particles
-
-```ts
-engine.setParticles(particlesArray);
-```
-
-### Use the Spawner utility
-
-```ts
-import { Spawner } from "@cazala/party";
-
-const spawner = new Spawner();
-const particles = spawner.initParticles({
-  count: 5000,
-  shape: "text",
-  text: "Party",
+const particles = new Spawner().initParticles({
+  count: 4_000,
+  shape: "donut",
   center: { x: 0, y: 0 },
-  position: { x: 0, y: 0 },
-  align: { horizontal: "center", vertical: "center" },
-  textSize: 80,
-  size: 3,
+  radius: Math.min(width, height) * 0.38,
+  innerRadius: Math.min(width, height) * 0.12,
+  size: 2.5,
   mass: 1,
+  velocity: { speed: 120, direction: "clockwise" },
   colors: ["#ffffff"],
 });
 
-engine.setParticles(particles);
-```
-
-### Local queries without full readback (WebGPU-safe)
-
-```ts
-const { particles, truncated } = engine.getParticlesInRadius(
-  { x: 0, y: 0 },
-  120,
-  { maxResults: 200 }
-);
-```
-
-### Export + import module settings
-
-```ts
-const settings = engine.export();
-engine.import(settings);
-```
-
-### Oscillate a module input
-
-```ts
-engine.addOscillator({
-  moduleName: "boundary",
-  inputName: "restitution",
-  min: 0.4,
-  max: 0.95,
-  speedHz: 0.2,
+const engine = new Engine({
+  canvas,
+  forces,
+  render,
+  runtime: "auto",
+  cellSize: 40,
+  maxNeighbors: 128,
 });
+
+await engine.initialize();
+engine.setSize(width, height);
+engine.setParticles(particles);
+engine.addOscillator({
+  moduleName: "particles",
+  inputName: "hue",
+  min: 0,
+  max: 1,
+  speedHz: 0.01,
+});
+engine.play();
 ```
 
-## Performance notes
+Copy [the full Vite starter](assets/starter/) when building a new app. It includes responsive sizing, pointer interaction, cleanup, and five selectable scenes. Read its [tested scene source](assets/starter/src/scenes.ts) when adapting a recipe.
 
-- WebGPU `getParticles()` performs a full GPU → CPU readback; avoid in hot paths.
-- Prefer `getParticlesInRadius(...)`, `setParticle(...)`, or `setParticleMass(...)`.
-- Tune `cellSize`, `maxNeighbors`, and `constrainIterations` for performance.
-- For large scenes, limit processing with `setMaxParticles(value)`.
+## Choose modules by visual intent
 
-## API quick map
+| Intent | Start with |
+| --- | --- |
+| Falling, bouncing particles | `Environment` + `Boundary`; add `Collisions` if particles must hit each other |
+| Orbital motion | Tangential Spawner velocity + inward `Environment` |
+| Swarms and flocking | `Behavior`; add `Trails` for readable motion |
+| Slime-mold filaments | `Sensors` + `Trails` + a warp `Boundary` |
+| Liquid or viscous blobs | `Fluids` + `Boundary`; add gravity or pointer `Interaction` |
+| Pointer fields | `Interaction` for attract/repel or `Grab` for one particle |
+| Ropes and structures | `Joints` + `Lines` |
+| Text/image dissolves | Text/image `Spawner` + outward velocity + `Trails` or `Behavior` |
 
-- Engine: `initialize()`, `play()`, `pause()`, `stop()`, `destroy()`
-- View: `setSize(w,h)`, `setCamera(x,y)`, `setZoom(z)`
-- Particles: `addParticle`, `setParticles`, `setParticle`, `setParticleMass`, `getParticle`
-- Queries: `getParticlesInRadius`, `getCount`, `getFPS`
-- Modules: `getModule(name)`, module setters, `setEnabled(bool)`
-- Serialization: `export()`, `import(settings)`
-- Oscillators: `addOscillator`, `removeOscillator`, `clearOscillators`
+Use the smallest combination that expresses the idea. Adding every module usually makes the motion harder to control.
 
-## Sources
+## Work creatively
 
-- Core library user guide: `docs/user-guide.md`
+1. Define the desired silhouette and motion in one sentence.
+2. Select the matching composition above.
+3. Start with 2,000–5,000 particles so CPU fallback remains useful.
+4. Tune spawn speed and the primary force before adding effects.
+5. Add trails or color only after the motion reads clearly.
+6. Oscillate one to three inputs slowly; avoid animating everything.
+7. Inspect the scene near startup and after several seconds. Fix blank, explosive, static, or visually noisy states before increasing particle count.
+
+Read [creative-workflow.md](references/creative-workflow.md) for parameter intuition and iteration guidance. Read [recipes.md](references/recipes.md) for five compositions derived from Party playground demos.
+
+## Preserve runtime performance
+
+- Use `runtime: "auto"` unless the user requires a specific runtime.
+- Treat `getParticles()` as an expensive full WebGPU-to-CPU readback. Never call it in an animation, pointer-move, or drag loop.
+- Use `await engine.getParticlesInRadius(...)` for bounded local queries.
+- Prefer `setParticle(...)` and `setParticleMass(...)` for local mutations.
+- Keep `cellSize` near the largest active neighborhood radius, and cap `maxNeighbors` deliberately.
+- Scale particle count after the composition works. Large playground demos are WebGPU showcase budgets, not safe defaults.
+
+## Load the right detail
+
+- Read [api.md](references/api.md) for particle shape, lifecycle, modules, spawning, interaction, and queries.
+- Read [creative-workflow.md](references/creative-workflow.md) before inventing or substantially tuning a visual scene.
+- Read [recipes.md](references/recipes.md) when adapting a known effect or playground demo.
+- Read [troubleshooting.md](references/troubleshooting.md) when output is blank, unstable, slow, or visually weak.
+- Read the repository `docs/module-author-guide.md` only when authoring a new force or render module from a full Party checkout.
+
+## Validate the result
+
+- Compile the implementation; do not rely on plausible-looking option names.
+- Confirm particles are spawned after initialization and the canvas has a non-zero size.
+- Exercise CPU fallback with a reduced count when practical.
+- Verify pointer coordinates are converted from screen space to Party world space.
+- Remove listeners and call `await engine.destroy()` during teardown.
+- Visually inspect the running scene. A successful creative task must be coherent and interesting, not merely error-free.

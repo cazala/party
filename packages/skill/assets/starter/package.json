@@ -1,0 +1,18 @@
+{
+  "name": "party-creative-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "@cazala/party": "^0.1.0"
+  },
+  "devDependencies": {
+    "@webgpu/types": "^0.1.64",
+    "typescript": "^5.0.0",
+    "vite": "^5.4.0"
+  }
+}

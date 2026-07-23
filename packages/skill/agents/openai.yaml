@@ -1,0 +1,4 @@
+interface:
+  display_name: "Party"
+  short_description: "Build creative particle art with Party"
+  default_prompt: "Use $party to build an interactive particle scene with a clear visual concept and a CPU fallback."
