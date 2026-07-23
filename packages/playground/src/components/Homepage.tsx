@@ -216,9 +216,8 @@ export function Homepage({
             Play
           </button>
           <a
-            href="https://github.com/cazala/party"
+            href={`${import.meta.env.BASE_URL}docs/`}
             target="_self"
-            rel="noopener noreferrer"
             className="homepage-button homepage-button-learn"
           >
             Learn
@@ -243,4 +242,3 @@ export function Homepage({
     </>
   );
 }
-

@@ -87,6 +87,21 @@ Visit `http://localhost:3000` to access the interactive playground.
 
 > **Note**: This project uses pnpm workspaces internally for optimal monorepo management, but all commands are available through npm scripts. You only need npm installed.
 
+### Documentation Site
+
+Run the VitePress documentation locally with live reload:
+
+```bash
+npm run dev:docs
+```
+
+Open `http://localhost:5173/party/docs/` in your browser. To create the static
+production build instead, run:
+
+```bash
+npm run build:docs
+```
+
 ### Using the Core Library
 
 ```typescript

@@ -1,8 +1,8 @@
-## Maintainer Guide
+# Maintainer Guide
 
 This document explains the internal architecture of the core library for contributors. It covers code organization, the two runtimes (CPU and WebGPU), the module system, and major subsystems like the spatial grid, pipelines, and oscillators.
 
-### Code organization
+## Code organization
 
 - `packages/core/src/`
   - [`engine.ts`](../packages/core/src/engine.ts): facade that selects runtime (`cpu`/`webgpu`/`auto`) and delegates the full `IEngine` API
@@ -13,7 +13,7 @@ This document explains the internal architecture of the core library for contrib
   - [`runtimes/cpu/*`](../packages/core/src/runtimes/cpu/): CPU engine and helpers (Canvas2D rendering, neighbor queries, descriptors)
   - [`runtimes/webgpu/*`](../packages/core/src/runtimes/webgpu/): WebGPU engine and builders (GPU resources, program/pipeline builders, spatial grid, shaders)
 
-### Engine selection and lifecycle
+## Engine selection and lifecycle
 
 - Top-level [`Engine`](../packages/core/src/engine.ts) constructs either [`WebGPUEngine`](../packages/core/src/runtimes/webgpu/engine.ts) or [`CPUEngine`](../packages/core/src/runtimes/cpu/engine.ts) based on `runtime`.
 - When `runtime === "auto"`, initialization attempts WebGPU first and falls back to CPU if device/adapter creation fails (cleanup is handled, and the CPU engine is re-initialized with the same options).
@@ -25,7 +25,7 @@ Note on particle readbacks
 - Prefer local queries like `getParticlesInRadius(center, radius, { maxResults })` for tool-like occupancy checks.
 - `getParticlesInRadius(...)` is implemented in WebGPU via a small compute compaction pass (see `runtimes/webgpu/local-query.ts`) that only reads back a bounded result buffer.
 
-### AbstractEngine responsibilities
+## AbstractEngine responsibilities
 
 Shared functionality across both runtimes:
 
@@ -35,7 +35,7 @@ Shared functionality across both runtimes:
 - Modules: array of `Module` instances; `export()`/`import()` serialize module inputs, including `enabled`
 - Oscillators: `OscillatorManager` writes into module inputs each frame via `module.write()` and triggers `onModuleSettingsChanged()`
 
-### WebGPU runtime
+## WebGPU runtime
 
 Key components (see [`runtimes/webgpu/`](../packages/core/src/runtimes/webgpu/)):
 
@@ -60,7 +60,7 @@ Performance considerations:
 - dt is clamped to improve stability (`<= 100ms`)
 - Neighbor queries depend on `cellSize` and `maxNeighbors`; tune for density
 
-### CPU runtime
+## CPU runtime
 
 Parallels the WebGPU phases with pure TypeScript:
 
@@ -70,14 +70,14 @@ Parallels the WebGPU phases with pure TypeScript:
   - Composition: modules declare how to interact with the canvas clear/draw order
   - Effects like Trails use immediate-mode approximations (decay fill, canvas blur)
 
-### Module system
+## Module system
 
 - Each module declares `name`, `role`, and `inputs` (NUMBER/ARRAY); the engine binds them as uniforms/buffers
 - The base `Module` exposes `write()` to update inputs and `read()` to snapshot them; `setEnabled()` toggles an implicit `enabled` input
 - For force modules, both runtimes support the lifecycle hooks; render modules contribute render passes
 - Arrays are supported and surfaced in WGSL via `getLength()` and indexed `getUniform()` access
 
-### Built-in module notes
+## Built-in module notes
 
 - Environment: gravity/inertia/friction/damping; inward/outward/custom directions use grid/view transforms per runtime
 - Boundary: bounce/warp/kill/none modes; optional repel with inside/outside scaling; tangential friction
@@ -90,20 +90,20 @@ Parallels the WebGPU phases with pure TypeScript:
 - Grab: single-particle override applied in `correct`
 - Render: Particles (instanced soft-discs; ring for pinned), Trails (decay+diffuse compute), Lines (instanced quads)
 
-### Export/Import and settings change propagation
+## Export/Import and settings change propagation
 
 - `export()` iterates modules and collects current input values plus `enabled`
 - `import()` writes values back and toggles `enabled`, then triggers `onModuleSettingsChanged()`
 - Oscillators update via a centralized manager; input writes also flow through the same mechanism
 
-### Extending the system
+## Extending the system
 
 - Add new modules under [`modules/forces/*`](../packages/core/src/modules/forces/) or [`modules/render/*`](../packages/core/src/modules/render/)
 - For WebGPU: extend builders if the WGSL DSL needs new helpers
 - For CPU: ensure compositing and sampling utilities cover your pass
 - Update the playground to expose controls for new inputs
 
-### References
+## References
 
 - Authoring: [`module-author-guide.md`](./module-author-guide.md)
 - User Guide: [`user-guide.md`](./user-guide.md)

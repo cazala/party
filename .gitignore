@@ -3,6 +3,8 @@ packages/playground/dist
 node_modules
 packages/core/node_modules
 packages/playground/node_modules
+docs/.vitepress/cache
+docs/.vitepress/dist
 .pnpm-store
 .pnpm-store/
 .DS_Store

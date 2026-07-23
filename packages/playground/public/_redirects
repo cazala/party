@@ -1,4 +1,2 @@
 /party    /       200
 /party/*  /:splat 200
-/*       /index.html  200
-

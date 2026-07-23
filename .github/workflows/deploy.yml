@@ -63,6 +63,10 @@ jobs:
 
           VITE_PUBLIC_BASE=/party/ pnpm --filter=@cazala/playground exec -- vite build
 
+          # Build the static Markdown documentation into the same Pages artifact.
+          # This must run after Vite because Vite recreates packages/playground/dist.
+          pnpm run build:docs
+
       - name: Install Wrangler
         run: npm install -g wrangler@3
 
@@ -255,4 +259,3 @@ jobs:
               log_url: environment_url,
               description: 'Deployed to Cloudflare Pages (production)',
             });
-
