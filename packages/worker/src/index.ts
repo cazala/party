@@ -6,6 +6,26 @@ export interface Env {
 
 const EDGE_PROXY_HEADER_VALUE = "cazala-party-worker";
 const PARTY_PREFIX = "/party";
+const CANONICAL_ORIGIN = "https://caza.la";
+const ALTERNATE_HOST = "party.caza.la";
+
+function canonicalPartyPath(pathname: string): string {
+  if (pathname === PARTY_PREFIX || pathname === "/") {
+    return `${PARTY_PREFIX}/`;
+  }
+
+  if (pathname.startsWith(`${PARTY_PREFIX}/`)) {
+    return pathname;
+  }
+
+  return `${PARTY_PREFIX}${pathname}`;
+}
+
+function canonicalPartyUrl(url: URL): URL {
+  const canonicalUrl = new URL(canonicalPartyPath(url.pathname), CANONICAL_ORIGIN);
+  canonicalUrl.search = url.search;
+  return canonicalUrl;
+}
 
 function isBodyAllowed(method: string): boolean {
   // Cloudflare's fetch follows standard semantics: GET/HEAD should not include a body.
@@ -45,6 +65,17 @@ export default {
     const url = new URL(request.url);
 
     // 1) Routing rules
+    if (url.hostname === ALTERNATE_HOST) {
+      return new Response(null, {
+        status: 301,
+        headers: withEdgeHeader(
+          new Headers({
+            Location: canonicalPartyUrl(url).toString(),
+          }),
+        ),
+      });
+    }
+
     if (url.pathname === PARTY_PREFIX) {
       // Trailing slash normalization (same-host, same-scheme).
       return new Response(null, {
@@ -109,6 +140,8 @@ export default {
     // 3) Caching (keep it simple)
     // Only add long-lived caching if upstream didn't provide it.
     const responseHeaders = withEdgeHeader(upstreamResponse.headers);
+    // The Pages origin is deliberately noindex. Only the canonical proxy is indexable.
+    responseHeaders.delete("x-robots-tag");
     if (looksLikeAssetPath(upstreamPath) && !responseHeaders.has("cache-control")) {
       responseHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
     }
@@ -120,4 +153,3 @@ export default {
     });
   },
 };
-
